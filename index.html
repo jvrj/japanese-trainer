@@ -1064,9 +1064,30 @@ function normJP(s){
   return t.toLowerCase();
 }
 
-/* Normalize English for matching */
+/* Normalize English for matching — strip parenthetical qualifiers, articles, punctuation */
 function normEN(s){
-  return String(s||'').toLowerCase().trim().replace(/^(to |a |an |the )/,'').replace(/[\.!?,'"()]/g,'').trim();
+  let t = String(s||'').toLowerCase().trim();
+  t = t.replace(/\([^)]*\)/g, ' '); /* "(casual)", "(mine)", "(intr)" etc. */
+  t = t.replace(/^(to |a |an |the )/, '');
+  t = t.replace(/[\.!?,'"()]/g, '');
+  t = t.replace(/\s+/g, ' ').trim();
+  return t;
+}
+
+/* Expand a word's English into all acceptable alternatives */
+function enAlternatives(en){
+  if(!en) return [];
+  /* split on / and , */
+  const parts = String(en).split(/[\/,]/).map(p => p.trim()).filter(Boolean);
+  const out = new Set();
+  for(const p of parts){
+    const n = normEN(p);
+    if(n) out.add(n);
+    /* also accept without the parenthetical stripped, in case answer *includes* it */
+    const raw = p.toLowerCase().replace(/[\.!?,'"]/g,'').trim();
+    if(raw) out.add(raw);
+  }
+  return [...out].filter(Boolean);
 }
 
 function levenshtein(a,b){
@@ -1270,13 +1291,16 @@ function checkAnswer(userInput, word, direction){
 
   if(direction === 'jp-en'){
     /* English expected */
-    const parts = (word.en || '').split('/').map(normEN);
+    const alts = enAlternatives(word.en);
     const uiN = normEN(ui);
-    /* Exact or per-meaning exact */
-    if(parts.includes(uiN)) return {correct:true, match:'exact'};
-    /* Allow first meaning match with minor edits */
-    for(const p of parts){
-      if(p && levenshtein(uiN, p) <= 1 && p.length >= 4) return {correct:true, match:'near'};
+    if(alts.includes(uiN)) return {correct:true, match:'exact'};
+    /* Allow 1-char typo for longer answers */
+    for(const p of alts){
+      if(p && p.length >= 4 && levenshtein(uiN, p) <= 1) return {correct:true, match:'near'};
+    }
+    /* Allow user answer being a subset or superset when short meanings overlap */
+    for(const p of alts){
+      if(p && uiN && (p === uiN || (p.length >= 3 && uiN.length >= 3 && (p.includes(uiN) && Math.abs(p.length-uiN.length) <= 4)))) return {correct:true, match:'subset'};
     }
     return {correct:false, reason:'wrong'};
   } else {
@@ -1310,7 +1334,7 @@ function analyzeWrongJP(userInput, word){
 function analyzeWrongEN(userInput, word){
   const uiN = normEN(userInput);
   if(!uiN) return null;
-  const hit = state.words.find(w => (w.en||'').split('/').map(normEN).includes(uiN) && w.id !== word.id);
+  const hit = state.words.find(w => enAlternatives(w.en).includes(uiN) && w.id !== word.id);
   if(hit) return {type:'real-word', match:hit};
   return {type:'unknown'};
 }
