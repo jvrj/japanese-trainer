@@ -60,6 +60,37 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 - Notes folder (floating 💭 button, export/import)
 - Event log for instrumentation (v4.5 will analyze)
 
+## v4.11 (shipped — real-use feedback from v4.10)
+
+- **Self-grade on JP→EN cards** — strict English matching gives false negatives on synonyms (e.g. ちょっと待って → "wait a moment" rejects "wait a second"). Show card, tap "got it / missed it" (Anki/WaniKani style). Keep strict match for EN→JP production, where precision matters. No per-word alt-answer lists to maintain.
+
+- **Burst sessions replace quick/deep time modes.** Time-based modes create clock anxiety without enforcing recall. Replace with:
+  - Default burst = **5 new words**. Pass criterion: each word correct **2× in the burst**, shuffled between attempts (once = luck, twice = sticking).
+  - Next burst = **5 new + 3 review**. Review picks come from the mastery ladder (weakest Apprentice/Learning from recent bursts), not from a separate burst-history system — avoids two competing "what to show next" mechanisms.
+  - Burst size picker (3/5/10) deferred to v4.12; start hardcoded at 5.
+  - **Remove** quick-mode / deep-mode time toggles entirely.
+
+- **Sentence mode → active EN→JP drill.** Currently the screen just displays a JP sentence + Listen/Speak buttons with no prompt or input, so it's unclear what to do. Reshape: show English prompt → user types Japanese in hiragana → Enter submits → flash feedback → auto-advance. Generated sentences are templated (one intended answer per prompt), so strict match is fair. Hand-curated examples stay as reference below. This pulls EN→JP production forward from v4.5 specifically for Sentence mode.
+
+- **Full functional audit — findings from v4.10 static pass:**
+  - **`esc()` HTML-escape bug in inline `onclick`.** `esc()` at index.html:1053 HTML-escapes (`'` → `&#39;`). Browser decodes entities in attribute values before JS parses, so `onclick="speakJP('${esc(x)}')"` with any apostrophe in `x` produces a syntax error → handler silently dies. Affected call sites: 1646, 1647, 1648, 1669, 1694, 1829, 1882, 1897, 1927, 2124, 2134, 2229. **Fix:** add `jsEsc(s)` that backslash-escapes `\`, `'`, `"`, newlines — use it for JS-string interpolation; keep `esc()` only for HTML text content. Better long-term fix: switch hot paths to `data-*` attributes + one delegated `click` listener.
+  - **`render()` not exported to `window`.** Called inline at 1635 and 1886. Usually works in classic scripts (top-level function declarations land on window), but add `window.render = render` defensively — costs nothing.
+  - **TTS root-cause hypotheses for "nothing plays":**
+    1. Unconditional `speechSynthesis.cancel()` at 1376 races with the following `.speak()` on iOS Safari — only call `cancel()` when `speechSynthesis.speaking` is true.
+    2. Voice list loads async; first speak may fire before `getVoices()` populates. Add one-time `onvoiceschanged` wait with a timeout fallback.
+    3. iOS mute switch silently drops TTS audio. Detect: if `onstart` fires but no `onend` within N×expected-duration, or if neither fires after speak(), show a "Check your mute switch / volume" banner.
+    4. Some Android Chrome builds require `u.voice` explicitly set to a loaded voice; falling back to default sometimes no-ops. Pick any ja voice if present, else any voice, else warn.
+  - **Per-screen pass/fail:**
+    - Home: handlers OK. "Quick 5-min / Deep 20-min" buttons being removed this version (see burst-session item).
+    - Drill: handlers OK aside from the `esc()` risk on hints containing English punctuation.
+    - Convo / ConvoDetail: `speakJP` called with `esc(t.jp)` and `esc(s.jp)` — hiragana-safe but scenario notes with English apostrophes would break if ever passed.
+    - Sentence: Listen/Speak dead — see esc() bug + TTS root cause. Plus no input UX — see Sentence reshape item.
+    - Particles: Listen button passes `d.jp.replace('___',d.blank)` through `esc()` — same bug class.
+    - Settings: filter + data buttons OK.
+    - Notes modal: Save/Delete/Close handlers OK.
+
+- **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
+
 ## v4.5 (after real-use feedback)
 
 - SRS-lite (lastSeen + interval)

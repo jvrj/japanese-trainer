@@ -1038,7 +1038,10 @@ let state = {
   sessionIdx:0,
   lastAnswer:null,
   voiceListening:false,
-  voiceResult:null
+  voiceResult:null,
+  burst:{bursts:0, passedIds:[], active:false, complete:false, words:[], queue:[], progress:{}, isReview:{}},
+  _reveal:false,
+  _sentenceAnswer:null
 };
 
 /* =========================================================================
@@ -1051,6 +1054,9 @@ const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(3
 const now = () => Date.now();
 const today = () => new Date().toISOString().slice(0,10);
 const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+/* jsEsc: backslash-escape for safe embedding inside a single-quoted JS string literal in an inline onclick.
+   HTML attribute parsing decodes entities before JS parses, so esc() alone is unsafe for JS-string contexts. */
+const jsEsc = s => String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/</g,'\\u003c').replace(/>/g,'\\u003e');
 
 function shuffleFY(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; } return r; }
 
@@ -1370,20 +1376,63 @@ function analyzeWrongEN(userInput, word){
    ========================================================================= */
 
 let speakingFlag = false;
+let _ttsVoicesReady = false;
+let _ttsMutedWarned = false;
+
+function _pickJaVoice(){
+  if(!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if(!voices.length) return null;
+  return voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ja'))
+      || voices.find(v => /japanese|日本語/i.test(v.name||''))
+      || null;
+}
+
+function _waitForVoices(cb){
+  if(!('speechSynthesis' in window)) return cb();
+  const have = (window.speechSynthesis.getVoices() || []);
+  if(have.length){ _ttsVoicesReady = true; return cb(); }
+  let done = false;
+  const onChange = () => { if(done) return; done = true; _ttsVoicesReady = true; cb(); };
+  try{ window.speechSynthesis.addEventListener('voiceschanged', onChange, {once:true}); }catch(e){}
+  setTimeout(() => { if(done) return; done = true; cb(); }, 1200);
+}
+
+function _showTtsMuteHint(){
+  if(_ttsMutedWarned) return;
+  _ttsMutedWarned = true;
+  const el = document.createElement('div');
+  el.textContent = '🔇 No audio? Check your device mute switch and volume.';
+  el.style.cssText = 'position:fixed;bottom:80px;left:12px;right:12px;background:#dc2626;color:#fff;padding:12px;border-radius:12px;font-size:14px;text-align:center;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
 function speakJP(text, rate){
   try{
     if(!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
-    u.lang = 'ja-JP';
-    u.rate = rate || state.settings.ttsRate || 0.9;
-    const voices = window.speechSynthesis.getVoices();
-    const jp = voices.find(v=>v.lang && v.lang.toLowerCase().startsWith('ja'));
-    if(jp) u.voice = jp;
-    u.onstart = ()=>{speakingFlag=true; updateSpeakBtn();};
-    u.onend = ()=>{speakingFlag=false; updateSpeakBtn();};
-    window.speechSynthesis.speak(u);
-    log('tts',{text});
+    const utter = () => {
+      try{
+        const ss = window.speechSynthesis;
+        if(ss.speaking || ss.pending) ss.cancel();
+        const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
+        u.lang = 'ja-JP';
+        u.rate = rate || state.settings.ttsRate || 0.9;
+        const v = _pickJaVoice();
+        if(v) u.voice = v;
+        let started = false;
+        u.onstart = () => { started = true; speakingFlag = true; updateSpeakBtn(); };
+        u.onend = () => {
+          speakingFlag = false; updateSpeakBtn();
+          if(!started) _showTtsMuteHint();
+        };
+        u.onerror = (e) => { speakingFlag = false; updateSpeakBtn(); log('tts_err',{err:String(e.error||e)}); };
+        ss.speak(u);
+        log('tts',{text});
+      }catch(e){ log('tts_err',{err:String(e)}); }
+    };
+    if(_ttsVoicesReady) utter();
+    else _waitForVoices(utter);
   }catch(e){ log('tts_err',{err:String(e)}); }
 }
 function updateSpeakBtn(){
@@ -1499,6 +1548,14 @@ function render(){
 }
 function nav(screen, data, fromPop){
   /* history tracking: only push when not coming from popstate */
+  clearNextTimer();
+  if(screen !== 'drill'){
+    state.lastAnswer = null;
+    state._reveal = false;
+  }
+  if(screen !== 'sentence'){
+    state._sentenceAnswer = null;
+  }
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -1559,11 +1616,8 @@ function renderHome(){
 
     <div class="card">
       <h3>Start</h3>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="startQuick()">⚡ Quick 5-min</button>
-        <button class="btn btn-orange" onclick="startDeep()">🎯 Deep 20-min</button>
-      </div>
-      <button class="btn btn-secondary" onclick="startDrillWeakest()">💪 Drill Weakest 20</button>
+      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startBurst()">▶ Start burst (5 new${(state.burst?.bursts||0)>0?' + 3 review':''})</button>
+      <div class="muted" style="font-size:12px;margin-top:6px">Each word must be correct 2× to pass. Next burst mixes in review.</div>
     </div>
 
     <div class="card">
@@ -1589,7 +1643,8 @@ function renderHome(){
       <div class="collapsible-body muted">
         • Tap 🔊 on any card to hear the word.<br>
         • Tap 🎤 to speak the answer (ja-JP).<br>
-        • On drill: swipe right = submit, left = skip, up = reveal, down = voice.<br>
+        • On drill: swipe right = submit, up = reveal, down = voice.<br>
+        • Each word in a burst must be correct 2× to pass. Finish the burst, then start the next.<br>
         • Tap 💭 anywhere to drop a quick note.<br>
         • ${voiceSupported() ? '<b style="color:var(--green)">Voice supported</b>.' : '<b style="color:var(--orange)">Voice not supported</b> — use Chrome/Edge/Safari.'}
       </div>
@@ -1597,39 +1652,148 @@ function renderHome(){
   `;
 }
 
-function startDrillAll(){ state.settings.mode='random'; save(); state.sessionQueue = buildSession(20); state.sessionIdx = 0; state.lastAnswer=null; nav('drill'); }
-function startDrillWeakest(){ state.settings.mode='weakest'; save(); state.sessionQueue = buildSession(20); state.sessionIdx = 0; state.lastAnswer=null; nav('drill'); }
-function startQuick(){ state.settings.mode='weakest'; save(); state.sessionQueue = buildSession(10); state.sessionIdx = 0; state.lastAnswer=null; nav('drill'); }
-function startDeep(){ state.settings.mode='random'; save(); state.sessionQueue = buildSession(30); state.sessionIdx = 0; state.lastAnswer=null; nav('drill'); }
-window.startQuick = startQuick;
-window.startDeep = startDeep;
+/* ---------- BURST SESSIONS ----------
+   A burst = 5 new words (+ 3 review on bursts > 0). Each word must be correct 2×
+   (any direction, shuffled between attempts) to pass. Miss resets progress to 0.
+   When all pass, burst completes → user can start next. */
+
+const BURST_NEW = 5;
+const BURST_REVIEW = 3;
+const BURST_PASS_TARGET = 2;
+
+function buildBurstWords(){
+  const burst = state.burst || {bursts:0, passedIds:[]};
+  const passedInSession = new Set(burst.passedIds || []);
+  const recent = new Set(state._recentlyServed || []);
+  const pool = getActiveWords();
+  if(!pool.length) return {newWords:[], reviewWords:[]};
+
+  const ord = {new:0, learning:1, apprentice:2, guru:3, master:4, burned:5};
+  const scored = pool.map(w => ({
+    w,
+    mastery: getMasteryForWord(w.id),
+    attempts: state.stats[w.id]?.attempts?.length || 0,
+    lastSeen: state.stats[w.id]?.lastSeen || 0
+  }));
+
+  /* New: prefer unseen > learning > apprentice; exclude already-passed-this-session and recently-served */
+  const newPool = scored
+    .filter(x => !passedInSession.has(x.w.id) && !recent.has(x.w.id))
+    .sort((a,b) => ord[a.mastery] - ord[b.mastery] || a.attempts - b.attempts);
+  const newWords = shuffleFY(newPool.slice(0, BURST_NEW * 3)).slice(0, BURST_NEW).map(x => x.w);
+
+  let reviewWords = [];
+  if((burst.bursts || 0) > 0){
+    const newIds = new Set(newWords.map(w => w.id));
+    const reviewPool = scored
+      .filter(x => !newIds.has(x.w.id))
+      .filter(x => x.mastery === 'apprentice' || x.mastery === 'learning')
+      .sort((a,b) => a.lastSeen - b.lastSeen); /* oldest unseen first */
+    reviewWords = shuffleFY(reviewPool.slice(0, BURST_REVIEW * 3)).slice(0, BURST_REVIEW).map(x => x.w);
+  }
+  return {newWords, reviewWords};
+}
+
+function startBurst(){
+  const {newWords, reviewWords} = buildBurstWords();
+  const all = [...newWords, ...reviewWords];
+  if(!all.length){
+    alert('No words available. Add words or enable the N5 pack in Settings.');
+    return;
+  }
+  state.burst = state.burst || {bursts:0, passedIds:[]};
+  state.burst.words = all;
+  state.burst.queue = shuffleFY(all.slice());
+  state.burst.progress = Object.fromEntries(all.map(w => [w.id, 0]));
+  state.burst.isReview = Object.fromEntries([
+    ...newWords.map(w => [w.id, false]),
+    ...reviewWords.map(w => [w.id, true])
+  ]);
+  state.burst.active = true;
+  state.burst.complete = false;
+  state.sessionQueue = state.burst.queue;
+  state.sessionIdx = 0;
+  state.lastAnswer = null;
+  clearNextTimer();
+  nav('drill');
+}
+
+function requeueWord(word){
+  /* Put the word back, spaced out so it doesn't appear next card */
+  const q = state.burst.queue;
+  if(q.length <= 1){ q.push(word); return; }
+  const minPos = Math.min(2, q.length);
+  const pos = minPos + Math.floor(Math.random() * (q.length - minPos + 1));
+  q.splice(pos, 0, word);
+}
+
+function completeBurst(){
+  state.burst.complete = true;
+  state.burst.active = false;
+  state.burst.bursts = (state.burst.bursts || 0) + 1;
+  const passed = state.burst.words.map(w => w.id);
+  state.burst.passedIds = [...new Set([...(state.burst.passedIds || []), ...passed])];
+  log('burst_complete',{n: state.burst.words.length, bursts: state.burst.bursts});
+  save();
+}
 
 /* ---------- DRILL ---------- */
+function renderBurstComplete(){
+  const b = state.burst;
+  const n = b.words.length;
+  const reviewCount = b.words.filter(w => b.isReview[w.id]).length;
+  const newCount = n - reviewCount;
+  return `
+    <div class="card" style="text-align:center">
+      <div style="font-size:48px;margin-bottom:8px">🎉</div>
+      <h3>Burst complete</h3>
+      <div class="muted">You passed ${newCount} new word${newCount!==1?'s':''}${reviewCount ? ` and ${reviewCount} review` : ''}.</div>
+      <div style="margin-top:6px;font-size:12px;color:var(--dim)">Bursts this session: ${b.bursts}</div>
+    </div>
+    <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startBurst()">▶ Start next burst</button>
+    <button class="btn btn-secondary" onclick="nav('home')">Home</button>
+  `;
+}
+
 function renderDrill(){
-  if(!state.sessionQueue.length) state.sessionQueue = buildSession();
-  if(!state.sessionQueue.length){
-    return `<div class="card"><h3>No words</h3><div class="muted">No words match your filters. Go to Settings and enable the N5 pack or add words.</div></div>
-    <button class="btn btn-secondary" onclick="nav('settings')">Settings</button>`;
+  const b = state.burst;
+  if(!b || !b.active){
+    if(b && b.complete) return renderBurstComplete();
+    return `<div class="card"><h3>No burst running</h3><div class="muted">Start a burst from the home screen.</div></div>
+    <button class="btn btn-primary" onclick="nav('home')">Home</button>`;
   }
-  const idx = state.sessionIdx;
-  const word = state.sessionQueue[idx];
+  if(!b.queue.length){
+    /* defensive — shouldn't happen because submitAns calls completeBurst */
+    completeBurst(); render(); return '';
+  }
+
+  const word = b.queue[0];
   const dir = state.settings.direction;
   const prompt = dir==='jp-en' ? word.jp : word.en;
   const promptClass = dir==='jp-en' ? 'jp' : '';
   const mastery = getMasteryForWord(word.id);
-  const pct = Math.round(100 * idx / state.sessionQueue.length);
-  /* Disambiguator for homographs (e.g. はな = nose or flower) */
+  const isReview = !!b.isReview[word.id];
+  const wordsPassed = b.words.filter(w => (b.progress[w.id]||0) >= BURST_PASS_TARGET).length;
+  const pct = Math.round(100 * wordsPassed / b.words.length);
+  const wordProgress = b.progress[word.id] || 0;
+
   const siblings = dir==='jp-en' ? homographSiblings(word) : [];
   const disambig = siblings.length > 1 ? ` · ${esc((word.en||'').split('/')[0])}` : '';
 
   const showWheels = shouldShowWheels();
   const wheelsWords = showWheels ? getWheelsWords() : [];
   const wheelsMode = state.settings.trainingWheels;
+  const wheelsExpanded = state._wheelsExpanded !== false;
 
-  const wheelsExpanded = state._wheelsExpanded !== false; /* default expanded */
+  const selfGradeMode = (dir === 'jp-en');
+  const feedbackShowing = !!state.lastAnswer;
+  const revealShowing = !!state._reveal;
 
   return `
     <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="muted" style="text-align:center;font-size:12px;margin:4px 0">
+      Burst · ${wordsPassed} / ${b.words.length} passed · ${isReview ? '🔁 review' : '✨ new'} · this word ${wordProgress}/${BURST_PASS_TARGET}
+    </div>
     ${showWheels ? `
       <div class="collapsible ${wheelsExpanded?'open':''}" style="border-color:#3b82f6;background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(168,85,247,.06))">
         <div class="collapsible-head" onclick="state._wheelsExpanded=!${wheelsExpanded};render()">
@@ -1643,9 +1807,9 @@ function renderDrill(){
                 <div class="wheels-jp">${esc(ww.word.jp)}</div>
                 <div class="wheels-en">${esc((ww.word.en||'').split('/')[0])}</div>
                 <div class="wheels-actions">
-                  <button class="wheels-btn ${ww.pinned?'pinned':''}" onclick="togglePin('${ww.word.id}')" title="Pin/unpin">${ww.pinned?'📌':'📍'}</button>
-                  <button class="wheels-btn" onclick="removeWord('${ww.word.id}')" title="Remove from deck">🗑</button>
-                  <button class="wheels-btn" onclick="speakJP('${esc(ww.word.jp)}')" title="Listen">🔊</button>
+                  <button class="wheels-btn ${ww.pinned?'pinned':''}" onclick="togglePin('${jsEsc(ww.word.id)}')" title="Pin/unpin">${ww.pinned?'📌':'📍'}</button>
+                  <button class="wheels-btn" onclick="removeWord('${jsEsc(ww.word.id)}')" title="Remove from deck">🗑</button>
+                  <button class="wheels-btn" onclick="speakJP('${jsEsc(ww.word.jp)}')" title="Listen">🔊</button>
                 </div>
               </div>
             `).join('')}
@@ -1653,7 +1817,7 @@ function renderDrill(){
           <button class="wheels-toggle" style="margin-top:8px" onclick="cycleWheels()">Mode: ${wheelsMode}</button>
         </div>
       </div>
-    ` : (wheelsMode==='off' ? '' : '')}
+    ` : ''}
     <div class="direction-toggle">
       <button class="direction-btn ${dir==='jp-en'?'active':''}" onclick="setDirection('jp-en')">JP → EN</button>
       <button class="direction-btn ${dir==='en-jp'?'active':''}" onclick="setDirection('en-jp')">EN → JP</button>
@@ -1666,21 +1830,34 @@ function renderDrill(){
     </div>
 
     <div class="audio-row">
-      <button class="audio-btn" id="ttsBtn" onclick="speakJP('${esc(word.jp)}')">🔊 Listen</button>
+      <button class="audio-btn" id="ttsBtn" onclick="speakJP('${jsEsc(word.jp)}')">🔊 Listen</button>
       ${voiceSupported() && dir==='en-jp' ? `<button class="audio-btn" id="voiceBtn" onclick="drillVoice()">🎤 Speak</button>` : ''}
     </div>
 
-    <input class="input" id="ansInput" placeholder="${dir==='jp-en'?'Your answer in English':'にほんご で こたえて'}" autocomplete="off" autocapitalize="off" autocorrect="off" onkeydown="if(event.key==='Enter')submitAns(false)">
-
-    ${state.lastAnswer ? renderFeedback(state.lastAnswer) : ''}
-
-    ${state.lastAnswer
-      ? `<button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="nextCard()">Next card →</button>`
-      : `<div class="btn-row">
+    ${selfGradeMode ? `
+      ${revealShowing ? `
+        <div class="drill-card" style="text-align:center">
+          <div class="drill-sub">Answer</div>
+          <div class="drill-prompt" style="font-size:20px">${esc(word.en)}</div>
+          ${word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
+        </div>
+        ${feedbackShowing ? renderFeedback(state.lastAnswer) : `
+          <div class="btn-row">
+            <button class="btn btn-secondary" onclick="selfGrade(false)">✗ Missed it</button>
+            <button class="btn btn-primary" onclick="selfGrade(true)">✓ Got it</button>
+          </div>`}
+      ` : `
+        <div class="muted" style="text-align:center;margin:8px 0">Say it in your head, then reveal and self-grade.</div>
+        <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="revealForSelfGrade()">👀 Reveal</button>
+      `}
+    ` : `
+      <input class="input" id="ansInput" placeholder="にほんご で こたえて" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
+      ${feedbackShowing ? renderFeedback(state.lastAnswer) : `
+        <div class="btn-row">
           <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
           <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
-        </div>
-        <button class="btn btn-ghost" onclick="nextCard()">Skip this card →</button>`}
+        </div>`}
+    `}
 
     <div class="collapsible" id="drillExtras">
       <div class="collapsible-head" onclick="document.getElementById('drillExtras').classList.toggle('open')">
@@ -1688,10 +1865,10 @@ function renderDrill(){
         <span class="collapsible-arrow">›</span>
       </div>
       <div class="collapsible-body">
-        ${state.settings.hintsEnabled ? `<div id="hintContainer"></div><button class="btn btn-ghost" style="width:100%" onclick="showNextHint('${word.id}')">💡 Reveal a hint</button>` : ''}
+        ${state.settings.hintsEnabled ? `<div id="hintContainer"></div><button class="btn btn-ghost" style="width:100%" onclick="showNextHint('${jsEsc(word.id)}')">💡 Reveal a hint</button>` : ''}
         ${(() => {
           const ex = EXAMPLES.find(e => (e.uses||[]).some(u => normJP(u)===normJP(word.jp) || normEN(u)===normEN(word.en)));
-          return ex ? `<div class="hint-card" style="margin-top:8px"><div class="hint-head">example sentence</div><div class="hint-body"><b>${esc(ex.jp)}</b><br><span style="color:var(--dim);font-size:12px">${esc(ex.en)}</span> <button class="wheels-btn" onclick="speakJP('${esc(ex.jp)}')">🔊</button></div></div>` : '<div class="muted" style="font-size:12px;padding:4px 0">No example sentence for this word yet.</div>';
+          return ex ? `<div class="hint-card" style="margin-top:8px"><div class="hint-head">example sentence</div><div class="hint-body"><b>${esc(ex.jp)}</b><br><span style="color:var(--dim);font-size:12px">${esc(ex.en)}</span> <button class="wheels-btn" onclick="speakJP('${jsEsc(ex.jp)}')">🔊</button></div></div>` : '<div class="muted" style="font-size:12px;padding:4px 0">No example sentence for this word yet.</div>';
         })()}
       </div>
     </div>
@@ -1733,10 +1910,45 @@ function showNextHint(wordId){
   log('hint_used',{id:wordId, stage:_hintStage});
 }
 
-function setDirection(d){ state.settings.direction = d; save(); state.lastAnswer=null; render(); }
+function setDirection(d){
+  state.settings.direction = d;
+  save();
+  state.lastAnswer = null;
+  state._reveal = false;
+  clearNextTimer();
+  render();
+}
+
+let _nextTimer = null;
+function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer = null; } }
+function scheduleNext(ms){
+  clearNextTimer();
+  _nextTimer = setTimeout(() => { _nextTimer = null; nextCard(); }, ms);
+}
+
+function applyBurstResult(word, correct, viaVoice){
+  const b = state.burst;
+  if(!b || !b.active) return;
+  const cur = b.progress[word.id] || 0;
+  if(correct){
+    b.progress[word.id] = cur + 1;
+  } else {
+    b.progress[word.id] = 0;
+  }
+  /* remove head (current word) */
+  b.queue.shift();
+  /* requeue if not yet passed */
+  if((b.progress[word.id] || 0) < BURST_PASS_TARGET){
+    requeueWord(word);
+  }
+  state.sessionQueue = b.queue;
+  state.sessionIdx = 0;
+}
 
 function submitAns(viaVoice, overrideInput){
-  const word = state.sessionQueue[state.sessionIdx];
+  const b = state.burst;
+  if(!b || !b.active) return;
+  const word = b.queue[0];
   if(!word) return;
   const inp = overrideInput !== undefined ? overrideInput : ($('#ansInput')?.value || '');
   const dir = state.settings.direction;
@@ -1748,38 +1960,67 @@ function submitAns(viaVoice, overrideInput){
   recordAttempt(word.id, res.correct, viaVoice);
   updateStreak(res.correct);
   state.lastAnswer = {correct:res.correct, viaVoice, word, smart, userJP:dir==='en-jp'?inp:'', userEN:dir==='jp-en'?inp:'', correctAnswer:dir==='jp-en'?word.en:word.jp};
+  applyBurstResult(word, res.correct, viaVoice);
   save();
+  render();
+  scheduleNext(res.correct ? 800 : 1800);
+}
+
+function selfGrade(correct){
+  const b = state.burst;
+  if(!b || !b.active) return;
+  const word = b.queue[0];
+  if(!word) return;
+  recordAttempt(word.id, correct, false);
+  updateStreak(correct);
+  state.lastAnswer = {correct, viaVoice:false, word, smart:null, userJP:'', userEN:'', correctAnswer:word.en, selfGraded:true};
+  applyBurstResult(word, correct, false);
+  save();
+  render();
+  scheduleNext(correct ? 700 : 1500);
+}
+
+function revealForSelfGrade(){
+  state._reveal = true;
   render();
 }
 
 function revealAnswer(){
-  const word = state.sessionQueue[state.sessionIdx];
+  const b = state.burst;
+  if(!b || !b.active) return;
+  const word = b.queue[0];
   if(!word) return;
   state.lastAnswer = {correct:false, viaVoice:false, word, smart:{type:'revealed'}, correctAnswer:state.settings.direction==='jp-en'?word.en:word.jp};
   recordAttempt(word.id, false, false);
+  applyBurstResult(word, false, false);
   save();
   render();
+  scheduleNext(1800);
 }
 
 function nextCard(){
+  clearNextTimer();
   _hintStage = 0;
-  const prev = state.sessionQueue[state.sessionIdx];
+  const b = state.burst;
+  if(!b || !b.active){ render(); return; }
+  const prev = state.lastAnswer && state.lastAnswer.word;
   if(prev){
     state._recentlyServed = state._recentlyServed || [];
     state._recentlyServed.push(prev.id);
     if(state._recentlyServed.length > 30) state._recentlyServed.shift();
   }
-  state.sessionIdx++;
-  if(state.sessionIdx >= state.sessionQueue.length){
-    state.sessionQueue = buildSession(state.sessionQueue.length || 20);
-    state.sessionIdx = 0;
-  }
   state.lastAnswer = null;
+  state._reveal = false;
+  /* burst complete? */
+  if(!b.queue.length){
+    completeBurst();
+  }
   render();
 }
 
 function drillVoice(){
-  const word = state.sessionQueue[state.sessionIdx];
+  const b = state.burst;
+  const word = (b && b.active) ? b.queue[0] : null;
   if(!word) return;
   startVoice(
     (alts) => {
@@ -1801,7 +2042,7 @@ function renderConvo(){
       <div class="muted">Real mini-dialogues. Tap 🔊 on any line. Tags: casual / polite.</div>
     </div>
     ${SCENARIOS.map(s => `
-      <div class="scenario-item" onclick="nav('convoDetail','${s.id}')">
+      <div class="scenario-item" onclick="nav('convoDetail','${jsEsc(s.id)}')">
         <div class="scenario-emoji">${s.emoji}</div>
         <div class="scenario-body">
           <div class="scenario-title">${esc(s.title)}</div>
@@ -1826,12 +2067,12 @@ function renderConvoDetail(){
           <div class="convo-turn ${t.who}">
             <div class="jp-line">${esc(t.jp)}</div>
             <div class="en-line">${esc(t.en)}</div>
-            <div style="margin-top:6px"><button class="btn btn-ghost" style="padding:2px 6px;font-size:11px" onclick="speakJP('${esc(t.jp)}')">🔊</button></div>
+            <div style="margin-top:6px"><button class="btn btn-ghost" style="padding:2px 6px;font-size:11px" onclick="speakJP('${jsEsc(t.jp)}')">🔊</button></div>
           </div>
         `).join('')}
       </div>
       ${s.notes ? `<div class="hint-card"><div class="hint-head">Notes</div><div class="hint-body">${esc(s.notes)}</div></div>` : ''}
-      <button class="btn btn-blue" onclick="playScenario('${s.id}')">▶ Play whole dialogue</button>
+      <button class="btn btn-blue" onclick="playScenario('${jsEsc(s.id)}')">▶ Play whole dialogue</button>
       <div class="warn">Content generated by AI — have your teacher verify register and naturalness.</div>
     </div>
   `;
@@ -1848,44 +2089,63 @@ async function playScenario(id){
 
 /* ---------- SENTENCE MODE ---------- */
 function generateSentence(){
-  const t = SENTENCE_TEMPLATES[Math.floor(Math.random()*SENTENCE_TEMPLATES.length)];
+  /* Only return sentences where every slot got filled (no ___ placeholders) */
   const active = getActiveWords();
-  let pattern = t.pattern;
-  let en = t.en;
-  const filledJP = {}, filledEN = {};
-  for(const [slot, themes] of Object.entries(t.slots)){
-    const candidates = active.filter(w => themes.includes(w.theme));
-    const pick = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)] : null;
-    const jpFill = pick ? pick.jp : '___';
-    const enFill = pick ? (pick.en.split('/')[0]) : '___';
-    pattern = pattern.replaceAll('{'+slot+'}', jpFill);
-    en = en.replaceAll('{'+slot+'}', enFill);
-    filledJP[slot] = jpFill; filledEN[slot] = enFill;
+  for(let tries = 0; tries < 40; tries++){
+    const t = SENTENCE_TEMPLATES[Math.floor(Math.random()*SENTENCE_TEMPLATES.length)];
+    let pattern = t.pattern;
+    let en = t.en;
+    let filled = true;
+    for(const [slot, themes] of Object.entries(t.slots)){
+      const candidates = active.filter(w => themes.includes(w.theme));
+      const pick = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)] : null;
+      if(!pick){ filled = false; break; }
+      pattern = pattern.replaceAll('{'+slot+'}', pick.jp);
+      en = en.replaceAll('{'+slot+'}', pick.en.split('/')[0]);
+    }
+    if(filled) return {jp: pattern, en, register: t.register, level: t.level, template: t};
   }
-  return {jp: pattern, en, register: t.register, level: t.level, template: t};
+  /* fallback — accept one with placeholder so screen still works */
+  const t = SENTENCE_TEMPLATES[0];
+  return {jp: t.pattern, en: t.en, register: t.register, level: t.level, template: t};
 }
 
 function renderSentence(){
   const s = state._sentence || generateSentence();
   state._sentence = s;
+  const fb = state._sentenceAnswer;
+  const feedbackShowing = !!fb;
   return `
     <div class="card">
-      <h3>Sentence Builder</h3>
-      <div class="muted">Generated from your active deck + ${SENTENCE_TEMPLATES.length} patterns.</div>
+      <h3>Sentence Drill</h3>
+      <div class="muted">Read the English, type the Japanese (hiragana). Enter submits.</div>
     </div>
     <div class="drill-card">
       <div class="drill-cat">${s.register} · ${s.level}</div>
-      <div class="drill-prompt jp">${esc(s.jp)}</div>
-      <div class="drill-sub">${esc(s.en)}</div>
+      <div class="drill-prompt" style="font-size:22px">${esc(s.en)}</div>
     </div>
+    <input class="input" id="ansInput" placeholder="にほんご で タイプ して" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
+    ${feedbackShowing ? `
+      <div class="feedback-card ${fb.correct?'correct':'wrong'}">
+        <div class="feedback-head">${fb.correct?'✓ Correct':'✗ Incorrect'}</div>
+        <div class="feedback-body jp" style="font-size:20px">${esc(s.jp)}</div>
+        <div class="drill-sub">${esc(s.en)}</div>
+        ${!fb.correct && fb.userInput ? `<div class="feedback-smart">You wrote: <b>${esc(fb.userInput)}</b></div>` : ''}
+      </div>
+    ` : ''}
     <div class="audio-row">
-      <button class="audio-btn" onclick="speakJP('${esc(s.jp)}')">🔊 Listen</button>
+      <button class="audio-btn" onclick="speakJP('${jsEsc(s.jp)}')">🔊 Listen</button>
       ${voiceSupported() ? `<button class="audio-btn" id="voiceBtn" onclick="sentenceVoice()">🎤 Speak</button>` : ''}
     </div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="state._sentence=null;render()">🎲 Next</button>
-      <button class="btn btn-primary" onclick="nav('convo')">💬 Scenarios</button>
-    </div>
+    ${feedbackShowing ? `
+      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="sentenceNext()">Next sentence →</button>
+    ` : `
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="sentenceReveal()">👀 Reveal</button>
+        <button class="btn btn-primary" onclick="sentenceSubmit()">Submit</button>
+      </div>
+      <button class="btn btn-ghost" onclick="sentenceSkip()">🎲 Skip to new sentence</button>
+    `}
     <div class="card">
       <h3>Hand-curated examples</h3>
       ${EXAMPLES.slice(0,10).map(ex => `
@@ -1894,13 +2154,40 @@ function renderSentence(){
             <div class="word-jp">${esc(ex.jp)}</div>
             <div class="word-en">${esc(ex.en)} <span class="pill pill-${ex.register==='casual'?'learning':'guru'}" style="font-size:9px">${ex.register}</span></div>
           </div>
-          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="speakJP('${esc(ex.jp)}')">🔊</button>
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="speakJP('${jsEsc(ex.jp)}')">🔊</button>
         </div>
       `).join('')}
     </div>
     <div class="warn">Sentences are AI-generated — verify with your teacher before using with natives.</div>
   `;
 }
+
+function sentenceSubmit(){
+  const s = state._sentence;
+  if(!s) return;
+  const inp = ($('#ansInput')?.value || '').trim();
+  if(!inp){ return; }
+  const correct = normJP(inp) === normJP(s.jp);
+  state._sentenceAnswer = {correct, userInput: inp};
+  log('sentence_attempt',{correct, tpl: s.template?.pattern});
+  render();
+  clearNextTimer();
+  _nextTimer = setTimeout(() => { _nextTimer = null; sentenceNext(); }, correct ? 1200 : 2200);
+}
+
+function sentenceReveal(){
+  state._sentenceAnswer = {correct:false, userInput: '', revealed:true};
+  render();
+}
+
+function sentenceNext(){
+  clearNextTimer();
+  state._sentence = null;
+  state._sentenceAnswer = null;
+  render();
+}
+
+function sentenceSkip(){ sentenceNext(); }
 
 /* ---------- PARTICLES ---------- */
 function renderParticles(){
@@ -1924,10 +2211,10 @@ function renderParticles(){
       <div class="drill-sub">${esc(d.en)}</div>
     </div>
     <div class="audio-row">
-      <button class="audio-btn" onclick="speakJP('${esc(d.jp.replace('___',d.blank))}')">🔊 Listen (with answer)</button>
+      <button class="audio-btn" onclick="speakJP('${jsEsc(d.jp.replace('___',d.blank))}')">🔊 Listen (with answer)</button>
     </div>
     <div class="tags" style="justify-content:center">
-      ${particles.map(p => `<button class="tag ${ans===p?(accept.includes(p)?'active':''):''}" style="${ans===p && !accept.includes(p)?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="answerParticle('${p}')">${p}</button>`).join('')}
+      ${particles.map(p => `<button class="tag ${ans===p?(accept.includes(p)?'active':''):''}" style="${ans===p && !accept.includes(p)?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="answerParticle('${jsEsc(p)}')">${p}</button>`).join('')}
     </div>
     ${ans ? `<div class="feedback-card ${isCorrect?'correct':'wrong'}">
       <div class="feedback-head">${isCorrect?'✓ Correct':'✗ Wrong — accepted: '+accept.map(esc).join(' / ')}</div>
@@ -2069,15 +2356,15 @@ function renderSettings(){
       <h3>Study filters</h3>
       <div class="muted" style="margin-bottom:10px">Themes — tap to include (empty = all)</div>
       <div class="tags">
-        ${themes.map(t => `<button class="tag ${s.activeThemes.includes(t)?'active':''}" onclick="toggleFilter('activeThemes','${t}')">${t}</button>`).join('')}
+        ${themes.map(t => `<button class="tag ${s.activeThemes.includes(t)?'active':''}" onclick="toggleFilter('activeThemes','${jsEsc(t)}')">${t}</button>`).join('')}
       </div>
       <div class="muted" style="margin:10px 0">Parts of speech</div>
       <div class="tags">
-        ${posList.map(p => `<button class="tag ${s.activePOS.includes(p)?'active':''}" onclick="toggleFilter('activePOS','${p}')">${p}</button>`).join('')}
+        ${posList.map(p => `<button class="tag ${s.activePOS.includes(p)?'active':''}" onclick="toggleFilter('activePOS','${jsEsc(p)}')">${p}</button>`).join('')}
       </div>
       <div class="muted" style="margin:10px 0">Register</div>
       <div class="tags">
-        ${regList.map(r => `<button class="tag ${s.activeRegister.includes(r)?'active':''}" onclick="toggleFilter('activeRegister','${r}')">${r}</button>`).join('')}
+        ${regList.map(r => `<button class="tag ${s.activeRegister.includes(r)?'active':''}" onclick="toggleFilter('activeRegister','${jsEsc(r)}')">${r}</button>`).join('')}
       </div>
       <button class="btn btn-ghost" onclick="clearFilters()">Clear all filters</button>
     </div>
@@ -2121,7 +2408,7 @@ function renderSettings(){
       ${(state.settings.removedWords||[]).length ? (state.settings.removedWords||[]).map(id => {
         const w = state.words.find(x=>x.id===id);
         if(!w) return '';
-        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="restoreWord('${id}')">Restore</button></div>`;
+        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="restoreWord('${jsEsc(id)}')">Restore</button></div>`;
       }).join('') : '<div class="muted">None.</div>'}
     </div>
 
@@ -2131,7 +2418,7 @@ function renderSettings(){
       ${(state.settings.pinnedWords||[]).length ? (state.settings.pinnedWords||[]).map(id => {
         const w = state.words.find(x=>x.id===id);
         if(!w) return '';
-        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="togglePin('${id}')">Unpin</button></div>`;
+        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="togglePin('${jsEsc(id)}')">Unpin</button></div>`;
       }).join('') : '<div class="muted">None. Pin words from the drill screen.</div>'}
     </div>
 
@@ -2226,7 +2513,7 @@ function openNotes(){
       <div class="note-item">
         <div class="note-time">${new Date(n.ts).toLocaleString()}</div>
         <div class="note-text">${esc(n.text)}</div>
-        <button class="note-del" onclick="deleteNote('${n.id}')">Delete</button>
+        <button class="note-del" onclick="deleteNote('${jsEsc(n.id)}')">Delete</button>
       </div>
     `).join('') || '<div class="muted">No notes yet. Your future self will thank you.</div>'}
   `;
@@ -2247,8 +2534,37 @@ function deleteNote(id){
 /* ---------- SCREEN BINDING ---------- */
 function bindScreen(){
   const inp = $('#ansInput');
-  if(inp) inp.focus();
-  if(state.screen === 'drill' && state.settings.swipeOn) bindSwipe();
+  const isSentence = state.screen === 'sentence';
+  const isDrill = state.screen === 'drill';
+  const sentenceFb = isSentence && !!state._sentenceAnswer;
+  const drillFb = isDrill && !!state.lastAnswer;
+  const feedbackShowing = sentenceFb || drillFb;
+
+  if(inp){
+    if(!inp.disabled) inp.focus();
+    inp.onkeydown = (e) => {
+      if(e.key !== 'Enter') return;
+      e.preventDefault();
+      if(feedbackShowing){
+        if(isSentence) sentenceNext(); else nextCard();
+      } else {
+        if(isSentence) sentenceSubmit(); else submitAns(false);
+      }
+    };
+  }
+  /* Global Enter-to-advance when feedback showing but no active input (self-grade path) */
+  if(feedbackShowing && (!inp || inp.disabled)){
+    document.onkeydown = (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        if(isSentence) sentenceNext(); else nextCard();
+        document.onkeydown = null;
+      }
+    };
+  } else {
+    document.onkeydown = null;
+  }
+  if(isDrill && state.settings.swipeOn) bindSwipe();
 }
 
 /* Swipe gestures on drill card */
@@ -2264,8 +2580,13 @@ function bindSwipe(){
     const dt = Date.now() - _swipe.t0;
     if(dt > 700) return;
     if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)*1.5){
-      if(dx < 0) nextCard();              /* swipe left → skip */
-      else submitAns(false);              /* swipe right → submit */
+      if(dx < 0){
+        /* swipe left → advance only if feedback is showing (no skip in burst mode) */
+        if(state.lastAnswer) nextCard();
+      } else {
+        /* swipe right → submit or advance */
+        if(state.lastAnswer) nextCard(); else submitAns(false);
+      }
     } else if(Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)*1.5){
       if(dy < 0) revealAnswer();          /* swipe up → reveal */
       else if(voiceSupported()) drillVoice(); /* swipe down → voice */
@@ -2295,23 +2616,33 @@ function init(){
   /* seed initial history */
   try{ history.replaceState({screen:'home'}, '', '#home'); }catch(e){}
 
-  /* Prime voices list */
-  try{ if('speechSynthesis' in window) window.speechSynthesis.getVoices(); }catch(e){}
-  window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = ()=>{});
+  /* Prime voices list — some browsers populate async */
+  try{
+    if('speechSynthesis' in window){
+      const v = window.speechSynthesis.getVoices();
+      if(v && v.length) _ttsVoicesReady = true;
+      else window.speechSynthesis.addEventListener('voiceschanged', () => { _ttsVoicesReady = true; }, {once:true});
+    }
+  }catch(e){}
   render();
   updateBackFab();
-  log('init',{v:46, words:state.words.length});
+  log('init',{v:411, words:state.words.length});
 }
 
 window.addEventListener('DOMContentLoaded', init);
-window.startDrillAll = startDrillAll;
-window.startDrillWeakest = startDrillWeakest;
+window.startBurst = startBurst;
 window.setDirection = setDirection;
 window.submitAns = submitAns;
+window.selfGrade = selfGrade;
+window.revealForSelfGrade = revealForSelfGrade;
 window.revealAnswer = revealAnswer;
 window.nextCard = nextCard;
 window.drillVoice = drillVoice;
 window.sentenceVoice = sentenceVoice;
+window.sentenceSubmit = sentenceSubmit;
+window.sentenceSkip = sentenceSkip;
+window.sentenceReveal = sentenceReveal;
+window.sentenceNext = sentenceNext;
 window.showNextHint = showNextHint;
 window.nav = nav;
 window.speakJP = speakJP;
@@ -2348,9 +2679,12 @@ function removeWord(id){
   const r = state.settings.removedWords || [];
   if(!r.includes(id)) r.push(id);
   state.settings.removedWords = r;
-  /* also drop from session queue */
-  state.sessionQueue = state.sessionQueue.filter(w=>w.id!==id);
-  if(state.sessionIdx >= state.sessionQueue.length) state.sessionIdx = 0;
+  /* also drop from burst queue if present */
+  if(state.burst && state.burst.active){
+    state.burst.queue = state.burst.queue.filter(w=>w.id!==id);
+    state.burst.words = state.burst.words.filter(w=>w.id!==id);
+    if(!state.burst.queue.length){ completeBurst(); }
+  }
   save(); render();
 }
 function restoreWord(id){
@@ -2362,6 +2696,7 @@ window.togglePin = togglePin;
 window.removeWord = removeWord;
 window.restoreWord = restoreWord;
 window.goBack = goBack;
+window.render = render;
 </script>
 </body>
 </html>
