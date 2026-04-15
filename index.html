@@ -1190,6 +1190,8 @@ function srsBump(st, correct){
 }
 
 function recordAttempt(wordId, correct, viaVoice){
+  /* Pattern-pack cards are session-only. Don't pollute SRS/mastery with them. */
+  if(state.burst && state.burst.isPattern) return;
   if(!state.stats[wordId]) state.stats[wordId] = {attempts:[], firstCorrect:null, lastSeen:null};
   const st = state.stats[wordId];
   const prevMastery = getMasteryForWord(wordId);
@@ -1480,6 +1482,7 @@ function getHintsFor(word){
 function localToday(){ return new Date().toLocaleDateString('en-CA'); }
 function updateStreak(wasCorrect){
   if(!wasCorrect) return; /* streak requires real correct answers */
+  if(state.burst && state.burst.isPattern) return; /* pattern packs don't count toward streak */
   const t = localToday();
   const last = state.streak.lastDate;
   if(last === t) return;
@@ -1496,10 +1499,224 @@ function updateStreak(wasCorrect){
 }
 
 /* =========================================================================
+   PATTERN PACKS — v4.14
+   Stacked clusters: shared word-ending + common sentence skeleton + vocab.
+   Pattern cards are session-only; no SRS/mastery/streak pollution.
+   ========================================================================= */
+
+/* Common godan verbs that LOOK ichidan (-iru/-eru ending). Conservative list. */
+const GODAN_LOOKING_ICHIDAN = new Set([
+  'はしる','しる','はいる','かえる','きる','いる','しゃべる','いじる',
+  'けずる','まじる','へる','ちる','ける','しげる','すべる'
+]);
+
+function classifyVerb(jp){
+  if(!jp) return 'v-u';
+  if(jp === 'くる') return 'v-irr-kuru';
+  if(jp === 'する') return 'v-irr-suru';
+  if(jp.endsWith('する')) return 'v-compound-suru';
+  if(!jp.endsWith('る')) return 'v-u';
+  if(GODAN_LOOKING_ICHIDAN.has(jp)) return 'v-u';
+  const second = jp[jp.length - 2];
+  const iRow = 'いきしちにひみりぎじびぴ';
+  const eRow = 'えけせてねへめれげぜべぺでぶ';
+  if(iRow.includes(second) || eRow.includes(second)) return 'v-ru';
+  return 'v-u';
+}
+
+const GODAN_STEM_MAP = {'う':'い','く':'き','ぐ':'ぎ','す':'し','つ':'ち','ぬ':'に','ぶ':'び','む':'み','る':'り'};
+
+/* Verb stem in i-form (連用形) — used for -ます, -たい */
+function iStem(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1);
+  if(cls === 'v-irr-kuru') return 'き';
+  if(cls === 'v-irr-suru') return 'し';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'し';
+  const last = jp.slice(-1);
+  const m = GODAN_STEM_MAP[last];
+  return m ? jp.slice(0,-1) + m : jp;
+}
+
+function toTai(jp){ return iStem(jp) + 'たい'; }
+function toMasu(jp){ return iStem(jp) + 'ます'; }
+function toMashita(jp){ return iStem(jp) + 'ました'; }
+function toMasen(jp){ return iStem(jp) + 'ません'; }
+
+function toKatta(jp){
+  if(jp === 'いい' || jp === 'よい') return 'よかった';
+  if(jp.endsWith('いい') && jp.length > 2) return jp.slice(0,-2) + 'よかった';
+  if(jp.endsWith('い')) return jp.slice(0,-1) + 'かった';
+  return jp + 'かった';
+}
+function toKunai(jp){
+  if(jp === 'いい' || jp === 'よい') return 'よくない';
+  if(jp.endsWith('いい') && jp.length > 2) return jp.slice(0,-2) + 'よくない';
+  if(jp.endsWith('い')) return jp.slice(0,-1) + 'くない';
+  return jp + 'くない';
+}
+function toJanai(jp){ return jp + ' じゃない'; }
+
+/* English helpers for the card's en-prompt */
+function toVerbInfinitive(en){
+  return (en && en.startsWith('to ')) ? en : 'to ' + (en || '');
+}
+function stripTo(en){ return (en||'').replace(/^to /,''); }
+
+const PATTERNS = [
+  {
+    id:'shii',
+    name:'-しい cluster',
+    hint:'Feeling adjectives — they share the -しい ending',
+    filter: w => w.pos === 'adj' && w.jp.endsWith('しい'),
+    makeCard: w => ({
+      id:`pat-shii-${w.id}`, jp:w.jp, en:w.en, romaji:w.romaji||'',
+      theme:'pattern · -しい', pos:'adj', source:'pattern', patternId:'shii', verified:true
+    })
+  },
+  {
+    id:'tai',
+    name:'-たい (want to do)',
+    hint:'Take a verb, want-to-do form. たべる → たべたい',
+    filter: w => w.pos === 'v',
+    makeCard: w => ({
+      id:`pat-tai-${w.id}`, jp: toTai(w.jp),
+      en: 'want ' + toVerbInfinitive(w.en),
+      romaji:'', theme:'pattern · -たい', pos:'v', source:'pattern', patternId:'tai', verified:true
+    })
+  },
+  {
+    id:'katta',
+    name:'-かった (past adj)',
+    hint:'Past tense of i-adjectives. たのしい → たのしかった',
+    filter: w => w.pos === 'adj' && w.jp.endsWith('い'),
+    makeCard: w => ({
+      id:`pat-katta-${w.id}`, jp: toKatta(w.jp),
+      en: 'was ' + stripTo(w.en),
+      romaji:'', theme:'pattern · -かった', pos:'adj', source:'pattern', patternId:'katta', verified:true
+    })
+  },
+  {
+    id:'kunai',
+    name:'-くない (negative adj)',
+    hint:'Negative i-adjectives. おいしい → おいしくない',
+    filter: w => w.pos === 'adj' && w.jp.endsWith('い'),
+    makeCard: w => ({
+      id:`pat-kunai-${w.id}`, jp: toKunai(w.jp),
+      en: 'not ' + stripTo(w.en),
+      romaji:'', theme:'pattern · -くない', pos:'adj', source:'pattern', patternId:'kunai', verified:true
+    })
+  },
+  {
+    id:'janai',
+    name:'じゃない (not X)',
+    hint:'Negative for nouns and na-adjectives. がくせい → がくせい じゃない',
+    filter: w => (w.pos === 'n' || w.pos === 'adj-na'),
+    makeCard: w => ({
+      id:`pat-janai-${w.id}`, jp: toJanai(w.jp),
+      en: 'not ' + stripTo(w.en),
+      romaji:'', theme:'pattern · じゃない', pos:w.pos, source:'pattern', patternId:'janai', verified:true
+    })
+  },
+  {
+    id:'masen',
+    name:'-ません (polite negative verb)',
+    hint:'Polite negative form of verbs. たべる → たべません',
+    filter: w => w.pos === 'v',
+    makeCard: w => ({
+      id:`pat-masen-${w.id}`, jp: toMasen(w.jp),
+      en: "don't " + stripTo(w.en) + ' (polite)',
+      romaji:'', theme:'pattern · -ません', pos:'v', source:'pattern', patternId:'masen', verified:true
+    })
+  },
+  {
+    id:'mashita',
+    name:'-ました (polite past verb)',
+    hint:'Polite past form of verbs. たべる → たべました',
+    filter: w => w.pos === 'v',
+    makeCard: w => ({
+      id:`pat-mashita-${w.id}`, jp: toMashita(w.jp),
+      en: stripTo(w.en) + 'd (polite past)',
+      romaji:'', theme:'pattern · -ました', pos:'v', source:'pattern', patternId:'mashita', verified:true
+    })
+  }
+];
+
+function patternEligibleWords(pat){
+  const active = getActiveWords();
+  return active.filter(w => {
+    try { return pat.filter(w); } catch(e){ return false; }
+  });
+}
+
+function buildPatternCards(patternId, maxN){
+  const pat = PATTERNS.find(p => p.id === patternId);
+  if(!pat) return [];
+  const eligible = patternEligibleWords(pat);
+  const picked = shuffleFY(eligible.slice()).slice(0, maxN || 8);
+  return picked.map(w => pat.makeCard(w));
+}
+
+function startPatternBurst(patternId){
+  const pat = PATTERNS.find(p => p.id === patternId);
+  if(!pat){ alert('Unknown pattern'); return; }
+  const cards = buildPatternCards(patternId, 8);
+  if(cards.length < 3){
+    alert(`Not enough words yet for "${pat.name}". Add or drill more base words first.`);
+    return;
+  }
+  state.burst = state.burst || {bursts:0, passedIds:[]};
+  state.burst.words = cards;
+  state.burst.queue = shuffleFY(cards.slice());
+  state.burst.progress = Object.fromEntries(cards.map(c => [c.id, 0]));
+  state.burst.isReview = Object.fromEntries(cards.map(c => [c.id, false]));
+  state.burst.active = true;
+  state.burst.complete = false;
+  state.burst.isPattern = true;
+  state.burst.patternId = patternId;
+  state.burst.patternName = pat.name;
+  state.sessionQueue = state.burst.queue;
+  state.sessionIdx = 0;
+  state.lastAnswer = null;
+  state._reveal = false;
+  clearNextTimer();
+  /* Force en→jp direction so the user produces the conjugated JP form. */
+  state.settings.direction = 'en-jp';
+  save();
+  nav('drill');
+}
+window.startPatternBurst = startPatternBurst;
+
+function renderPatterns(){
+  const cards = PATTERNS.map(p => {
+    const n = patternEligibleWords(p).length;
+    const ready = n >= 3;
+    return `<div class="card" style="padding:12px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+        <h3 style="margin:0">${esc(p.name)}</h3>
+        <span class="muted" style="font-size:12px">${n} eligible</span>
+      </div>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">${esc(p.hint)}</div>
+      <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startPatternBurst('${p.id}')">
+        ${ready ? '▶ Drill this pattern' : `Need ≥ 3 words (have ${n})`}
+      </button>
+    </div>`;
+  }).join('');
+  return `
+    <div class="card">
+      <h3>Pattern packs</h3>
+      <div class="muted" style="font-size:13px">Cluster drills on shared word-endings. Your vocab fills the slot; the ending repeats until it sticks. No mastery or streak impact — this is pure pattern practice.</div>
+    </div>
+    ${cards}
+  `;
+}
+window.renderPatterns = renderPatterns;
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard'};
+const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -1512,7 +1729,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -1593,6 +1810,7 @@ function renderHome(){
 
     <div class="card">
       <h3>Practice</h3>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('patterns')">🧩 Pattern packs</button>
       <div class="btn-row">
         <button class="btn btn-blue" onclick="nav('convo')">💬 Conversation</button>
         <button class="btn btn-purple" onclick="nav('sentence')">✍️ Sentences</button>
@@ -1682,6 +1900,8 @@ function startBurst(){
   ]);
   state.burst.active = true;
   state.burst.complete = false;
+  state.burst.isPattern = false;
+  state.burst.patternId = null;
   state.sessionQueue = state.burst.queue;
   state.sessionIdx = 0;
   state.lastAnswer = null;
@@ -1701,10 +1921,13 @@ function requeueWord(word){
 function completeBurst(){
   state.burst.complete = true;
   state.burst.active = false;
-  state.burst.bursts = (state.burst.bursts || 0) + 1;
-  const passed = state.burst.words.map(w => w.id);
-  state.burst.passedIds = [...new Set([...(state.burst.passedIds || []), ...passed])];
-  log('burst_complete',{n: state.burst.words.length, bursts: state.burst.bursts});
+  /* Pattern bursts don't count toward session burst counter or passedIds. */
+  if(!state.burst.isPattern){
+    state.burst.bursts = (state.burst.bursts || 0) + 1;
+    const passed = state.burst.words.map(w => w.id);
+    state.burst.passedIds = [...new Set([...(state.burst.passedIds || []), ...passed])];
+  }
+  log('burst_complete',{n: state.burst.words.length, bursts: state.burst.bursts, pattern: state.burst.patternId || null});
   save();
 }
 
@@ -1712,6 +1935,19 @@ function completeBurst(){
 function renderBurstComplete(){
   const b = state.burst;
   const n = b.words.length;
+  if(b.isPattern){
+    const pid = b.patternId;
+    return `
+      <div class="card" style="text-align:center">
+        <div style="font-size:48px;margin-bottom:8px">🧩</div>
+        <h3>Pattern pack complete</h3>
+        <div class="muted">${esc(b.patternName || pid)} — ${n} cards drilled.</div>
+      </div>
+      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startPatternBurst('${pid}')">▶ Run this pattern again</button>
+      <button class="btn btn-secondary" onclick="nav('patterns')">Other patterns</button>
+      <button class="btn btn-secondary" onclick="nav('home')">Home</button>
+    `;
+  }
   const reviewCount = b.words.filter(w => b.isReview[w.id]).length;
   const newCount = n - reviewCount;
   return `
@@ -2381,7 +2617,7 @@ function renderSettings(){
     <div class="card">
       <h3>About</h3>
       <div class="muted">
-        v4.13 · conversation edition<br>
+        v4.14 · conversation edition · pattern packs<br>
         ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
