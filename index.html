@@ -121,9 +121,12 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .nav-btn .nav-ico{font-size:20px;line-height:1}
 .nav-btn.active{color:var(--red)}
 
-/* Floating notes FAB */
+/* Floating FABs */
 .notes-fab{position:fixed;right:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--purple);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(168,85,247,.45);display:flex;align-items:center;justify-content:center}
 .notes-fab:active{transform:scale(.92)}
+.back-fab{position:fixed;left:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--card2);color:var(--text);border:1px solid var(--border);font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
+.back-fab:active{transform:scale(.92)}
+.back-fab.show{display:flex}
 
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);z-index:100;display:none;align-items:flex-end;justify-content:center}
@@ -178,7 +181,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .warn{background:var(--orange-d);border:1px solid var(--orange);border-radius:12px;padding:12px;font-size:12px;color:#fed7aa;margin-bottom:10px}
 
 /* Top bar — back button + screen title */
-.topbar{display:flex;align-items:center;gap:10px;padding:8px 0 12px;position:sticky;top:0;background:var(--bg);z-index:10;margin:-6px -4px 6px;padding-left:4px;padding-right:4px}
+.topbar{display:flex;align-items:center;gap:10px;padding:8px 6px 12px;position:sticky;top:0;background:var(--bg);z-index:10;margin:-4px -14px 6px;padding-left:14px;padding-right:14px;border-bottom:1px solid var(--border)}
 .topbar-back{background:var(--card2);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:19px;cursor:pointer;font-size:16px;font-family:inherit;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .topbar-back:active{transform:scale(.93)}
 .topbar-title{font-size:16px;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -239,6 +242,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
   <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>More</button>
 </nav>
 
+<button class="back-fab" id="backFab" title="Back">←</button>
 <button class="notes-fab" id="notesFab" title="Quick note">💭</button>
 
 <div class="modal-bg" id="modal"><div class="modal" id="modalInner"></div></div>
@@ -1427,9 +1431,8 @@ const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDe
 function renderTopbar(){
   if(state.screen === 'home') return '';
   const title = state.screen === 'convoDetail' ? (SCENARIOS.find(s=>s.id===state._navData)?.title || 'Scenario') : SCREEN_TITLES[state.screen];
-  const backTo = state.screen === 'convoDetail' ? 'convo' : 'home';
   return `<div class="topbar">
-    <button class="topbar-back" onclick="nav('${backTo}')" title="Back">←</button>
+    <button class="topbar-back" onclick="goBack()" title="Back">←</button>
     <div class="topbar-title">${esc(title)}</div>
   </div>`;
 }
@@ -1441,10 +1444,31 @@ function render(){
   m.innerHTML = renderTopbar() + r();
   bindScreen();
 }
-function nav(screen, data){
+function nav(screen, data, fromPop){
+  /* history tracking: only push when not coming from popstate */
   state.screen = screen;
   state._navData = data;
+  if(!fromPop){
+    try{ history.pushState({screen, data}, '', '#'+screen); }catch(e){}
+  }
   render();
+  updateBackFab();
+}
+
+function goBack(){
+  /* if browser has history, use it; otherwise manual fallback */
+  if(history.state && history.length > 1){
+    history.back();
+  } else {
+    const back = state.screen === 'convoDetail' ? 'convo' : 'home';
+    nav(back);
+  }
+}
+
+function updateBackFab(){
+  const fab = document.getElementById('backFab');
+  if(!fab) return;
+  fab.classList.toggle('show', state.screen !== 'home');
 }
 function updateNav(){
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen || (state.screen==='convoDetail' && b.dataset.screen==='convo')));
@@ -2197,12 +2221,24 @@ function init(){
   /* Nav wiring */
   $$('.nav-btn').forEach(b => b.onclick = () => nav(b.dataset.screen));
   $('#notesFab').onclick = openNotes;
+  $('#backFab').onclick = goBack;
   $('#modal').onclick = (e)=>{ if(e.target.id==='modal') closeModal(); };
+
+  /* Browser history — native back button/gesture works */
+  window.addEventListener('popstate', (e) => {
+    const s = (e.state && e.state.screen) || 'home';
+    const d = e.state && e.state.data;
+    nav(s, d, true);
+  });
+  /* seed initial history */
+  try{ history.replaceState({screen:'home'}, '', '#home'); }catch(e){}
+
   /* Prime voices list */
   try{ if('speechSynthesis' in window) window.speechSynthesis.getVoices(); }catch(e){}
   window.speechSynthesis && (window.speechSynthesis.onvoiceschanged = ()=>{});
   render();
-  log('init',{v:4, words:state.words.length});
+  updateBackFab();
+  log('init',{v:46, words:state.words.length});
 }
 
 window.addEventListener('DOMContentLoaded', init);
@@ -2263,6 +2299,7 @@ window.cycleWheels = cycleWheels;
 window.togglePin = togglePin;
 window.removeWord = removeWord;
 window.restoreWord = restoreWord;
+window.goBack = goBack;
 </script>
 </body>
 </html>
