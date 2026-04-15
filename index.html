@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a">
@@ -11,1063 +11,372 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;600;700;900&display=swap');
-
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-:root {
-  --bg: #0a0a0a;
-  --card: #161616;
-  --card-hover: #1c1c1c;
-  --border: #2a2a2a;
-  --text: #e8e8e8;
-  --text-dim: #888;
-  --text-faint: #555;
-  --red: #ef4444;
-  --red-dim: #7f1d1d;
-  --green: #22c55e;
-  --green-dim: #14532d;
-  --orange: #f97316;
-  --orange-dim: #7c2d12;
-  --blue: #3b82f6;
-  --blue-dim: #1e3a5f;
-  --purple: #a855f7;
-  --teal: #14b8a6;
-  --accent: #ef4444;
-}
-
-body {
-  font-family: 'Noto Sans JP', -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-}
-
-.app {
-  max-width: 430px;
-  margin: 0 auto;
-  padding: 0 16px 100px;
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-/* HEADER */
-.header {
-  text-align: center;
-  padding: 40px 0 28px;
-}
-.header h1 {
-  font-size: 42px;
-  font-weight: 900;
-  letter-spacing: -2px;
-  background: linear-gradient(135deg, #fff 0%, #888 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.header .sub {
-  font-size: 11px;
-  letter-spacing: 4px;
-  color: var(--text-faint);
-  margin-top: 4px;
-  text-transform: uppercase;
-}
-
-/* CARDS */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 12px;
-  transition: transform 0.1s;
-}
-.card:active { transform: scale(0.98); }
-
-/* STATS ROW */
-.stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.stat-box {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px 8px;
-  text-align: center;
-}
-.stat-num {
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-}
-.stat-label {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--text-faint);
-  margin-top: 6px;
-  text-transform: uppercase;
-}
-
-/* BUTTONS */
-.btn {
-  display: block;
-  width: 100%;
-  border: none;
-  border-radius: 14px;
-  padding: 16px;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-  margin-bottom: 8px;
-}
-.btn:active { transform: scale(0.97); opacity: 0.9; }
-.btn-primary { background: var(--red); color: #fff; }
-.btn-orange { background: var(--orange); color: #fff; }
-.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-.btn-ghost { background: transparent; color: var(--text-dim); border: none; padding: 10px; font-size: 13px; }
-.btn-sm { padding: 10px 16px; font-size: 13px; width: auto; display: inline-block; }
-
-/* TAGS */
-.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.tag {
-  padding: 7px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  background: var(--card);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  transition: all 0.15s;
-}
-.tag.active { background: var(--red); color: #fff; border-color: var(--red); }
-
-/* INPUT */
-.input {
-  width: 100%;
-  padding: 16px;
-  font-size: 20px;
-  border-radius: 14px;
-  border: 2px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.input:focus { border-color: var(--accent); }
-.input::placeholder { color: var(--text-faint); }
-
-/* PROGRESS BAR */
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: var(--red);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-/* DRILL CARD */
-.drill-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 40px 24px;
-  text-align: center;
-  margin-bottom: 16px;
-  min-height: 140px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.drill-cat {
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-}
-.drill-prompt {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-.drill-prompt.jp { font-size: 36px; }
-
-/* FEEDBACK */
-.feedback-card {
-  border-radius: 20px;
-  padding: 28px 24px;
-  text-align: center;
-  margin-bottom: 16px;
-  border: 2px solid;
-}
-.feedback-card.correct { background: var(--green-dim); border-color: var(--green); }
-.feedback-card.wrong { background: var(--red-dim); border-color: var(--red); }
-.feedback-emoji { font-size: 32px; margin-bottom: 8px; }
-.feedback-user { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
-.feedback-jp { font-size: 32px; font-weight: 900; }
-.feedback-romaji { font-size: 16px; color: var(--text-dim); margin-top: 4px; }
-.feedback-en { font-size: 16px; margin-top: 4px; }
-
-/* RESULTS */
-.results-score {
-  font-size: 64px;
-  font-weight: 900;
-  text-align: center;
-  line-height: 1;
-}
-.results-sub {
-  text-align: center;
-  font-size: 14px;
-  color: var(--text-dim);
-  margin-top: 8px;
-}
-.results-msg {
-  text-align: center;
-  font-size: 20px;
-  margin-top: 16px;
-}
-
-/* WORD LIST */
-.word-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-.word-jp { font-weight: 700; font-size: 16px; }
-.word-romaji { font-size: 12px; color: var(--text-faint); margin-left: 8px; }
-.word-en { font-size: 13px; color: var(--text-dim); }
-.word-acc {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 10px;
-  margin-left: 8px;
-  white-space: nowrap;
-}
-
-/* CAPTURE */
-.capture-item {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-}
-.capture-heard { font-weight: 700; font-size: 15px; }
-.capture-detail { font-size: 13px; color: var(--text-dim); }
-
-/* CHUNK ROW */
-.chunk-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-}
-.chunk-jp { font-size: 18px; font-weight: 700; }
-.chunk-en { font-size: 13px; color: var(--text-dim); }
-.chunk-particle {
-  background: var(--red);
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  flex-shrink: 0;
-}
-
-/* SCRIPT */
-.script-card {
-  padding: 18px 20px;
-}
-.script-jp { font-size: 20px; font-weight: 700; margin-bottom: 4px; line-height: 1.4; }
-.script-en { font-size: 14px; color: var(--text-dim); }
-
-/* NAV */
-.top-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 0;
-}
-.top-nav-title { font-size: 15px; font-weight: 700; }
-
-/* DIVIDER */
-.divider {
-  height: 1px;
-  background: var(--border);
-  margin: 12px 0;
-}
-
-/* DRILL HEADER */
-.drill-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-}
-.drill-count { font-size: 13px; font-weight: 600; color: var(--text-dim); }
-.drill-score span { font-size: 13px; font-weight: 700; }
-
-/* BOTTOM TAB BAR */
-.tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
-  z-index: 100;
-}
-.tab-btn {
-  background: none;
-  border: none;
-  color: var(--text-faint);
-  font-size: 10px;
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-}
-.tab-btn.active { color: var(--red); }
-.tab-icon { font-size: 22px; }
-
-.hidden { display: none; }
-
-/* DIRECTION TOGGLE */
-.direction-toggle {
-  display: flex;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.direction-btn {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.direction-btn.active {
-  background: var(--red);
-  color: #fff;
-}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0a0a;--card:#161616;--border:#2a2a2a;--text:#e8e8e8;--dim:#888;--faint:#555;--red:#ef4444;--red-d:#7f1d1d;--green:#22c55e;--green-d:#14532d;--orange:#f97316;--orange-d:#7c2d12;--blue:#3b82f6;--purple:#a855f7;--teal:#14b8a6;--accent:#ef4444}
+body{font-family:'Noto Sans JP',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+.app{max-width:430px;margin:0 auto;padding:0 16px 80px;min-height:100dvh}
+.header{text-align:center;padding:32px 0 20px}
+.header h1{font-size:38px;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#fff,#888);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .sub{font-size:11px;letter-spacing:3px;color:var(--faint);margin-top:4px;text-transform:uppercase}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:10px}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 8px;text-align:center}
+.stat-num{font-size:26px;font-weight:900;line-height:1}
+.stat-label{font-size:9px;letter-spacing:2px;color:var(--faint);margin-top:5px;text-transform:uppercase}
+.btn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;text-align:center;margin-bottom:7px}
+.btn:active{transform:scale(.97);opacity:.9}
+.btn-primary{background:var(--red);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-purple{background:var(--purple);color:#fff}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
+.btn-ghost{background:transparent;color:var(--dim);border:none;padding:10px;font-size:13px;font-family:inherit;cursor:pointer}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto;display:inline-block}
+.tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.tag{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);cursor:pointer;font-family:inherit;background:var(--card);color:var(--dim);transition:all .15s}
+.tag.active{background:var(--red);color:#fff;border-color:var(--red)}
+.input{width:100%;padding:14px;font-size:18px;border-radius:14px;border:2px solid var(--border);background:var(--card);color:var(--text);font-family:inherit;outline:none;transition:border-color .15s}
+.input:focus{border-color:var(--accent)}
+.input::placeholder{color:var(--faint)}
+.progress-bar{width:100%;height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden}
+.progress-fill{height:100%;background:var(--red);border-radius:2px;transition:width .3s}
+.drill-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 20px;text-align:center;margin-bottom:14px;min-height:120px;display:flex;flex-direction:column;justify-content:center}
+.drill-cat{font-size:10px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin-bottom:10px}
+.drill-prompt{font-size:22px;font-weight:700;line-height:1.3}
+.drill-prompt.jp{font-size:34px}
+.feedback-card{border-radius:20px;padding:24px;text-align:center;margin-bottom:14px;border:2px solid}
+.feedback-card.correct{background:var(--green-d);border-color:var(--green)}
+.feedback-card.wrong{background:var(--red-d);border-color:var(--red)}
+.word-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.word-jp{font-weight:700;font-size:15px}
+.word-r{font-size:11px;color:var(--faint);margin-left:6px}
+.word-en{font-size:12px;color:var(--dim)}
+.word-acc{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;white-space:nowrap}
+.top-nav{display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+.top-nav-title{font-size:14px;font-weight:700}
+.divider{height:1px;background:var(--border);margin:10px 0}
+.drill-header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
+.direction-toggle{display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px}
+.direction-btn{flex:1;padding:9px;border:none;background:transparent;color:var(--dim);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+.direction-btn.active{background:var(--red);color:#fff}
+.verb-form{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.verb-label{color:var(--dim);font-size:11px;min-width:80px}
+.verb-val{font-weight:600}
+.particle-card{padding:14px 18px}
+.particle-sym{font-size:28px;font-weight:900;color:var(--red);margin-bottom:4px}
+.particle-meaning{font-size:14px;font-weight:600;margin-bottom:4px}
+.particle-pattern{font-size:12px;color:var(--dim)}
+.particle-ex{font-size:13px;margin-top:4px;color:var(--text)}
+.counter-section{margin-bottom:16px}
+.counter-title{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--red);margin-bottom:8px;text-transform:uppercase}
+.counter-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.hint-box{background:var(--border);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--dim);margin-bottom:12px;text-align:center}
+.error-alert{background:var(--red-d);border:1px solid var(--red);border-radius:14px;padding:14px;margin-bottom:10px}
+.error-alert-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:4px}
+.error-alert-text{font-size:12px;color:var(--text)}
+.section-title{font-size:11px;letter-spacing:2px;color:var(--faint);text-transform:uppercase;margin:16px 0 8px;font-weight:700}
+.script-jp{font-size:18px;font-weight:700;margin-bottom:3px;line-height:1.4}
+.script-en{font-size:13px;color:var(--dim)}
+.chunk-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+.chunk-jp{font-size:16px;font-weight:700}
+.chunk-en{font-size:12px;color:var(--dim)}
+.chunk-p{background:var(--red);color:#fff;padding:3px 10px;border-radius:10px;font-size:13px;font-weight:800;flex-shrink:0}
+.capture-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.syllable{display:inline-block;padding:2px 6px;margin:2px;background:var(--border);border-radius:6px;font-size:14px}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
-
 <script>
-const VOCAB_DATA=[
-{jp:"～かげつ",r:"kagetsu",en:"month counter",cat:"Count"},
-{jp:"～じかん",r:"jikan",en:"hour counter",cat:"Count"},
-{jp:"～ふん/ぷん",r:"fun/pun",en:"minute counter",cat:"Count"},
-{jp:"～さい",r:"sai",en:"years old",cat:"Count"},
-{jp:"～かい",r:"kai",en:"floor/times",cat:"Count"},
-{jp:"～にん",r:"nin",en:"people counter",cat:"Count"},
-{jp:"～まい",r:"mai",en:"flat object counter",cat:"Count"},
-{jp:"～ほん",r:"hon",en:"long object counter",cat:"Count"},
-{jp:"～さつ",r:"satsu",en:"book counter",cat:"Count"},
-{jp:"～だい",r:"dai",en:"machine counter",cat:"Count"},
-{jp:"～こ",r:"ko",en:"small object counter",cat:"Count"},
-{jp:"ひと",r:"hito",en:"person",cat:"People"},
-{jp:"おとこのひと",r:"otokonohito",en:"man",cat:"People"},
-{jp:"おんなのひと",r:"onnanohito",en:"woman",cat:"People"},
-{jp:"おとこのこ",r:"otokonoko",en:"boy",cat:"People"},
-{jp:"おんなのこ",r:"onnanoko",en:"girl",cat:"People"},
-{jp:"ともだち",r:"tomodachi",en:"friend",cat:"People"},
-{jp:"かれ",r:"kare",en:"he",cat:"People"},
-{jp:"かのじょ",r:"kanojo",en:"she",cat:"People"},
-{jp:"わたし",r:"watashi",en:"I/me",cat:"People"},
-{jp:"あなた",r:"anata",en:"you",cat:"People"},
-{jp:"おとな",r:"otona",en:"adult",cat:"People"},
-{jp:"こども",r:"kodomo",en:"child",cat:"People"},
-{jp:"がくせい",r:"gakusei",en:"student",cat:"People"},
-{jp:"せんせい",r:"sensei",en:"teacher",cat:"People"},
-{jp:"いしゃ",r:"isha",en:"doctor",cat:"People"},
-{jp:"かぞく",r:"kazoku",en:"family",cat:"People"},
-{jp:"りょうしん",r:"ryoushin",en:"parents",cat:"People"},
-{jp:"おかあさん",r:"okaasan",en:"mother",cat:"People"},
-{jp:"おとうさん",r:"otousan",en:"father",cat:"People"},
-{jp:"おにいさん",r:"oniisan",en:"older brother",cat:"People"},
-{jp:"おねえさん",r:"oneesan",en:"older sister",cat:"People"},
-{jp:"おとうと",r:"otouto",en:"younger brother",cat:"People"},
-{jp:"いもうと",r:"imouto",en:"younger sister",cat:"People"},
-{jp:"おくさん",r:"okusan",en:"wife (someone's)",cat:"People"},
-{jp:"ごしゅじん",r:"goshujin",en:"husband (someone's)",cat:"People"},
-{jp:"おじいさん",r:"ojiisan",en:"grandfather",cat:"People"},
-{jp:"おばあさん",r:"obaasan",en:"grandmother",cat:"People"},
-{jp:"みんな",r:"minna",en:"everyone",cat:"People"},
-{jp:"だれ",r:"dare",en:"who",cat:"People"},
-{jp:"いえ",r:"ie",en:"home/house",cat:"Places"},
-{jp:"うち",r:"uchi",en:"home/my place",cat:"Places"},
-{jp:"へや",r:"heya",en:"room",cat:"Places"},
-{jp:"みせ",r:"mise",en:"shop",cat:"Places"},
-{jp:"えき",r:"eki",en:"station",cat:"Places"},
-{jp:"びょういん",r:"byouin",en:"hospital",cat:"Places"},
-{jp:"がっこう",r:"gakkou",en:"school",cat:"Places"},
-{jp:"こうえん",r:"kouen",en:"park",cat:"Places"},
-{jp:"ぎんこう",r:"ginkou",en:"bank",cat:"Places"},
-{jp:"ゆうびんきょく",r:"yuubinkyoku",en:"post office",cat:"Places"},
-{jp:"としょかん",r:"toshokan",en:"library",cat:"Places"},
-{jp:"デパート",r:"depaato",en:"department store",cat:"Places"},
-{jp:"スーパー",r:"suupaa",en:"supermarket",cat:"Places"},
-{jp:"コンビニ",r:"konbini",en:"convenience store",cat:"Places"},
-{jp:"レストラン",r:"resutoran",en:"restaurant",cat:"Places"},
-{jp:"カフェ",r:"kafe",en:"cafe",cat:"Places"},
-{jp:"ホテル",r:"hoteru",en:"hotel",cat:"Places"},
-{jp:"くうこう",r:"kuukou",en:"airport",cat:"Places"},
-{jp:"かいしゃ",r:"kaisha",en:"company",cat:"Places"},
-{jp:"きょうしつ",r:"kyoushitsu",en:"classroom",cat:"Places"},
-{jp:"トイレ",r:"toire",en:"toilet",cat:"Places"},
-{jp:"にわ",r:"niwa",en:"garden",cat:"Places"},
-{jp:"まち",r:"machi",en:"town/city",cat:"Places"},
-{jp:"どうぶつえん",r:"doubutsuen",en:"zoo",cat:"Places"},
-{jp:"えいがかん",r:"eigakan",en:"cinema",cat:"Places"},
-{jp:"プール",r:"puuru",en:"pool",cat:"Places"},
-{jp:"やま",r:"yama",en:"mountain",cat:"Places"},
-{jp:"うみ",r:"umi",en:"sea/ocean",cat:"Places"},
-{jp:"かわ",r:"kawa",en:"river",cat:"Places"},
-{jp:"みち",r:"michi",en:"road/street",cat:"Places"},
-{jp:"はし",r:"hashi",en:"bridge",cat:"Places"},
-{jp:"いりぐち",r:"iriguchi",en:"entrance",cat:"Places"},
-{jp:"でぐち",r:"deguchi",en:"exit",cat:"Places"},
-{jp:"そと",r:"soto",en:"outside",cat:"Places"},
-{jp:"なか",r:"naka",en:"inside",cat:"Places"},
-{jp:"みず",r:"mizu",en:"water",cat:"Food"},
-{jp:"にく",r:"niku",en:"meat",cat:"Food"},
-{jp:"さかな",r:"sakana",en:"fish",cat:"Food"},
-{jp:"たまご",r:"tamago",en:"egg",cat:"Food"},
-{jp:"りょうり",r:"ryouri",en:"cooking/dish",cat:"Food"},
-{jp:"ごはん",r:"gohan",en:"rice/meal",cat:"Food"},
-{jp:"パン",r:"pan",en:"bread",cat:"Food"},
-{jp:"やさい",r:"yasai",en:"vegetables",cat:"Food"},
-{jp:"くだもの",r:"kudamono",en:"fruit",cat:"Food"},
-{jp:"おちゃ",r:"ocha",en:"tea",cat:"Food"},
-{jp:"コーヒー",r:"koohii",en:"coffee",cat:"Food"},
-{jp:"ぎゅうにゅう",r:"gyuunyuu",en:"milk",cat:"Food"},
-{jp:"おさけ",r:"osake",en:"alcohol/sake",cat:"Food"},
-{jp:"おかし",r:"okashi",en:"sweets/candy",cat:"Food"},
-{jp:"ケーキ",r:"keeki",en:"cake",cat:"Food"},
-{jp:"さとう",r:"satou",en:"sugar",cat:"Food"},
-{jp:"しお",r:"shio",en:"salt",cat:"Food"},
-{jp:"おべんとう",r:"obentou",en:"lunch box",cat:"Food"},
-{jp:"あさごはん",r:"asagohan",en:"breakfast",cat:"Food"},
-{jp:"ひるごはん",r:"hirugohan",en:"lunch",cat:"Food"},
-{jp:"ばんごはん",r:"bangohan",en:"dinner",cat:"Food"},
-{jp:"りんご",r:"ringo",en:"apple",cat:"Food"},
-{jp:"ぎゅうにく",r:"gyuuniku",en:"beef",cat:"Food"},
-{jp:"とりにく",r:"toriniku",en:"chicken",cat:"Food"},
-{jp:"おにぎり",r:"onigiri",en:"rice ball",cat:"Food"},
-{jp:"ラーメン",r:"raamen",en:"ramen",cat:"Food"},
-{jp:"あたま",r:"atama",en:"head",cat:"Body"},
-{jp:"かお",r:"kao",en:"face",cat:"Body"},
-{jp:"め",r:"me",en:"eye",cat:"Body"},
-{jp:"みみ",r:"mimi",en:"ear",cat:"Body"},
-{jp:"はな",r:"hana",en:"nose",cat:"Body"},
-{jp:"くち",r:"kuchi",en:"mouth",cat:"Body"},
-{jp:"て",r:"te",en:"hand",cat:"Body"},
-{jp:"あし",r:"ashi",en:"foot/leg",cat:"Body"},
-{jp:"おなか",r:"onaka",en:"stomach",cat:"Body"},
-{jp:"からだ",r:"karada",en:"body",cat:"Body"},
-{jp:"こえ",r:"koe",en:"voice",cat:"Body"},
-{jp:"でんわ",r:"denwa",en:"phone",cat:"Things"},
-{jp:"くるま",r:"kuruma",en:"car",cat:"Things"},
-{jp:"かぎ",r:"kagi",en:"key",cat:"Things"},
-{jp:"きっぷ",r:"kippu",en:"ticket",cat:"Things"},
-{jp:"かばん",r:"kaban",en:"bag",cat:"Things"},
-{jp:"ほん",r:"hon",en:"book",cat:"Things"},
-{jp:"しんぶん",r:"shinbun",en:"newspaper",cat:"Things"},
-{jp:"ざっし",r:"zasshi",en:"magazine",cat:"Things"},
-{jp:"てがみ",r:"tegami",en:"letter",cat:"Things"},
-{jp:"えんぴつ",r:"enpitsu",en:"pencil",cat:"Things"},
-{jp:"ペン",r:"pen",en:"pen",cat:"Things"},
-{jp:"ノート",r:"nooto",en:"notebook",cat:"Things"},
-{jp:"かみ",r:"kami",en:"paper",cat:"Things"},
-{jp:"じしょ",r:"jisho",en:"dictionary",cat:"Things"},
-{jp:"めがね",r:"megane",en:"glasses",cat:"Things"},
-{jp:"かさ",r:"kasa",en:"umbrella",cat:"Things"},
-{jp:"とけい",r:"tokei",en:"clock/watch",cat:"Things"},
-{jp:"テレビ",r:"terebi",en:"television",cat:"Things"},
-{jp:"カメラ",r:"kamera",en:"camera",cat:"Things"},
-{jp:"コンピュータ",r:"konpyuuta",en:"computer",cat:"Things"},
-{jp:"いす",r:"isu",en:"chair",cat:"Things"},
-{jp:"つくえ",r:"tsukue",en:"desk",cat:"Things"},
-{jp:"まど",r:"mado",en:"window",cat:"Things"},
-{jp:"テーブル",r:"teeburu",en:"table",cat:"Things"},
-{jp:"ベッド",r:"beddo",en:"bed",cat:"Things"},
-{jp:"ドア",r:"doa",en:"door",cat:"Things"},
-{jp:"でんき",r:"denki",en:"electricity/light",cat:"Things"},
-{jp:"エアコン",r:"eakon",en:"air conditioner",cat:"Things"},
-{jp:"くつ",r:"kutsu",en:"shoes",cat:"Things"},
-{jp:"ぼうし",r:"boushi",en:"hat",cat:"Things"},
-{jp:"シャツ",r:"shatsu",en:"shirt",cat:"Things"},
-{jp:"ズボン",r:"zubon",en:"pants",cat:"Things"},
-{jp:"スカート",r:"sukaato",en:"skirt",cat:"Things"},
-{jp:"セーター",r:"seetaa",en:"sweater",cat:"Things"},
-{jp:"コート",r:"kooto",en:"coat",cat:"Things"},
-{jp:"おかね",r:"okane",en:"money",cat:"Things"},
-{jp:"きって",r:"kitte",en:"stamp",cat:"Things"},
-{jp:"じてんしゃ",r:"jitensha",en:"bicycle",cat:"Things"},
-{jp:"バス",r:"basu",en:"bus",cat:"Things"},
-{jp:"タクシー",r:"takushii",en:"taxi",cat:"Things"},
-{jp:"でんしゃ",r:"densha",en:"train",cat:"Things"},
-{jp:"ひこうき",r:"hikouki",en:"airplane",cat:"Things"},
-{jp:"エレベーター",r:"erebeetaa",en:"elevator",cat:"Things"},
-{jp:"はこ",r:"hako",en:"box",cat:"Things"},
-{jp:"はな",r:"hana",en:"flower",cat:"Things"},
-{jp:"き",r:"ki",en:"tree",cat:"Things"},
-{jp:"え",r:"e",en:"picture",cat:"Things"},
-{jp:"しゃしん",r:"shashin",en:"photo",cat:"Things"},
-{jp:"いま",r:"ima",en:"now",cat:"Time"},
-{jp:"あした",r:"ashita",en:"tomorrow",cat:"Time"},
-{jp:"きのう",r:"kinou",en:"yesterday",cat:"Time"},
-{jp:"きょう",r:"kyou",en:"today",cat:"Time"},
-{jp:"まいにち",r:"mainichi",en:"every day",cat:"Time"},
-{jp:"しゅうまつ",r:"shuumatsu",en:"weekend",cat:"Time"},
-{jp:"やすみ",r:"yasumi",en:"day off",cat:"Time"},
-{jp:"ひま",r:"hima",en:"free time",cat:"Time"},
-{jp:"つぎ",r:"tsugi",en:"next",cat:"Time"},
-{jp:"あさ",r:"asa",en:"morning",cat:"Time"},
-{jp:"ひる",r:"hiru",en:"noon/daytime",cat:"Time"},
-{jp:"よる",r:"yoru",en:"night",cat:"Time"},
-{jp:"ばん",r:"ban",en:"evening",cat:"Time"},
-{jp:"ごご",r:"gogo",en:"afternoon/PM",cat:"Time"},
-{jp:"ごぜん",r:"gozen",en:"morning/AM",cat:"Time"},
-{jp:"まいあさ",r:"maiasa",en:"every morning",cat:"Time"},
-{jp:"まいばん",r:"maiban",en:"every evening",cat:"Time"},
-{jp:"まいしゅう",r:"maishuu",en:"every week",cat:"Time"},
-{jp:"まいつき",r:"maitsuki",en:"every month",cat:"Time"},
-{jp:"まいとし",r:"maitoshi",en:"every year",cat:"Time"},
-{jp:"こんしゅう",r:"konshuu",en:"this week",cat:"Time"},
-{jp:"らいしゅう",r:"raishuu",en:"next week",cat:"Time"},
-{jp:"せんしゅう",r:"senshuu",en:"last week",cat:"Time"},
-{jp:"こんげつ",r:"kongetsu",en:"this month",cat:"Time"},
-{jp:"らいげつ",r:"raigetsu",en:"next month",cat:"Time"},
-{jp:"せんげつ",r:"sengetsu",en:"last month",cat:"Time"},
-{jp:"ことし",r:"kotoshi",en:"this year",cat:"Time"},
-{jp:"らいねん",r:"rainen",en:"next year",cat:"Time"},
-{jp:"きょねん",r:"kyonen",en:"last year",cat:"Time"},
-{jp:"おととい",r:"ototoi",en:"day before yesterday",cat:"Time"},
-{jp:"あさって",r:"asatte",en:"day after tomorrow",cat:"Time"},
-{jp:"いつも",r:"itsumo",en:"always",cat:"Time"},
-{jp:"ときどき",r:"tokidoki",en:"sometimes",cat:"Time"},
-{jp:"はる",r:"haru",en:"spring",cat:"Time"},
-{jp:"なつ",r:"natsu",en:"summer",cat:"Time"},
-{jp:"あき",r:"aki",en:"autumn",cat:"Time"},
-{jp:"ふゆ",r:"fuyu",en:"winter",cat:"Time"},
-{jp:"にちようび",r:"nichiyoubi",en:"Sunday",cat:"Time"},
-{jp:"げつようび",r:"getsuyoubi",en:"Monday",cat:"Time"},
-{jp:"かようび",r:"kayoubi",en:"Tuesday",cat:"Time"},
-{jp:"すいようび",r:"suiyoubi",en:"Wednesday",cat:"Time"},
-{jp:"もくようび",r:"mokuyoubi",en:"Thursday",cat:"Time"},
-{jp:"きんようび",r:"kinyoubi",en:"Friday",cat:"Time"},
-{jp:"どようび",r:"doyoubi",en:"Saturday",cat:"Time"},
-{jp:"つかれた",r:"tsukareta",en:"tired",cat:"Feel"},
-{jp:"うれしい",r:"ureshii",en:"happy",cat:"Feel"},
-{jp:"さびしい",r:"sabishii",en:"lonely",cat:"Feel"},
-{jp:"いたい",r:"itai",en:"painful",cat:"Feel"},
-{jp:"げんき",r:"genki",en:"healthy/energetic",cat:"Feel"},
-{jp:"すき",r:"suki",en:"like",cat:"Feel"},
-{jp:"きらい",r:"kirai",en:"dislike",cat:"Feel"},
-{jp:"だいすき",r:"daisuki",en:"love",cat:"Feel"},
-{jp:"ほしい",r:"hoshii",en:"want (thing)",cat:"Feel"},
-{jp:"こわい",r:"kowai",en:"scary",cat:"Feel"},
-{jp:"おおきい",r:"ookii",en:"big",cat:"Adj"},
-{jp:"ちいさい",r:"chiisai",en:"small",cat:"Adj"},
-{jp:"あたらしい",r:"atarashii",en:"new",cat:"Adj"},
-{jp:"ふるい",r:"furui",en:"old (things)",cat:"Adj"},
-{jp:"むずかしい",r:"muzukashii",en:"difficult",cat:"Adj"},
-{jp:"かんたん",r:"kantan",en:"easy",cat:"Adj"},
-{jp:"たのしい",r:"tanoshii",en:"fun",cat:"Adj"},
-{jp:"おもしろい",r:"omoshiroi",en:"interesting",cat:"Adj"},
-{jp:"やさしい",r:"yasashii",en:"kind/easy",cat:"Adj"},
-{jp:"かっこいい",r:"kakkoii",en:"cool/handsome",cat:"Adj"},
-{jp:"かわいい",r:"kawaii",en:"cute",cat:"Adj"},
-{jp:"しずか",r:"shizuka",en:"quiet",cat:"Adj"},
-{jp:"にぎやか",r:"nigiyaka",en:"lively",cat:"Adj"},
-{jp:"うるさい",r:"urusai",en:"noisy",cat:"Adj"},
-{jp:"つまらない",r:"tsumaranai",en:"boring",cat:"Adj"},
-{jp:"すばらしい",r:"subarashii",en:"wonderful",cat:"Adj"},
-{jp:"いそがしい",r:"isogashii",en:"busy",cat:"Adj"},
-{jp:"はやい",r:"hayai",en:"fast/early",cat:"Adj"},
-{jp:"おそい",r:"osoi",en:"slow/late",cat:"Adj"},
-{jp:"ちかい",r:"chikai",en:"near",cat:"Adj"},
-{jp:"とおい",r:"tooi",en:"far",cat:"Adj"},
-{jp:"たかい",r:"takai",en:"expensive/tall",cat:"Adj"},
-{jp:"やすい",r:"yasui",en:"cheap",cat:"Adj"},
-{jp:"いい",r:"ii",en:"good",cat:"Adj"},
-{jp:"わるい",r:"warui",en:"bad",cat:"Adj"},
-{jp:"ながい",r:"nagai",en:"long",cat:"Adj"},
-{jp:"みじかい",r:"mijikai",en:"short",cat:"Adj"},
-{jp:"おおい",r:"ooi",en:"many/much",cat:"Adj"},
-{jp:"すくない",r:"sukunai",en:"few",cat:"Adj"},
-{jp:"おもい",r:"omoi",en:"heavy",cat:"Adj"},
-{jp:"かるい",r:"karui",en:"light (weight)",cat:"Adj"},
-{jp:"あつい",r:"atsui",en:"hot (weather)",cat:"Adj"},
-{jp:"さむい",r:"samui",en:"cold (weather)",cat:"Adj"},
-{jp:"つめたい",r:"tsumetai",en:"cold (touch)",cat:"Adj"},
-{jp:"あたたかい",r:"atatakai",en:"warm",cat:"Adj"},
-{jp:"すずしい",r:"suzushii",en:"cool (weather)",cat:"Adj"},
-{jp:"あかるい",r:"akarui",en:"bright",cat:"Adj"},
-{jp:"くらい",r:"kurai",en:"dark",cat:"Adj"},
-{jp:"ひろい",r:"hiroi",en:"wide/spacious",cat:"Adj"},
-{jp:"せまい",r:"semai",en:"narrow",cat:"Adj"},
-{jp:"あまい",r:"amai",en:"sweet",cat:"Adj"},
-{jp:"からい",r:"karai",en:"spicy",cat:"Adj"},
-{jp:"おいしい",r:"oishii",en:"delicious",cat:"Adj"},
-{jp:"まずい",r:"mazui",en:"bad tasting",cat:"Adj"},
-{jp:"きれい",r:"kirei",en:"beautiful/clean",cat:"Adj"},
-{jp:"きたない",r:"kitanai",en:"dirty",cat:"Adj"},
-{jp:"あぶない",r:"abunai",en:"dangerous",cat:"Adj"},
-{jp:"ゆうめい",r:"yuumei",en:"famous",cat:"Adj"},
-{jp:"べんり",r:"benri",en:"convenient",cat:"Adj"},
-{jp:"ふべん",r:"fuben",en:"inconvenient",cat:"Adj"},
-{jp:"じょうず",r:"jouzu",en:"skilled/good at",cat:"Adj"},
-{jp:"へた",r:"heta",en:"unskilled/bad at",cat:"Adj"},
-{jp:"だいじょうぶ",r:"daijoubu",en:"okay/alright",cat:"Adj"},
-{jp:"やばい",r:"yabai",en:"crazy/insane",cat:"Adj"},
-{jp:"めんどくさい",r:"mendokusai",en:"annoying",cat:"Adj"},
-{jp:"ひま",r:"hima_adj",en:"free/bored",cat:"Adj"},
-{jp:"ほんとう",r:"hontou",en:"really",cat:"Conv"},
-{jp:"たぶん",r:"tabun",en:"maybe",cat:"Conv"},
-{jp:"ぜんぜん",r:"zenzen",en:"not at all",cat:"Conv"},
-{jp:"もちろん",r:"mochiron",en:"of course",cat:"Conv"},
-{jp:"とくに",r:"tokuni",en:"especially",cat:"Conv"},
-{jp:"いちばん",r:"ichiban",en:"most",cat:"Conv"},
-{jp:"ぜんぶ",r:"zenbu",en:"everything",cat:"Conv"},
-{jp:"すこし",r:"sukoshi",en:"a little",cat:"Conv"},
-{jp:"もっと",r:"motto",en:"more",cat:"Conv"},
-{jp:"たくさん",r:"takusan",en:"a lot/many",cat:"Conv"},
-{jp:"ちょっと",r:"chotto",en:"a bit",cat:"Conv"},
-{jp:"よく",r:"yoku",en:"often/well",cat:"Conv"},
-{jp:"あまり",r:"amari",en:"not much",cat:"Conv"},
-{jp:"まだ",r:"mada",en:"still/not yet",cat:"Conv"},
-{jp:"もう",r:"mou",en:"already",cat:"Conv"},
-{jp:"たいへん",r:"taihen",en:"tough/very",cat:"Conv"},
-{jp:"とても",r:"totemo",en:"very",cat:"Conv"},
-{jp:"いっしょに",r:"issho ni",en:"together",cat:"Conv"},
-{jp:"ひとりで",r:"hitori de",en:"alone/by oneself",cat:"Conv"},
-{jp:"はじめて",r:"hajimete",en:"first time",cat:"Conv"},
-{jp:"こんな",r:"konna",en:"this kind of",cat:"Conv"},
-{jp:"そんな",r:"sonna",en:"that kind of",cat:"Conv"},
-{jp:"いろいろ",r:"iroiro",en:"various",cat:"Conv"},
-{jp:"おなじ",r:"onaji",en:"same",cat:"Conv"},
-{jp:"ほか",r:"hoka",en:"other",cat:"Conv"},
-{jp:"なに",r:"nani",en:"what",cat:"Q"},
-{jp:"どこ",r:"doko",en:"where",cat:"Q"},
-{jp:"だれ",r:"dare_q",en:"who",cat:"Q"},
-{jp:"いつ",r:"itsu",en:"when",cat:"Q"},
-{jp:"なんで",r:"nande",en:"why (casual)",cat:"Q"},
-{jp:"どうして",r:"doushite",en:"why",cat:"Q"},
-{jp:"いくら",r:"ikura",en:"how much",cat:"Q"},
-{jp:"どれ",r:"dore",en:"which one",cat:"Q"},
-{jp:"どの",r:"dono",en:"which",cat:"Q"},
-{jp:"どう",r:"dou",en:"how",cat:"Q"},
-{jp:"いくつ",r:"ikutsu",en:"how many/old",cat:"Q"},
-{jp:"なんじ",r:"nanji",en:"what time",cat:"Q"},
-{jp:"どのくらい",r:"donokurai",en:"how long/much",cat:"Q"},
-{jp:"なぜ",r:"naze",en:"why (formal)",cat:"Q"},
-{jp:"たべる",r:"taberu",en:"eat",cat:"Verbs"},
-{jp:"のむ",r:"nomu",en:"drink",cat:"Verbs"},
-{jp:"つくる",r:"tsukuru",en:"make",cat:"Verbs"},
-{jp:"いく",r:"iku",en:"go",cat:"Verbs"},
-{jp:"くる",r:"kuru",en:"come",cat:"Verbs"},
-{jp:"かえる",r:"kaeru",en:"go home",cat:"Verbs"},
-{jp:"あう",r:"au",en:"meet",cat:"Verbs"},
-{jp:"はなす",r:"hanasu",en:"speak",cat:"Verbs"},
-{jp:"はたらく",r:"hataraku",en:"work",cat:"Verbs"},
-{jp:"ねる",r:"neru",en:"sleep",cat:"Verbs"},
-{jp:"たのむ",r:"tanomu",en:"order",cat:"Verbs"},
-{jp:"はらう",r:"harau",en:"pay",cat:"Verbs"},
-{jp:"わける",r:"wakeru",en:"split",cat:"Verbs"},
-{jp:"えらぶ",r:"erabu",en:"choose",cat:"Verbs"},
-{jp:"すわる",r:"suwaru",en:"sit",cat:"Verbs"},
-{jp:"まつ",r:"matsu",en:"wait",cat:"Verbs"},
-{jp:"かう",r:"kau",en:"buy",cat:"Verbs"},
-{jp:"する",r:"suru",en:"do",cat:"Verbs"},
-{jp:"みる",r:"miru",en:"see/watch",cat:"Verbs"},
-{jp:"きく",r:"kiku",en:"listen/ask",cat:"Verbs"},
-{jp:"よむ",r:"yomu",en:"read",cat:"Verbs"},
-{jp:"かく",r:"kaku",en:"write",cat:"Verbs"},
-{jp:"おきる",r:"okiru",en:"wake up",cat:"Verbs"},
-{jp:"あるく",r:"aruku",en:"walk",cat:"Verbs"},
-{jp:"はしる",r:"hashiru",en:"run",cat:"Verbs"},
-{jp:"およぐ",r:"oyogu",en:"swim",cat:"Verbs"},
-{jp:"のる",r:"noru",en:"ride/get on",cat:"Verbs"},
-{jp:"おりる",r:"oriru",en:"get off",cat:"Verbs"},
-{jp:"あける",r:"akeru",en:"open",cat:"Verbs"},
-{jp:"しめる",r:"shimeru",en:"close",cat:"Verbs"},
-{jp:"つける",r:"tsukeru",en:"turn on",cat:"Verbs"},
-{jp:"けす",r:"kesu",en:"turn off",cat:"Verbs"},
-{jp:"おしえる",r:"oshieru",en:"teach/tell",cat:"Verbs"},
-{jp:"べんきょうする",r:"benkyou suru",en:"study",cat:"Verbs"},
-{jp:"おぼえる",r:"oboeru",en:"memorize",cat:"Verbs"},
-{jp:"わすれる",r:"wasureru",en:"forget",cat:"Verbs"},
-{jp:"わかる",r:"wakaru",en:"understand",cat:"Verbs"},
-{jp:"あげる",r:"ageru",en:"give",cat:"Verbs"},
-{jp:"もらう",r:"morau",en:"receive",cat:"Verbs"},
-{jp:"かりる",r:"kariru",en:"borrow",cat:"Verbs"},
-{jp:"かえす",r:"kaesu",en:"return (thing)",cat:"Verbs"},
-{jp:"かす",r:"kasu",en:"lend",cat:"Verbs"},
-{jp:"うる",r:"uru",en:"sell",cat:"Verbs"},
-{jp:"きる",r:"kiru",en:"wear/cut",cat:"Verbs"},
-{jp:"ぬぐ",r:"nugu",en:"take off (clothes)",cat:"Verbs"},
-{jp:"あらう",r:"arau",en:"wash",cat:"Verbs"},
-{jp:"とる",r:"toru",en:"take",cat:"Verbs"},
-{jp:"おく",r:"oku",en:"put/place",cat:"Verbs"},
-{jp:"いれる",r:"ireru",en:"put in",cat:"Verbs"},
-{jp:"だす",r:"dasu",en:"take out/send",cat:"Verbs"},
-{jp:"もつ",r:"motsu",en:"hold/have",cat:"Verbs"},
-{jp:"おくる",r:"okuru",en:"send",cat:"Verbs"},
-{jp:"あそぶ",r:"asobu",en:"play",cat:"Verbs"},
-{jp:"うたう",r:"utau",en:"sing",cat:"Verbs"},
-{jp:"とぶ",r:"tobu",en:"fly/jump",cat:"Verbs"},
-{jp:"まがる",r:"magaru",en:"turn",cat:"Verbs"},
-{jp:"とまる",r:"tomaru",en:"stop",cat:"Verbs"},
-{jp:"はじまる",r:"hajimaru",en:"begin (intrans)",cat:"Verbs"},
-{jp:"おわる",r:"owaru",en:"end",cat:"Verbs"},
-{jp:"いう",r:"iu",en:"say",cat:"Verbs"},
-{jp:"おもう",r:"omou",en:"think",cat:"Verbs"},
-{jp:"しる",r:"shiru",en:"know",cat:"Verbs"},
-{jp:"すむ",r:"sumu",en:"live/reside",cat:"Verbs"},
-{jp:"かかる",r:"kakaru",en:"take (time)",cat:"Verbs"},
-{jp:"できる",r:"dekiru",en:"can do",cat:"Verbs"},
-{jp:"いる",r:"iru",en:"exist (living)",cat:"Verbs"},
-{jp:"ある",r:"aru",en:"exist (things)",cat:"Verbs"},
-{jp:"なる",r:"naru",en:"become",cat:"Verbs"},
-{jp:"けっこんする",r:"kekkon suru",en:"marry",cat:"Verbs"},
-{jp:"さんぽする",r:"sanpo suru",en:"take a walk",cat:"Verbs"},
-{jp:"しぬ",r:"shinu",en:"die",cat:"Verbs"},
-{jp:"うまれる",r:"umareru",en:"be born",cat:"Verbs"},
-{jp:"こまる",r:"komaru",en:"be troubled",cat:"Verbs"},
-{jp:"うえ",r:"ue",en:"above/on top",cat:"Dir"},
-{jp:"した",r:"shita",en:"below/under",cat:"Dir"},
-{jp:"まえ",r:"mae",en:"front/before",cat:"Dir"},
-{jp:"うしろ",r:"ushiro",en:"behind",cat:"Dir"},
-{jp:"みぎ",r:"migi",en:"right",cat:"Dir"},
-{jp:"ひだり",r:"hidari",en:"left",cat:"Dir"},
-{jp:"となり",r:"tonari",en:"next to",cat:"Dir"},
-{jp:"あいだ",r:"aida",en:"between",cat:"Dir"},
-{jp:"ちかく",r:"chikaku",en:"nearby",cat:"Dir"},
-{jp:"きた",r:"kita",en:"north",cat:"Dir"},
-{jp:"みなみ",r:"minami",en:"south",cat:"Dir"},
-{jp:"ひがし",r:"higashi",en:"east",cat:"Dir"},
-{jp:"にし",r:"nishi",en:"west",cat:"Dir"},
-{jp:"こちら",r:"kochira",en:"this way",cat:"Dir"},
-{jp:"そちら",r:"sochira",en:"that way",cat:"Dir"},
-{jp:"あちら",r:"achira",en:"over there",cat:"Dir"},
-{jp:"ここ",r:"koko",en:"here",cat:"Dir"},
-{jp:"そこ",r:"soko",en:"there",cat:"Dir"},
-{jp:"あそこ",r:"asoko",en:"over there",cat:"Dir"},
-{jp:"これ",r:"kore",en:"this",cat:"Dir"},
-{jp:"それ",r:"sore",en:"that",cat:"Dir"},
-{jp:"あれ",r:"are",en:"that (far)",cat:"Dir"},
-{jp:"いち",r:"ichi",en:"one",cat:"Num"},
-{jp:"に",r:"ni",en:"two",cat:"Num"},
-{jp:"さん",r:"san",en:"three",cat:"Num"},
-{jp:"よん/し",r:"yon/shi",en:"four",cat:"Num"},
-{jp:"ご",r:"go",en:"five",cat:"Num"},
-{jp:"ろく",r:"roku",en:"six",cat:"Num"},
-{jp:"なな/しち",r:"nana/shichi",en:"seven",cat:"Num"},
-{jp:"はち",r:"hachi",en:"eight",cat:"Num"},
-{jp:"きゅう/く",r:"kyuu/ku",en:"nine",cat:"Num"},
-{jp:"じゅう",r:"juu",en:"ten",cat:"Num"},
-{jp:"ひゃく",r:"hyaku",en:"hundred",cat:"Num"},
-{jp:"せん",r:"sen",en:"thousand",cat:"Num"},
-{jp:"まん",r:"man",en:"ten thousand",cat:"Num"},
-{jp:"あか",r:"aka",en:"red",cat:"Color"},
-{jp:"あお",r:"ao",en:"blue",cat:"Color"},
-{jp:"しろ",r:"shiro",en:"white",cat:"Color"},
-{jp:"くろ",r:"kuro",en:"black",cat:"Color"},
-{jp:"きいろ",r:"kiiro",en:"yellow",cat:"Color"},
-{jp:"みどり",r:"midori",en:"green",cat:"Color"},
-{jp:"てんき",r:"tenki",en:"weather",cat:"Weather"},
-{jp:"あめ",r:"ame",en:"rain",cat:"Weather"},
-{jp:"ゆき",r:"yuki",en:"snow",cat:"Weather"},
-{jp:"くもり",r:"kumori",en:"cloudy",cat:"Weather"},
-{jp:"かぜ",r:"kaze",en:"wind",cat:"Weather"},
-{jp:"おはようございます",r:"ohayou gozaimasu",en:"good morning",cat:"Greet"},
-{jp:"こんにちは",r:"konnichiwa",en:"hello",cat:"Greet"},
-{jp:"こんばんは",r:"konbanwa",en:"good evening",cat:"Greet"},
-{jp:"おやすみなさい",r:"oyasuminasai",en:"good night",cat:"Greet"},
-{jp:"さようなら",r:"sayounara",en:"goodbye",cat:"Greet"},
-{jp:"ありがとうございます",r:"arigatou gozaimasu",en:"thank you",cat:"Greet"},
-{jp:"すみません",r:"sumimasen",en:"excuse me/sorry",cat:"Greet"},
-{jp:"ごめんなさい",r:"gomen nasai",en:"I'm sorry",cat:"Greet"},
-{jp:"はじめまして",r:"hajimemashite",en:"nice to meet you",cat:"Greet"},
-{jp:"よろしくおねがいします",r:"yoroshiku onegaishimasu",en:"pleased to meet you",cat:"Greet"},
-{jp:"いただきます",r:"itadakimasu",en:"bon appetit",cat:"Greet"},
-{jp:"ごちそうさまでした",r:"gochisousama deshita",en:"thanks for the meal",cat:"Greet"},
-{jp:"おつかれさまでした",r:"otsukaresama deshita",en:"good work today",cat:"Greet"},
-{jp:"いってきます",r:"ittekimasu",en:"I'm leaving",cat:"Greet"},
-{jp:"いってらっしゃい",r:"itterasshai",en:"have a good trip",cat:"Greet"},
-{jp:"ただいま",r:"tadaima",en:"I'm home",cat:"Greet"},
-{jp:"おかえりなさい",r:"okaerinasai",en:"welcome home",cat:"Greet"},
-{jp:"かんぱい",r:"kanpai",en:"cheers",cat:"Greet"},
-{jp:"おめでとうございます",r:"omedetou gozaimasu",en:"congratulations",cat:"Greet"}
-];
+const V=[{"jp":"～かげつ","r":"kagetsu","en":"month counter","cat":"Count"},{"jp":"～じかん","r":"jikan","en":"hour counter","cat":"Count"},{"jp":"～ふん/ぷん","r":"fun/pun","en":"minute counter","cat":"Count"},{"jp":"～さい","r":"sai","en":"years old","cat":"Count"},{"jp":"～かい","r":"kai","en":"floor/times","cat":"Count"},{"jp":"～にん","r":"nin","en":"people counter","cat":"Count"},{"jp":"～まい","r":"mai","en":"flat object counter","cat":"Count"},{"jp":"～ほん","r":"hon","en":"long object counter","cat":"Count"},{"jp":"～さつ","r":"satsu","en":"book counter","cat":"Count"},{"jp":"～だい","r":"dai","en":"machine counter","cat":"Count"},{"jp":"～こ","r":"ko","en":"small object counter","cat":"Count"},{"jp":"ひと","r":"hito","en":"person","cat":"People"},{"jp":"おとこのひと","r":"otokonohito","en":"man","cat":"People"},{"jp":"おんなのひと","r":"onnanohito","en":"woman","cat":"People"},{"jp":"おとこのこ","r":"otokonoko","en":"boy","cat":"People"},{"jp":"おんなのこ","r":"onnanoko","en":"girl","cat":"People"},{"jp":"ともだち","r":"tomodachi","en":"friend","cat":"People"},{"jp":"かれ","r":"kare","en":"he","cat":"People"},{"jp":"かのじょ","r":"kanojo","en":"she","cat":"People"},{"jp":"わたし","r":"watashi","en":"I/me","cat":"People"},{"jp":"あなた","r":"anata","en":"you","cat":"People"},{"jp":"おとな","r":"otona","en":"adult","cat":"People"},{"jp":"こども","r":"kodomo","en":"child","cat":"People"},{"jp":"がくせい","r":"gakusei","en":"student","cat":"People"},{"jp":"せんせい","r":"sensei","en":"teacher","cat":"People"},{"jp":"いしゃ","r":"isha","en":"doctor","cat":"People"},{"jp":"かぞく","r":"kazoku","en":"family","cat":"People"},{"jp":"りょうしん","r":"ryoushin","en":"parents","cat":"People"},{"jp":"おかあさん","r":"okaasan","en":"mother","cat":"People"},{"jp":"おとうさん","r":"otousan","en":"father","cat":"People"},{"jp":"おにいさん","r":"oniisan","en":"older brother","cat":"People"},{"jp":"おねえさん","r":"oneesan","en":"older sister","cat":"People"},{"jp":"おとうと","r":"otouto","en":"younger brother","cat":"People"},{"jp":"いもうと","r":"imouto","en":"younger sister","cat":"People"},{"jp":"おくさん","r":"okusan","en":"wife (someone's)","cat":"People"},{"jp":"ごしゅじん","r":"goshujin","en":"husband (someone's)","cat":"People"},{"jp":"おじいさん","r":"ojiisan","en":"grandfather","cat":"People"},{"jp":"おばあさん","r":"obaasan","en":"grandmother","cat":"People"},{"jp":"みんな","r":"minna","en":"everyone","cat":"People"},{"jp":"だれ","r":"dare","en":"who","cat":"People"},{"jp":"いえ","r":"ie","en":"home/house","cat":"Places"},{"jp":"うち","r":"uchi","en":"home/my place","cat":"Places"},{"jp":"へや","r":"heya","en":"room","cat":"Places"},{"jp":"みせ","r":"mise","en":"shop","cat":"Places"},{"jp":"えき","r":"eki","en":"station","cat":"Places"},{"jp":"びょういん","r":"byouin","en":"hospital","cat":"Places"},{"jp":"がっこう","r":"gakkou","en":"school","cat":"Places"},{"jp":"こうえん","r":"kouen","en":"park","cat":"Places"},{"jp":"ぎんこう","r":"ginkou","en":"bank","cat":"Places"},{"jp":"ゆうびんきょく","r":"yuubinkyoku","en":"post office","cat":"Places"},{"jp":"としょかん","r":"toshokan","en":"library","cat":"Places"},{"jp":"デパート","r":"depaato","en":"department store","cat":"Places"},{"jp":"スーパー","r":"suupaa","en":"supermarket","cat":"Places"},{"jp":"コンビニ","r":"konbini","en":"convenience store","cat":"Places"},{"jp":"レストラン","r":"resutoran","en":"restaurant","cat":"Places"},{"jp":"カフェ","r":"kafe","en":"cafe","cat":"Places"},{"jp":"ホテル","r":"hoteru","en":"hotel","cat":"Places"},{"jp":"くうこう","r":"kuukou","en":"airport","cat":"Places"},{"jp":"かいしゃ","r":"kaisha","en":"company","cat":"Places"},{"jp":"きょうしつ","r":"kyoushitsu","en":"classroom","cat":"Places"},{"jp":"トイレ","r":"toire","en":"toilet","cat":"Places"},{"jp":"にわ","r":"niwa","en":"garden","cat":"Places"},{"jp":"まち","r":"machi","en":"town/city","cat":"Places"},{"jp":"どうぶつえん","r":"doubutsuen","en":"zoo","cat":"Places"},{"jp":"えいがかん","r":"eigakan","en":"cinema","cat":"Places"},{"jp":"プール","r":"puuru","en":"pool","cat":"Places"},{"jp":"やま","r":"yama","en":"mountain","cat":"Places"},{"jp":"うみ","r":"umi","en":"sea/ocean","cat":"Places"},{"jp":"かわ","r":"kawa","en":"river","cat":"Places"},{"jp":"みち","r":"michi","en":"road/street","cat":"Places"},{"jp":"はし","r":"hashi","en":"bridge","cat":"Places"},{"jp":"いりぐち","r":"iriguchi","en":"entrance","cat":"Places"},{"jp":"でぐち","r":"deguchi","en":"exit","cat":"Places"},{"jp":"そと","r":"soto","en":"outside","cat":"Places"},{"jp":"なか","r":"naka","en":"inside","cat":"Places"},{"jp":"みず","r":"mizu","en":"water","cat":"Food"},{"jp":"にく","r":"niku","en":"meat","cat":"Food"},{"jp":"さかな","r":"sakana","en":"fish","cat":"Food"},{"jp":"たまご","r":"tamago","en":"egg","cat":"Food"},{"jp":"りょうり","r":"ryouri","en":"cooking/dish","cat":"Food"},{"jp":"ごはん","r":"gohan","en":"rice/meal","cat":"Food"},{"jp":"パン","r":"pan","en":"bread","cat":"Food"},{"jp":"やさい","r":"yasai","en":"vegetables","cat":"Food"},{"jp":"くだもの","r":"kudamono","en":"fruit","cat":"Food"},{"jp":"おちゃ","r":"ocha","en":"tea","cat":"Food"},{"jp":"コーヒー","r":"koohii","en":"coffee","cat":"Food"},{"jp":"ぎゅうにゅう","r":"gyuunyuu","en":"milk","cat":"Food"},{"jp":"おさけ","r":"osake","en":"alcohol/sake","cat":"Food"},{"jp":"おかし","r":"okashi","en":"sweets/candy","cat":"Food"},{"jp":"ケーキ","r":"keeki","en":"cake","cat":"Food"},{"jp":"さとう","r":"satou","en":"sugar","cat":"Food"},{"jp":"しお","r":"shio","en":"salt","cat":"Food"},{"jp":"おべんとう","r":"obentou","en":"lunch box","cat":"Food"},{"jp":"あさごはん","r":"asagohan","en":"breakfast","cat":"Food"},{"jp":"ひるごはん","r":"hirugohan","en":"lunch","cat":"Food"},{"jp":"ばんごはん","r":"bangohan","en":"dinner","cat":"Food"},{"jp":"りんご","r":"ringo","en":"apple","cat":"Food"},{"jp":"ぎゅうにく","r":"gyuuniku","en":"beef","cat":"Food"},{"jp":"とりにく","r":"toriniku","en":"chicken","cat":"Food"},{"jp":"おにぎり","r":"onigiri","en":"rice ball","cat":"Food"},{"jp":"ラーメン","r":"raamen","en":"ramen","cat":"Food"},{"jp":"あたま","r":"atama","en":"head","cat":"Body"},{"jp":"かお","r":"kao","en":"face","cat":"Body"},{"jp":"め","r":"me","en":"eye","cat":"Body"},{"jp":"みみ","r":"mimi","en":"ear","cat":"Body"},{"jp":"はな","r":"hana","en":"nose","cat":"Body"},{"jp":"くち","r":"kuchi","en":"mouth","cat":"Body"},{"jp":"て","r":"te","en":"hand","cat":"Body"},{"jp":"あし","r":"ashi","en":"foot/leg","cat":"Body"},{"jp":"おなか","r":"onaka","en":"stomach","cat":"Body"},{"jp":"からだ","r":"karada","en":"body","cat":"Body"},{"jp":"こえ","r":"koe","en":"voice","cat":"Body"},{"jp":"でんわ","r":"denwa","en":"phone","cat":"Things"},{"jp":"くるま","r":"kuruma","en":"car","cat":"Things"},{"jp":"かぎ","r":"kagi","en":"key","cat":"Things"},{"jp":"きっぷ","r":"kippu","en":"ticket","cat":"Things"},{"jp":"かばん","r":"kaban","en":"bag","cat":"Things"},{"jp":"ほん","r":"hon","en":"book","cat":"Things"},{"jp":"しんぶん","r":"shinbun","en":"newspaper","cat":"Things"},{"jp":"ざっし","r":"zasshi","en":"magazine","cat":"Things"},{"jp":"てがみ","r":"tegami","en":"letter","cat":"Things"},{"jp":"えんぴつ","r":"enpitsu","en":"pencil","cat":"Things"},{"jp":"ペン","r":"pen","en":"pen","cat":"Things"},{"jp":"ノート","r":"nooto","en":"notebook","cat":"Things"},{"jp":"かみ","r":"kami","en":"paper","cat":"Things"},{"jp":"じしょ","r":"jisho","en":"dictionary","cat":"Things"},{"jp":"めがね","r":"megane","en":"glasses","cat":"Things"},{"jp":"かさ","r":"kasa","en":"umbrella","cat":"Things"},{"jp":"とけい","r":"tokei","en":"clock/watch","cat":"Things"},{"jp":"テレビ","r":"terebi","en":"television","cat":"Things"},{"jp":"カメラ","r":"kamera","en":"camera","cat":"Things"},{"jp":"コンピュータ","r":"konpyuuta","en":"computer","cat":"Things"},{"jp":"いす","r":"isu","en":"chair","cat":"Things"},{"jp":"つくえ","r":"tsukue","en":"desk","cat":"Things"},{"jp":"まど","r":"mado","en":"window","cat":"Things"},{"jp":"テーブル","r":"teeburu","en":"table","cat":"Things"},{"jp":"ベッド","r":"beddo","en":"bed","cat":"Things"},{"jp":"ドア","r":"doa","en":"door","cat":"Things"},{"jp":"でんき","r":"denki","en":"electricity/light","cat":"Things"},{"jp":"エアコン","r":"eakon","en":"air conditioner","cat":"Things"},{"jp":"くつ","r":"kutsu","en":"shoes","cat":"Things"},{"jp":"ぼうし","r":"boushi","en":"hat","cat":"Things"},{"jp":"シャツ","r":"shatsu","en":"shirt","cat":"Things"},{"jp":"ズボン","r":"zubon","en":"pants","cat":"Things"},{"jp":"スカート","r":"sukaato","en":"skirt","cat":"Things"},{"jp":"セーター","r":"seetaa","en":"sweater","cat":"Things"},{"jp":"コート","r":"kooto","en":"coat","cat":"Things"},{"jp":"おかね","r":"okane","en":"money","cat":"Things"},{"jp":"きって","r":"kitte","en":"stamp","cat":"Things"},{"jp":"じてんしゃ","r":"jitensha","en":"bicycle","cat":"Things"},{"jp":"バス","r":"basu","en":"bus","cat":"Things"},{"jp":"タクシー","r":"takushii","en":"taxi","cat":"Things"},{"jp":"でんしゃ","r":"densha","en":"train","cat":"Things"},{"jp":"ひこうき","r":"hikouki","en":"airplane","cat":"Things"},{"jp":"エレベーター","r":"erebeetaa","en":"elevator","cat":"Things"},{"jp":"はこ","r":"hako","en":"box","cat":"Things"},{"jp":"はな","r":"hana","en":"flower","cat":"Things"},{"jp":"き","r":"ki","en":"tree","cat":"Things"},{"jp":"え","r":"e","en":"picture","cat":"Things"},{"jp":"しゃしん","r":"shashin","en":"photo","cat":"Things"},{"jp":"いま","r":"ima","en":"now","cat":"Time"},{"jp":"あした","r":"ashita","en":"tomorrow","cat":"Time"},{"jp":"きのう","r":"kinou","en":"yesterday","cat":"Time"},{"jp":"きょう","r":"kyou","en":"today","cat":"Time"},{"jp":"まいにち","r":"mainichi","en":"every day","cat":"Time"},{"jp":"しゅうまつ","r":"shuumatsu","en":"weekend","cat":"Time"},{"jp":"やすみ","r":"yasumi","en":"day off","cat":"Time"},{"jp":"ひま","r":"hima","en":"free time","cat":"Time"},{"jp":"つぎ","r":"tsugi","en":"next","cat":"Time"},{"jp":"あさ","r":"asa","en":"morning","cat":"Time"},{"jp":"ひる","r":"hiru","en":"noon/daytime","cat":"Time"},{"jp":"よる","r":"yoru","en":"night","cat":"Time"},{"jp":"ばん","r":"ban","en":"evening","cat":"Time"},{"jp":"ごご","r":"gogo","en":"afternoon/PM","cat":"Time"},{"jp":"ごぜん","r":"gozen","en":"morning/AM","cat":"Time"},{"jp":"まいあさ","r":"maiasa","en":"every morning","cat":"Time"},{"jp":"まいばん","r":"maiban","en":"every evening","cat":"Time"},{"jp":"まいしゅう","r":"maishuu","en":"every week","cat":"Time"},{"jp":"まいつき","r":"maitsuki","en":"every month","cat":"Time"},{"jp":"まいとし","r":"maitoshi","en":"every year","cat":"Time"},{"jp":"こんしゅう","r":"konshuu","en":"this week","cat":"Time"},{"jp":"らいしゅう","r":"raishuu","en":"next week","cat":"Time"},{"jp":"せんしゅう","r":"senshuu","en":"last week","cat":"Time"},{"jp":"こんげつ","r":"kongetsu","en":"this month","cat":"Time"},{"jp":"らいげつ","r":"raigetsu","en":"next month","cat":"Time"},{"jp":"せんげつ","r":"sengetsu","en":"last month","cat":"Time"},{"jp":"ことし","r":"kotoshi","en":"this year","cat":"Time"},{"jp":"らいねん","r":"rainen","en":"next year","cat":"Time"},{"jp":"きょねん","r":"kyonen","en":"last year","cat":"Time"},{"jp":"おととい","r":"ototoi","en":"day before yesterday","cat":"Time"},{"jp":"あさって","r":"asatte","en":"day after tomorrow","cat":"Time"},{"jp":"いつも","r":"itsumo","en":"always","cat":"Time"},{"jp":"ときどき","r":"tokidoki","en":"sometimes","cat":"Time"},{"jp":"はる","r":"haru","en":"spring","cat":"Time"},{"jp":"なつ","r":"natsu","en":"summer","cat":"Time"},{"jp":"あき","r":"aki","en":"autumn","cat":"Time"},{"jp":"ふゆ","r":"fuyu","en":"winter","cat":"Time"},{"jp":"にちようび","r":"nichiyoubi","en":"Sunday","cat":"Time"},{"jp":"げつようび","r":"getsuyoubi","en":"Monday","cat":"Time"},{"jp":"かようび","r":"kayoubi","en":"Tuesday","cat":"Time"},{"jp":"すいようび","r":"suiyoubi","en":"Wednesday","cat":"Time"},{"jp":"もくようび","r":"mokuyoubi","en":"Thursday","cat":"Time"},{"jp":"きんようび","r":"kinyoubi","en":"Friday","cat":"Time"},{"jp":"どようび","r":"doyoubi","en":"Saturday","cat":"Time"},{"jp":"つかれた","r":"tsukareta","en":"tired","cat":"Feel"},{"jp":"うれしい","r":"ureshii","en":"happy","cat":"Feel"},{"jp":"さびしい","r":"sabishii","en":"lonely","cat":"Feel"},{"jp":"いたい","r":"itai","en":"painful","cat":"Feel"},{"jp":"げんき","r":"genki","en":"healthy/energetic","cat":"Feel"},{"jp":"すき","r":"suki","en":"like","cat":"Feel"},{"jp":"きらい","r":"kirai","en":"dislike","cat":"Feel"},{"jp":"だいすき","r":"daisuki","en":"love","cat":"Feel"},{"jp":"ほしい","r":"hoshii","en":"want (thing)","cat":"Feel"},{"jp":"こわい","r":"kowai","en":"scary","cat":"Feel"},{"jp":"おおきい","r":"ookii","en":"big","cat":"Adj"},{"jp":"ちいさい","r":"chiisai","en":"small","cat":"Adj"},{"jp":"あたらしい","r":"atarashii","en":"new","cat":"Adj"},{"jp":"ふるい","r":"furui","en":"old (things)","cat":"Adj"},{"jp":"むずかしい","r":"muzukashii","en":"difficult","cat":"Adj"},{"jp":"かんたん","r":"kantan","en":"easy","cat":"Adj"},{"jp":"たのしい","r":"tanoshii","en":"fun","cat":"Adj"},{"jp":"おもしろい","r":"omoshiroi","en":"interesting","cat":"Adj"},{"jp":"やさしい","r":"yasashii","en":"kind/easy","cat":"Adj"},{"jp":"かっこいい","r":"kakkoii","en":"cool/handsome","cat":"Adj"},{"jp":"かわいい","r":"kawaii","en":"cute","cat":"Adj"},{"jp":"しずか","r":"shizuka","en":"quiet","cat":"Adj"},{"jp":"にぎやか","r":"nigiyaka","en":"lively","cat":"Adj"},{"jp":"うるさい","r":"urusai","en":"noisy","cat":"Adj"},{"jp":"つまらない","r":"tsumaranai","en":"boring","cat":"Adj"},{"jp":"すばらしい","r":"subarashii","en":"wonderful","cat":"Adj"},{"jp":"いそがしい","r":"isogashii","en":"busy","cat":"Adj"},{"jp":"はやい","r":"hayai","en":"fast/early","cat":"Adj"},{"jp":"おそい","r":"osoi","en":"slow/late","cat":"Adj"},{"jp":"ちかい","r":"chikai","en":"near","cat":"Adj"},{"jp":"とおい","r":"tooi","en":"far","cat":"Adj"},{"jp":"たかい","r":"takai","en":"expensive/tall","cat":"Adj"},{"jp":"やすい","r":"yasui","en":"cheap","cat":"Adj"},{"jp":"いい","r":"ii","en":"good","cat":"Adj"},{"jp":"わるい","r":"warui","en":"bad","cat":"Adj"},{"jp":"ながい","r":"nagai","en":"long","cat":"Adj"},{"jp":"みじかい","r":"mijikai","en":"short","cat":"Adj"},{"jp":"おおい","r":"ooi","en":"many/much","cat":"Adj"},{"jp":"すくない","r":"sukunai","en":"few","cat":"Adj"},{"jp":"おもい","r":"omoi","en":"heavy","cat":"Adj"},{"jp":"かるい","r":"karui","en":"light (weight)","cat":"Adj"},{"jp":"あつい","r":"atsui","en":"hot (weather)","cat":"Adj"},{"jp":"さむい","r":"samui","en":"cold (weather)","cat":"Adj"},{"jp":"つめたい","r":"tsumetai","en":"cold (touch)","cat":"Adj"},{"jp":"あたたかい","r":"atatakai","en":"warm","cat":"Adj"},{"jp":"すずしい","r":"suzushii","en":"cool (weather)","cat":"Adj"},{"jp":"あかるい","r":"akarui","en":"bright","cat":"Adj"},{"jp":"くらい","r":"kurai","en":"dark","cat":"Adj"},{"jp":"ひろい","r":"hiroi","en":"wide/spacious","cat":"Adj"},{"jp":"せまい","r":"semai","en":"narrow","cat":"Adj"},{"jp":"あまい","r":"amai","en":"sweet","cat":"Adj"},{"jp":"からい","r":"karai","en":"spicy","cat":"Adj"},{"jp":"おいしい","r":"oishii","en":"delicious","cat":"Adj"},{"jp":"まずい","r":"mazui","en":"bad tasting","cat":"Adj"},{"jp":"きれい","r":"kirei","en":"beautiful/clean","cat":"Adj"},{"jp":"きたない","r":"kitanai","en":"dirty","cat":"Adj"},{"jp":"あぶない","r":"abunai","en":"dangerous","cat":"Adj"},{"jp":"ゆうめい","r":"yuumei","en":"famous","cat":"Adj"},{"jp":"べんり","r":"benri","en":"convenient","cat":"Adj"},{"jp":"ふべん","r":"fuben","en":"inconvenient","cat":"Adj"},{"jp":"じょうず","r":"jouzu","en":"skilled/good at","cat":"Adj"},{"jp":"へた","r":"heta","en":"unskilled/bad at","cat":"Adj"},{"jp":"だいじょうぶ","r":"daijoubu","en":"okay/alright","cat":"Adj"},{"jp":"やばい","r":"yabai","en":"crazy/insane","cat":"Adj"},{"jp":"めんどくさい","r":"mendokusai","en":"annoying","cat":"Adj"},{"jp":"ひま","r":"hima_adj","en":"free/bored","cat":"Adj"},{"jp":"ほんとう","r":"hontou","en":"really","cat":"Conv"},{"jp":"たぶん","r":"tabun","en":"maybe","cat":"Conv"},{"jp":"ぜんぜん","r":"zenzen","en":"not at all","cat":"Conv"},{"jp":"もちろん","r":"mochiron","en":"of course","cat":"Conv"},{"jp":"とくに","r":"tokuni","en":"especially","cat":"Conv"},{"jp":"いちばん","r":"ichiban","en":"most","cat":"Conv"},{"jp":"ぜんぶ","r":"zenbu","en":"everything","cat":"Conv"},{"jp":"すこし","r":"sukoshi","en":"a little","cat":"Conv"},{"jp":"もっと","r":"motto","en":"more","cat":"Conv"},{"jp":"たくさん","r":"takusan","en":"a lot/many","cat":"Conv"},{"jp":"ちょっと","r":"chotto","en":"a bit","cat":"Conv"},{"jp":"よく","r":"yoku","en":"often/well","cat":"Conv"},{"jp":"あまり","r":"amari","en":"not much","cat":"Conv"},{"jp":"まだ","r":"mada","en":"still/not yet","cat":"Conv"},{"jp":"もう","r":"mou","en":"already","cat":"Conv"},{"jp":"たいへん","r":"taihen","en":"tough/very","cat":"Conv"},{"jp":"とても","r":"totemo","en":"very","cat":"Conv"},{"jp":"いっしょに","r":"issho ni","en":"together","cat":"Conv"},{"jp":"ひとりで","r":"hitori de","en":"alone/by oneself","cat":"Conv"},{"jp":"はじめて","r":"hajimete","en":"first time","cat":"Conv"},{"jp":"こんな","r":"konna","en":"this kind of","cat":"Conv"},{"jp":"そんな","r":"sonna","en":"that kind of","cat":"Conv"},{"jp":"いろいろ","r":"iroiro","en":"various","cat":"Conv"},{"jp":"おなじ","r":"onaji","en":"same","cat":"Conv"},{"jp":"ほか","r":"hoka","en":"other","cat":"Conv"},{"jp":"なに","r":"nani","en":"what","cat":"Q"},{"jp":"どこ","r":"doko","en":"where","cat":"Q"},{"jp":"だれ","r":"dare_q","en":"who","cat":"Q"},{"jp":"いつ","r":"itsu","en":"when","cat":"Q"},{"jp":"なんで","r":"nande","en":"why (casual)","cat":"Q"},{"jp":"どうして","r":"doushite","en":"why","cat":"Q"},{"jp":"いくら","r":"ikura","en":"how much","cat":"Q"},{"jp":"どれ","r":"dore","en":"which one","cat":"Q"},{"jp":"どの","r":"dono","en":"which","cat":"Q"},{"jp":"どう","r":"dou","en":"how","cat":"Q"},{"jp":"いくつ","r":"ikutsu","en":"how many/old","cat":"Q"},{"jp":"なんじ","r":"nanji","en":"what time","cat":"Q"},{"jp":"どのくらい","r":"donokurai","en":"how long/much","cat":"Q"},{"jp":"なぜ","r":"naze","en":"why (formal)","cat":"Q"},{"jp":"たべる","r":"taberu","en":"eat","cat":"Verbs"},{"jp":"のむ","r":"nomu","en":"drink","cat":"Verbs"},{"jp":"つくる","r":"tsukuru","en":"make","cat":"Verbs"},{"jp":"いく","r":"iku","en":"go","cat":"Verbs"},{"jp":"くる","r":"kuru","en":"come","cat":"Verbs"},{"jp":"かえる","r":"kaeru","en":"go home","cat":"Verbs"},{"jp":"あう","r":"au","en":"meet","cat":"Verbs"},{"jp":"はなす","r":"hanasu","en":"speak","cat":"Verbs"},{"jp":"はたらく","r":"hataraku","en":"work","cat":"Verbs"},{"jp":"ねる","r":"neru","en":"sleep","cat":"Verbs"},{"jp":"たのむ","r":"tanomu","en":"order","cat":"Verbs"},{"jp":"はらう","r":"harau","en":"pay","cat":"Verbs"},{"jp":"わける","r":"wakeru","en":"split","cat":"Verbs"},{"jp":"えらぶ","r":"erabu","en":"choose","cat":"Verbs"},{"jp":"すわる","r":"suwaru","en":"sit","cat":"Verbs"},{"jp":"まつ","r":"matsu","en":"wait","cat":"Verbs"},{"jp":"かう","r":"kau","en":"buy","cat":"Verbs"},{"jp":"する","r":"suru","en":"do","cat":"Verbs"},{"jp":"みる","r":"miru","en":"see/watch","cat":"Verbs"},{"jp":"きく","r":"kiku","en":"listen/ask","cat":"Verbs"},{"jp":"よむ","r":"yomu","en":"read","cat":"Verbs"},{"jp":"かく","r":"kaku","en":"write","cat":"Verbs"},{"jp":"おきる","r":"okiru","en":"wake up","cat":"Verbs"},{"jp":"あるく","r":"aruku","en":"walk","cat":"Verbs"},{"jp":"はしる","r":"hashiru","en":"run","cat":"Verbs"},{"jp":"およぐ","r":"oyogu","en":"swim","cat":"Verbs"},{"jp":"のる","r":"noru","en":"ride/get on","cat":"Verbs"},{"jp":"おりる","r":"oriru","en":"get off","cat":"Verbs"},{"jp":"あける","r":"akeru","en":"open","cat":"Verbs"},{"jp":"しめる","r":"shimeru","en":"close","cat":"Verbs"},{"jp":"つける","r":"tsukeru","en":"turn on","cat":"Verbs"},{"jp":"けす","r":"kesu","en":"turn off","cat":"Verbs"},{"jp":"おしえる","r":"oshieru","en":"teach/tell","cat":"Verbs"},{"jp":"べんきょうする","r":"benkyou suru","en":"study","cat":"Verbs"},{"jp":"おぼえる","r":"oboeru","en":"memorize","cat":"Verbs"},{"jp":"わすれる","r":"wasureru","en":"forget","cat":"Verbs"},{"jp":"わかる","r":"wakaru","en":"understand","cat":"Verbs"},{"jp":"あげる","r":"ageru","en":"give","cat":"Verbs"},{"jp":"もらう","r":"morau","en":"receive","cat":"Verbs"},{"jp":"かりる","r":"kariru","en":"borrow","cat":"Verbs"},{"jp":"かえす","r":"kaesu","en":"return (thing)","cat":"Verbs"},{"jp":"かす","r":"kasu","en":"lend","cat":"Verbs"},{"jp":"うる","r":"uru","en":"sell","cat":"Verbs"},{"jp":"きる","r":"kiru","en":"wear/cut","cat":"Verbs"},{"jp":"ぬぐ","r":"nugu","en":"take off (clothes)","cat":"Verbs"},{"jp":"あらう","r":"arau","en":"wash","cat":"Verbs"},{"jp":"とる","r":"toru","en":"take","cat":"Verbs"},{"jp":"おく","r":"oku","en":"put/place","cat":"Verbs"},{"jp":"いれる","r":"ireru","en":"put in","cat":"Verbs"},{"jp":"だす","r":"dasu","en":"take out/send","cat":"Verbs"},{"jp":"もつ","r":"motsu","en":"hold/have","cat":"Verbs"},{"jp":"おくる","r":"okuru","en":"send","cat":"Verbs"},{"jp":"あそぶ","r":"asobu","en":"play","cat":"Verbs"},{"jp":"うたう","r":"utau","en":"sing","cat":"Verbs"},{"jp":"とぶ","r":"tobu","en":"fly/jump","cat":"Verbs"},{"jp":"まがる","r":"magaru","en":"turn","cat":"Verbs"},{"jp":"とまる","r":"tomaru","en":"stop","cat":"Verbs"},{"jp":"はじまる","r":"hajimaru","en":"begin (intrans)","cat":"Verbs"},{"jp":"おわる","r":"owaru","en":"end","cat":"Verbs"},{"jp":"いう","r":"iu","en":"say","cat":"Verbs"},{"jp":"おもう","r":"omou","en":"think","cat":"Verbs"},{"jp":"しる","r":"shiru","en":"know","cat":"Verbs"},{"jp":"すむ","r":"sumu","en":"live/reside","cat":"Verbs"},{"jp":"かかる","r":"kakaru","en":"take (time)","cat":"Verbs"},{"jp":"できる","r":"dekiru","en":"can do","cat":"Verbs"},{"jp":"いる","r":"iru","en":"exist (living)","cat":"Verbs"},{"jp":"ある","r":"aru","en":"exist (things)","cat":"Verbs"},{"jp":"なる","r":"naru","en":"become","cat":"Verbs"},{"jp":"けっこんする","r":"kekkon suru","en":"marry","cat":"Verbs"},{"jp":"さんぽする","r":"sanpo suru","en":"take a walk","cat":"Verbs"},{"jp":"しぬ","r":"shinu","en":"die","cat":"Verbs"},{"jp":"うまれる","r":"umareru","en":"be born","cat":"Verbs"},{"jp":"こまる","r":"komaru","en":"be troubled","cat":"Verbs"},{"jp":"うえ","r":"ue","en":"above/on top","cat":"Dir"},{"jp":"した","r":"shita","en":"below/under","cat":"Dir"},{"jp":"まえ","r":"mae","en":"front/before","cat":"Dir"},{"jp":"うしろ","r":"ushiro","en":"behind","cat":"Dir"},{"jp":"みぎ","r":"migi","en":"right","cat":"Dir"},{"jp":"ひだり","r":"hidari","en":"left","cat":"Dir"},{"jp":"となり","r":"tonari","en":"next to","cat":"Dir"},{"jp":"あいだ","r":"aida","en":"between","cat":"Dir"},{"jp":"ちかく","r":"chikaku","en":"nearby","cat":"Dir"},{"jp":"きた","r":"kita","en":"north","cat":"Dir"},{"jp":"みなみ","r":"minami","en":"south","cat":"Dir"},{"jp":"ひがし","r":"higashi","en":"east","cat":"Dir"},{"jp":"にし","r":"nishi","en":"west","cat":"Dir"},{"jp":"こちら","r":"kochira","en":"this way","cat":"Dir"},{"jp":"そちら","r":"sochira","en":"that way","cat":"Dir"},{"jp":"あちら","r":"achira","en":"over there","cat":"Dir"},{"jp":"ここ","r":"koko","en":"here","cat":"Dir"},{"jp":"そこ","r":"soko","en":"there","cat":"Dir"},{"jp":"あそこ","r":"asoko","en":"over there","cat":"Dir"},{"jp":"これ","r":"kore","en":"this","cat":"Dir"},{"jp":"それ","r":"sore","en":"that","cat":"Dir"},{"jp":"あれ","r":"are","en":"that (far)","cat":"Dir"},{"jp":"いち","r":"ichi","en":"one","cat":"Num"},{"jp":"に","r":"ni","en":"two","cat":"Num"},{"jp":"さん","r":"san","en":"three","cat":"Num"},{"jp":"よん/し","r":"yon/shi","en":"four","cat":"Num"},{"jp":"ご","r":"go","en":"five","cat":"Num"},{"jp":"ろく","r":"roku","en":"six","cat":"Num"},{"jp":"なな/しち","r":"nana/shichi","en":"seven","cat":"Num"},{"jp":"はち","r":"hachi","en":"eight","cat":"Num"},{"jp":"きゅう/く","r":"kyuu/ku","en":"nine","cat":"Num"},{"jp":"じゅう","r":"juu","en":"ten","cat":"Num"},{"jp":"ひゃく","r":"hyaku","en":"hundred","cat":"Num"},{"jp":"せん","r":"sen","en":"thousand","cat":"Num"},{"jp":"まん","r":"man","en":"ten thousand","cat":"Num"},{"jp":"あか","r":"aka","en":"red","cat":"Color"},{"jp":"あお","r":"ao","en":"blue","cat":"Color"},{"jp":"しろ","r":"shiro","en":"white","cat":"Color"},{"jp":"くろ","r":"kuro","en":"black","cat":"Color"},{"jp":"きいろ","r":"kiiro","en":"yellow","cat":"Color"},{"jp":"みどり","r":"midori","en":"green","cat":"Color"},{"jp":"てんき","r":"tenki","en":"weather","cat":"Weather"},{"jp":"あめ","r":"ame","en":"rain","cat":"Weather"},{"jp":"ゆき","r":"yuki","en":"snow","cat":"Weather"},{"jp":"くもり","r":"kumori","en":"cloudy","cat":"Weather"},{"jp":"かぜ","r":"kaze","en":"wind","cat":"Weather"},{"jp":"おはようございます","r":"ohayou gozaimasu","en":"good morning","cat":"Greet"},{"jp":"こんにちは","r":"konnichiwa","en":"hello","cat":"Greet"},{"jp":"こんばんは","r":"konbanwa","en":"good evening","cat":"Greet"},{"jp":"おやすみなさい","r":"oyasuminasai","en":"good night","cat":"Greet"},{"jp":"さようなら","r":"sayounara","en":"goodbye","cat":"Greet"},{"jp":"ありがとうございます","r":"arigatou gozaimasu","en":"thank you","cat":"Greet"},{"jp":"すみません","r":"sumimasen","en":"excuse me/sorry","cat":"Greet"},{"jp":"ごめんなさい","r":"gomen nasai","en":"I'm sorry","cat":"Greet"},{"jp":"はじめまして","r":"hajimemashite","en":"nice to meet you","cat":"Greet"},{"jp":"よろしくおねがいします","r":"yoroshiku onegaishimasu","en":"pleased to meet you","cat":"Greet"},{"jp":"いただきます","r":"itadakimasu","en":"bon appetit","cat":"Greet"},{"jp":"ごちそうさまでした","r":"gochisousama deshita","en":"thanks for the meal","cat":"Greet"},{"jp":"おつかれさまでした","r":"otsukaresama deshita","en":"good work today","cat":"Greet"},{"jp":"いってきます","r":"ittekimasu","en":"I'm leaving","cat":"Greet"},{"jp":"いってらっしゃい","r":"itterasshai","en":"have a good trip","cat":"Greet"},{"jp":"ただいま","r":"tadaima","en":"I'm home","cat":"Greet"},{"jp":"おかえりなさい","r":"okaerinasai","en":"welcome home","cat":"Greet"},{"jp":"かんぱい","r":"kanpai","en":"cheers","cat":"Greet"},{"jp":"おめでとうございます","r":"omedetou gozaimasu","en":"congratulations","cat":"Greet"}];
+const VF=[{"base":"たべる","r":"taberu","en":"eat","group":2,"masu":"たべます","mashita":"たべました","masen":"たべません","mashou":"たべましょう","masenka":"たべませんか","tai":"たべたい","te":"たべて","ta":"たべた","teiru":"たべている","nai":"たべない"},{"base":"のむ","r":"nomu","en":"drink","group":1,"masu":"のみます","mashita":"のみました","masen":"のみません","mashou":"のみましょう","masenka":"のみませんか","tai":"のみたい","te":"のんで","ta":"のんだ","teiru":"のんでいる","nai":"のまない"},{"base":"いく","r":"iku","en":"go","group":1,"masu":"いきます","mashita":"いきました","masen":"いきません","mashou":"いきましょう","masenka":"いきませんか","tai":"いきたい","te":"いって","ta":"いった","teiru":"いっている","nai":"いかない"},{"base":"くる","r":"kuru","en":"come","group":3,"masu":"きます","mashita":"きました","masen":"きません","mashou":"きましょう","masenka":"きませんか","tai":"きたい","te":"きて","ta":"きた","teiru":"きている","nai":"こない"},{"base":"する","r":"suru","en":"do","group":3,"masu":"します","mashita":"しました","masen":"しません","mashou":"しましょう","masenka":"しませんか","tai":"したい","te":"して","ta":"した","teiru":"している","nai":"しない"},{"base":"かえる","r":"kaeru","en":"go home","group":1,"masu":"かえります","mashita":"かえりました","masen":"かえりません","mashou":"かえりましょう","masenka":"かえりませんか","tai":"かえりたい","te":"かえって","ta":"かえった","teiru":"かえっている","nai":"かえらない"},{"base":"あう","r":"au","en":"meet","group":1,"masu":"あいます","mashita":"あいました","masen":"あいません","mashou":"あいましょう","masenka":"あいませんか","tai":"あいたい","te":"あって","ta":"あった","teiru":"あっている","nai":"あわない"},{"base":"はなす","r":"hanasu","en":"speak","group":1,"masu":"はなします","mashita":"はなしました","masen":"はなしません","mashou":"はなしましょう","masenka":"はなしませんか","tai":"はなしたい","te":"はなして","ta":"はなした","teiru":"はなしている","nai":"はなさない"},{"base":"はたらく","r":"hataraku","en":"work","group":1,"masu":"はたらきます","mashita":"はたらきました","masen":"はたらきません","mashou":"はたらきましょう","masenka":"はたらきませんか","tai":"はたらきたい","te":"はたらいて","ta":"はたらいた","teiru":"はたらいている","nai":"はたらかない"},{"base":"ねる","r":"neru","en":"sleep","group":2,"masu":"ねます","mashita":"ねました","masen":"ねません","mashou":"ねましょう","masenka":"ねませんか","tai":"ねたい","te":"ねて","ta":"ねた","teiru":"ねている","nai":"ねない"},{"base":"つくる","r":"tsukuru","en":"make","group":1,"masu":"つくります","mashita":"つくりました","masen":"つくりません","mashou":"つくりましょう","masenka":"つくりませんか","tai":"つくりたい","te":"つくって","ta":"つくった","teiru":"つくっている","nai":"つくらない"},{"base":"たのむ","r":"tanomu","en":"order","group":1,"masu":"たのみます","mashita":"たのみました","masen":"たのみません","mashou":"たのみましょう","masenka":"たのみませんか","tai":"たのみたい","te":"たのんで","ta":"たのんだ","teiru":"たのんでいる","nai":"たのまない"},{"base":"はらう","r":"harau","en":"pay","group":1,"masu":"はらいます","mashita":"はらいました","masen":"はらいません","mashou":"はらいましょう","masenka":"はらいませんか","tai":"はらいたい","te":"はらって","ta":"はらった","teiru":"はらっている","nai":"はらわない"},{"base":"えらぶ","r":"erabu","en":"choose","group":1,"masu":"えらびます","mashita":"えらびました","masen":"えらびません","mashou":"えらびましょう","masenka":"えらびませんか","tai":"えらびたい","te":"えらんで","ta":"えらんだ","teiru":"えらんでいる","nai":"えらばない"},{"base":"すわる","r":"suwaru","en":"sit","group":1,"masu":"すわります","mashita":"すわりました","masen":"すわりません","mashou":"すわりましょう","masenka":"すわりませんか","tai":"すわりたい","te":"すわって","ta":"すわった","teiru":"すわっている","nai":"すわらない"},{"base":"まつ","r":"matsu","en":"wait","group":1,"masu":"まちます","mashita":"まちました","masen":"まちません","mashou":"まちましょう","masenka":"まちませんか","tai":"まちたい","te":"まって","ta":"まった","teiru":"まっている","nai":"またない"},{"base":"かう","r":"kau","en":"buy","group":1,"masu":"かいます","mashita":"かいました","masen":"かいません","mashou":"かいましょう","masenka":"かいませんか","tai":"かいたい","te":"かって","ta":"かった","teiru":"かっている","nai":"かわない"},{"base":"みる","r":"miru","en":"see","group":2,"masu":"みます","mashita":"みました","masen":"みません","mashou":"みましょう","masenka":"みませんか","tai":"みたい","te":"みて","ta":"みた","teiru":"みている","nai":"みない"},{"base":"きく","r":"kiku","en":"listen","group":1,"masu":"ききます","mashita":"ききました","masen":"ききません","mashou":"ききましょう","masenka":"ききませんか","tai":"ききたい","te":"きいて","ta":"きいた","teiru":"きいている","nai":"きかない"},{"base":"よむ","r":"yomu","en":"read","group":1,"masu":"よみます","mashita":"よみました","masen":"よみません","mashou":"よみましょう","masenka":"よみませんか","tai":"よみたい","te":"よんで","ta":"よんだ","teiru":"よんでいる","nai":"よまない"},{"base":"かく","r":"kaku","en":"write","group":1,"masu":"かきます","mashita":"かきました","masen":"かきません","mashou":"かきましょう","masenka":"かきませんか","tai":"かきたい","te":"かいて","ta":"かいた","teiru":"かいている","nai":"かかない"},{"base":"おきる","r":"okiru","en":"wake up","group":2,"masu":"おきます","mashita":"おきました","masen":"おきません","mashou":"おきましょう","masenka":"おきませんか","tai":"おきたい","te":"おきて","ta":"おきた","teiru":"おきている","nai":"おきない"},{"base":"あるく","r":"aruku","en":"walk","group":1,"masu":"あるきます","mashita":"あるきました","masen":"あるきません","mashou":"あるきましょう","masenka":"あるきませんか","tai":"あるきたい","te":"あるいて","ta":"あるいた","teiru":"あるいている","nai":"あるかない"},{"base":"おしえる","r":"oshieru","en":"teach","group":2,"masu":"おしえます","mashita":"おしえました","masen":"おしえません","mashou":"おしえましょう","masenka":"おしえませんか","tai":"おしえたい","te":"おしえて","ta":"おしえた","teiru":"おしえている","nai":"おしえない"},{"base":"わかる","r":"wakaru","en":"understand","group":1,"masu":"わかります","mashita":"わかりました","masen":"わかりません","mashou":"わかりましょう","masenka":"わかりませんか","tai":"わかりたい","te":"わかって","ta":"わかった","teiru":"わかっている","nai":"わからない"},{"base":"べんきょうする","r":"benkyou suru","en":"study","group":3,"masu":"べんきょうします","mashita":"べんきょうしました","masen":"べんきょうしません","mashou":"べんきょうしましょう","masenka":"べんきょうしませんか","tai":"べんきょうしたい","te":"べんきょうして","ta":"べんきょうした","teiru":"べんきょうしている","nai":"べんきょうしない"},{"base":"あける","r":"akeru","en":"open","group":2,"masu":"あけます","mashita":"あけました","masen":"あけません","mashou":"あけましょう","masenka":"あけませんか","tai":"あけたい","te":"あけて","ta":"あけた","teiru":"あけている","nai":"あけない"},{"base":"しめる","r":"shimeru","en":"close","group":2,"masu":"しめます","mashita":"しめました","masen":"しめません","mashou":"しめましょう","masenka":"しめませんか","tai":"しめたい","te":"しめて","ta":"しめた","teiru":"しめている","nai":"しめない"},{"base":"わすれる","r":"wasureru","en":"forget","group":2,"masu":"わすれます","mashita":"わすれました","masen":"わすれません","mashou":"わすれましょう","masenka":"わすれませんか","tai":"わすれたい","te":"わすれて","ta":"わすれた","teiru":"わすれている","nai":"わすれない"},{"base":"おぼえる","r":"oboeru","en":"memorize","group":2,"masu":"おぼえます","mashita":"おぼえました","masen":"おぼえません","mashou":"おぼえましょう","masenka":"おぼえませんか","tai":"おぼえたい","te":"おぼえて","ta":"おぼえた","teiru":"おぼえている","nai":"おぼえない"},{"base":"すむ","r":"sumu","en":"live","group":1,"masu":"すみます","mashita":"すみました","masen":"すみません","mashou":"すみましょう","masenka":"すみませんか","tai":"すみたい","te":"すんで","ta":"すんだ","teiru":"すんでいる","nai":"すまない"}];
+const SEN=[{"en":"I drink water every day.","jp":"まいにち みずを のみます。","hint":"time object verb"},{"en":"I ate meat yesterday.","jp":"きのう にくを たべました。","hint":"time object verb-past"},{"en":"I want to go to Japan.","jp":"にほんに いきたいです。","hint":"destination want-verb"},{"en":"She is working at a hospital.","jp":"かのじょは びょういんで はたらいています。","hint":"topic place-で ongoing-verb"},{"en":"I came from Australia.","jp":"オーストラリアから きました。","hint":"origin-から verb-past"},{"en":"Let's eat together.","jp":"いっしょに たべましょう。","hint":"together verb-ましょう"},{"en":"Won't you drink together?","jp":"いっしょに のみませんか。","hint":"together verb-ませんか"},{"en":"I want to meet again.","jp":"また あいたいです。","hint":"again want-verb"},{"en":"What did you do on the weekend?","jp":"しゅうまつ なにを しましたか。","hint":"time question-word verb-past"},{"en":"I like Japanese food.","jp":"にほんのりょうりが すきです。","hint":"の-connection が-すき"},{"en":"Where are you from?","jp":"どこから きましたか。","hint":"question-から verb-past"},{"en":"How is Melbourne?","jp":"メルボルンは どうですか。","hint":"topic question-どう"},{"en":"I've been studying for about 9 months.","jp":"きゅうかげつくらい べんきょうしています。","hint":"time-くらい ongoing-verb"},{"en":"Please speak slowly.","jp":"ゆっくり はなしてください。","hint":"adverb て-form ください"},{"en":"I went home by car.","jp":"くるまで いえに かえりました。","hint":"means-で destination-に verb-past"},{"en":"I bought vegetables at the supermarket.","jp":"スーパーで やさいを かいました。","hint":"place-で object-を verb-past"},{"en":"He is kind.","jp":"かれは やさしいです。","hint":"topic adjective"},{"en":"I want to buy a new car.","jp":"あたらしい くるまを かいたいです。","hint":"adj noun-を want-verb"},{"en":"My friend's house is near.","jp":"ともだちの いえは ちかいです。","hint":"の-possession topic adjective"},{"en":"I meet my friend at the station.","jp":"えきで ともだちに あいます。","hint":"place-で person-に verb"},{"en":"What is your hobby?","jp":"しゅみは なんですか。","hint":"topic question"},{"en":"Tomorrow is a day off.","jp":"あしたは やすみです。","hint":"topic noun-です"},{"en":"I'm busy today.","jp":"きょうは いそがしいです。","hint":"topic adjective"},{"en":"It's about 30 minutes by car.","jp":"くるまで さんじゅっぷんくらいです。","hint":"means-で time-くらい"},{"en":"Can I get your contact info?","jp":"れんらくさき おしえてください。","hint":"object て-form ください"}];
 
 const CHUNKS=[
-{jp:"みずを のむ",en:"drink water",p:"を"},
-{jp:"にくを たべる",en:"eat meat",p:"を"},
-{jp:"ともだちに あう",en:"meet a friend",p:"に"},
-{jp:"いえに かえる",en:"go home",p:"に"},
-{jp:"くるまで いく",en:"go by car",p:"で"},
-{jp:"びょういんで はたらく",en:"work at hospital",p:"で"},
-{jp:"にほんから きた",en:"came from Japan",p:"から"},
-{jp:"ともだちの いえ",en:"friend's house",p:"の"},
-{jp:"りょうりを つくる",en:"make food",p:"を"},
+{jp:"みずを のむ",en:"drink water",p:"を"},{jp:"にくを たべる",en:"eat meat",p:"を"},
+{jp:"ともだちに あう",en:"meet a friend",p:"に"},{jp:"いえに かえる",en:"go home",p:"に"},
+{jp:"くるまで いく",en:"go by car",p:"で"},{jp:"びょういんで はたらく",en:"work at hospital",p:"で"},
+{jp:"にほんから きた",en:"came from Japan",p:"から"},{jp:"ともだちの いえ",en:"friend's house",p:"の"},
 {jp:"にほんのりょうりが すき",en:"like Japanese food",p:"が"},
-{jp:"えらんでください",en:"please choose",p:"て"},
-{jp:"まってください",en:"please wait",p:"て"},
+{jp:"えらんでください",en:"please choose",p:"て"},{jp:"まってください",en:"please wait",p:"て"},
 {jp:"おしえてください",en:"please teach me",p:"て"},
 {jp:"いっしょに のみませんか",en:"drink together?",p:"に"},
-{jp:"いっしょに たべませんか",en:"eat together?",p:"に"},
-{jp:"ゆっくり はなしてください",en:"please speak slowly",p:"て"},
-{jp:"もういちど おねがいします",en:"one more time please",p:""},
-{jp:"にほんごで なんですか",en:"what is it in Japanese?",p:"で"},
+{jp:"ゆっくり はなしてください",en:"speak slowly please",p:"て"},
 ];
 
 const SCRIPTS=[
-{cat:"Intro",jp:"はじめまして。ジュリアスです。",en:"Nice to meet you. I'm Julius."},
-{cat:"Intro",jp:"オーストラリアじんです。",en:"I'm Australian."},
-{cat:"Intro",jp:"きゅうかげつくらい べんきょうしています。",en:"Studying about 9 months."},
-{cat:"Intro",jp:"にほんのりょうりが すきです。",en:"I like Japanese food."},
-{cat:"Intro",jp:"よろしくおねがいします。",en:"Pleased to meet you."},
-{cat:"Ask",jp:"おなまえは？",en:"Your name?"},
-{cat:"Ask",jp:"おしごとは なんですか？",en:"What do you do?"},
-{cat:"Ask",jp:"どこから きましたか？",en:"Where are you from?"},
-{cat:"Ask",jp:"しゅみは なんですか？",en:"What's your hobby?"},
-{cat:"Ask",jp:"メルボルンは どうですか？",en:"How's Melbourne?"},
-{cat:"Ask",jp:"しゅうまつ なにした？",en:"What'd you do on the weekend?"},
-{cat:"Ask",jp:"にほんごを どのくらい べんきょうした？",en:"How long have you studied Japanese?"},
-{cat:"React",jp:"へえ！",en:"Oh really!"},
-{cat:"React",jp:"すごい！",en:"Amazing!"},
-{cat:"React",jp:"そうですか？",en:"Is that so?"},
-{cat:"React",jp:"いいですね！",en:"That's nice!"},
-{cat:"React",jp:"わたしも！",en:"Me too!"},
-{cat:"React",jp:"ほんとう？",en:"Really?"},
-{cat:"React",jp:"たのしそう！",en:"Sounds fun!"},
-{cat:"Save",jp:"すみません、もういちど おねがいします。",en:"Sorry, one more time please."},
-{cat:"Save",jp:"ゆっくり おねがいします。",en:"Slowly please."},
-{cat:"Save",jp:"にほんごで なんですか？",en:"What is it in Japanese?"},
-{cat:"Save",jp:"いみは なんですか？",en:"What does it mean?"},
-{cat:"Save",jp:"えいごで いいですか？",en:"Is English okay?"},
-{cat:"Save",jp:"すみません、にほんご すこしだけ わかります。",en:"Sorry, I only understand a little Japanese."},
-{cat:"Smooth",jp:"いっしょに のみませんか？",en:"Want to grab a drink together?"},
-{cat:"Smooth",jp:"また あいたいです。",en:"I want to meet again."},
-{cat:"Smooth",jp:"こんど いっしょに ごはん いきませんか？",en:"Want to get food together sometime?"},
-{cat:"Smooth",jp:"れんらくさき おしえてください。",en:"Can I get your contact info?"},
-{cat:"Smooth",jp:"たのしかったです。",en:"That was fun."},
+{c:"Intro",jp:"はじめまして。ジュリアスです。",en:"Nice to meet you. I'm Julius."},
+{c:"Intro",jp:"オーストラリアじんです。",en:"I'm Australian."},
+{c:"Intro",jp:"きゅうかげつくらい べんきょうしています。",en:"Studying about 9 months."},
+{c:"Intro",jp:"にほんのりょうりが すきです。",en:"I like Japanese food."},
+{c:"Intro",jp:"よろしくおねがいします。",en:"Pleased to meet you."},
+{c:"Ask",jp:"おなまえは？",en:"Your name?"},{c:"Ask",jp:"おしごとは なんですか？",en:"What do you do?"},
+{c:"Ask",jp:"どこから きましたか？",en:"Where are you from?"},{c:"Ask",jp:"しゅみは なんですか？",en:"What's your hobby?"},
+{c:"Ask",jp:"メルボルンは どうですか？",en:"How's Melbourne?"},{c:"Ask",jp:"しゅうまつ なにした？",en:"What'd you do on the weekend?"},
+{c:"Ask",jp:"にほんごを どのくらい べんきょうした？",en:"How long have you studied?"},
+{c:"React",jp:"へえ！",en:"Oh really!"},{c:"React",jp:"すごい！",en:"Amazing!"},
+{c:"React",jp:"そうですか？",en:"Is that so?"},{c:"React",jp:"いいですね！",en:"That's nice!"},
+{c:"React",jp:"わたしも！",en:"Me too!"},{c:"React",jp:"ほんとう？",en:"Really?"},
+{c:"React",jp:"たのしそう！",en:"Sounds fun!"},
+{c:"Save",jp:"すみません、もういちど おねがいします。",en:"One more time please."},
+{c:"Save",jp:"ゆっくり おねがいします。",en:"Slowly please."},
+{c:"Save",jp:"にほんごで なんですか？",en:"What is it in Japanese?"},
+{c:"Save",jp:"いみは なんですか？",en:"What does it mean?"},
+{c:"Save",jp:"えいごで いいですか？",en:"Is English okay?"},
+{c:"Save",jp:"すみません、にほんご すこしだけ わかります。",en:"Sorry, I only understand a little."},
+{c:"Smooth",jp:"いっしょに のみませんか？",en:"Want to grab a drink?"},
+{c:"Smooth",jp:"また あいたいです。",en:"I want to meet again."},
+{c:"Smooth",jp:"こんど いっしょに ごはん いきませんか？",en:"Get food together sometime?"},
+{c:"Smooth",jp:"れんらくさき おしえてください。",en:"Can I get your contact info?"},
+{c:"Smooth",jp:"たのしかったです。",en:"That was fun."},
 ];
 
-let state={mode:"menu",vocab:[],drillQueue:[],currentIdx:0,input:"",feedback:null,showAnswer:false,direction:"en2jp",session:{correct:0,wrong:0,total:0},captures:[],captureInput:{heard:"",guess:"",meaning:""},selectedCat:"All",scriptCat:"Intro",customWords:[]};
+const PARTICLES=[
+{p:"は",m:"Topic marker",pat:"[topic] は [comment]",ex:"わたしは ジュリアスです",note:"Read as WA"},
+{p:"を",m:"Object acted on",pat:"[object] を [verb]",ex:"みずを のむ",note:""},
+{p:"に",m:"Destination / time / target",pat:"[place] に いく",ex:"えきに いく・ともだちに あう",note:"すむ and あう use に"},
+{p:"で",m:"Place of action / means",pat:"[place] で [verb]",ex:"びょういんで はたらく・くるまで いく",note:""},
+{p:"へ",m:"Direction (≈に)",pat:"[place] へ いく",ex:"にほんへ いく",note:"に is more common"},
+{p:"の",m:"Possession / connection",pat:"[A] の [B]",ex:"ともだちの いえ",note:""},
+{p:"と",m:"With / and",pat:"[person] と [verb]",ex:"ともだちと たべた",note:""},
+{p:"が",m:"Subject / with すき",pat:"[thing] が すき",ex:"りょうりが すき",note:"すき always uses が"},
+{p:"から",m:"From (origin)",pat:"[place] から きた",ex:"とうきょうから きた",note:""},
+{p:"も",m:"Also / too",pat:"[A] も",ex:"わたしも！",note:"Replaces は"},
+{p:"か",m:"Question marker",pat:"[sentence] か？",ex:"なんですか？",note:""},
+];
 
-function loadState(){
-try{
-const s=localStorage.getItem("jp_v2");
-if(s){const p=JSON.parse(s);state.vocab=VOCAB_DATA.map(v=>{const f=p.find(x=>x.jp===v.jp);return f?{...v,c:f.c||0,w:f.w||0}:{...v,c:0,w:0}});
-// Add any custom words
-const cw=localStorage.getItem("jp_custom_v2");
-if(cw){state.customWords=JSON.parse(cw);state.customWords.forEach(w=>{if(!state.vocab.find(v=>v.jp===w.jp))state.vocab.push(w)})}}
-else state.vocab=VOCAB_DATA.map(v=>({...v,c:0,w:0}));
-const caps=localStorage.getItem("jp_caps_v2");if(caps)state.captures=JSON.parse(caps);
-}catch(e){state.vocab=VOCAB_DATA.map(v=>({...v,c:0,w:0}))}}
+const COUNTERS={
+min:[["いっぷん","1"],["にふん","2"],["さんぷん","3"],["よんぷん","4"],["ごふん","5"],["ろっぷん","6"],["ななふん","7"],["はっぷん","8"],["きゅうふん","9"],["じゅっぷん","10"],["にじゅっぷん","20"],["さんじゅっぷん","30"]],
+hr:[["いちじかん","1"],["にじかん","2"],["さんじかん","3"],["よじかん","4"],["ごじかん","5"],["ろくじかん","6"]],
+mo:[["いっかげつ","1"],["にかげつ","2"],["さんかげつ","3"],["よんかげつ","4"],["ごかげつ","5"],["ろっかげつ","6"],["ななかげつ","7"],["はちかげつ","8"],["きゅうかげつ","9"],["じゅっかげつ","10"]],
+yr:[["いちねん","1"],["にねん","2"],["さんねん","3"],["よねん","4"],["ごねん","5"],["じゅうねん","10"]]
+};
 
-function saveState(){
-try{localStorage.setItem("jp_v2",JSON.stringify(state.vocab.map(v=>({jp:v.jp,c:v.c,w:v.w}))));
-localStorage.setItem("jp_caps_v2",JSON.stringify(state.captures));
-localStorage.setItem("jp_custom_v2",JSON.stringify(state.customWords))}catch(e){}}
+let S={mode:"menu",vocab:[],dq:[],ci:0,input:"",fb:null,sa:false,dir:"en2jp",ss:{c:0,w:0,t:0},caps:[],ci_inp:{h:"",g:"",m:""},cat:"All",sc:"Intro",cw:[],vsel:null,daily:null};
 
-const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
-const norm=s=>s.toLowerCase().trim().replace(/[\s\u3000]+/g," ").replace(/[.,!?？。、]/g,"");
-const acc=v=>v.c+v.w===0?-1:Math.round((v.c/(v.c+v.w))*100);
-const weak=()=>state.vocab.filter(v=>v.w>0||(v.c+v.w>0&&v.c/(v.c+v.w)<0.8)).sort((a,b)=>(a.c/Math.max(1,a.c+a.w))-(b.c/Math.max(1,b.c+b.w)));
-const cats=()=>["All",...new Set(state.vocab.map(v=>v.cat))];
+function load(){try{const s=localStorage.getItem("jp_v3");
+if(s){const p=JSON.parse(s);S.vocab=V.map(v=>{const f=p.find(x=>x.jp===v.jp);return f?{...v,c:f.c||0,w:f.w||0}:{...v,c:0,w:0}});
+const c=localStorage.getItem("jp_cw_v3");if(c){S.cw=JSON.parse(c);S.cw.forEach(w=>{if(!S.vocab.find(v=>v.jp===w.jp))S.vocab.push(w)})}
+}else S.vocab=V.map(v=>({...v,c:0,w:0}));
+const ca=localStorage.getItem("jp_ca_v3");if(ca)S.caps=JSON.parse(ca);
+const d=localStorage.getItem("jp_daily_v3");if(d)S.daily=JSON.parse(d);
+}catch(e){S.vocab=V.map(v=>({...v,c:0,w:0}))}}
 
-function startDrill(type){
+function save(){try{localStorage.setItem("jp_v3",JSON.stringify(S.vocab.map(v=>({jp:v.jp,c:v.c,w:v.w}))));
+localStorage.setItem("jp_cw_v3",JSON.stringify(S.cw));localStorage.setItem("jp_ca_v3",JSON.stringify(S.caps));
+if(S.daily)localStorage.setItem("jp_daily_v3",JSON.stringify(S.daily))}catch(e){}}
+
+const sh=a=>[...a].sort(()=>Math.random()-.5);
+const nm=s=>s.toLowerCase().trim().replace(/[\s\u3000]+/g," ").replace(/[.,!?？。、！]/g,"");
+const ac=v=>v.c+v.w===0?-1:Math.round((v.c/(v.c+v.w))*100);
+const wk=()=>S.vocab.filter(v=>v.w>0||(v.c+v.w>0&&v.c/(v.c+v.w)<.8)).sort((a,b)=>(a.c/Math.max(1,a.c+a.w))-(b.c/Math.max(1,b.c+b.w)));
+const cats=()=>["All",...new Set(S.vocab.map(v=>v.cat))];
+const today=()=>new Date().toDateString();
+
+function getErrors(){
+const w=wk();const errs=[];
+const adjW=w.filter(v=>v.cat==="Adj");if(adjW.length>=3)errs.push({type:"Adjectives",msg:`${adjW.length} weak adjectives — you may be dropping the final い`,drill:()=>startDrill("cat","Adj")});
+const verbW=w.filter(v=>v.cat==="Verbs");if(verbW.length>=3)errs.push({type:"Verbs",msg:`${verbW.length} weak verbs — drill verb forms`,drill:()=>startDrill("cat","Verbs")});
+const placeW=w.filter(v=>v.cat==="Places");if(placeW.length>=3)errs.push({type:"Places",msg:`${placeW.length} weak place words`,drill:()=>startDrill("cat","Places")});
+if(w.length>=10)errs.push({type:"General",msg:`${w.length} total weak words — time for a focused session`,drill:()=>startDrill("weak")});
+return errs}
+
+function startDrill(type,forceCat){
 let q=[];
-if(type==="weak"){q=shuffle(weak()).slice(0,15);if(q.length<5)q=shuffle([...state.vocab]).slice(0,15)}
-else if(type==="all")q=shuffle([...state.vocab]).slice(0,20);
-else if(type==="recall")q=shuffle([...state.vocab]).slice(0,10);
-else if(type==="cat"){const f=state.selectedCat==="All"?state.vocab:state.vocab.filter(v=>v.cat===state.selectedCat);q=shuffle(f).slice(0,15)}
-else if(type==="new"){q=shuffle(state.vocab.filter(v=>v.c+v.w===0)).slice(0,15);if(q.length<5)q=shuffle([...state.vocab]).slice(0,15)}
-state.drillQueue=q;state.currentIdx=0;state.feedback=null;state.showAnswer=false;state.input="";state.session={correct:0,wrong:0,total:0};state.mode="drill";render();
+if(type==="weak"){q=sh(wk()).slice(0,15);if(q.length<5)q=sh([...S.vocab]).slice(0,15)}
+else if(type==="all")q=sh([...S.vocab]).slice(0,20);
+else if(type==="recall")q=sh([...S.vocab]).slice(0,10);
+else if(type==="cat"){const c=forceCat||S.cat;const f=c==="All"?S.vocab:S.vocab.filter(v=>v.cat===c);q=sh(f).slice(0,15)}
+else if(type==="new"){q=sh(S.vocab.filter(v=>v.c+v.w===0)).slice(0,15);if(q.length<5)q=sh([...S.vocab]).slice(0,15)}
+S.dq=q;S.ci=0;S.fb=null;S.sa=false;S.input="";S.ss={c:0,w:0,t:0};S.mode="drill";R();
 setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
 
-function checkAnswer(){
-const card=state.drillQueue[state.currentIdx];if(!card)return;
-const ua=norm(state.input);let ok=false;
-if(state.direction==="en2jp")ok=ua===norm(card.r)||ua===norm(card.jp);
-else{const parts=card.en.split("/").map(s=>norm(s.trim()));ok=parts.some(a=>ua.includes(a)||a.includes(ua))}
-const v=state.vocab.find(x=>x.jp===card.jp);
-if(v){if(ok)v.c++;else v.w++}
-state.session[ok?"correct":"wrong"]++;state.session.total++;state.feedback=ok?"correct":"wrong";state.showAnswer=true;saveState();render()}
-
-function skipCard(){const card=state.drillQueue[state.currentIdx];const v=state.vocab.find(x=>x.jp===card.jp);if(v)v.w++;state.session.wrong++;state.session.total++;state.feedback="wrong";state.showAnswer=true;state.input="";saveState();render()}
-
-function nextCard(){
-if(state.currentIdx<state.drillQueue.length-1){state.currentIdx++;state.feedback=null;state.showAnswer=false;state.input="";render();
+function startDaily(){
+const w=sh(wk()).slice(0,5);const n=sh(S.vocab.filter(v=>v.c+v.w===0)).slice(0,5);
+if(n.length<5){const extra=sh(S.vocab.filter(v=>!w.includes(v)&&!n.includes(v))).slice(0,5-n.length);n.push(...extra)}
+S.dq=[...w,...n];S.ci=0;S.fb=null;S.sa=false;S.input="";S.ss={c:0,w:0,t:0};
+S.daily={date:today(),wordsCompleted:false,sentencesCompleted:false};save();S.mode="drill";R();
 setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
-else{state.mode="results";render()}}
 
-function addToDeck(cap){
-if(!cap.heard.trim())return;
-const newWord={jp:cap.heard,r:cap.guess||"?",en:cap.meaning||"?",cat:"Custom",c:0,w:0};
-if(!state.vocab.find(v=>v.jp===newWord.jp)){state.vocab.push(newWord);state.customWords.push(newWord);saveState()}
-// Remove from captures
-state.captures=state.captures.filter(c=>c!==cap);saveState();render()}
+function startSentences(){S.dq=sh(SEN).slice(0,5);S.ci=0;S.fb=null;S.sa=false;S.input="";S.ss={c:0,w:0,t:0};S.mode="sentence";R();
+setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
 
-function addCapture(){
-if(!state.captureInput.heard.trim())return;
-state.captures.unshift({...state.captureInput,time:new Date().toLocaleString("en-AU",{hour:"2-digit",minute:"2-digit"})});
-state.captureInput={heard:"",guess:"",meaning:""};saveState();render()}
+function chk(){const card=S.dq[S.ci];if(!card)return;const ua=nm(S.input);let ok=false;
+if(S.mode==="sentence"){ok=nm(card.jp)===ua||nm(card.jp).replace(/ /g,"")=== ua.replace(/ /g,"")}
+else if(S.dir==="en2jp")ok=ua===nm(card.r)||ua===nm(card.jp);
+else{const parts=card.en.split("/").map(s=>nm(s.trim()));ok=parts.some(a=>ua.includes(a)||a.includes(ua))}
+if(S.mode!=="sentence"){const v=S.vocab.find(x=>x.jp===card.jp);if(v){if(ok)v.c++;else v.w++}}
+S.ss[ok?"c":"w"]++;S.ss.t++;S.fb=ok?"correct":"wrong";S.sa=true;save();R()}
 
-function addNewWord(){
-const jp=document.getElementById("nw-jp")?.value||"";
-const r=document.getElementById("nw-r")?.value||"";
-const en=document.getElementById("nw-en")?.value||"";
-if(!jp.trim()||!en.trim())return;
-const nw={jp,r:r||"?",en,cat:"Custom",c:0,w:0};
-if(!state.vocab.find(v=>v.jp===nw.jp)){state.vocab.push(nw);state.customWords.push(nw);saveState()}
-render()}
+function skip(){const card=S.dq[S.ci];if(S.mode!=="sentence"){const v=S.vocab.find(x=>x.jp===card.jp);if(v)v.w++}
+S.ss.w++;S.ss.t++;S.fb="wrong";S.sa=true;S.input="";save();R()}
 
-function render(){
-const app=document.getElementById("app");const m=state.mode;
+function nxt(){if(S.ci<S.dq.length-1){S.ci++;S.fb=null;S.sa=false;S.input="";R();
+setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
+else{if(S.daily&&S.mode==="sentence")S.daily.sentencesCompleted=true;
+if(S.daily&&S.mode==="drill")S.daily.wordsCompleted=true;save();S.mode="results";R()}}
+
+function addToDeck(cap){if(!cap.h.trim())return;const nw={jp:cap.h,r:cap.g||"?",en:cap.m||"?",cat:"Custom",c:0,w:0};
+if(!S.vocab.find(v=>v.jp===nw.jp)){S.vocab.push(nw);S.cw.push(nw);save()}
+S.caps=S.caps.filter(c=>c!==cap);save();R()}
+
+function addCap(){const h=document.getElementById("ch")?.value||"";const g=document.getElementById("cg")?.value||"";const m=document.getElementById("cm")?.value||"";
+if(!h.trim())return;S.caps.unshift({h,g,m,t:new Date().toLocaleString("en-AU",{hour:"2-digit",minute:"2-digit"})});save();R()}
+
+function addWord(){const jp=document.getElementById("nj")?.value||"";const r=document.getElementById("nr")?.value||"";const en=document.getElementById("ne")?.value||"";
+if(!jp.trim()||!en.trim())return;const nw={jp,r:r||"?",en,cat:"Custom",c:0,w:0};
+if(!S.vocab.find(v=>v.jp===nw.jp)){S.vocab.push(nw);S.cw.push(nw);save()}R()}
+
+function syllables(jp){return jp.split("").map(c=>`<span class="syllable">${c}</span>`).join("")}
+
+function R(){const app=document.getElementById("app");const m=S.mode;
 
 if(m==="menu"){
-const w=weak();const tested=state.vocab.filter(v=>v.c+v.w>0);
-const avgAcc=tested.length>0?Math.round(tested.reduce((a,v)=>a+(v.c/(v.c+v.w)),0)/tested.length*100):0;
-const untested=state.vocab.filter(v=>v.c+v.w===0).length;
+const w=wk();const tested=S.vocab.filter(v=>v.c+v.w>0);
+const avg=tested.length>0?Math.round(tested.reduce((a,v)=>a+(v.c/(v.c+v.w)),0)/tested.length*100):0;
+const unt=S.vocab.filter(v=>v.c+v.w===0).length;
+const errs=getErrors();
+const isDailyDone=S.daily&&S.daily.date===today()&&S.daily.wordsCompleted&&S.daily.sentencesCompleted;
+let errHtml=errs.map((e,i)=>`<div class="error-alert"><div class="error-alert-title">⚠️ ${e.type}</div><div class="error-alert-text">${e.msg}</div><button class="btn btn-sm btn-primary" style="margin-top:8px;width:auto" onclick="getErrors()[${i}].drill()">Drill This</button></div>`).join("");
 app.innerHTML=`
-<div class="header"><h1>日本語</h1><div class="sub">Julius Trainer · ${state.vocab.length} words</div></div>
+<div class="header"><h1>日本語</h1><div class="sub">Julius · ${S.vocab.length} words</div></div>
 <div class="stats-row">
-<div class="stat-box"><div class="stat-num">${state.vocab.length}</div><div class="stat-label">Total</div></div>
+<div class="stat-box"><div class="stat-num">${S.vocab.length}</div><div class="stat-label">Total</div></div>
 <div class="stat-box"><div class="stat-num" style="color:${w.length>0?'var(--red)':'var(--green)'}">${w.length}</div><div class="stat-label">Weak</div></div>
-<div class="stat-box"><div class="stat-num">${avgAcc}%</div><div class="stat-label">Accuracy</div></div>
+<div class="stat-box"><div class="stat-num">${avg}%</div><div class="stat-label">Accuracy</div></div>
 </div>
+${errHtml}
+<button class="btn ${isDailyDone?'btn-secondary':'btn-teal'}" onclick="startDaily()">🎯 Daily Challenge${isDailyDone?' ✅':''}</button>
+<button class="btn btn-purple" onclick="startSentences()">🔨 Sentence Builder</button>
 <div class="direction-toggle">
-<button class="direction-btn ${state.direction==='en2jp'?'active':''}" onclick="state.direction='en2jp';render()">EN → JP</button>
-<button class="direction-btn ${state.direction==='jp2en'?'active':''}" onclick="state.direction='jp2en';render()">JP → EN</button>
+<button class="direction-btn ${S.dir==='en2jp'?'active':''}" onclick="S.dir='en2jp';R()">EN → JP</button>
+<button class="direction-btn ${S.dir==='jp2en'?'active':''}" onclick="S.dir='jp2en';R()">JP → EN</button>
 </div>
-<button class="btn btn-primary" onclick="startDrill('recall')">⚡ Recall Bomb (10)</button>
+<button class="btn btn-primary" onclick="startDrill('recall')">⚡ Recall Bomb</button>
 ${w.length>0?`<button class="btn btn-orange" onclick="startDrill('weak')">🔥 Weak Words (${w.length})</button>`:''}
-${untested>0?`<button class="btn btn-secondary" onclick="startDrill('new')" style="border-color:var(--blue)">🆕 New Words (${untested} untested)</button>`:''}
-<button class="btn btn-secondary" onclick="startDrill('all')">📚 Full Drill (20)</button>
-<div class="tags">${cats().map(c=>`<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
-<button class="btn btn-secondary" onclick="startDrill('cat')">Drill: ${state.selectedCat}</button>
+${unt>0?`<button class="btn btn-secondary" style="border-color:var(--blue)" onclick="startDrill('new')">🆕 New Words (${unt})</button>`:''}
+<button class="btn btn-secondary" onclick="startDrill('all')">📚 Full Drill</button>
+<div class="tags">${cats().map(c=>`<button class="tag ${S.cat===c?'active':''}" onclick="S.cat='${c}';R()">${c}</button>`).join('')}</div>
+<button class="btn btn-secondary" onclick="startDrill('cat')">Drill: ${S.cat}</button>
 <div class="divider"></div>
-<button class="btn btn-secondary" onclick="state.mode='capture';render()">✏️ Quick Capture</button>
-<button class="btn btn-secondary" onclick="state.mode='addword';render()">➕ Add Word</button>
-<button class="btn btn-secondary" onclick="state.mode='chunks';render()">🔗 Chunks</button>
-<button class="btn btn-secondary" onclick="state.mode='scripts';state.scriptCat='Intro';render()">💬 Scripts</button>
-<button class="btn btn-secondary" onclick="state.mode='stats';render()">📊 All Words</button>
-<button class="btn btn-ghost" onclick="if(confirm('Reset all stats?')){state.vocab.forEach(v=>{v.c=0;v.w=0});saveState();render()}">Reset Stats</button>`;return}
+<button class="btn btn-secondary" onclick="S.mode='japaneasy';R()">🇯🇵 JAPANEASY Mode</button>
+<button class="btn btn-secondary" onclick="S.mode='verbs';R()">📖 Verb Forms</button>
+<button class="btn btn-secondary" onclick="S.mode='particles';R()">🔗 Particles</button>
+<button class="btn btn-secondary" onclick="S.mode='counters';R()">🔢 Counters</button>
+<button class="btn btn-secondary" onclick="S.mode='chunks';R()">🧩 Chunks</button>
+<button class="btn btn-secondary" onclick="S.mode='capture';R()">✏️ Quick Capture</button>
+<button class="btn btn-secondary" onclick="S.mode='addword';R()">➕ Add Word</button>
+<button class="btn btn-secondary" onclick="S.mode='stats';R()">📊 All Words</button>
+<button class="btn btn-ghost" onclick="if(confirm('Reset all stats?')){S.vocab.forEach(v=>{v.c=0;v.w=0});save();R()}">Reset Stats</button>`;return}
 
-if(m==="drill"){
-const card=state.drillQueue[state.currentIdx];if(!card)return;
-const prompt=state.direction==="en2jp"?card.en:card.jp;const isJp=state.direction==="jp2en";
-const prog=((state.currentIdx+1)/state.drillQueue.length)*100;
+if(m==="drill"||m==="sentence"){
+const card=S.dq[S.ci];if(!card)return;
+const isSen=m==="sentence";
+const prompt=isSen?card.en:(S.dir==="en2jp"?card.en:card.jp);
+const isJp=!isSen&&S.dir==="jp2en";
+const prog=((S.ci+1)/S.dq.length)*100;
 let body="";
-if(!state.showAnswer){body=`<input class="input" id="di" value="${state.input}" placeholder="${state.direction==='en2jp'?'Type romaji...':'Type English...'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-<button class="btn btn-primary" style="margin-top:12px" onclick="checkAnswer()">Check</button>
-<button class="btn btn-ghost" onclick="skipCard()">Don't know</button>`}
-else{body=`<div class="feedback-card ${state.feedback}">
-<div class="feedback-emoji">${state.feedback==='correct'?'✅':'❌'}</div>
-<div class="feedback-user">${state.feedback==='correct'?'Correct!':`Your answer: ${state.input||'(skipped)'}`}</div>
-<div class="feedback-jp">${card.jp}</div>
-<div class="feedback-romaji">${card.r}</div>
-<div class="feedback-en">${card.en}</div></div>
-<button class="btn btn-primary" onclick="nextCard()">${state.currentIdx<state.drillQueue.length-1?'Next →':'See Results'}</button>`}
-app.innerHTML=`<div class="drill-header"><button class="btn btn-ghost" onclick="state.mode='menu';render()">✕</button>
-<div class="drill-count">${state.currentIdx+1}/${state.drillQueue.length}</div>
-<div class="drill-score"><span style="color:var(--green)">${state.session.correct}</span> / <span style="color:var(--red)">${state.session.wrong}</span></div></div>
+if(!S.sa){
+const ph=isSen?"Type the full Japanese sentence...":S.dir==='en2jp'?'Type romaji...':'Type English...';
+body=`${isSen&&card.hint?`<div class="hint-box">💡 ${card.hint}</div>`:''}
+<input class="input" id="di" value="${S.input}" placeholder="${ph}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button class="btn btn-primary" style="margin-top:10px" onclick="chk()">Check</button>
+<button class="btn btn-ghost" onclick="skip()">Don't know</button>`}
+else{const ans=isSen?card.jp:(card.jp+' ('+card.r+')');
+body=`<div class="feedback-card ${S.fb}">
+<div style="font-size:28px;margin-bottom:6px">${S.fb==='correct'?'✅':'❌'}</div>
+<div style="font-size:12px;color:var(--dim);margin-bottom:10px">${S.fb==='correct'?'Correct!':'Your answer: '+(S.input||'(skipped)')}</div>
+<div style="font-size:${isSen?'18':'28'}px;font-weight:900">${isSen?card.jp:card.jp}</div>
+${!isSen?`<div style="font-size:14px;color:var(--dim);margin-top:3px">${card.r}</div>`:''}
+<div style="font-size:14px;margin-top:3px">${isSen?'':card.en}</div>
+${isSen?`<div style="margin-top:8px;font-size:12px;color:var(--dim)">Syllables: ${syllables(card.jp.replace(/[。、！？ ]/g,''))}</div>`:''}
+</div>
+<button class="btn btn-primary" onclick="nxt()">${S.ci<S.dq.length-1?'Next →':'See Results'}</button>`}
+app.innerHTML=`<div class="drill-header"><button class="btn btn-ghost" onclick="S.mode='menu';R()">✕</button>
+<div style="font-size:12px;font-weight:600;color:var(--dim)">${S.ci+1}/${S.dq.length} ${isSen?'· Sentences':''}</div>
+<div><span style="font-size:12px;font-weight:700;color:var(--green)">${S.ss.c}</span><span style="font-size:12px;color:var(--dim)"> / </span><span style="font-size:12px;font-weight:700;color:var(--red)">${S.ss.w}</span></div></div>
 <div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div>
-<div class="drill-card"><div class="drill-cat">${card.cat}</div><div class="drill-prompt ${isJp?'jp':''}">${prompt}</div></div>${body}`;
-const inp=document.getElementById("di");if(inp){inp.addEventListener("input",e=>{state.input=e.target.value});
-inp.addEventListener("keydown",e=>{if(e.key==="Enter"){if(state.showAnswer)nextCard();else if(state.input.trim())checkAnswer()}})}return}
+<div class="drill-card"><div class="drill-cat">${isSen?'Sentence Builder':card.cat}</div><div class="drill-prompt ${isJp?'jp':''}">${prompt}</div></div>${body}`;
+const inp=document.getElementById("di");if(inp){inp.addEventListener("input",e=>{S.input=e.target.value});
+inp.addEventListener("keydown",e=>{if(e.key==="Enter"){if(S.sa)nxt();else if(S.input.trim())chk()}})}return}
 
 if(m==="results"){
-const pct=state.session.total>0?Math.round((state.session.correct/state.session.total)*100):0;const w=weak();
-const msg=pct>=90?"🔥 すごい！":pct>=70?"いいね！":"もっと れんしゅう！";
-let wh="";if(w.length>0){wh=`<div class="card" style="margin-top:16px"><div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--red)">WEAK WORDS (${w.length})</div>
-${w.slice(0,10).map(v=>`<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:var(--red-dim);color:var(--red)">${acc(v)}%</span></div></div>`).join('')}</div>`}
-app.innerHTML=`<div class="card" style="margin-top:40px;padding:32px"><div class="results-score">${pct}%</div><div class="results-sub">${state.session.correct} correct · ${state.session.wrong} wrong</div><div class="results-msg">${msg}</div></div>${wh}
-${w.length>0?`<button class="btn btn-orange" style="margin-top:12px" onclick="startDrill('weak')">Drill Weak</button>`:''}
+const pct=S.ss.t>0?Math.round((S.ss.c/S.ss.t)*100):0;const w=wk();
+const msg=pct>=90?"🔥 すごい！":pct>=70?"いいね！":"もっと！";
+const dailyNext=S.daily&&!S.daily.sentencesCompleted&&S.daily.wordsCompleted;
+app.innerHTML=`<div class="card" style="margin-top:32px;padding:28px"><div style="font-size:56px;font-weight:900;text-align:center">${pct}%</div>
+<div style="text-align:center;font-size:13px;color:var(--dim);margin-top:6px">${S.ss.c} correct · ${S.ss.w} wrong</div>
+<div style="text-align:center;font-size:18px;margin-top:12px">${msg}</div></div>
+${dailyNext?`<button class="btn btn-purple" style="margin-top:10px" onclick="startSentences()">Continue → Sentences</button>`:''}
+${w.length>0?`<button class="btn btn-orange" style="margin-top:10px" onclick="startDrill('weak')">Drill Weak (${w.length})</button>`:''}
 <button class="btn btn-primary" style="margin-top:8px" onclick="startDrill('recall')">Another Round</button>
-<button class="btn btn-secondary" onclick="state.mode='menu';render()">Menu</button>`;return}
+<button class="btn btn-secondary" onclick="S.mode='menu';R()">Menu</button>`;return}
 
-if(m==="capture"){
-app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Quick Capture</div><div></div></div>
-<div class="card"><input class="input" style="margin-bottom:10px" placeholder="What I heard..." id="ch" autocomplete="off">
-<input class="input" style="margin-bottom:10px" placeholder="My guess (romaji)..." id="cg" autocomplete="off">
-<input class="input" style="margin-bottom:10px" placeholder="What it meant..." id="cm" autocomplete="off">
-<button class="btn btn-primary" onclick="state.captureInput={heard:document.getElementById('ch').value,guess:document.getElementById('cg').value,meaning:document.getElementById('cm').value};addCapture()">+ Capture</button></div>
-${state.captures.length>0?`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">CAPTURED (${state.captures.length})</div>
-${state.captures.map((c,i)=>`<div class="capture-item"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="capture-heard">${c.heard}</div><div class="capture-detail">${c.guess} → ${c.meaning}</div></div>
-<button class="btn btn-sm btn-primary" style="padding:6px 12px;font-size:11px;width:auto" onclick="addToDeck(state.captures[${i}])">+ Deck</button></div></div>`).join('')}</div>`:''}`;return}
+if(m==="japaneasy"){
+const sCs=[...new Set(SCRIPTS.map(s=>s.c))];const lb={Intro:"🤝",Ask:"❓",React:"⚡",Save:"🆘",Smooth:"💫"};
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">JAPANEASY Mode</div><div></div></div>
+<div class="card" style="border-color:var(--teal)"><input class="input" style="margin-bottom:8px;font-size:14px" placeholder="Quick capture — what I heard..." id="jh" autocomplete="off">
+<div style="display:flex;gap:6px"><input class="input" style="font-size:13px;flex:1" placeholder="Romaji guess..." id="jg" autocomplete="off">
+<input class="input" style="font-size:13px;flex:1" placeholder="Meaning..." id="jm" autocomplete="off"></div>
+<button class="btn btn-teal btn-sm" style="margin-top:8px;width:100%" onclick="const h=document.getElementById('jh').value,g=document.getElementById('jg').value,m=document.getElementById('jm').value;if(h.trim()){S.caps.unshift({h,g,m,t:''});save();R()}">+ Capture</button></div>
+<div class="tags">${sCs.map(c=>`<button class="tag ${S.sc===c?'active':''}" onclick="S.sc='${c}';R()">${lb[c]||''} ${c}</button>`).join('')}</div>
+${SCRIPTS.filter(s=>s.c===S.sc).map(s=>`<div class="card" style="padding:12px 16px"><div class="script-jp">${s.jp}</div><div class="script-en">${s.en}</div></div>`).join('')}
+${S.caps.length>0?`<div class="section-title">Captured Tonight</div>${S.caps.slice(0,10).map((c,i)=>`<div class="card" style="padding:10px 14px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700">${c.h}</div><div style="font-size:12px;color:var(--dim)">${c.g} → ${c.m}</div></div>
+<button class="btn btn-sm btn-primary" style="padding:5px 10px;font-size:10px;width:auto" onclick="addToDeck(S.caps[${i}])">+Deck</button></div></div>`).join('')}`:''}`;return}
 
-if(m==="addword"){
-app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Add New Word</div><div></div></div>
-<div class="card"><input class="input" style="margin-bottom:10px" placeholder="Japanese (hiragana)..." id="nw-jp" autocomplete="off">
-<input class="input" style="margin-bottom:10px" placeholder="Romaji..." id="nw-r" autocomplete="off">
-<input class="input" style="margin-bottom:10px" placeholder="English meaning..." id="nw-en" autocomplete="off">
-<button class="btn btn-primary" onclick="addNewWord()">+ Add to Deck</button></div>
-${state.customWords.length>0?`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">YOUR CUSTOM WORDS (${state.customWords.length})</div>
-${state.customWords.map(v=>`<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><span class="word-en">${v.en}</span></div>`).join('')}</div>`:''}`;return}
+if(m==="verbs"){
+const sel=S.vsel!==null?VF[S.vsel]:null;
+if(sel){app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.vsel=null;R()">← Verbs</button><div class="top-nav-title">${sel.base} (${sel.en})</div><div></div></div>
+<div class="card" style="text-align:center;padding:24px"><div style="font-size:36px;font-weight:900">${sel.base}</div><div style="font-size:14px;color:var(--dim)">${sel.r} · ${sel.en} · Group ${sel.group}</div>
+<div style="margin-top:12px">${syllables(sel.base)}</div></div>
+<div class="card">
+${[["Polite","masu"],["Past polite","mashita"],["Negative","masen"],["Let's","mashou"],["Won't you?","masenka"],["Want to","tai"],["て form","te"],["Casual past","ta"],["Ongoing","teiru"],["Negative casual","nai"]].map(([l,k])=>`<div class="verb-form"><span class="verb-label">${l}</span><span class="verb-val">${sel[k]}</span></div>`).join('')}
+</div>`;return}
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Verb Forms (${VF.length})</div><div></div></div>
+${VF.map((v,i)=>`<div class="card" style="padding:12px 16px;cursor:pointer" onclick="S.vsel=${i};R()"><div style="display:flex;justify-content:space-between;align-items:center"><div><span style="font-size:18px;font-weight:700">${v.base}</span><span style="font-size:12px;color:var(--dim);margin-left:8px">${v.r}</span></div><span style="font-size:13px;color:var(--dim)">${v.en} →</span></div></div>`).join('')}`;return}
+
+if(m==="particles"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Particles</div><div></div></div>
+${PARTICLES.map(p=>`<div class="card particle-card"><div class="particle-sym">${p.p}</div><div class="particle-meaning">${p.m}</div><div class="particle-pattern">${p.pat}</div><div class="particle-ex">${p.ex}</div>${p.note?`<div style="font-size:11px;color:var(--orange);margin-top:4px">⚠️ ${p.note}</div>`:''}</div>`).join('')}`;return}
+
+if(m==="counters"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Counters</div><div></div></div>
+${[["Minutes (ぷん/ふん)","min"],["Hours (じかん)","hr"],["Months (かげつ)","mo"],["Years (ねん)","yr"]].map(([title,key])=>`<div class="card counter-section"><div class="counter-title">${title}</div>${COUNTERS[key].map(([jp,n])=>`<div class="counter-row"><span>${jp}</span><span style="color:var(--dim)">${n}</span></div>`).join('')}</div>`).join('')}`;return}
 
 if(m==="chunks"){
-app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Chunks</div><div></div></div>
-${CHUNKS.map(c=>`<div class="card chunk-row"><div><div class="chunk-jp">${c.jp}</div><div class="chunk-en">${c.en}</div></div><div class="chunk-particle">${c.p}</div></div>`).join('')}`;return}
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Chunks</div><div></div></div>
+${CHUNKS.map(c=>`<div class="card chunk-row"><div><div class="chunk-jp">${c.jp}</div><div class="chunk-en">${c.en}</div></div><div class="chunk-p">${c.p}</div></div>`).join('')}`;return}
 
-if(m==="scripts"){
-const sC=[...new Set(SCRIPTS.map(s=>s.cat))];const labels={Intro:"🤝 Intro",Ask:"❓ Ask",React:"⚡ React",Save:"🆘 Save",Smooth:"💫 Smooth"};
-const filtered=SCRIPTS.filter(s=>s.cat===state.scriptCat);
-app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Scripts</div><div></div></div>
-<div class="tags">${sC.map(c=>`<button class="tag ${state.scriptCat===c?'active':''}" onclick="state.scriptCat='${c}';render()">${labels[c]||c}</button>`).join('')}</div>
-${filtered.map(s=>`<div class="card script-card"><div class="script-jp">${s.jp}</div><div class="script-en">${s.en}</div></div>`).join('')}`;return}
+if(m==="capture"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Quick Capture</div><div></div></div>
+<div class="card"><input class="input" style="margin-bottom:8px" placeholder="What I heard..." id="ch" autocomplete="off">
+<input class="input" style="margin-bottom:8px" placeholder="My guess (romaji)..." id="cg" autocomplete="off">
+<input class="input" style="margin-bottom:8px" placeholder="What it meant..." id="cm" autocomplete="off">
+<button class="btn btn-primary" onclick="addCap()">+ Capture</button></div>
+${S.caps.length>0?`<div class="card"><div style="font-size:12px;font-weight:700;margin-bottom:6px">CAPTURED (${S.caps.length})</div>
+${S.caps.map((c,i)=>`<div class="capture-item"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600">${c.h}</div><div style="font-size:12px;color:var(--dim)">${c.g} → ${c.m}</div></div>
+<button class="btn btn-sm btn-primary" style="padding:5px 10px;font-size:10px;width:auto" onclick="addToDeck(S.caps[${i}])">+Deck</button></div></div>`).join('')}</div>`:''}`;return}
+
+if(m==="addword"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">Add Word</div><div></div></div>
+<div class="card"><input class="input" style="margin-bottom:8px" placeholder="Japanese (hiragana)..." id="nj" autocomplete="off">
+<input class="input" style="margin-bottom:8px" placeholder="Romaji..." id="nr" autocomplete="off">
+<input class="input" style="margin-bottom:8px" placeholder="English meaning..." id="ne" autocomplete="off">
+<button class="btn btn-primary" onclick="addWord()">+ Add to Deck</button></div>
+${S.cw.length>0?`<div class="card"><div style="font-size:12px;font-weight:700;margin-bottom:6px">YOUR WORDS (${S.cw.length})</div>
+${S.cw.map(v=>`<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-r">${v.r}</span></div><span class="word-en">${v.en}</span></div>`).join('')}</div>`:''}`;return}
 
 if(m==="stats"){
-const sorted=[...state.vocab].sort((a,b)=>{const aa=acc(a),ab=acc(b);if(aa===-1&&ab===-1)return 0;if(aa===-1)return 1;if(ab===-1)return -1;return aa-ab});
-const filtered=sorted.filter(v=>state.selectedCat==="All"||v.cat===state.selectedCat);
-app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">All Words (${state.vocab.length})</div><div></div></div>
-<div class="tags">${cats().map(c=>`<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
-<div class="card">${filtered.map(v=>{const a=acc(v);const bg=a===-1?'var(--border)':a>=80?'var(--green-dim)':a>=50?'var(--orange-dim)':'var(--red-dim)';
-const col=a===-1?'var(--text-faint)':a>=80?'var(--green)':a>=50?'var(--orange)':'var(--red)';
-return `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:${bg};color:${col}">${a===-1?'—':a+'%'}</span></div></div>`}).join('')}</div>`;return}
+const sorted=[...S.vocab].sort((a,b)=>{const aa=ac(a),ab=ac(b);if(aa===-1&&ab===-1)return 0;if(aa===-1)return 1;if(ab===-1)return -1;return aa-ab});
+const filtered=sorted.filter(v=>S.cat==="All"||v.cat===S.cat);
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="S.mode='menu';R()">← Back</button><div class="top-nav-title">All Words (${S.vocab.length})</div><div></div></div>
+<div class="tags">${cats().map(c=>`<button class="tag ${S.cat===c?'active':''}" onclick="S.cat='${c}';R()">${c}</button>`).join('')}</div>
+<div class="card">${filtered.map(v=>{const a=ac(v);const bg=a===-1?'var(--border)':a>=80?'var(--green-d)':a>=50?'var(--orange-d)':'var(--red-d)';
+const col=a===-1?'var(--faint)':a>=80?'var(--green)':a>=50?'var(--orange)':'var(--red)';
+return `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-r">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:${bg};color:${col}">${a===-1?'—':a+'%'}</span></div></div>`}).join('')}</div>`;return}
 }
 
-loadState();render();
+load();R();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 </script></body></html>
