@@ -1802,12 +1802,13 @@ function renderDrill(){
                 </div>`
               : `<button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="revealForSelfGrade()">👀 Reveal</button>`)
           : (feedbackShowing
-              ? `<div class="muted" style="text-align:center;font-size:12px;padding:10px 0">Auto-advancing… <span style="opacity:.6">(Enter to skip wait)</span></div>`
+              ? `<button class="btn btn-primary" style="width:100%" onclick="nextCard()">Next card ›</button>`
               : `<div class="btn-row">
                   <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
                   <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
                 </div>`)
         }
+        ${!feedbackShowing && !revealShowing ? `<button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:13px" onclick="skipCard()">Skip — no penalty</button>` : ''}
       </div>
     </div>
 
@@ -1873,28 +1874,16 @@ function setDirection(d){
 
 let _nextTimer = null;
 function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer = null; } }
-function scheduleNext(ms){
-  clearNextTimer();
-  _nextTimer = setTimeout(() => { _nextTimer = null; nextCard(); }, ms);
-}
+/* _nextTimer is still used by sentence mode (inline setTimeout). Burst drill
+   mode is tap-to-advance only — no auto-advance timer. */
 
 function applyBurstResult(word, correct, viaVoice){
+  /* Update progress only. Queue mutation is deferred to nextCard so the
+     feedback phase renders with b.queue[0] === the word just answered. */
   const b = state.burst;
   if(!b || !b.active) return;
   const cur = b.progress[word.id] || 0;
-  if(correct){
-    b.progress[word.id] = cur + 1;
-  } else {
-    b.progress[word.id] = 0;
-  }
-  /* remove head (current word) */
-  b.queue.shift();
-  /* requeue if not yet passed */
-  if((b.progress[word.id] || 0) < BURST_PASS_TARGET){
-    requeueWord(word);
-  }
-  state.sessionQueue = b.queue;
-  state.sessionIdx = 0;
+  b.progress[word.id] = correct ? cur + 1 : 0;
 }
 
 function submitAns(viaVoice, overrideInput){
@@ -1915,7 +1904,6 @@ function submitAns(viaVoice, overrideInput){
   applyBurstResult(word, res.correct, viaVoice);
   save();
   render();
-  scheduleNext(res.correct ? 1000 : 2200);
 }
 
 function selfGrade(correct){
@@ -1926,12 +1914,12 @@ function selfGrade(correct){
   recordAttempt(word.id, correct, false);
   updateStreak(correct);
   applyBurstResult(word, correct, false);
-  /* Self-grade: no feedback phase — user already knows. Advance immediately. */
+  /* Self-grade: user already saw the answer via Reveal. Set lastAnswer so
+     nextCard commits the queue shift+requeue, then advance. */
+  state.lastAnswer = {correct, viaVoice:false, word, smart:null, correctAnswer:word.en};
   state._reveal = false;
-  state.lastAnswer = null;
-  if(!b.queue.length) completeBurst();
   save();
-  render();
+  nextCard();
 }
 
 function revealForSelfGrade(){
@@ -1949,7 +1937,6 @@ function revealAnswer(){
   applyBurstResult(word, false, false);
   save();
   render();
-  scheduleNext(2200);
 }
 
 function nextCard(){
@@ -1962,15 +1949,40 @@ function nextCard(){
     state._recentlyServed = state._recentlyServed || [];
     state._recentlyServed.push(prev.id);
     if(state._recentlyServed.length > 30) state._recentlyServed.shift();
+    /* Commit deferred queue mutation now that feedback has been dismissed. */
+    if(b.queue[0] && b.queue[0].id === prev.id){
+      b.queue.shift();
+      if((b.progress[prev.id] || 0) < BURST_PASS_TARGET){
+        requeueWord(prev);
+      }
+      state.sessionQueue = b.queue;
+      state.sessionIdx = 0;
+    }
   }
   state.lastAnswer = null;
   state._reveal = false;
-  /* burst complete? */
   if(!b.queue.length){
     completeBurst();
   }
   render();
 }
+
+function skipCard(){
+  /* Non-penalty skip: requeue to back, don't touch progress or attempt log. */
+  const b = state.burst;
+  if(!b || !b.active || state.lastAnswer) return;
+  const word = b.queue[0];
+  if(!word) return;
+  b.queue.shift();
+  requeueWord(word);
+  state.sessionQueue = b.queue;
+  state.sessionIdx = 0;
+  state._reveal = false;
+  _hintStage = 0;
+  log('skip',{id:word.id});
+  render();
+}
+window.skipCard = skipCard;
 
 function drillVoice(){
   const b = state.burst;
@@ -2369,7 +2381,7 @@ function renderSettings(){
     <div class="card">
       <h3>About</h3>
       <div class="muted">
-        v4.12 · conversation edition<br>
+        v4.13 · conversation edition<br>
         ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
@@ -2532,8 +2544,10 @@ function bindSwipe(){
         if(state.lastAnswer) nextCard(); else submitAns(false);
       }
     } else if(Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)*1.5){
-      if(dy < 0) revealAnswer();          /* swipe up → reveal */
-      else if(voiceSupported()) drillVoice(); /* swipe down → voice */
+      /* swipe up → reveal. Guard: do nothing while feedback is showing so
+         we don't call applyBurstResult twice on an already-committed word. */
+      if(dy < 0){ if(!state.lastAnswer) revealAnswer(); }
+      else if(voiceSupported() && !state.lastAnswer) drillVoice(); /* swipe down → voice */
     }
   };
 }
