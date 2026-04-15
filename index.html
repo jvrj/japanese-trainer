@@ -133,6 +133,17 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 /* Floating FABs */
 .notes-fab{position:fixed;right:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--purple);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(168,85,247,.45);display:flex;align-items:center;justify-content:center}
 .notes-fab:active{transform:scale(.92)}
+.ask-fab{position:fixed;right:16px;bottom:148px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#60a5fa,#a78bfa);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(96,165,250,.45);display:flex;align-items:center;justify-content:center}
+.ask-fab:active{transform:scale(.92)}
+.chat-log{max-height:55vh;overflow-y:auto;padding:8px 4px;display:flex;flex-direction:column;gap:10px}
+.chat-msg{padding:10px 12px;border-radius:14px;max-width:85%;line-height:1.45;font-size:14px;white-space:pre-wrap;word-wrap:break-word}
+.chat-msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.asst{align-self:flex-start;background:var(--card2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px}
+.chat-msg.err{align-self:stretch;background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.3);font-size:12px}
+.chat-msg .jp{font-family:inherit}
+.chat-input-row{display:flex;gap:6px;margin-top:8px}
+.chat-input-row .input{flex:1}
+.chat-status{font-size:11px;color:var(--dim);padding:4px 2px}
 .back-fab{position:fixed;left:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--card2);color:var(--text);border:1px solid var(--border);font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
 .back-fab:active{transform:scale(.92)}
 .back-fab.show{display:flex}
@@ -253,6 +264,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 <button class="back-fab" id="backFab" title="Back">←</button>
 <button class="notes-fab" id="notesFab" title="Quick note">💭</button>
+<button class="ask-fab" id="askFab" title="Ask Claude">🤖</button>
 
 <div class="modal-bg" id="modal"><div class="modal" id="modalInner"></div></div>
 
@@ -1014,7 +1026,7 @@ const SENTENCE_TEMPLATES = [
 const LS = {
   words:'jp4_words', stats:'jp4_stats', settings:'jp4_settings',
   notes:'jp4_notes', logs:'jp4_logs', streak:'jp4_streak',
-  enabled:'jp4_enabled_words'
+  enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1030,7 +1042,9 @@ const DEFAULT_SETTINGS = {
   smartWrongFeedback:true,
   removedWords:[],            // word IDs manually removed from active pool
   srsOn:true,                 // use SRS intervals to pick next cards
-  swipeOn:true                // swipe gestures on drill
+  swipeOn:true,               // swipe gestures on drill
+  anthropicKey:'',            // Claude API key — lives only in localStorage on this device
+  anthropicModel:'claude-haiku-4-5-20251001'
 };
 
 let state = {
@@ -1047,6 +1061,7 @@ let state = {
   voiceListening:false,
   voiceResult:null,
   burst:{bursts:0, passedIds:[], active:false, complete:false, words:[], queue:[], progress:{}, isReview:{}},
+  askClaude:{messages:[]}, // chat history with Claude; persists across sessions
   _reveal:false,
   _sentenceAnswer:null
 };
@@ -1132,6 +1147,7 @@ function save(){
     localStorage.setItem(LS.notes, JSON.stringify(state.notes));
     localStorage.setItem(LS.logs, JSON.stringify(state.logs.slice(-500)));
     localStorage.setItem(LS.streak, JSON.stringify(state.streak));
+    localStorage.setItem(LS.askClaude, JSON.stringify(state.askClaude || {messages:[]}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1142,6 +1158,7 @@ function load(){
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
     state.streak = {...state.streak, ...(JSON.parse(localStorage.getItem(LS.streak)||'{}'))};
+    state.askClaude = JSON.parse(localStorage.getItem(LS.askClaude)||'{"messages":[]}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -2595,6 +2612,25 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>🤖 Claude API</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Your Anthropic API key enables the 🤖 bubble. Stored only in this device's localStorage. Never sent to the repo or anywhere but api.anthropic.com.</div>
+      <input class="input" id="anthropicKeyInput" type="password" placeholder="sk-ant-..." value="${esc(s.anthropicKey||'')}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveAnthropicKey()">Save key</button>
+        <button class="btn btn-ghost" onclick="clearAnthropicKey()">Clear</button>
+      </div>
+      <div class="spacer"></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Model</div><div class="word-en">Haiku = cheap/fast · Sonnet = more nuanced</div></div>
+        <select class="input" style="width:auto" onchange="setAnthropicModel(this.value)">
+          <option value="claude-haiku-4-5-20251001" ${(s.anthropicModel||'').includes('haiku')?'selected':''}>Haiku 4.5</option>
+          <option value="claude-sonnet-4-6" ${(s.anthropicModel||'')==='claude-sonnet-4-6'?'selected':''}>Sonnet 4.6</option>
+        </select>
+      </label>
+      <div class="muted" style="font-size:11px;margin-top:6px">Get a key: console.anthropic.com → API Keys. You'll need account credits.</div>
+    </div>
+
+    <div class="card">
       <h3>Data</h3>
       <button class="btn btn-blue" onclick="exportJSON()">⬇ Export all data (JSON)</button>
       <button class="btn btn-secondary" onclick="importJSON()">⬆ Import JSON</button>
@@ -2617,7 +2653,7 @@ function renderSettings(){
     <div class="card">
       <h3>About</h3>
       <div class="muted">
-        v4.14 · conversation edition · pattern packs<br>
+        v4.15 · conversation edition · pattern packs + 🤖 ask claude<br>
         ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
@@ -2634,6 +2670,24 @@ function toggleFilter(field, val){
 }
 function clearFilters(){ state.settings.activeThemes=[]; state.settings.activePOS=[]; state.settings.activeRegister=[]; save(); render(); }
 function toggleSetting(k){ state.settings[k] = !state.settings[k]; save(); load(); render(); }
+function saveAnthropicKey(){
+  const v = ($('#anthropicKeyInput')?.value || '').trim();
+  state.settings.anthropicKey = v;
+  save();
+  alert(v ? 'Key saved. Tap the 🤖 bubble to chat.' : 'Key cleared.');
+  render();
+}
+function clearAnthropicKey(){
+  state.settings.anthropicKey = '';
+  save(); render();
+}
+function setAnthropicModel(m){
+  state.settings.anthropicModel = m;
+  save();
+}
+window.saveAnthropicKey = saveAnthropicKey;
+window.clearAnthropicKey = clearAnthropicKey;
+window.setAnthropicModel = setAnthropicModel;
 
 function addWord(){
   const jp = ($('#addJP')?.value || '').trim();
@@ -2723,6 +2777,172 @@ function deleteNote(id){
   save(); openNotes();
 }
 
+/* ---------- ASK CLAUDE ---------- */
+const ASK_CLAUDE_SYSTEM = `You are a friendly Japanese tutor for Julius, a beginner/intermediate learner whose goal is conversational fluency with Japanese people. He attends a weekly JAPANEASY class and a language exchange. He is not studying for JLPT.
+
+Hard rules:
+- Write ALL Japanese in HIRAGANA ONLY. No kanji. No romaji unless Julius explicitly asks.
+- Reply in concise English with short Japanese examples inline.
+- Prioritize conversational utility over grammar theory or test-taking.
+- When he asks about a word: give meaning, register (casual/polite), 1-2 short hiragana example sentences, and any close-but-wrong siblings he might confuse it with.
+- When he asks about a grammar pattern: show the pattern with 2-3 substitution examples using common N5-level words in hiragana.
+- If he writes Japanese and asks to check it: correct gently, show the fix in hiragana, explain in one sentence.
+- Keep answers short by default (3-6 sentences). Expand only if asked.
+- Flag anything you are uncertain about so his JAPANEASY teacher can confirm.
+- Tone: encouraging, casual, direct. Peer-to-peer, not teacher-to-student.`;
+
+function currentClaudeContext(){
+  const s = state.screen;
+  if(s === 'drill'){
+    const b = state.burst;
+    const w = b && b.active ? b.queue[0] : null;
+    if(w) return {hint:'this card', text:`I'm drilling this card: ${w.jp}${w.romaji?' ('+w.romaji+')':''} — ${w.en}${b.isPattern?` · pattern: ${b.patternName}`:''}.`};
+  }
+  if(s === 'sentence'){
+    return {hint:'sentences', text:`I'm in Sentences mode.`};
+  }
+  if(s === 'convoDetail'){
+    const id = state._navData;
+    const sc = SCENARIOS.find(x=>x.id===id);
+    if(sc) return {hint:'this scenario', text:`I'm reviewing the "${sc.title}" conversation scenario.`};
+  }
+  return null;
+}
+
+function renderChatMsg(m){
+  if(m.role === 'user') return `<div class="chat-msg user">${esc(m.content)}</div>`;
+  return `<div class="chat-msg asst">${esc(m.content)}</div>`;
+}
+function scrollChatToBottom(){
+  const log = $('#chatLog');
+  if(log) log.scrollTop = log.scrollHeight;
+}
+
+function openAskClaude(){
+  const ctx = currentClaudeContext();
+  const hasKey = !!(state.settings.anthropicKey || '').trim();
+  const msgs = (state.askClaude && state.askClaude.messages) || [];
+  const m = $('#modalInner');
+  m.innerHTML = `
+    <div class="modal-head">
+      <h2>🤖 Ask Claude</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    ${!hasKey ? `<div class="chat-msg err">Paste your Anthropic API key into <b>Settings → Claude API</b> to enable this. The key stays on this device only.</div>` : ''}
+    <div class="chat-log" id="chatLog">
+      ${msgs.length === 0 ? `<div class="muted" style="padding:8px;font-size:13px">Ask about a word, a grammar point, how to say something, or get a quick correction. Replies use hiragana only.</div>` : ''}
+      ${msgs.map(renderChatMsg).join('')}
+    </div>
+    <div class="chat-input-row">
+      <input class="input" id="askInput" placeholder="${ctx ? 'ask about '+esc(ctx.hint)+'...' : 'ask anything japanese...'}" ${hasKey?'':'disabled'}>
+      <button class="btn btn-primary" id="askSendBtn" onclick="sendAskClaude()" ${hasKey?'':'disabled'}>Send</button>
+    </div>
+    <div class="chat-status" id="chatStatus"></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="clearAskClaude()">Clear chat</button>
+      ${ctx && hasKey ? `<button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="quickAskContext()">💡 Ask about ${esc(ctx.hint)}</button>` : ''}
+    </div>
+  `;
+  $('#modal').classList.add('open');
+  const inp = $('#askInput');
+  if(inp && hasKey){
+    inp.focus();
+    inp.onkeydown = e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendAskClaude(); } };
+  }
+  scrollChatToBottom();
+}
+
+function clearAskClaude(){
+  if(!confirm('Clear the Ask Claude chat history?')) return;
+  state.askClaude = {messages:[]};
+  save(); openAskClaude();
+}
+
+function quickAskContext(){
+  const ctx = currentClaudeContext();
+  if(!ctx) return;
+  const inp = $('#askInput');
+  if(inp) inp.value = ctx.text + ' Explain it simply.';
+  sendAskClaude();
+}
+
+async function sendAskClaude(){
+  const inp = $('#askInput');
+  const btn = $('#askSendBtn');
+  const status = $('#chatStatus');
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key){ if(status) status.textContent = 'No API key set — open Settings first.'; return; }
+  const text = (inp?.value || '').trim();
+  if(!text) return;
+  const ctx = currentClaudeContext();
+  const fullText = ctx && (state.askClaude.messages.length === 0) ? `${ctx.text}\n\n${text}` : text;
+
+  state.askClaude.messages.push({role:'user', content:fullText});
+  save();
+  if(inp) inp.value = '';
+  if(btn) btn.disabled = true;
+  if(status) status.textContent = 'thinking…';
+  const logEl = $('#chatLog');
+  if(logEl){
+    logEl.insertAdjacentHTML('beforeend', renderChatMsg({role:'user', content:fullText}));
+    scrollChatToBottom();
+  }
+
+  try{
+    const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
+    const history = state.askClaude.messages.slice(-20).map(m => ({role:m.role, content:m.content}));
+    const body = {
+      model,
+      max_tokens: 1024,
+      system: [{type:'text', text: ASK_CLAUDE_SYSTEM, cache_control:{type:'ephemeral'}}],
+      messages: history
+    };
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers: {
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok){
+      const errTxt = await res.text().catch(()=>String(res.status));
+      throw new Error(`${res.status} — ${errTxt.slice(0,400)}`);
+    }
+    const data = await res.json();
+    const reply = (data.content || []).map(c => c.text || '').join('').trim() || '(empty reply)';
+    state.askClaude.messages.push({role:'assistant', content: reply});
+    save();
+    if(logEl){
+      logEl.insertAdjacentHTML('beforeend', renderChatMsg({role:'assistant', content:reply}));
+      scrollChatToBottom();
+    }
+    if(status){
+      const usage = data.usage || {};
+      const cache = usage.cache_read_input_tokens ? ` · ${usage.cache_read_input_tokens} cached` : '';
+      status.textContent = `${usage.input_tokens||'?'} in · ${usage.output_tokens||'?'} out${cache}`;
+    }
+    log('ask_claude_ok',{model, in:(data.usage||{}).input_tokens, out:(data.usage||{}).output_tokens});
+  } catch(e){
+    if(logEl){
+      logEl.insertAdjacentHTML('beforeend', `<div class="chat-msg err">Request failed: ${esc(String(e.message||e))}</div>`);
+      scrollChatToBottom();
+    }
+    if(status) status.textContent = 'error';
+    log('ask_claude_err',{err:String(e.message||e)});
+  } finally {
+    if(btn) btn.disabled = false;
+    if(inp){ inp.focus(); }
+  }
+}
+
+window.openAskClaude = openAskClaude;
+window.sendAskClaude = sendAskClaude;
+window.clearAskClaude = clearAskClaude;
+window.quickAskContext = quickAskContext;
+
 /* ---------- SCREEN BINDING ---------- */
 function bindScreen(){
   const inp = $('#ansInput');
@@ -2798,6 +3018,7 @@ function init(){
   /* Nav wiring */
   $$('.nav-btn').forEach(b => b.onclick = () => nav(b.dataset.screen));
   $('#notesFab').onclick = openNotes;
+  const askFab = $('#askFab'); if(askFab) askFab.onclick = openAskClaude;
   $('#backFab').onclick = goBack;
   $('#modal').onclick = (e)=>{ if(e.target.id==='modal') closeModal(); };
 
