@@ -388,69 +388,231 @@ body {
 <div class="app" id="app"></div>
 
 <script>
-// ============================================================
-// DATA
-// ============================================================
 const VOCAB_DATA=[
+{jp:"～かげつ",r:"kagetsu",en:"month counter",cat:"Count"},
+{jp:"～じかん",r:"jikan",en:"hour counter",cat:"Count"},
+{jp:"～ふん/ぷん",r:"fun/pun",en:"minute counter",cat:"Count"},
+{jp:"～さい",r:"sai",en:"years old",cat:"Count"},
+{jp:"～かい",r:"kai",en:"floor/times",cat:"Count"},
+{jp:"～にん",r:"nin",en:"people counter",cat:"Count"},
+{jp:"～まい",r:"mai",en:"flat object counter",cat:"Count"},
+{jp:"～ほん",r:"hon",en:"long object counter",cat:"Count"},
+{jp:"～さつ",r:"satsu",en:"book counter",cat:"Count"},
+{jp:"～だい",r:"dai",en:"machine counter",cat:"Count"},
+{jp:"～こ",r:"ko",en:"small object counter",cat:"Count"},
 {jp:"ひと",r:"hito",en:"person",cat:"People"},
 {jp:"おとこのひと",r:"otokonohito",en:"man",cat:"People"},
 {jp:"おんなのひと",r:"onnanohito",en:"woman",cat:"People"},
+{jp:"おとこのこ",r:"otokonoko",en:"boy",cat:"People"},
+{jp:"おんなのこ",r:"onnanoko",en:"girl",cat:"People"},
 {jp:"ともだち",r:"tomodachi",en:"friend",cat:"People"},
 {jp:"かれ",r:"kare",en:"he",cat:"People"},
 {jp:"かのじょ",r:"kanojo",en:"she",cat:"People"},
-{jp:"いえ",r:"ie",en:"home",cat:"Places"},
+{jp:"わたし",r:"watashi",en:"I/me",cat:"People"},
+{jp:"あなた",r:"anata",en:"you",cat:"People"},
+{jp:"おとな",r:"otona",en:"adult",cat:"People"},
+{jp:"こども",r:"kodomo",en:"child",cat:"People"},
+{jp:"がくせい",r:"gakusei",en:"student",cat:"People"},
+{jp:"せんせい",r:"sensei",en:"teacher",cat:"People"},
+{jp:"いしゃ",r:"isha",en:"doctor",cat:"People"},
+{jp:"かぞく",r:"kazoku",en:"family",cat:"People"},
+{jp:"りょうしん",r:"ryoushin",en:"parents",cat:"People"},
+{jp:"おかあさん",r:"okaasan",en:"mother",cat:"People"},
+{jp:"おとうさん",r:"otousan",en:"father",cat:"People"},
+{jp:"おにいさん",r:"oniisan",en:"older brother",cat:"People"},
+{jp:"おねえさん",r:"oneesan",en:"older sister",cat:"People"},
+{jp:"おとうと",r:"otouto",en:"younger brother",cat:"People"},
+{jp:"いもうと",r:"imouto",en:"younger sister",cat:"People"},
+{jp:"おくさん",r:"okusan",en:"wife (someone's)",cat:"People"},
+{jp:"ごしゅじん",r:"goshujin",en:"husband (someone's)",cat:"People"},
+{jp:"おじいさん",r:"ojiisan",en:"grandfather",cat:"People"},
+{jp:"おばあさん",r:"obaasan",en:"grandmother",cat:"People"},
+{jp:"みんな",r:"minna",en:"everyone",cat:"People"},
+{jp:"だれ",r:"dare",en:"who",cat:"People"},
+{jp:"いえ",r:"ie",en:"home/house",cat:"Places"},
+{jp:"うち",r:"uchi",en:"home/my place",cat:"Places"},
+{jp:"へや",r:"heya",en:"room",cat:"Places"},
 {jp:"みせ",r:"mise",en:"shop",cat:"Places"},
 {jp:"えき",r:"eki",en:"station",cat:"Places"},
 {jp:"びょういん",r:"byouin",en:"hospital",cat:"Places"},
 {jp:"がっこう",r:"gakkou",en:"school",cat:"Places"},
 {jp:"こうえん",r:"kouen",en:"park",cat:"Places"},
+{jp:"ぎんこう",r:"ginkou",en:"bank",cat:"Places"},
+{jp:"ゆうびんきょく",r:"yuubinkyoku",en:"post office",cat:"Places"},
+{jp:"としょかん",r:"toshokan",en:"library",cat:"Places"},
+{jp:"デパート",r:"depaato",en:"department store",cat:"Places"},
+{jp:"スーパー",r:"suupaa",en:"supermarket",cat:"Places"},
+{jp:"コンビニ",r:"konbini",en:"convenience store",cat:"Places"},
+{jp:"レストラン",r:"resutoran",en:"restaurant",cat:"Places"},
+{jp:"カフェ",r:"kafe",en:"cafe",cat:"Places"},
+{jp:"ホテル",r:"hoteru",en:"hotel",cat:"Places"},
+{jp:"くうこう",r:"kuukou",en:"airport",cat:"Places"},
+{jp:"かいしゃ",r:"kaisha",en:"company",cat:"Places"},
+{jp:"きょうしつ",r:"kyoushitsu",en:"classroom",cat:"Places"},
+{jp:"トイレ",r:"toire",en:"toilet",cat:"Places"},
+{jp:"にわ",r:"niwa",en:"garden",cat:"Places"},
+{jp:"まち",r:"machi",en:"town/city",cat:"Places"},
+{jp:"どうぶつえん",r:"doubutsuen",en:"zoo",cat:"Places"},
+{jp:"えいがかん",r:"eigakan",en:"cinema",cat:"Places"},
+{jp:"プール",r:"puuru",en:"pool",cat:"Places"},
+{jp:"やま",r:"yama",en:"mountain",cat:"Places"},
+{jp:"うみ",r:"umi",en:"sea/ocean",cat:"Places"},
+{jp:"かわ",r:"kawa",en:"river",cat:"Places"},
+{jp:"みち",r:"michi",en:"road/street",cat:"Places"},
+{jp:"はし",r:"hashi",en:"bridge",cat:"Places"},
+{jp:"いりぐち",r:"iriguchi",en:"entrance",cat:"Places"},
+{jp:"でぐち",r:"deguchi",en:"exit",cat:"Places"},
+{jp:"そと",r:"soto",en:"outside",cat:"Places"},
+{jp:"なか",r:"naka",en:"inside",cat:"Places"},
 {jp:"みず",r:"mizu",en:"water",cat:"Food"},
 {jp:"にく",r:"niku",en:"meat",cat:"Food"},
 {jp:"さかな",r:"sakana",en:"fish",cat:"Food"},
 {jp:"たまご",r:"tamago",en:"egg",cat:"Food"},
-{jp:"りょうり",r:"ryouri",en:"cooking",cat:"Food"},
+{jp:"りょうり",r:"ryouri",en:"cooking/dish",cat:"Food"},
+{jp:"ごはん",r:"gohan",en:"rice/meal",cat:"Food"},
+{jp:"パン",r:"pan",en:"bread",cat:"Food"},
+{jp:"やさい",r:"yasai",en:"vegetables",cat:"Food"},
+{jp:"くだもの",r:"kudamono",en:"fruit",cat:"Food"},
+{jp:"おちゃ",r:"ocha",en:"tea",cat:"Food"},
+{jp:"コーヒー",r:"koohii",en:"coffee",cat:"Food"},
+{jp:"ぎゅうにゅう",r:"gyuunyuu",en:"milk",cat:"Food"},
+{jp:"おさけ",r:"osake",en:"alcohol/sake",cat:"Food"},
+{jp:"おかし",r:"okashi",en:"sweets/candy",cat:"Food"},
+{jp:"ケーキ",r:"keeki",en:"cake",cat:"Food"},
+{jp:"さとう",r:"satou",en:"sugar",cat:"Food"},
+{jp:"しお",r:"shio",en:"salt",cat:"Food"},
+{jp:"おべんとう",r:"obentou",en:"lunch box",cat:"Food"},
+{jp:"あさごはん",r:"asagohan",en:"breakfast",cat:"Food"},
+{jp:"ひるごはん",r:"hirugohan",en:"lunch",cat:"Food"},
+{jp:"ばんごはん",r:"bangohan",en:"dinner",cat:"Food"},
+{jp:"りんご",r:"ringo",en:"apple",cat:"Food"},
+{jp:"ぎゅうにく",r:"gyuuniku",en:"beef",cat:"Food"},
+{jp:"とりにく",r:"toriniku",en:"chicken",cat:"Food"},
+{jp:"おにぎり",r:"onigiri",en:"rice ball",cat:"Food"},
+{jp:"ラーメン",r:"raamen",en:"ramen",cat:"Food"},
 {jp:"あたま",r:"atama",en:"head",cat:"Body"},
+{jp:"かお",r:"kao",en:"face",cat:"Body"},
+{jp:"め",r:"me",en:"eye",cat:"Body"},
+{jp:"みみ",r:"mimi",en:"ear",cat:"Body"},
+{jp:"はな",r:"hana",en:"nose",cat:"Body"},
+{jp:"くち",r:"kuchi",en:"mouth",cat:"Body"},
+{jp:"て",r:"te",en:"hand",cat:"Body"},
+{jp:"あし",r:"ashi",en:"foot/leg",cat:"Body"},
 {jp:"おなか",r:"onaka",en:"stomach",cat:"Body"},
-{jp:"つかれた",r:"tsukareta",en:"tired",cat:"Feelings"},
-{jp:"うれしい",r:"ureshii",en:"happy",cat:"Feelings"},
-{jp:"さびしい",r:"sabishii",en:"lonely",cat:"Feelings"},
-{jp:"いま",r:"ima",en:"now",cat:"Time"},
-{jp:"あした",r:"ashita",en:"tomorrow",cat:"Time"},
-{jp:"きのう",r:"kinou",en:"yesterday",cat:"Time"},
-{jp:"まいにち",r:"mainichi",en:"every day",cat:"Time"},
-{jp:"しゅうまつ",r:"shuumatsu",en:"weekend",cat:"Time"},
-{jp:"やすみ",r:"yasumi",en:"day off",cat:"Time"},
-{jp:"ひま",r:"hima",en:"free time",cat:"Time"},
-{jp:"つぎ",r:"tsugi",en:"next",cat:"Time"},
+{jp:"からだ",r:"karada",en:"body",cat:"Body"},
+{jp:"こえ",r:"koe",en:"voice",cat:"Body"},
 {jp:"でんわ",r:"denwa",en:"phone",cat:"Things"},
 {jp:"くるま",r:"kuruma",en:"car",cat:"Things"},
 {jp:"かぎ",r:"kagi",en:"key",cat:"Things"},
 {jp:"きっぷ",r:"kippu",en:"ticket",cat:"Things"},
 {jp:"かばん",r:"kaban",en:"bag",cat:"Things"},
-{jp:"ほんとう",r:"hontou",en:"really",cat:"Conv"},
-{jp:"たぶん",r:"tabun",en:"maybe",cat:"Conv"},
-{jp:"ぜんぜん",r:"zenzen",en:"not at all",cat:"Conv"},
-{jp:"もちろん",r:"mochiron",en:"of course",cat:"Conv"},
-{jp:"だいじょうぶ",r:"daijoubu",en:"okay",cat:"Conv"},
-{jp:"ときどき",r:"tokidoki",en:"sometimes",cat:"Conv"},
-{jp:"すき",r:"suki",en:"like",cat:"Conv"},
-{jp:"きらい",r:"kirai",en:"dislike",cat:"Conv"},
-{jp:"とくに",r:"tokuni",en:"especially",cat:"Conv"},
-{jp:"いちばん",r:"ichiban",en:"most",cat:"Conv"},
-{jp:"ぜんぶ",r:"zenbu",en:"everything",cat:"Conv"},
-{jp:"すこし",r:"sukoshi",en:"a little",cat:"Conv"},
-{jp:"もっと",r:"motto",en:"more",cat:"Conv"},
-{jp:"やばい",r:"yabai",en:"crazy",cat:"Conv"},
-{jp:"めんどくさい",r:"mendokusai",en:"annoying",cat:"Conv"},
+{jp:"ほん",r:"hon",en:"book",cat:"Things"},
+{jp:"しんぶん",r:"shinbun",en:"newspaper",cat:"Things"},
+{jp:"ざっし",r:"zasshi",en:"magazine",cat:"Things"},
+{jp:"てがみ",r:"tegami",en:"letter",cat:"Things"},
+{jp:"えんぴつ",r:"enpitsu",en:"pencil",cat:"Things"},
+{jp:"ペン",r:"pen",en:"pen",cat:"Things"},
+{jp:"ノート",r:"nooto",en:"notebook",cat:"Things"},
+{jp:"かみ",r:"kami",en:"paper",cat:"Things"},
+{jp:"じしょ",r:"jisho",en:"dictionary",cat:"Things"},
+{jp:"めがね",r:"megane",en:"glasses",cat:"Things"},
+{jp:"かさ",r:"kasa",en:"umbrella",cat:"Things"},
+{jp:"とけい",r:"tokei",en:"clock/watch",cat:"Things"},
+{jp:"テレビ",r:"terebi",en:"television",cat:"Things"},
+{jp:"カメラ",r:"kamera",en:"camera",cat:"Things"},
+{jp:"コンピュータ",r:"konpyuuta",en:"computer",cat:"Things"},
+{jp:"いす",r:"isu",en:"chair",cat:"Things"},
+{jp:"つくえ",r:"tsukue",en:"desk",cat:"Things"},
+{jp:"まど",r:"mado",en:"window",cat:"Things"},
+{jp:"テーブル",r:"teeburu",en:"table",cat:"Things"},
+{jp:"ベッド",r:"beddo",en:"bed",cat:"Things"},
+{jp:"ドア",r:"doa",en:"door",cat:"Things"},
+{jp:"でんき",r:"denki",en:"electricity/light",cat:"Things"},
+{jp:"エアコン",r:"eakon",en:"air conditioner",cat:"Things"},
+{jp:"くつ",r:"kutsu",en:"shoes",cat:"Things"},
+{jp:"ぼうし",r:"boushi",en:"hat",cat:"Things"},
+{jp:"シャツ",r:"shatsu",en:"shirt",cat:"Things"},
+{jp:"ズボン",r:"zubon",en:"pants",cat:"Things"},
+{jp:"スカート",r:"sukaato",en:"skirt",cat:"Things"},
+{jp:"セーター",r:"seetaa",en:"sweater",cat:"Things"},
+{jp:"コート",r:"kooto",en:"coat",cat:"Things"},
+{jp:"おかね",r:"okane",en:"money",cat:"Things"},
+{jp:"きって",r:"kitte",en:"stamp",cat:"Things"},
+{jp:"じてんしゃ",r:"jitensha",en:"bicycle",cat:"Things"},
+{jp:"バス",r:"basu",en:"bus",cat:"Things"},
+{jp:"タクシー",r:"takushii",en:"taxi",cat:"Things"},
+{jp:"でんしゃ",r:"densha",en:"train",cat:"Things"},
+{jp:"ひこうき",r:"hikouki",en:"airplane",cat:"Things"},
+{jp:"エレベーター",r:"erebeetaa",en:"elevator",cat:"Things"},
+{jp:"はこ",r:"hako",en:"box",cat:"Things"},
+{jp:"はな",r:"hana",en:"flower",cat:"Things"},
+{jp:"き",r:"ki",en:"tree",cat:"Things"},
+{jp:"え",r:"e",en:"picture",cat:"Things"},
+{jp:"しゃしん",r:"shashin",en:"photo",cat:"Things"},
+{jp:"いま",r:"ima",en:"now",cat:"Time"},
+{jp:"あした",r:"ashita",en:"tomorrow",cat:"Time"},
+{jp:"きのう",r:"kinou",en:"yesterday",cat:"Time"},
+{jp:"きょう",r:"kyou",en:"today",cat:"Time"},
+{jp:"まいにち",r:"mainichi",en:"every day",cat:"Time"},
+{jp:"しゅうまつ",r:"shuumatsu",en:"weekend",cat:"Time"},
+{jp:"やすみ",r:"yasumi",en:"day off",cat:"Time"},
+{jp:"ひま",r:"hima",en:"free time",cat:"Time"},
+{jp:"つぎ",r:"tsugi",en:"next",cat:"Time"},
+{jp:"あさ",r:"asa",en:"morning",cat:"Time"},
+{jp:"ひる",r:"hiru",en:"noon/daytime",cat:"Time"},
+{jp:"よる",r:"yoru",en:"night",cat:"Time"},
+{jp:"ばん",r:"ban",en:"evening",cat:"Time"},
+{jp:"ごご",r:"gogo",en:"afternoon/PM",cat:"Time"},
+{jp:"ごぜん",r:"gozen",en:"morning/AM",cat:"Time"},
+{jp:"まいあさ",r:"maiasa",en:"every morning",cat:"Time"},
+{jp:"まいばん",r:"maiban",en:"every evening",cat:"Time"},
+{jp:"まいしゅう",r:"maishuu",en:"every week",cat:"Time"},
+{jp:"まいつき",r:"maitsuki",en:"every month",cat:"Time"},
+{jp:"まいとし",r:"maitoshi",en:"every year",cat:"Time"},
+{jp:"こんしゅう",r:"konshuu",en:"this week",cat:"Time"},
+{jp:"らいしゅう",r:"raishuu",en:"next week",cat:"Time"},
+{jp:"せんしゅう",r:"senshuu",en:"last week",cat:"Time"},
+{jp:"こんげつ",r:"kongetsu",en:"this month",cat:"Time"},
+{jp:"らいげつ",r:"raigetsu",en:"next month",cat:"Time"},
+{jp:"せんげつ",r:"sengetsu",en:"last month",cat:"Time"},
+{jp:"ことし",r:"kotoshi",en:"this year",cat:"Time"},
+{jp:"らいねん",r:"rainen",en:"next year",cat:"Time"},
+{jp:"きょねん",r:"kyonen",en:"last year",cat:"Time"},
+{jp:"おととい",r:"ototoi",en:"day before yesterday",cat:"Time"},
+{jp:"あさって",r:"asatte",en:"day after tomorrow",cat:"Time"},
+{jp:"いつも",r:"itsumo",en:"always",cat:"Time"},
+{jp:"ときどき",r:"tokidoki",en:"sometimes",cat:"Time"},
+{jp:"はる",r:"haru",en:"spring",cat:"Time"},
+{jp:"なつ",r:"natsu",en:"summer",cat:"Time"},
+{jp:"あき",r:"aki",en:"autumn",cat:"Time"},
+{jp:"ふゆ",r:"fuyu",en:"winter",cat:"Time"},
+{jp:"にちようび",r:"nichiyoubi",en:"Sunday",cat:"Time"},
+{jp:"げつようび",r:"getsuyoubi",en:"Monday",cat:"Time"},
+{jp:"かようび",r:"kayoubi",en:"Tuesday",cat:"Time"},
+{jp:"すいようび",r:"suiyoubi",en:"Wednesday",cat:"Time"},
+{jp:"もくようび",r:"mokuyoubi",en:"Thursday",cat:"Time"},
+{jp:"きんようび",r:"kinyoubi",en:"Friday",cat:"Time"},
+{jp:"どようび",r:"doyoubi",en:"Saturday",cat:"Time"},
+{jp:"つかれた",r:"tsukareta",en:"tired",cat:"Feel"},
+{jp:"うれしい",r:"ureshii",en:"happy",cat:"Feel"},
+{jp:"さびしい",r:"sabishii",en:"lonely",cat:"Feel"},
+{jp:"いたい",r:"itai",en:"painful",cat:"Feel"},
+{jp:"げんき",r:"genki",en:"healthy/energetic",cat:"Feel"},
+{jp:"すき",r:"suki",en:"like",cat:"Feel"},
+{jp:"きらい",r:"kirai",en:"dislike",cat:"Feel"},
+{jp:"だいすき",r:"daisuki",en:"love",cat:"Feel"},
+{jp:"ほしい",r:"hoshii",en:"want (thing)",cat:"Feel"},
+{jp:"こわい",r:"kowai",en:"scary",cat:"Feel"},
 {jp:"おおきい",r:"ookii",en:"big",cat:"Adj"},
 {jp:"ちいさい",r:"chiisai",en:"small",cat:"Adj"},
 {jp:"あたらしい",r:"atarashii",en:"new",cat:"Adj"},
+{jp:"ふるい",r:"furui",en:"old (things)",cat:"Adj"},
 {jp:"むずかしい",r:"muzukashii",en:"difficult",cat:"Adj"},
 {jp:"かんたん",r:"kantan",en:"easy",cat:"Adj"},
 {jp:"たのしい",r:"tanoshii",en:"fun",cat:"Adj"},
 {jp:"おもしろい",r:"omoshiroi",en:"interesting",cat:"Adj"},
-{jp:"やさしい",r:"yasashii",en:"kind",cat:"Adj"},
-{jp:"かっこいい",r:"kakkoii",en:"cool",cat:"Adj"},
+{jp:"やさしい",r:"yasashii",en:"kind/easy",cat:"Adj"},
+{jp:"かっこいい",r:"kakkoii",en:"cool/handsome",cat:"Adj"},
 {jp:"かわいい",r:"kawaii",en:"cute",cat:"Adj"},
 {jp:"しずか",r:"shizuka",en:"quiet",cat:"Adj"},
 {jp:"にぎやか",r:"nigiyaka",en:"lively",cat:"Adj"},
@@ -458,9 +620,84 @@ const VOCAB_DATA=[
 {jp:"つまらない",r:"tsumaranai",en:"boring",cat:"Adj"},
 {jp:"すばらしい",r:"subarashii",en:"wonderful",cat:"Adj"},
 {jp:"いそがしい",r:"isogashii",en:"busy",cat:"Adj"},
-{jp:"はやい",r:"hayai",en:"fast",cat:"Adj"},
-{jp:"おそい",r:"osoi",en:"slow",cat:"Adj"},
+{jp:"はやい",r:"hayai",en:"fast/early",cat:"Adj"},
+{jp:"おそい",r:"osoi",en:"slow/late",cat:"Adj"},
 {jp:"ちかい",r:"chikai",en:"near",cat:"Adj"},
+{jp:"とおい",r:"tooi",en:"far",cat:"Adj"},
+{jp:"たかい",r:"takai",en:"expensive/tall",cat:"Adj"},
+{jp:"やすい",r:"yasui",en:"cheap",cat:"Adj"},
+{jp:"いい",r:"ii",en:"good",cat:"Adj"},
+{jp:"わるい",r:"warui",en:"bad",cat:"Adj"},
+{jp:"ながい",r:"nagai",en:"long",cat:"Adj"},
+{jp:"みじかい",r:"mijikai",en:"short",cat:"Adj"},
+{jp:"おおい",r:"ooi",en:"many/much",cat:"Adj"},
+{jp:"すくない",r:"sukunai",en:"few",cat:"Adj"},
+{jp:"おもい",r:"omoi",en:"heavy",cat:"Adj"},
+{jp:"かるい",r:"karui",en:"light (weight)",cat:"Adj"},
+{jp:"あつい",r:"atsui",en:"hot (weather)",cat:"Adj"},
+{jp:"さむい",r:"samui",en:"cold (weather)",cat:"Adj"},
+{jp:"つめたい",r:"tsumetai",en:"cold (touch)",cat:"Adj"},
+{jp:"あたたかい",r:"atatakai",en:"warm",cat:"Adj"},
+{jp:"すずしい",r:"suzushii",en:"cool (weather)",cat:"Adj"},
+{jp:"あかるい",r:"akarui",en:"bright",cat:"Adj"},
+{jp:"くらい",r:"kurai",en:"dark",cat:"Adj"},
+{jp:"ひろい",r:"hiroi",en:"wide/spacious",cat:"Adj"},
+{jp:"せまい",r:"semai",en:"narrow",cat:"Adj"},
+{jp:"あまい",r:"amai",en:"sweet",cat:"Adj"},
+{jp:"からい",r:"karai",en:"spicy",cat:"Adj"},
+{jp:"おいしい",r:"oishii",en:"delicious",cat:"Adj"},
+{jp:"まずい",r:"mazui",en:"bad tasting",cat:"Adj"},
+{jp:"きれい",r:"kirei",en:"beautiful/clean",cat:"Adj"},
+{jp:"きたない",r:"kitanai",en:"dirty",cat:"Adj"},
+{jp:"あぶない",r:"abunai",en:"dangerous",cat:"Adj"},
+{jp:"ゆうめい",r:"yuumei",en:"famous",cat:"Adj"},
+{jp:"べんり",r:"benri",en:"convenient",cat:"Adj"},
+{jp:"ふべん",r:"fuben",en:"inconvenient",cat:"Adj"},
+{jp:"じょうず",r:"jouzu",en:"skilled/good at",cat:"Adj"},
+{jp:"へた",r:"heta",en:"unskilled/bad at",cat:"Adj"},
+{jp:"だいじょうぶ",r:"daijoubu",en:"okay/alright",cat:"Adj"},
+{jp:"やばい",r:"yabai",en:"crazy/insane",cat:"Adj"},
+{jp:"めんどくさい",r:"mendokusai",en:"annoying",cat:"Adj"},
+{jp:"ひま",r:"hima_adj",en:"free/bored",cat:"Adj"},
+{jp:"ほんとう",r:"hontou",en:"really",cat:"Conv"},
+{jp:"たぶん",r:"tabun",en:"maybe",cat:"Conv"},
+{jp:"ぜんぜん",r:"zenzen",en:"not at all",cat:"Conv"},
+{jp:"もちろん",r:"mochiron",en:"of course",cat:"Conv"},
+{jp:"とくに",r:"tokuni",en:"especially",cat:"Conv"},
+{jp:"いちばん",r:"ichiban",en:"most",cat:"Conv"},
+{jp:"ぜんぶ",r:"zenbu",en:"everything",cat:"Conv"},
+{jp:"すこし",r:"sukoshi",en:"a little",cat:"Conv"},
+{jp:"もっと",r:"motto",en:"more",cat:"Conv"},
+{jp:"たくさん",r:"takusan",en:"a lot/many",cat:"Conv"},
+{jp:"ちょっと",r:"chotto",en:"a bit",cat:"Conv"},
+{jp:"よく",r:"yoku",en:"often/well",cat:"Conv"},
+{jp:"あまり",r:"amari",en:"not much",cat:"Conv"},
+{jp:"まだ",r:"mada",en:"still/not yet",cat:"Conv"},
+{jp:"もう",r:"mou",en:"already",cat:"Conv"},
+{jp:"たいへん",r:"taihen",en:"tough/very",cat:"Conv"},
+{jp:"とても",r:"totemo",en:"very",cat:"Conv"},
+{jp:"いっしょに",r:"issho ni",en:"together",cat:"Conv"},
+{jp:"ひとりで",r:"hitori de",en:"alone/by oneself",cat:"Conv"},
+{jp:"はじめて",r:"hajimete",en:"first time",cat:"Conv"},
+{jp:"こんな",r:"konna",en:"this kind of",cat:"Conv"},
+{jp:"そんな",r:"sonna",en:"that kind of",cat:"Conv"},
+{jp:"いろいろ",r:"iroiro",en:"various",cat:"Conv"},
+{jp:"おなじ",r:"onaji",en:"same",cat:"Conv"},
+{jp:"ほか",r:"hoka",en:"other",cat:"Conv"},
+{jp:"なに",r:"nani",en:"what",cat:"Q"},
+{jp:"どこ",r:"doko",en:"where",cat:"Q"},
+{jp:"だれ",r:"dare_q",en:"who",cat:"Q"},
+{jp:"いつ",r:"itsu",en:"when",cat:"Q"},
+{jp:"なんで",r:"nande",en:"why (casual)",cat:"Q"},
+{jp:"どうして",r:"doushite",en:"why",cat:"Q"},
+{jp:"いくら",r:"ikura",en:"how much",cat:"Q"},
+{jp:"どれ",r:"dore",en:"which one",cat:"Q"},
+{jp:"どの",r:"dono",en:"which",cat:"Q"},
+{jp:"どう",r:"dou",en:"how",cat:"Q"},
+{jp:"いくつ",r:"ikutsu",en:"how many/old",cat:"Q"},
+{jp:"なんじ",r:"nanji",en:"what time",cat:"Q"},
+{jp:"どのくらい",r:"donokurai",en:"how long/much",cat:"Q"},
+{jp:"なぜ",r:"naze",en:"why (formal)",cat:"Q"},
 {jp:"たべる",r:"taberu",en:"eat",cat:"Verbs"},
 {jp:"のむ",r:"nomu",en:"drink",cat:"Verbs"},
 {jp:"つくる",r:"tsukuru",en:"make",cat:"Verbs"},
@@ -478,13 +715,127 @@ const VOCAB_DATA=[
 {jp:"すわる",r:"suwaru",en:"sit",cat:"Verbs"},
 {jp:"まつ",r:"matsu",en:"wait",cat:"Verbs"},
 {jp:"かう",r:"kau",en:"buy",cat:"Verbs"},
-{jp:"なに",r:"nani",en:"what",cat:"Q"},
-{jp:"どこ",r:"doko",en:"where",cat:"Q"},
-{jp:"だれ",r:"dare",en:"who",cat:"Q"},
-{jp:"いつ",r:"itsu",en:"when",cat:"Q"},
-{jp:"なんで",r:"nande",en:"why",cat:"Q"},
-{jp:"いくら",r:"ikura",en:"how much",cat:"Q"},
-{jp:"どれ",r:"dore",en:"which one",cat:"Q"},
+{jp:"する",r:"suru",en:"do",cat:"Verbs"},
+{jp:"みる",r:"miru",en:"see/watch",cat:"Verbs"},
+{jp:"きく",r:"kiku",en:"listen/ask",cat:"Verbs"},
+{jp:"よむ",r:"yomu",en:"read",cat:"Verbs"},
+{jp:"かく",r:"kaku",en:"write",cat:"Verbs"},
+{jp:"おきる",r:"okiru",en:"wake up",cat:"Verbs"},
+{jp:"あるく",r:"aruku",en:"walk",cat:"Verbs"},
+{jp:"はしる",r:"hashiru",en:"run",cat:"Verbs"},
+{jp:"およぐ",r:"oyogu",en:"swim",cat:"Verbs"},
+{jp:"のる",r:"noru",en:"ride/get on",cat:"Verbs"},
+{jp:"おりる",r:"oriru",en:"get off",cat:"Verbs"},
+{jp:"あける",r:"akeru",en:"open",cat:"Verbs"},
+{jp:"しめる",r:"shimeru",en:"close",cat:"Verbs"},
+{jp:"つける",r:"tsukeru",en:"turn on",cat:"Verbs"},
+{jp:"けす",r:"kesu",en:"turn off",cat:"Verbs"},
+{jp:"おしえる",r:"oshieru",en:"teach/tell",cat:"Verbs"},
+{jp:"べんきょうする",r:"benkyou suru",en:"study",cat:"Verbs"},
+{jp:"おぼえる",r:"oboeru",en:"memorize",cat:"Verbs"},
+{jp:"わすれる",r:"wasureru",en:"forget",cat:"Verbs"},
+{jp:"わかる",r:"wakaru",en:"understand",cat:"Verbs"},
+{jp:"あげる",r:"ageru",en:"give",cat:"Verbs"},
+{jp:"もらう",r:"morau",en:"receive",cat:"Verbs"},
+{jp:"かりる",r:"kariru",en:"borrow",cat:"Verbs"},
+{jp:"かえす",r:"kaesu",en:"return (thing)",cat:"Verbs"},
+{jp:"かす",r:"kasu",en:"lend",cat:"Verbs"},
+{jp:"うる",r:"uru",en:"sell",cat:"Verbs"},
+{jp:"きる",r:"kiru",en:"wear/cut",cat:"Verbs"},
+{jp:"ぬぐ",r:"nugu",en:"take off (clothes)",cat:"Verbs"},
+{jp:"あらう",r:"arau",en:"wash",cat:"Verbs"},
+{jp:"とる",r:"toru",en:"take",cat:"Verbs"},
+{jp:"おく",r:"oku",en:"put/place",cat:"Verbs"},
+{jp:"いれる",r:"ireru",en:"put in",cat:"Verbs"},
+{jp:"だす",r:"dasu",en:"take out/send",cat:"Verbs"},
+{jp:"もつ",r:"motsu",en:"hold/have",cat:"Verbs"},
+{jp:"おくる",r:"okuru",en:"send",cat:"Verbs"},
+{jp:"あそぶ",r:"asobu",en:"play",cat:"Verbs"},
+{jp:"うたう",r:"utau",en:"sing",cat:"Verbs"},
+{jp:"とぶ",r:"tobu",en:"fly/jump",cat:"Verbs"},
+{jp:"まがる",r:"magaru",en:"turn",cat:"Verbs"},
+{jp:"とまる",r:"tomaru",en:"stop",cat:"Verbs"},
+{jp:"はじまる",r:"hajimaru",en:"begin (intrans)",cat:"Verbs"},
+{jp:"おわる",r:"owaru",en:"end",cat:"Verbs"},
+{jp:"いう",r:"iu",en:"say",cat:"Verbs"},
+{jp:"おもう",r:"omou",en:"think",cat:"Verbs"},
+{jp:"しる",r:"shiru",en:"know",cat:"Verbs"},
+{jp:"すむ",r:"sumu",en:"live/reside",cat:"Verbs"},
+{jp:"かかる",r:"kakaru",en:"take (time)",cat:"Verbs"},
+{jp:"できる",r:"dekiru",en:"can do",cat:"Verbs"},
+{jp:"いる",r:"iru",en:"exist (living)",cat:"Verbs"},
+{jp:"ある",r:"aru",en:"exist (things)",cat:"Verbs"},
+{jp:"なる",r:"naru",en:"become",cat:"Verbs"},
+{jp:"けっこんする",r:"kekkon suru",en:"marry",cat:"Verbs"},
+{jp:"さんぽする",r:"sanpo suru",en:"take a walk",cat:"Verbs"},
+{jp:"しぬ",r:"shinu",en:"die",cat:"Verbs"},
+{jp:"うまれる",r:"umareru",en:"be born",cat:"Verbs"},
+{jp:"こまる",r:"komaru",en:"be troubled",cat:"Verbs"},
+{jp:"うえ",r:"ue",en:"above/on top",cat:"Dir"},
+{jp:"した",r:"shita",en:"below/under",cat:"Dir"},
+{jp:"まえ",r:"mae",en:"front/before",cat:"Dir"},
+{jp:"うしろ",r:"ushiro",en:"behind",cat:"Dir"},
+{jp:"みぎ",r:"migi",en:"right",cat:"Dir"},
+{jp:"ひだり",r:"hidari",en:"left",cat:"Dir"},
+{jp:"となり",r:"tonari",en:"next to",cat:"Dir"},
+{jp:"あいだ",r:"aida",en:"between",cat:"Dir"},
+{jp:"ちかく",r:"chikaku",en:"nearby",cat:"Dir"},
+{jp:"きた",r:"kita",en:"north",cat:"Dir"},
+{jp:"みなみ",r:"minami",en:"south",cat:"Dir"},
+{jp:"ひがし",r:"higashi",en:"east",cat:"Dir"},
+{jp:"にし",r:"nishi",en:"west",cat:"Dir"},
+{jp:"こちら",r:"kochira",en:"this way",cat:"Dir"},
+{jp:"そちら",r:"sochira",en:"that way",cat:"Dir"},
+{jp:"あちら",r:"achira",en:"over there",cat:"Dir"},
+{jp:"ここ",r:"koko",en:"here",cat:"Dir"},
+{jp:"そこ",r:"soko",en:"there",cat:"Dir"},
+{jp:"あそこ",r:"asoko",en:"over there",cat:"Dir"},
+{jp:"これ",r:"kore",en:"this",cat:"Dir"},
+{jp:"それ",r:"sore",en:"that",cat:"Dir"},
+{jp:"あれ",r:"are",en:"that (far)",cat:"Dir"},
+{jp:"いち",r:"ichi",en:"one",cat:"Num"},
+{jp:"に",r:"ni",en:"two",cat:"Num"},
+{jp:"さん",r:"san",en:"three",cat:"Num"},
+{jp:"よん/し",r:"yon/shi",en:"four",cat:"Num"},
+{jp:"ご",r:"go",en:"five",cat:"Num"},
+{jp:"ろく",r:"roku",en:"six",cat:"Num"},
+{jp:"なな/しち",r:"nana/shichi",en:"seven",cat:"Num"},
+{jp:"はち",r:"hachi",en:"eight",cat:"Num"},
+{jp:"きゅう/く",r:"kyuu/ku",en:"nine",cat:"Num"},
+{jp:"じゅう",r:"juu",en:"ten",cat:"Num"},
+{jp:"ひゃく",r:"hyaku",en:"hundred",cat:"Num"},
+{jp:"せん",r:"sen",en:"thousand",cat:"Num"},
+{jp:"まん",r:"man",en:"ten thousand",cat:"Num"},
+{jp:"あか",r:"aka",en:"red",cat:"Color"},
+{jp:"あお",r:"ao",en:"blue",cat:"Color"},
+{jp:"しろ",r:"shiro",en:"white",cat:"Color"},
+{jp:"くろ",r:"kuro",en:"black",cat:"Color"},
+{jp:"きいろ",r:"kiiro",en:"yellow",cat:"Color"},
+{jp:"みどり",r:"midori",en:"green",cat:"Color"},
+{jp:"てんき",r:"tenki",en:"weather",cat:"Weather"},
+{jp:"あめ",r:"ame",en:"rain",cat:"Weather"},
+{jp:"ゆき",r:"yuki",en:"snow",cat:"Weather"},
+{jp:"くもり",r:"kumori",en:"cloudy",cat:"Weather"},
+{jp:"かぜ",r:"kaze",en:"wind",cat:"Weather"},
+{jp:"おはようございます",r:"ohayou gozaimasu",en:"good morning",cat:"Greet"},
+{jp:"こんにちは",r:"konnichiwa",en:"hello",cat:"Greet"},
+{jp:"こんばんは",r:"konbanwa",en:"good evening",cat:"Greet"},
+{jp:"おやすみなさい",r:"oyasuminasai",en:"good night",cat:"Greet"},
+{jp:"さようなら",r:"sayounara",en:"goodbye",cat:"Greet"},
+{jp:"ありがとうございます",r:"arigatou gozaimasu",en:"thank you",cat:"Greet"},
+{jp:"すみません",r:"sumimasen",en:"excuse me/sorry",cat:"Greet"},
+{jp:"ごめんなさい",r:"gomen nasai",en:"I'm sorry",cat:"Greet"},
+{jp:"はじめまして",r:"hajimemashite",en:"nice to meet you",cat:"Greet"},
+{jp:"よろしくおねがいします",r:"yoroshiku onegaishimasu",en:"pleased to meet you",cat:"Greet"},
+{jp:"いただきます",r:"itadakimasu",en:"bon appetit",cat:"Greet"},
+{jp:"ごちそうさまでした",r:"gochisousama deshita",en:"thanks for the meal",cat:"Greet"},
+{jp:"おつかれさまでした",r:"otsukaresama deshita",en:"good work today",cat:"Greet"},
+{jp:"いってきます",r:"ittekimasu",en:"I'm leaving",cat:"Greet"},
+{jp:"いってらっしゃい",r:"itterasshai",en:"have a good trip",cat:"Greet"},
+{jp:"ただいま",r:"tadaima",en:"I'm home",cat:"Greet"},
+{jp:"おかえりなさい",r:"okaerinasai",en:"welcome home",cat:"Greet"},
+{jp:"かんぱい",r:"kanpai",en:"cheers",cat:"Greet"},
+{jp:"おめでとうございます",r:"omedetou gozaimasu",en:"congratulations",cat:"Greet"}
 ];
 
 const CHUNKS=[
@@ -503,6 +854,9 @@ const CHUNKS=[
 {jp:"おしえてください",en:"please teach me",p:"て"},
 {jp:"いっしょに のみませんか",en:"drink together?",p:"に"},
 {jp:"いっしょに たべませんか",en:"eat together?",p:"に"},
+{jp:"ゆっくり はなしてください",en:"please speak slowly",p:"て"},
+{jp:"もういちど おねがいします",en:"one more time please",p:""},
+{jp:"にほんごで なんですか",en:"what is it in Japanese?",p:"で"},
 ];
 
 const SCRIPTS=[
@@ -517,370 +871,203 @@ const SCRIPTS=[
 {cat:"Ask",jp:"しゅみは なんですか？",en:"What's your hobby?"},
 {cat:"Ask",jp:"メルボルンは どうですか？",en:"How's Melbourne?"},
 {cat:"Ask",jp:"しゅうまつ なにした？",en:"What'd you do on the weekend?"},
+{cat:"Ask",jp:"にほんごを どのくらい べんきょうした？",en:"How long have you studied Japanese?"},
 {cat:"React",jp:"へえ！",en:"Oh really!"},
 {cat:"React",jp:"すごい！",en:"Amazing!"},
 {cat:"React",jp:"そうですか？",en:"Is that so?"},
 {cat:"React",jp:"いいですね！",en:"That's nice!"},
 {cat:"React",jp:"わたしも！",en:"Me too!"},
 {cat:"React",jp:"ほんとう？",en:"Really?"},
+{cat:"React",jp:"たのしそう！",en:"Sounds fun!"},
 {cat:"Save",jp:"すみません、もういちど おねがいします。",en:"Sorry, one more time please."},
 {cat:"Save",jp:"ゆっくり おねがいします。",en:"Slowly please."},
 {cat:"Save",jp:"にほんごで なんですか？",en:"What is it in Japanese?"},
+{cat:"Save",jp:"いみは なんですか？",en:"What does it mean?"},
+{cat:"Save",jp:"えいごで いいですか？",en:"Is English okay?"},
+{cat:"Save",jp:"すみません、にほんご すこしだけ わかります。",en:"Sorry, I only understand a little Japanese."},
 {cat:"Smooth",jp:"いっしょに のみませんか？",en:"Want to grab a drink together?"},
 {cat:"Smooth",jp:"また あいたいです。",en:"I want to meet again."},
 {cat:"Smooth",jp:"こんど いっしょに ごはん いきませんか？",en:"Want to get food together sometime?"},
 {cat:"Smooth",jp:"れんらくさき おしえてください。",en:"Can I get your contact info?"},
+{cat:"Smooth",jp:"たのしかったです。",en:"That was fun."},
 ];
 
-// ============================================================
-// APP STATE
-// ============================================================
-let state = {
-  mode: "menu",
-  vocab: [],
-  drillQueue: [],
-  currentIdx: 0,
-  input: "",
-  feedback: null,
-  showAnswer: false,
-  direction: "en2jp",
-  session: { correct: 0, wrong: 0, total: 0 },
-  captures: [],
-  captureInput: { heard: "", guess: "", meaning: "" },
-  selectedCat: "All",
-  scriptCat: "Intro",
-  tab: "drill",
-};
+let state={mode:"menu",vocab:[],drillQueue:[],currentIdx:0,input:"",feedback:null,showAnswer:false,direction:"en2jp",session:{correct:0,wrong:0,total:0},captures:[],captureInput:{heard:"",guess:"",meaning:""},selectedCat:"All",scriptCat:"Intro",customWords:[]};
 
-function loadState() {
-  try {
-    const saved = localStorage.getItem("jp_vocab_v1");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Merge saved stats with current vocab list
-      state.vocab = VOCAB_DATA.map(v => {
-        const s = parsed.find(x => x.jp === v.jp);
-        return s ? { ...v, c: s.c || 0, w: s.w || 0 } : { ...v, c: 0, w: 0 };
-      });
-    } else {
-      state.vocab = VOCAB_DATA.map(v => ({ ...v, c: 0, w: 0 }));
-    }
-    const caps = localStorage.getItem("jp_captures_v1");
-    if (caps) state.captures = JSON.parse(caps);
-  } catch(e) {
-    state.vocab = VOCAB_DATA.map(v => ({ ...v, c: 0, w: 0 }));
-  }
+function loadState(){
+try{
+const s=localStorage.getItem("jp_v2");
+if(s){const p=JSON.parse(s);state.vocab=VOCAB_DATA.map(v=>{const f=p.find(x=>x.jp===v.jp);return f?{...v,c:f.c||0,w:f.w||0}:{...v,c:0,w:0}});
+// Add any custom words
+const cw=localStorage.getItem("jp_custom_v2");
+if(cw){state.customWords=JSON.parse(cw);state.customWords.forEach(w=>{if(!state.vocab.find(v=>v.jp===w.jp))state.vocab.push(w)})}}
+else state.vocab=VOCAB_DATA.map(v=>({...v,c:0,w:0}));
+const caps=localStorage.getItem("jp_caps_v2");if(caps)state.captures=JSON.parse(caps);
+}catch(e){state.vocab=VOCAB_DATA.map(v=>({...v,c:0,w:0}))}}
+
+function saveState(){
+try{localStorage.setItem("jp_v2",JSON.stringify(state.vocab.map(v=>({jp:v.jp,c:v.c,w:v.w}))));
+localStorage.setItem("jp_caps_v2",JSON.stringify(state.captures));
+localStorage.setItem("jp_custom_v2",JSON.stringify(state.customWords))}catch(e){}}
+
+const shuffle=a=>[...a].sort(()=>Math.random()-0.5);
+const norm=s=>s.toLowerCase().trim().replace(/[\s\u3000]+/g," ").replace(/[.,!?？。、]/g,"");
+const acc=v=>v.c+v.w===0?-1:Math.round((v.c/(v.c+v.w))*100);
+const weak=()=>state.vocab.filter(v=>v.w>0||(v.c+v.w>0&&v.c/(v.c+v.w)<0.8)).sort((a,b)=>(a.c/Math.max(1,a.c+a.w))-(b.c/Math.max(1,b.c+b.w)));
+const cats=()=>["All",...new Set(state.vocab.map(v=>v.cat))];
+
+function startDrill(type){
+let q=[];
+if(type==="weak"){q=shuffle(weak()).slice(0,15);if(q.length<5)q=shuffle([...state.vocab]).slice(0,15)}
+else if(type==="all")q=shuffle([...state.vocab]).slice(0,20);
+else if(type==="recall")q=shuffle([...state.vocab]).slice(0,10);
+else if(type==="cat"){const f=state.selectedCat==="All"?state.vocab:state.vocab.filter(v=>v.cat===state.selectedCat);q=shuffle(f).slice(0,15)}
+else if(type==="new"){q=shuffle(state.vocab.filter(v=>v.c+v.w===0)).slice(0,15);if(q.length<5)q=shuffle([...state.vocab]).slice(0,15)}
+state.drillQueue=q;state.currentIdx=0;state.feedback=null;state.showAnswer=false;state.input="";state.session={correct:0,wrong:0,total:0};state.mode="drill";render();
+setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
+
+function checkAnswer(){
+const card=state.drillQueue[state.currentIdx];if(!card)return;
+const ua=norm(state.input);let ok=false;
+if(state.direction==="en2jp")ok=ua===norm(card.r)||ua===norm(card.jp);
+else{const parts=card.en.split("/").map(s=>norm(s.trim()));ok=parts.some(a=>ua.includes(a)||a.includes(ua))}
+const v=state.vocab.find(x=>x.jp===card.jp);
+if(v){if(ok)v.c++;else v.w++}
+state.session[ok?"correct":"wrong"]++;state.session.total++;state.feedback=ok?"correct":"wrong";state.showAnswer=true;saveState();render()}
+
+function skipCard(){const card=state.drillQueue[state.currentIdx];const v=state.vocab.find(x=>x.jp===card.jp);if(v)v.w++;state.session.wrong++;state.session.total++;state.feedback="wrong";state.showAnswer=true;state.input="";saveState();render()}
+
+function nextCard(){
+if(state.currentIdx<state.drillQueue.length-1){state.currentIdx++;state.feedback=null;state.showAnswer=false;state.input="";render();
+setTimeout(()=>{const i=document.getElementById("di");if(i)i.focus()},50)}
+else{state.mode="results";render()}}
+
+function addToDeck(cap){
+if(!cap.heard.trim())return;
+const newWord={jp:cap.heard,r:cap.guess||"?",en:cap.meaning||"?",cat:"Custom",c:0,w:0};
+if(!state.vocab.find(v=>v.jp===newWord.jp)){state.vocab.push(newWord);state.customWords.push(newWord);saveState()}
+// Remove from captures
+state.captures=state.captures.filter(c=>c!==cap);saveState();render()}
+
+function addCapture(){
+if(!state.captureInput.heard.trim())return;
+state.captures.unshift({...state.captureInput,time:new Date().toLocaleString("en-AU",{hour:"2-digit",minute:"2-digit"})});
+state.captureInput={heard:"",guess:"",meaning:""};saveState();render()}
+
+function addNewWord(){
+const jp=document.getElementById("nw-jp")?.value||"";
+const r=document.getElementById("nw-r")?.value||"";
+const en=document.getElementById("nw-en")?.value||"";
+if(!jp.trim()||!en.trim())return;
+const nw={jp,r:r||"?",en,cat:"Custom",c:0,w:0};
+if(!state.vocab.find(v=>v.jp===nw.jp)){state.vocab.push(nw);state.customWords.push(nw);saveState()}
+render()}
+
+function render(){
+const app=document.getElementById("app");const m=state.mode;
+
+if(m==="menu"){
+const w=weak();const tested=state.vocab.filter(v=>v.c+v.w>0);
+const avgAcc=tested.length>0?Math.round(tested.reduce((a,v)=>a+(v.c/(v.c+v.w)),0)/tested.length*100):0;
+const untested=state.vocab.filter(v=>v.c+v.w===0).length;
+app.innerHTML=`
+<div class="header"><h1>日本語</h1><div class="sub">Julius Trainer · ${state.vocab.length} words</div></div>
+<div class="stats-row">
+<div class="stat-box"><div class="stat-num">${state.vocab.length}</div><div class="stat-label">Total</div></div>
+<div class="stat-box"><div class="stat-num" style="color:${w.length>0?'var(--red)':'var(--green)'}">${w.length}</div><div class="stat-label">Weak</div></div>
+<div class="stat-box"><div class="stat-num">${avgAcc}%</div><div class="stat-label">Accuracy</div></div>
+</div>
+<div class="direction-toggle">
+<button class="direction-btn ${state.direction==='en2jp'?'active':''}" onclick="state.direction='en2jp';render()">EN → JP</button>
+<button class="direction-btn ${state.direction==='jp2en'?'active':''}" onclick="state.direction='jp2en';render()">JP → EN</button>
+</div>
+<button class="btn btn-primary" onclick="startDrill('recall')">⚡ Recall Bomb (10)</button>
+${w.length>0?`<button class="btn btn-orange" onclick="startDrill('weak')">🔥 Weak Words (${w.length})</button>`:''}
+${untested>0?`<button class="btn btn-secondary" onclick="startDrill('new')" style="border-color:var(--blue)">🆕 New Words (${untested} untested)</button>`:''}
+<button class="btn btn-secondary" onclick="startDrill('all')">📚 Full Drill (20)</button>
+<div class="tags">${cats().map(c=>`<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
+<button class="btn btn-secondary" onclick="startDrill('cat')">Drill: ${state.selectedCat}</button>
+<div class="divider"></div>
+<button class="btn btn-secondary" onclick="state.mode='capture';render()">✏️ Quick Capture</button>
+<button class="btn btn-secondary" onclick="state.mode='addword';render()">➕ Add Word</button>
+<button class="btn btn-secondary" onclick="state.mode='chunks';render()">🔗 Chunks</button>
+<button class="btn btn-secondary" onclick="state.mode='scripts';state.scriptCat='Intro';render()">💬 Scripts</button>
+<button class="btn btn-secondary" onclick="state.mode='stats';render()">📊 All Words</button>
+<button class="btn btn-ghost" onclick="if(confirm('Reset all stats?')){state.vocab.forEach(v=>{v.c=0;v.w=0});saveState();render()}">Reset Stats</button>`;return}
+
+if(m==="drill"){
+const card=state.drillQueue[state.currentIdx];if(!card)return;
+const prompt=state.direction==="en2jp"?card.en:card.jp;const isJp=state.direction==="jp2en";
+const prog=((state.currentIdx+1)/state.drillQueue.length)*100;
+let body="";
+if(!state.showAnswer){body=`<input class="input" id="di" value="${state.input}" placeholder="${state.direction==='en2jp'?'Type romaji...':'Type English...'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button class="btn btn-primary" style="margin-top:12px" onclick="checkAnswer()">Check</button>
+<button class="btn btn-ghost" onclick="skipCard()">Don't know</button>`}
+else{body=`<div class="feedback-card ${state.feedback}">
+<div class="feedback-emoji">${state.feedback==='correct'?'✅':'❌'}</div>
+<div class="feedback-user">${state.feedback==='correct'?'Correct!':`Your answer: ${state.input||'(skipped)'}`}</div>
+<div class="feedback-jp">${card.jp}</div>
+<div class="feedback-romaji">${card.r}</div>
+<div class="feedback-en">${card.en}</div></div>
+<button class="btn btn-primary" onclick="nextCard()">${state.currentIdx<state.drillQueue.length-1?'Next →':'See Results'}</button>`}
+app.innerHTML=`<div class="drill-header"><button class="btn btn-ghost" onclick="state.mode='menu';render()">✕</button>
+<div class="drill-count">${state.currentIdx+1}/${state.drillQueue.length}</div>
+<div class="drill-score"><span style="color:var(--green)">${state.session.correct}</span> / <span style="color:var(--red)">${state.session.wrong}</span></div></div>
+<div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div>
+<div class="drill-card"><div class="drill-cat">${card.cat}</div><div class="drill-prompt ${isJp?'jp':''}">${prompt}</div></div>${body}`;
+const inp=document.getElementById("di");if(inp){inp.addEventListener("input",e=>{state.input=e.target.value});
+inp.addEventListener("keydown",e=>{if(e.key==="Enter"){if(state.showAnswer)nextCard();else if(state.input.trim())checkAnswer()}})}return}
+
+if(m==="results"){
+const pct=state.session.total>0?Math.round((state.session.correct/state.session.total)*100):0;const w=weak();
+const msg=pct>=90?"🔥 すごい！":pct>=70?"いいね！":"もっと れんしゅう！";
+let wh="";if(w.length>0){wh=`<div class="card" style="margin-top:16px"><div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--red)">WEAK WORDS (${w.length})</div>
+${w.slice(0,10).map(v=>`<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:var(--red-dim);color:var(--red)">${acc(v)}%</span></div></div>`).join('')}</div>`}
+app.innerHTML=`<div class="card" style="margin-top:40px;padding:32px"><div class="results-score">${pct}%</div><div class="results-sub">${state.session.correct} correct · ${state.session.wrong} wrong</div><div class="results-msg">${msg}</div></div>${wh}
+${w.length>0?`<button class="btn btn-orange" style="margin-top:12px" onclick="startDrill('weak')">Drill Weak</button>`:''}
+<button class="btn btn-primary" style="margin-top:8px" onclick="startDrill('recall')">Another Round</button>
+<button class="btn btn-secondary" onclick="state.mode='menu';render()">Menu</button>`;return}
+
+if(m==="capture"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Quick Capture</div><div></div></div>
+<div class="card"><input class="input" style="margin-bottom:10px" placeholder="What I heard..." id="ch" autocomplete="off">
+<input class="input" style="margin-bottom:10px" placeholder="My guess (romaji)..." id="cg" autocomplete="off">
+<input class="input" style="margin-bottom:10px" placeholder="What it meant..." id="cm" autocomplete="off">
+<button class="btn btn-primary" onclick="state.captureInput={heard:document.getElementById('ch').value,guess:document.getElementById('cg').value,meaning:document.getElementById('cm').value};addCapture()">+ Capture</button></div>
+${state.captures.length>0?`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">CAPTURED (${state.captures.length})</div>
+${state.captures.map((c,i)=>`<div class="capture-item"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="capture-heard">${c.heard}</div><div class="capture-detail">${c.guess} → ${c.meaning}</div></div>
+<button class="btn btn-sm btn-primary" style="padding:6px 12px;font-size:11px;width:auto" onclick="addToDeck(state.captures[${i}])">+ Deck</button></div></div>`).join('')}</div>`:''}`;return}
+
+if(m==="addword"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Add New Word</div><div></div></div>
+<div class="card"><input class="input" style="margin-bottom:10px" placeholder="Japanese (hiragana)..." id="nw-jp" autocomplete="off">
+<input class="input" style="margin-bottom:10px" placeholder="Romaji..." id="nw-r" autocomplete="off">
+<input class="input" style="margin-bottom:10px" placeholder="English meaning..." id="nw-en" autocomplete="off">
+<button class="btn btn-primary" onclick="addNewWord()">+ Add to Deck</button></div>
+${state.customWords.length>0?`<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">YOUR CUSTOM WORDS (${state.customWords.length})</div>
+${state.customWords.map(v=>`<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><span class="word-en">${v.en}</span></div>`).join('')}</div>`:''}`;return}
+
+if(m==="chunks"){
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Chunks</div><div></div></div>
+${CHUNKS.map(c=>`<div class="card chunk-row"><div><div class="chunk-jp">${c.jp}</div><div class="chunk-en">${c.en}</div></div><div class="chunk-particle">${c.p}</div></div>`).join('')}`;return}
+
+if(m==="scripts"){
+const sC=[...new Set(SCRIPTS.map(s=>s.cat))];const labels={Intro:"🤝 Intro",Ask:"❓ Ask",React:"⚡ React",Save:"🆘 Save",Smooth:"💫 Smooth"};
+const filtered=SCRIPTS.filter(s=>s.cat===state.scriptCat);
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">Scripts</div><div></div></div>
+<div class="tags">${sC.map(c=>`<button class="tag ${state.scriptCat===c?'active':''}" onclick="state.scriptCat='${c}';render()">${labels[c]||c}</button>`).join('')}</div>
+${filtered.map(s=>`<div class="card script-card"><div class="script-jp">${s.jp}</div><div class="script-en">${s.en}</div></div>`).join('')}`;return}
+
+if(m==="stats"){
+const sorted=[...state.vocab].sort((a,b)=>{const aa=acc(a),ab=acc(b);if(aa===-1&&ab===-1)return 0;if(aa===-1)return 1;if(ab===-1)return -1;return aa-ab});
+const filtered=sorted.filter(v=>state.selectedCat==="All"||v.cat===state.selectedCat);
+app.innerHTML=`<div class="top-nav"><button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button><div class="top-nav-title">All Words (${state.vocab.length})</div><div></div></div>
+<div class="tags">${cats().map(c=>`<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
+<div class="card">${filtered.map(v=>{const a=acc(v);const bg=a===-1?'var(--border)':a>=80?'var(--green-dim)':a>=50?'var(--orange-dim)':'var(--red-dim)';
+const col=a===-1?'var(--text-faint)':a>=80?'var(--green)':a>=50?'var(--orange)':'var(--red)';
+return `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:${bg};color:${col}">${a===-1?'—':a+'%'}</span></div></div>`}).join('')}</div>`;return}
 }
 
-function saveState() {
-  try {
-    localStorage.setItem("jp_vocab_v1", JSON.stringify(state.vocab.map(v => ({ jp: v.jp, c: v.c, w: v.w }))));
-    localStorage.setItem("jp_captures_v1", JSON.stringify(state.captures));
-  } catch(e) {}
-}
-
-// ============================================================
-// HELPERS
-// ============================================================
-const shuffle = a => [...a].sort(() => Math.random() - 0.5);
-const norm = s => s.toLowerCase().trim().replace(/[\s\u3000]+/g," ").replace(/[.,!?？。、]/g,"");
-const acc = v => v.c + v.w === 0 ? -1 : Math.round((v.c / (v.c + v.w)) * 100);
-const weak = () => state.vocab.filter(v => v.w > 0 || (v.c + v.w > 0 && v.c / (v.c + v.w) < 0.8)).sort((a,b) => (a.c/Math.max(1,a.c+a.w)) - (b.c/Math.max(1,b.c+b.w)));
-const cats = () => ["All", ...new Set(state.vocab.map(v => v.cat))];
-
-function startDrill(type) {
-  let q = [];
-  if (type === "weak") {
-    q = shuffle(weak()).slice(0, 15);
-    if (q.length < 5) q = shuffle([...state.vocab]).slice(0, 15);
-  } else if (type === "all") q = shuffle([...state.vocab]).slice(0, 20);
-  else if (type === "recall") q = shuffle([...state.vocab]).slice(0, 10);
-  else if (type === "cat") {
-    const f = state.selectedCat === "All" ? state.vocab : state.vocab.filter(v => v.cat === state.selectedCat);
-    q = shuffle(f).slice(0, 15);
-  }
-  state.drillQueue = q;
-  state.currentIdx = 0;
-  state.feedback = null;
-  state.showAnswer = false;
-  state.input = "";
-  state.session = { correct: 0, wrong: 0, total: 0 };
-  state.mode = "drill";
-  render();
-  setTimeout(() => { const i = document.getElementById("drill-input"); if (i) i.focus(); }, 50);
-}
-
-function checkAnswer() {
-  const card = state.drillQueue[state.currentIdx];
-  if (!card) return;
-  const ua = norm(state.input);
-  let ok = false;
-  if (state.direction === "en2jp") {
-    ok = ua === norm(card.r) || ua === norm(card.jp);
-  } else {
-    const parts = card.en.split("/").map(s => norm(s.trim()));
-    ok = parts.some(a => ua.includes(a) || a.includes(ua));
-  }
-  const v = state.vocab.find(x => x.jp === card.jp);
-  if (v) { if (ok) v.c++; else v.w++; }
-  state.session[ok ? "correct" : "wrong"]++;
-  state.session.total++;
-  state.feedback = ok ? "correct" : "wrong";
-  state.showAnswer = true;
-  saveState();
-  render();
-}
-
-function skipCard() {
-  const card = state.drillQueue[state.currentIdx];
-  const v = state.vocab.find(x => x.jp === card.jp);
-  if (v) v.w++;
-  state.session.wrong++;
-  state.session.total++;
-  state.feedback = "wrong";
-  state.showAnswer = true;
-  state.input = "";
-  saveState();
-  render();
-}
-
-function nextCard() {
-  if (state.currentIdx < state.drillQueue.length - 1) {
-    state.currentIdx++;
-    state.feedback = null;
-    state.showAnswer = false;
-    state.input = "";
-    render();
-    setTimeout(() => { const i = document.getElementById("drill-input"); if (i) i.focus(); }, 50);
-  } else {
-    state.mode = "results";
-    render();
-  }
-}
-
-function addCapture() {
-  if (!state.captureInput.heard.trim()) return;
-  state.captures.unshift({ ...state.captureInput, time: new Date().toLocaleString("en-AU", { hour:"2-digit", minute:"2-digit" }) });
-  state.captureInput = { heard: "", guess: "", meaning: "" };
-  saveState();
-  render();
-}
-
-// ============================================================
-// RENDER
-// ============================================================
-function render() {
-  const app = document.getElementById("app");
-  const m = state.mode;
-
-  if (m === "menu") {
-    const w = weak();
-    const tested = state.vocab.filter(v => v.c + v.w > 0);
-    const avgAcc = tested.length > 0 ? Math.round(tested.reduce((a,v) => a + (v.c/(v.c+v.w)), 0) / tested.length * 100) : 0;
-
-    app.innerHTML = `
-      <div class="header">
-        <h1>日本語</h1>
-        <div class="sub">Julius Trainer</div>
-      </div>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-num">${state.vocab.length}</div><div class="stat-label">Words</div></div>
-        <div class="stat-box"><div class="stat-num" style="color:${w.length>0?'var(--red)':'var(--green)'}">${w.length}</div><div class="stat-label">Weak</div></div>
-        <div class="stat-box"><div class="stat-num">${avgAcc}%</div><div class="stat-label">Accuracy</div></div>
-      </div>
-      <div class="direction-toggle">
-        <button class="direction-btn ${state.direction==='en2jp'?'active':''}" onclick="state.direction='en2jp';render()">EN → JP</button>
-        <button class="direction-btn ${state.direction==='jp2en'?'active':''}" onclick="state.direction='jp2en';render()">JP → EN</button>
-      </div>
-      <button class="btn btn-primary" onclick="startDrill('recall')">⚡ Recall Bomb</button>
-      ${w.length > 0 ? `<button class="btn btn-orange" onclick="startDrill('weak')">🔥 Weak Words (${w.length})</button>` : ''}
-      <button class="btn btn-secondary" onclick="startDrill('all')">📚 Full Drill</button>
-      <div class="tags">${cats().map(c => `<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
-      <button class="btn btn-secondary" onclick="startDrill('cat')">Drill: ${state.selectedCat}</button>
-      <div class="divider"></div>
-      <button class="btn btn-secondary" onclick="state.mode='capture';render()">✏️ Quick Capture</button>
-      <button class="btn btn-secondary" onclick="state.mode='chunks';render()">🔗 Chunks</button>
-      <button class="btn btn-secondary" onclick="state.mode='scripts';state.scriptCat='Intro';render()">💬 Scripts</button>
-      <button class="btn btn-secondary" onclick="state.mode='stats';render()">📊 All Words</button>
-      <button class="btn btn-ghost" onclick="if(confirm('Reset all stats? Words stay, scores reset.')){state.vocab.forEach(v=>{v.c=0;v.w=0});saveState();render()}">Reset Stats</button>
-    `;
-    return;
-  }
-
-  if (m === "drill") {
-    const card = state.drillQueue[state.currentIdx];
-    if (!card) return;
-    const prompt = state.direction === "en2jp" ? card.en : card.jp;
-    const isJp = state.direction === "jp2en";
-    const prog = ((state.currentIdx + 1) / state.drillQueue.length) * 100;
-
-    let body = "";
-    if (!state.showAnswer) {
-      body = `
-        <input class="input" id="drill-input" value="${state.input}" placeholder="${state.direction==='en2jp'?'Type romaji...':'Type English...'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-        <button class="btn btn-primary" style="margin-top:12px" onclick="checkAnswer()">Check</button>
-        <button class="btn btn-ghost" onclick="skipCard()">Don't know</button>
-      `;
-    } else {
-      const fb = state.feedback;
-      body = `
-        <div class="feedback-card ${fb}">
-          <div class="feedback-emoji">${fb==='correct'?'✅':'❌'}</div>
-          <div class="feedback-user">${fb==='correct'?'Correct!':'Your answer: '+(state.input||'(skipped)')}</div>
-          <div class="feedback-jp">${card.jp}</div>
-          <div class="feedback-romaji">${card.r}</div>
-          <div class="feedback-en">${card.en}</div>
-        </div>
-        <button class="btn btn-primary" onclick="nextCard()">${state.currentIdx<state.drillQueue.length-1?'Next →':'See Results'}</button>
-      `;
-    }
-
-    app.innerHTML = `
-      <div class="drill-header">
-        <button class="btn btn-ghost" onclick="state.mode='menu';render()">✕</button>
-        <div class="drill-count">${state.currentIdx+1}/${state.drillQueue.length}</div>
-        <div class="drill-score"><span style="color:var(--green)">${state.session.correct}</span> / <span style="color:var(--red)">${state.session.wrong}</span></div>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div>
-      <div class="drill-card">
-        <div class="drill-cat">${card.cat}</div>
-        <div class="drill-prompt ${isJp?'jp':''}">${prompt}</div>
-      </div>
-      ${body}
-    `;
-
-    const inp = document.getElementById("drill-input");
-    if (inp) {
-      inp.addEventListener("input", e => { state.input = e.target.value; });
-      inp.addEventListener("keydown", e => {
-        if (e.key === "Enter") {
-          if (state.showAnswer) nextCard();
-          else if (state.input.trim()) checkAnswer();
-        }
-      });
-    }
-    return;
-  }
-
-  if (m === "results") {
-    const pct = state.session.total > 0 ? Math.round((state.session.correct/state.session.total)*100) : 0;
-    const w = weak();
-    const msg = pct >= 90 ? "🔥 すごい！" : pct >= 70 ? "いいね！" : "もっと れんしゅう！";
-    let weakHtml = "";
-    if (w.length > 0) {
-      weakHtml = `<div class="card" style="margin-top:16px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--red)">WEAK WORDS (${w.length})</div>
-        ${w.slice(0,10).map(v => `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:var(--red-dim);color:var(--red)">${acc(v)}%</span></div></div>`).join('')}
-      </div>`;
-    }
-    app.innerHTML = `
-      <div class="card" style="margin-top:40px;padding:32px">
-        <div class="results-score">${pct}%</div>
-        <div class="results-sub">${state.session.correct} correct · ${state.session.wrong} wrong</div>
-        <div class="results-msg">${msg}</div>
-      </div>
-      ${weakHtml}
-      ${w.length>0?`<button class="btn btn-orange" style="margin-top:12px" onclick="startDrill('weak')">Drill Weak Words</button>`:''}
-      <button class="btn btn-primary" style="margin-top:8px" onclick="startDrill('recall')">Another Round</button>
-      <button class="btn btn-secondary" onclick="state.mode='menu';render()">Menu</button>
-    `;
-    return;
-  }
-
-  if (m === "capture") {
-    app.innerHTML = `
-      <div class="top-nav">
-        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
-        <div class="top-nav-title">Quick Capture</div>
-        <div></div>
-      </div>
-      <div class="card">
-        <input class="input" style="margin-bottom:10px" placeholder="What I heard..." value="${state.captureInput.heard}" id="cap-heard" autocomplete="off">
-        <input class="input" style="margin-bottom:10px" placeholder="My guess (romaji)..." value="${state.captureInput.guess}" id="cap-guess" autocomplete="off">
-        <input class="input" style="margin-bottom:10px" placeholder="What it meant..." value="${state.captureInput.meaning}" id="cap-meaning" autocomplete="off">
-        <button class="btn btn-primary" onclick="addCapture()">+ Capture</button>
-      </div>
-      ${state.captures.length > 0 ? `
-        <div class="card">
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px">CAPTURED (${state.captures.length})</div>
-          ${state.captures.map(c => `<div class="capture-item"><div class="capture-heard">${c.heard} <span style="font-size:11px;color:var(--text-faint)">${c.time}</span></div><div class="capture-detail">${c.guess} → ${c.meaning}</div></div>`).join('')}
-        </div>
-      ` : ''}
-    `;
-    ["heard","guess","meaning"].forEach(f => {
-      const el = document.getElementById("cap-"+f);
-      if (el) el.addEventListener("input", e => { state.captureInput[f] = e.target.value; });
-    });
-    return;
-  }
-
-  if (m === "chunks") {
-    app.innerHTML = `
-      <div class="top-nav">
-        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
-        <div class="top-nav-title">Chunks</div>
-        <div></div>
-      </div>
-      ${CHUNKS.map(c => `<div class="card chunk-row"><div><div class="chunk-jp">${c.jp}</div><div class="chunk-en">${c.en}</div></div><div class="chunk-particle">${c.p}</div></div>`).join('')}
-    `;
-    return;
-  }
-
-  if (m === "scripts") {
-    const sCats = [...new Set(SCRIPTS.map(s => s.cat))];
-    const labels = { Intro:"🤝 Intro", Ask:"❓ Ask", React:"⚡ React", Save:"🆘 Save", Smooth:"💫 Smooth" };
-    const filtered = SCRIPTS.filter(s => s.cat === state.scriptCat);
-    app.innerHTML = `
-      <div class="top-nav">
-        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
-        <div class="top-nav-title">JAPANEASY Scripts</div>
-        <div></div>
-      </div>
-      <div class="tags">${sCats.map(c => `<button class="tag ${state.scriptCat===c?'active':''}" onclick="state.scriptCat='${c}';render()">${labels[c]||c}</button>`).join('')}</div>
-      ${filtered.map(s => `<div class="card script-card"><div class="script-jp">${s.jp}</div><div class="script-en">${s.en}</div></div>`).join('')}
-    `;
-    return;
-  }
-
-  if (m === "stats") {
-    const sorted = [...state.vocab].sort((a,b) => {
-      const aa = acc(a), ab = acc(b);
-      if (aa===-1&&ab===-1) return 0;
-      if (aa===-1) return 1;
-      if (ab===-1) return -1;
-      return aa - ab;
-    });
-    const filtered = sorted.filter(v => state.selectedCat === "All" || v.cat === state.selectedCat);
-    app.innerHTML = `
-      <div class="top-nav">
-        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
-        <div class="top-nav-title">All Words (${state.vocab.length})</div>
-        <div></div>
-      </div>
-      <div class="tags">${cats().map(c => `<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
-      <div class="card">
-        ${filtered.map(v => {
-          const a = acc(v);
-          const bg = a===-1?'var(--border)':a>=80?'var(--green-dim)':a>=50?'var(--orange-dim)':'var(--red-dim)';
-          const col = a===-1?'var(--text-faint)':a>=80?'var(--green)':a>=50?'var(--orange)':'var(--red)';
-          return `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:${bg};color:${col}">${a===-1?'—':a+'%'}</span></div></div>`;
-        }).join('')}
-      </div>
-    `;
-    return;
-  }
-}
-
-// ============================================================
-// INIT
-// ============================================================
-loadState();
-render();
-
-// Register service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
-</script>
-</body>
-</html>
+loadState();render();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+</script></body></html>
