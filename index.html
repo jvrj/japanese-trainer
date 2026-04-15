@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>日本語 Trainer</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;600;700;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg: #0a0a0a;
+  --card: #161616;
+  --card-hover: #1c1c1c;
+  --border: #2a2a2a;
+  --text: #e8e8e8;
+  --text-dim: #888;
+  --text-faint: #555;
+  --red: #ef4444;
+  --red-dim: #7f1d1d;
+  --green: #22c55e;
+  --green-dim: #14532d;
+  --orange: #f97316;
+  --orange-dim: #7c2d12;
+  --blue: #3b82f6;
+  --blue-dim: #1e3a5f;
+  --purple: #a855f7;
+  --teal: #14b8a6;
+  --accent: #ef4444;
+}
+
+body {
+  font-family: 'Noto Sans JP', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 16px 100px;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* HEADER */
+.header {
+  text-align: center;
+  padding: 40px 0 28px;
+}
+.header h1 {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #fff 0%, #888 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header .sub {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+  transition: transform 0.1s;
+}
+.card:active { transform: scale(0.98); }
+
+/* STATS ROW */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 8px;
+  text-align: center;
+}
+.stat-num {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-faint);
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+
+/* BUTTONS */
+.btn {
+  display: block;
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.btn:active { transform: scale(0.97); opacity: 0.9; }
+.btn-primary { background: var(--red); color: #fff; }
+.btn-orange { background: var(--orange); color: #fff; }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost { background: transparent; color: var(--text-dim); border: none; padding: 10px; font-size: 13px; }
+.btn-sm { padding: 10px 16px; font-size: 13px; width: auto; display: inline-block; }
+
+/* TAGS */
+.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tag {
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+.tag.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* INPUT */
+.input {
+  width: 100%;
+  padding: 16px;
+  font-size: 20px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--accent); }
+.input::placeholder { color: var(--text-faint); }
+
+/* PROGRESS BAR */
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--red);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* DRILL CARD */
+.drill-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.drill-cat {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.drill-prompt {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.drill-prompt.jp { font-size: 36px; }
+
+/* FEEDBACK */
+.feedback-card {
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  border: 2px solid;
+}
+.feedback-card.correct { background: var(--green-dim); border-color: var(--green); }
+.feedback-card.wrong { background: var(--red-dim); border-color: var(--red); }
+.feedback-emoji { font-size: 32px; margin-bottom: 8px; }
+.feedback-user { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+.feedback-jp { font-size: 32px; font-weight: 900; }
+.feedback-romaji { font-size: 16px; color: var(--text-dim); margin-top: 4px; }
+.feedback-en { font-size: 16px; margin-top: 4px; }
+
+/* RESULTS */
+.results-score {
+  font-size: 64px;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1;
+}
+.results-sub {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.results-msg {
+  text-align: center;
+  font-size: 20px;
+  margin-top: 16px;
+}
+
+/* WORD LIST */
+.word-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.word-jp { font-weight: 700; font-size: 16px; }
+.word-romaji { font-size: 12px; color: var(--text-faint); margin-left: 8px; }
+.word-en { font-size: 13px; color: var(--text-dim); }
+.word-acc {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 10px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* CAPTURE */
+.capture-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.capture-heard { font-weight: 700; font-size: 15px; }
+.capture-detail { font-size: 13px; color: var(--text-dim); }
+
+/* CHUNK ROW */
+.chunk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+}
+.chunk-jp { font-size: 18px; font-weight: 700; }
+.chunk-en { font-size: 13px; color: var(--text-dim); }
+.chunk-particle {
+  background: var(--red);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* SCRIPT */
+.script-card {
+  padding: 18px 20px;
+}
+.script-jp { font-size: 20px; font-weight: 700; margin-bottom: 4px; line-height: 1.4; }
+.script-en { font-size: 14px; color: var(--text-dim); }
+
+/* NAV */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+}
+.top-nav-title { font-size: 15px; font-weight: 700; }
+
+/* DIVIDER */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* DRILL HEADER */
+.drill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+}
+.drill-count { font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.drill-score span { font-size: 13px; font-weight: 700; }
+
+/* BOTTOM TAB BAR */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 100;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+}
+.tab-btn.active { color: var(--red); }
+.tab-icon { font-size: 22px; }
+
+.hidden { display: none; }
+
+/* DIRECTION TOGGLE */
+.direction-toggle {
+  display: flex;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.direction-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.direction-btn.active {
+  background: var(--red);
+  color: #fff;
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const VOCAB_DATA=[
+{jp:"ひと",r:"hito",en:"person",cat:"People"},
+{jp:"おとこのひと",r:"otokonohito",en:"man",cat:"People"},
+{jp:"おんなのひと",r:"onnanohito",en:"woman",cat:"People"},
+{jp:"ともだち",r:"tomodachi",en:"friend",cat:"People"},
+{jp:"かれ",r:"kare",en:"he",cat:"People"},
+{jp:"かのじょ",r:"kanojo",en:"she",cat:"People"},
+{jp:"いえ",r:"ie",en:"home",cat:"Places"},
+{jp:"みせ",r:"mise",en:"shop",cat:"Places"},
+{jp:"えき",r:"eki",en:"station",cat:"Places"},
+{jp:"びょういん",r:"byouin",en:"hospital",cat:"Places"},
+{jp:"がっこう",r:"gakkou",en:"school",cat:"Places"},
+{jp:"こうえん",r:"kouen",en:"park",cat:"Places"},
+{jp:"みず",r:"mizu",en:"water",cat:"Food"},
+{jp:"にく",r:"niku",en:"meat",cat:"Food"},
+{jp:"さかな",r:"sakana",en:"fish",cat:"Food"},
+{jp:"たまご",r:"tamago",en:"egg",cat:"Food"},
+{jp:"りょうり",r:"ryouri",en:"cooking",cat:"Food"},
+{jp:"あたま",r:"atama",en:"head",cat:"Body"},
+{jp:"おなか",r:"onaka",en:"stomach",cat:"Body"},
+{jp:"つかれた",r:"tsukareta",en:"tired",cat:"Feelings"},
+{jp:"うれしい",r:"ureshii",en:"happy",cat:"Feelings"},
+{jp:"さびしい",r:"sabishii",en:"lonely",cat:"Feelings"},
+{jp:"いま",r:"ima",en:"now",cat:"Time"},
+{jp:"あした",r:"ashita",en:"tomorrow",cat:"Time"},
+{jp:"きのう",r:"kinou",en:"yesterday",cat:"Time"},
+{jp:"まいにち",r:"mainichi",en:"every day",cat:"Time"},
+{jp:"しゅうまつ",r:"shuumatsu",en:"weekend",cat:"Time"},
+{jp:"やすみ",r:"yasumi",en:"day off",cat:"Time"},
+{jp:"ひま",r:"hima",en:"free time",cat:"Time"},
+{jp:"つぎ",r:"tsugi",en:"next",cat:"Time"},
+{jp:"でんわ",r:"denwa",en:"phone",cat:"Things"},
+{jp:"くるま",r:"kuruma",en:"car",cat:"Things"},
+{jp:"かぎ",r:"kagi",en:"key",cat:"Things"},
+{jp:"きっぷ",r:"kippu",en:"ticket",cat:"Things"},
+{jp:"かばん",r:"kaban",en:"bag",cat:"Things"},
+{jp:"ほんとう",r:"hontou",en:"really",cat:"Conv"},
+{jp:"たぶん",r:"tabun",en:"maybe",cat:"Conv"},
+{jp:"ぜんぜん",r:"zenzen",en:"not at all",cat:"Conv"},
+{jp:"もちろん",r:"mochiron",en:"of course",cat:"Conv"},
+{jp:"だいじょうぶ",r:"daijoubu",en:"okay",cat:"Conv"},
+{jp:"ときどき",r:"tokidoki",en:"sometimes",cat:"Conv"},
+{jp:"すき",r:"suki",en:"like",cat:"Conv"},
+{jp:"きらい",r:"kirai",en:"dislike",cat:"Conv"},
+{jp:"とくに",r:"tokuni",en:"especially",cat:"Conv"},
+{jp:"いちばん",r:"ichiban",en:"most",cat:"Conv"},
+{jp:"ぜんぶ",r:"zenbu",en:"everything",cat:"Conv"},
+{jp:"すこし",r:"sukoshi",en:"a little",cat:"Conv"},
+{jp:"もっと",r:"motto",en:"more",cat:"Conv"},
+{jp:"やばい",r:"yabai",en:"crazy",cat:"Conv"},
+{jp:"めんどくさい",r:"mendokusai",en:"annoying",cat:"Conv"},
+{jp:"おおきい",r:"ookii",en:"big",cat:"Adj"},
+{jp:"ちいさい",r:"chiisai",en:"small",cat:"Adj"},
+{jp:"あたらしい",r:"atarashii",en:"new",cat:"Adj"},
+{jp:"むずかしい",r:"muzukashii",en:"difficult",cat:"Adj"},
+{jp:"かんたん",r:"kantan",en:"easy",cat:"Adj"},
+{jp:"たのしい",r:"tanoshii",en:"fun",cat:"Adj"},
+{jp:"おもしろい",r:"omoshiroi",en:"interesting",cat:"Adj"},
+{jp:"やさしい",r:"yasashii",en:"kind",cat:"Adj"},
+{jp:"かっこいい",r:"kakkoii",en:"cool",cat:"Adj"},
+{jp:"かわいい",r:"kawaii",en:"cute",cat:"Adj"},
+{jp:"しずか",r:"shizuka",en:"quiet",cat:"Adj"},
+{jp:"にぎやか",r:"nigiyaka",en:"lively",cat:"Adj"},
+{jp:"うるさい",r:"urusai",en:"noisy",cat:"Adj"},
+{jp:"つまらない",r:"tsumaranai",en:"boring",cat:"Adj"},
+{jp:"すばらしい",r:"subarashii",en:"wonderful",cat:"Adj"},
+{jp:"いそがしい",r:"isogashii",en:"busy",cat:"Adj"},
+{jp:"はやい",r:"hayai",en:"fast",cat:"Adj"},
+{jp:"おそい",r:"osoi",en:"slow",cat:"Adj"},
+{jp:"ちかい",r:"chikai",en:"near",cat:"Adj"},
+{jp:"たべる",r:"taberu",en:"eat",cat:"Verbs"},
+{jp:"のむ",r:"nomu",en:"drink",cat:"Verbs"},
+{jp:"つくる",r:"tsukuru",en:"make",cat:"Verbs"},
+{jp:"いく",r:"iku",en:"go",cat:"Verbs"},
+{jp:"くる",r:"kuru",en:"come",cat:"Verbs"},
+{jp:"かえる",r:"kaeru",en:"go home",cat:"Verbs"},
+{jp:"あう",r:"au",en:"meet",cat:"Verbs"},
+{jp:"はなす",r:"hanasu",en:"speak",cat:"Verbs"},
+{jp:"はたらく",r:"hataraku",en:"work",cat:"Verbs"},
+{jp:"ねる",r:"neru",en:"sleep",cat:"Verbs"},
+{jp:"たのむ",r:"tanomu",en:"order",cat:"Verbs"},
+{jp:"はらう",r:"harau",en:"pay",cat:"Verbs"},
+{jp:"わける",r:"wakeru",en:"split",cat:"Verbs"},
+{jp:"えらぶ",r:"erabu",en:"choose",cat:"Verbs"},
+{jp:"すわる",r:"suwaru",en:"sit",cat:"Verbs"},
+{jp:"まつ",r:"matsu",en:"wait",cat:"Verbs"},
+{jp:"かう",r:"kau",en:"buy",cat:"Verbs"},
+{jp:"なに",r:"nani",en:"what",cat:"Q"},
+{jp:"どこ",r:"doko",en:"where",cat:"Q"},
+{jp:"だれ",r:"dare",en:"who",cat:"Q"},
+{jp:"いつ",r:"itsu",en:"when",cat:"Q"},
+{jp:"なんで",r:"nande",en:"why",cat:"Q"},
+{jp:"いくら",r:"ikura",en:"how much",cat:"Q"},
+{jp:"どれ",r:"dore",en:"which one",cat:"Q"},
+];
+
+const CHUNKS=[
+{jp:"みずを のむ",en:"drink water",p:"を"},
+{jp:"にくを たべる",en:"eat meat",p:"を"},
+{jp:"ともだちに あう",en:"meet a friend",p:"に"},
+{jp:"いえに かえる",en:"go home",p:"に"},
+{jp:"くるまで いく",en:"go by car",p:"で"},
+{jp:"びょういんで はたらく",en:"work at hospital",p:"で"},
+{jp:"にほんから きた",en:"came from Japan",p:"から"},
+{jp:"ともだちの いえ",en:"friend's house",p:"の"},
+{jp:"りょうりを つくる",en:"make food",p:"を"},
+{jp:"にほんのりょうりが すき",en:"like Japanese food",p:"が"},
+{jp:"えらんでください",en:"please choose",p:"て"},
+{jp:"まってください",en:"please wait",p:"て"},
+{jp:"おしえてください",en:"please teach me",p:"て"},
+{jp:"いっしょに のみませんか",en:"drink together?",p:"に"},
+{jp:"いっしょに たべませんか",en:"eat together?",p:"に"},
+];
+
+const SCRIPTS=[
+{cat:"Intro",jp:"はじめまして。ジュリアスです。",en:"Nice to meet you. I'm Julius."},
+{cat:"Intro",jp:"オーストラリアじんです。",en:"I'm Australian."},
+{cat:"Intro",jp:"きゅうかげつくらい べんきょうしています。",en:"Studying about 9 months."},
+{cat:"Intro",jp:"にほんのりょうりが すきです。",en:"I like Japanese food."},
+{cat:"Intro",jp:"よろしくおねがいします。",en:"Pleased to meet you."},
+{cat:"Ask",jp:"おなまえは？",en:"Your name?"},
+{cat:"Ask",jp:"おしごとは なんですか？",en:"What do you do?"},
+{cat:"Ask",jp:"どこから きましたか？",en:"Where are you from?"},
+{cat:"Ask",jp:"しゅみは なんですか？",en:"What's your hobby?"},
+{cat:"Ask",jp:"メルボルンは どうですか？",en:"How's Melbourne?"},
+{cat:"Ask",jp:"しゅうまつ なにした？",en:"What'd you do on the weekend?"},
+{cat:"React",jp:"へえ！",en:"Oh really!"},
+{cat:"React",jp:"すごい！",en:"Amazing!"},
+{cat:"React",jp:"そうですか？",en:"Is that so?"},
+{cat:"React",jp:"いいですね！",en:"That's nice!"},
+{cat:"React",jp:"わたしも！",en:"Me too!"},
+{cat:"React",jp:"ほんとう？",en:"Really?"},
+{cat:"Save",jp:"すみません、もういちど おねがいします。",en:"Sorry, one more time please."},
+{cat:"Save",jp:"ゆっくり おねがいします。",en:"Slowly please."},
+{cat:"Save",jp:"にほんごで なんですか？",en:"What is it in Japanese?"},
+{cat:"Smooth",jp:"いっしょに のみませんか？",en:"Want to grab a drink together?"},
+{cat:"Smooth",jp:"また あいたいです。",en:"I want to meet again."},
+{cat:"Smooth",jp:"こんど いっしょに ごはん いきませんか？",en:"Want to get food together sometime?"},
+{cat:"Smooth",jp:"れんらくさき おしえてください。",en:"Can I get your contact info?"},
+];
+
+// ============================================================
+// APP STATE
+// ============================================================
+let state = {
+  mode: "menu",
+  vocab: [],
+  drillQueue: [],
+  currentIdx: 0,
+  input: "",
+  feedback: null,
+  showAnswer: false,
+  direction: "en2jp",
+  session: { correct: 0, wrong: 0, total: 0 },
+  captures: [],
+  captureInput: { heard: "", guess: "", meaning: "" },
+  selectedCat: "All",
+  scriptCat: "Intro",
+  tab: "drill",
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem("jp_vocab_v1");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge saved stats with current vocab list
+      state.vocab = VOCAB_DATA.map(v => {
+        const s = parsed.find(x => x.jp === v.jp);
+        return s ? { ...v, c: s.c || 0, w: s.w || 0 } : { ...v, c: 0, w: 0 };
+      });
+    } else {
+      state.vocab = VOCAB_DATA.map(v => ({ ...v, c: 0, w: 0 }));
+    }
+    const caps = localStorage.getItem("jp_captures_v1");
+    if (caps) state.captures = JSON.parse(caps);
+  } catch(e) {
+    state.vocab = VOCAB_DATA.map(v => ({ ...v, c: 0, w: 0 }));
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem("jp_vocab_v1", JSON.stringify(state.vocab.map(v => ({ jp: v.jp, c: v.c, w: v.w }))));
+    localStorage.setItem("jp_captures_v1", JSON.stringify(state.captures));
+  } catch(e) {}
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+const shuffle = a => [...a].sort(() => Math.random() - 0.5);
+const norm = s => s.toLowerCase().trim().replace(/[\s\u3000]+/g," ").replace(/[.,!?？。、]/g,"");
+const acc = v => v.c + v.w === 0 ? -1 : Math.round((v.c / (v.c + v.w)) * 100);
+const weak = () => state.vocab.filter(v => v.w > 0 || (v.c + v.w > 0 && v.c / (v.c + v.w) < 0.8)).sort((a,b) => (a.c/Math.max(1,a.c+a.w)) - (b.c/Math.max(1,b.c+b.w)));
+const cats = () => ["All", ...new Set(state.vocab.map(v => v.cat))];
+
+function startDrill(type) {
+  let q = [];
+  if (type === "weak") {
+    q = shuffle(weak()).slice(0, 15);
+    if (q.length < 5) q = shuffle([...state.vocab]).slice(0, 15);
+  } else if (type === "all") q = shuffle([...state.vocab]).slice(0, 20);
+  else if (type === "recall") q = shuffle([...state.vocab]).slice(0, 10);
+  else if (type === "cat") {
+    const f = state.selectedCat === "All" ? state.vocab : state.vocab.filter(v => v.cat === state.selectedCat);
+    q = shuffle(f).slice(0, 15);
+  }
+  state.drillQueue = q;
+  state.currentIdx = 0;
+  state.feedback = null;
+  state.showAnswer = false;
+  state.input = "";
+  state.session = { correct: 0, wrong: 0, total: 0 };
+  state.mode = "drill";
+  render();
+  setTimeout(() => { const i = document.getElementById("drill-input"); if (i) i.focus(); }, 50);
+}
+
+function checkAnswer() {
+  const card = state.drillQueue[state.currentIdx];
+  if (!card) return;
+  const ua = norm(state.input);
+  let ok = false;
+  if (state.direction === "en2jp") {
+    ok = ua === norm(card.r) || ua === norm(card.jp);
+  } else {
+    const parts = card.en.split("/").map(s => norm(s.trim()));
+    ok = parts.some(a => ua.includes(a) || a.includes(ua));
+  }
+  const v = state.vocab.find(x => x.jp === card.jp);
+  if (v) { if (ok) v.c++; else v.w++; }
+  state.session[ok ? "correct" : "wrong"]++;
+  state.session.total++;
+  state.feedback = ok ? "correct" : "wrong";
+  state.showAnswer = true;
+  saveState();
+  render();
+}
+
+function skipCard() {
+  const card = state.drillQueue[state.currentIdx];
+  const v = state.vocab.find(x => x.jp === card.jp);
+  if (v) v.w++;
+  state.session.wrong++;
+  state.session.total++;
+  state.feedback = "wrong";
+  state.showAnswer = true;
+  state.input = "";
+  saveState();
+  render();
+}
+
+function nextCard() {
+  if (state.currentIdx < state.drillQueue.length - 1) {
+    state.currentIdx++;
+    state.feedback = null;
+    state.showAnswer = false;
+    state.input = "";
+    render();
+    setTimeout(() => { const i = document.getElementById("drill-input"); if (i) i.focus(); }, 50);
+  } else {
+    state.mode = "results";
+    render();
+  }
+}
+
+function addCapture() {
+  if (!state.captureInput.heard.trim()) return;
+  state.captures.unshift({ ...state.captureInput, time: new Date().toLocaleString("en-AU", { hour:"2-digit", minute:"2-digit" }) });
+  state.captureInput = { heard: "", guess: "", meaning: "" };
+  saveState();
+  render();
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const app = document.getElementById("app");
+  const m = state.mode;
+
+  if (m === "menu") {
+    const w = weak();
+    const tested = state.vocab.filter(v => v.c + v.w > 0);
+    const avgAcc = tested.length > 0 ? Math.round(tested.reduce((a,v) => a + (v.c/(v.c+v.w)), 0) / tested.length * 100) : 0;
+
+    app.innerHTML = `
+      <div class="header">
+        <h1>日本語</h1>
+        <div class="sub">Julius Trainer</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${state.vocab.length}</div><div class="stat-label">Words</div></div>
+        <div class="stat-box"><div class="stat-num" style="color:${w.length>0?'var(--red)':'var(--green)'}">${w.length}</div><div class="stat-label">Weak</div></div>
+        <div class="stat-box"><div class="stat-num">${avgAcc}%</div><div class="stat-label">Accuracy</div></div>
+      </div>
+      <div class="direction-toggle">
+        <button class="direction-btn ${state.direction==='en2jp'?'active':''}" onclick="state.direction='en2jp';render()">EN → JP</button>
+        <button class="direction-btn ${state.direction==='jp2en'?'active':''}" onclick="state.direction='jp2en';render()">JP → EN</button>
+      </div>
+      <button class="btn btn-primary" onclick="startDrill('recall')">⚡ Recall Bomb</button>
+      ${w.length > 0 ? `<button class="btn btn-orange" onclick="startDrill('weak')">🔥 Weak Words (${w.length})</button>` : ''}
+      <button class="btn btn-secondary" onclick="startDrill('all')">📚 Full Drill</button>
+      <div class="tags">${cats().map(c => `<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
+      <button class="btn btn-secondary" onclick="startDrill('cat')">Drill: ${state.selectedCat}</button>
+      <div class="divider"></div>
+      <button class="btn btn-secondary" onclick="state.mode='capture';render()">✏️ Quick Capture</button>
+      <button class="btn btn-secondary" onclick="state.mode='chunks';render()">🔗 Chunks</button>
+      <button class="btn btn-secondary" onclick="state.mode='scripts';state.scriptCat='Intro';render()">💬 Scripts</button>
+      <button class="btn btn-secondary" onclick="state.mode='stats';render()">📊 All Words</button>
+      <button class="btn btn-ghost" onclick="if(confirm('Reset all stats? Words stay, scores reset.')){state.vocab.forEach(v=>{v.c=0;v.w=0});saveState();render()}">Reset Stats</button>
+    `;
+    return;
+  }
+
+  if (m === "drill") {
+    const card = state.drillQueue[state.currentIdx];
+    if (!card) return;
+    const prompt = state.direction === "en2jp" ? card.en : card.jp;
+    const isJp = state.direction === "jp2en";
+    const prog = ((state.currentIdx + 1) / state.drillQueue.length) * 100;
+
+    let body = "";
+    if (!state.showAnswer) {
+      body = `
+        <input class="input" id="drill-input" value="${state.input}" placeholder="${state.direction==='en2jp'?'Type romaji...':'Type English...'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-primary" style="margin-top:12px" onclick="checkAnswer()">Check</button>
+        <button class="btn btn-ghost" onclick="skipCard()">Don't know</button>
+      `;
+    } else {
+      const fb = state.feedback;
+      body = `
+        <div class="feedback-card ${fb}">
+          <div class="feedback-emoji">${fb==='correct'?'✅':'❌'}</div>
+          <div class="feedback-user">${fb==='correct'?'Correct!':'Your answer: '+(state.input||'(skipped)')}</div>
+          <div class="feedback-jp">${card.jp}</div>
+          <div class="feedback-romaji">${card.r}</div>
+          <div class="feedback-en">${card.en}</div>
+        </div>
+        <button class="btn btn-primary" onclick="nextCard()">${state.currentIdx<state.drillQueue.length-1?'Next →':'See Results'}</button>
+      `;
+    }
+
+    app.innerHTML = `
+      <div class="drill-header">
+        <button class="btn btn-ghost" onclick="state.mode='menu';render()">✕</button>
+        <div class="drill-count">${state.currentIdx+1}/${state.drillQueue.length}</div>
+        <div class="drill-score"><span style="color:var(--green)">${state.session.correct}</span> / <span style="color:var(--red)">${state.session.wrong}</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${prog}%"></div></div>
+      <div class="drill-card">
+        <div class="drill-cat">${card.cat}</div>
+        <div class="drill-prompt ${isJp?'jp':''}">${prompt}</div>
+      </div>
+      ${body}
+    `;
+
+    const inp = document.getElementById("drill-input");
+    if (inp) {
+      inp.addEventListener("input", e => { state.input = e.target.value; });
+      inp.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          if (state.showAnswer) nextCard();
+          else if (state.input.trim()) checkAnswer();
+        }
+      });
+    }
+    return;
+  }
+
+  if (m === "results") {
+    const pct = state.session.total > 0 ? Math.round((state.session.correct/state.session.total)*100) : 0;
+    const w = weak();
+    const msg = pct >= 90 ? "🔥 すごい！" : pct >= 70 ? "いいね！" : "もっと れんしゅう！";
+    let weakHtml = "";
+    if (w.length > 0) {
+      weakHtml = `<div class="card" style="margin-top:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--red)">WEAK WORDS (${w.length})</div>
+        ${w.slice(0,10).map(v => `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:var(--red-dim);color:var(--red)">${acc(v)}%</span></div></div>`).join('')}
+      </div>`;
+    }
+    app.innerHTML = `
+      <div class="card" style="margin-top:40px;padding:32px">
+        <div class="results-score">${pct}%</div>
+        <div class="results-sub">${state.session.correct} correct · ${state.session.wrong} wrong</div>
+        <div class="results-msg">${msg}</div>
+      </div>
+      ${weakHtml}
+      ${w.length>0?`<button class="btn btn-orange" style="margin-top:12px" onclick="startDrill('weak')">Drill Weak Words</button>`:''}
+      <button class="btn btn-primary" style="margin-top:8px" onclick="startDrill('recall')">Another Round</button>
+      <button class="btn btn-secondary" onclick="state.mode='menu';render()">Menu</button>
+    `;
+    return;
+  }
+
+  if (m === "capture") {
+    app.innerHTML = `
+      <div class="top-nav">
+        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
+        <div class="top-nav-title">Quick Capture</div>
+        <div></div>
+      </div>
+      <div class="card">
+        <input class="input" style="margin-bottom:10px" placeholder="What I heard..." value="${state.captureInput.heard}" id="cap-heard" autocomplete="off">
+        <input class="input" style="margin-bottom:10px" placeholder="My guess (romaji)..." value="${state.captureInput.guess}" id="cap-guess" autocomplete="off">
+        <input class="input" style="margin-bottom:10px" placeholder="What it meant..." value="${state.captureInput.meaning}" id="cap-meaning" autocomplete="off">
+        <button class="btn btn-primary" onclick="addCapture()">+ Capture</button>
+      </div>
+      ${state.captures.length > 0 ? `
+        <div class="card">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px">CAPTURED (${state.captures.length})</div>
+          ${state.captures.map(c => `<div class="capture-item"><div class="capture-heard">${c.heard} <span style="font-size:11px;color:var(--text-faint)">${c.time}</span></div><div class="capture-detail">${c.guess} → ${c.meaning}</div></div>`).join('')}
+        </div>
+      ` : ''}
+    `;
+    ["heard","guess","meaning"].forEach(f => {
+      const el = document.getElementById("cap-"+f);
+      if (el) el.addEventListener("input", e => { state.captureInput[f] = e.target.value; });
+    });
+    return;
+  }
+
+  if (m === "chunks") {
+    app.innerHTML = `
+      <div class="top-nav">
+        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
+        <div class="top-nav-title">Chunks</div>
+        <div></div>
+      </div>
+      ${CHUNKS.map(c => `<div class="card chunk-row"><div><div class="chunk-jp">${c.jp}</div><div class="chunk-en">${c.en}</div></div><div class="chunk-particle">${c.p}</div></div>`).join('')}
+    `;
+    return;
+  }
+
+  if (m === "scripts") {
+    const sCats = [...new Set(SCRIPTS.map(s => s.cat))];
+    const labels = { Intro:"🤝 Intro", Ask:"❓ Ask", React:"⚡ React", Save:"🆘 Save", Smooth:"💫 Smooth" };
+    const filtered = SCRIPTS.filter(s => s.cat === state.scriptCat);
+    app.innerHTML = `
+      <div class="top-nav">
+        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
+        <div class="top-nav-title">JAPANEASY Scripts</div>
+        <div></div>
+      </div>
+      <div class="tags">${sCats.map(c => `<button class="tag ${state.scriptCat===c?'active':''}" onclick="state.scriptCat='${c}';render()">${labels[c]||c}</button>`).join('')}</div>
+      ${filtered.map(s => `<div class="card script-card"><div class="script-jp">${s.jp}</div><div class="script-en">${s.en}</div></div>`).join('')}
+    `;
+    return;
+  }
+
+  if (m === "stats") {
+    const sorted = [...state.vocab].sort((a,b) => {
+      const aa = acc(a), ab = acc(b);
+      if (aa===-1&&ab===-1) return 0;
+      if (aa===-1) return 1;
+      if (ab===-1) return -1;
+      return aa - ab;
+    });
+    const filtered = sorted.filter(v => state.selectedCat === "All" || v.cat === state.selectedCat);
+    app.innerHTML = `
+      <div class="top-nav">
+        <button class="btn btn-ghost" onclick="state.mode='menu';render()">← Back</button>
+        <div class="top-nav-title">All Words (${state.vocab.length})</div>
+        <div></div>
+      </div>
+      <div class="tags">${cats().map(c => `<button class="tag ${state.selectedCat===c?'active':''}" onclick="state.selectedCat='${c}';render()">${c}</button>`).join('')}</div>
+      <div class="card">
+        ${filtered.map(v => {
+          const a = acc(v);
+          const bg = a===-1?'var(--border)':a>=80?'var(--green-dim)':a>=50?'var(--orange-dim)':'var(--red-dim)';
+          const col = a===-1?'var(--text-faint)':a>=80?'var(--green)':a>=50?'var(--orange)':'var(--red)';
+          return `<div class="word-row"><div><span class="word-jp">${v.jp}</span><span class="word-romaji">${v.r}</span></div><div><span class="word-en">${v.en}</span><span class="word-acc" style="background:${bg};color:${col}">${a===-1?'—':a+'%'}</span></div></div>`;
+        }).join('')}
+      </div>
+    `;
+    return;
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadState();
+render();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
