@@ -2837,8 +2837,8 @@ function openAskClaude(){
       ${msgs.map(renderChatMsg).join('')}
     </div>
     <div class="chat-input-row">
-      <input class="input" id="askInput" placeholder="${hasKey ? (ctx ? 'ask about '+esc(ctx.hint)+'...' : 'ask anything japanese...') : 'add API key in settings first'}" ${hasKey?'':'disabled'}>
-      <button class="btn btn-primary" id="askSendBtn" onclick="sendAskClaude()" ${hasKey?'':'disabled'}>Send</button>
+      <textarea class="input" id="askInput" rows="3" placeholder="${hasKey ? (ctx ? 'ask about '+esc(ctx.hint)+'...' : 'ask anything japanese...') : 'add API key in settings first'}" ${hasKey?'':'disabled'} style="resize:none;min-height:72px;font-size:16px"></textarea>
+      <button class="btn btn-primary" id="askSendBtn" onclick="sendAskClaude()" ${hasKey?'':'disabled'} style="align-self:stretch;min-width:72px">Send</button>
     </div>
     <div class="chat-status" id="chatStatus"></div>
     <div style="display:flex;gap:8px;margin-top:6px">
@@ -2850,7 +2850,7 @@ function openAskClaude(){
   const inp = $('#askInput');
   if(inp && hasKey){
     inp.focus();
-    inp.onkeydown = e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendAskClaude(); } };
+    inp.onkeydown = e => { if(e.key==='Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); sendAskClaude(); } };
     inp.addEventListener('focus', () => {
       setTimeout(() => inp.scrollIntoView({block:'center', behavior:'smooth'}), 300);
     });
