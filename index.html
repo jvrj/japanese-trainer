@@ -1618,14 +1618,17 @@ function renderDrill(){
 
     ${state.lastAnswer ? renderFeedback(state.lastAnswer) : ''}
 
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
-      <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
-    </div>
+    ${state.lastAnswer
+      ? `<button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="nextCard()">Next card →</button>`
+      : `<div class="btn-row">
+          <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
+          <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
+        </div>
+        <button class="btn btn-ghost" onclick="nextCard()">Skip this card →</button>`}
 
     <div class="collapsible" id="drillExtras">
       <div class="collapsible-head" onclick="document.getElementById('drillExtras').classList.toggle('open')">
-        <h3>Help & extras</h3>
+        <h3>💡 Hint & example</h3>
         <span class="collapsible-arrow">›</span>
       </div>
       <div class="collapsible-body">
@@ -1634,7 +1637,6 @@ function renderDrill(){
           const ex = EXAMPLES.find(e => (e.uses||[]).some(u => normJP(u)===normJP(word.jp) || normEN(u)===normEN(word.en)));
           return ex ? `<div class="hint-card" style="margin-top:8px"><div class="hint-head">example sentence</div><div class="hint-body"><b>${esc(ex.jp)}</b><br><span style="color:var(--dim);font-size:12px">${esc(ex.en)}</span> <button class="wheels-btn" onclick="speakJP('${esc(ex.jp)}')">🔊</button></div></div>` : '<div class="muted" style="font-size:12px;padding:4px 0">No example sentence for this word yet.</div>';
         })()}
-        <button class="btn btn-ghost" style="width:100%" onclick="nextCard()">Skip this card →</button>
       </div>
     </div>
   `;
