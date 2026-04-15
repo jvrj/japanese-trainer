@@ -946,7 +946,7 @@ const PARTICLE_DRILLS = [
   {jp:"がっこう ___ いきます。",blank:"に",en:"I go to school.",explain:"に marks destination/direction."},
   {jp:"バス ___ いきます。",blank:"で",en:"I go by bus.",explain:"で marks the means/method."},
   {jp:"レストラン ___ たべます。",blank:"で",en:"I eat at the restaurant.",explain:"で marks where an action happens."},
-  {jp:"ともだち ___ あいます。",blank:"に",en:"I meet a friend.",explain:"に marks the target of certain verbs (会う, 行く)."},
+  {jp:"ともだち ___ あいます。",blank:"に",accept:["に","と"],en:"I meet a friend.",explain:"に marks the target of 会う. と ('with') also works."},
   {jp:"ともだち ___ いきます。",blank:"と",en:"I go with a friend.",explain:"と = 'with' for companions."},
   {jp:"これ ___ ほん です。",blank:"は",en:"This is a book.",explain:"は marks the topic: 'as for this...'."},
   {jp:"ねこ ___ すき です。",blank:"が",en:"I like cats.",explain:"が marks the object of emotion verbs like すき, きらい, ほしい."},
@@ -960,12 +960,12 @@ const PARTICLE_DRILLS = [
   {jp:"パン ___ たべません。",blank:"を",en:"I don't eat bread.",explain:"を still marks the object in negative."},
   {jp:"くるま ___ のります。",blank:"に",en:"I get in a car.",explain:"のる takes に for the thing you ride."},
   {jp:"いぬ ___ ねこ が すき です。",blank:"と",en:"I like dogs and cats.",explain:"と connects nouns exhaustively."},
-  {jp:"うち ___ かえります。",blank:"に",en:"I return home.",explain:"に = destination. へ also works."},
+  {jp:"うち ___ かえります。",blank:"に",accept:["に","へ"],en:"I return home.",explain:"に = destination. へ also works."},
   {jp:"さかな ___ たべます か。",blank:"を",en:"Do you eat fish?",explain:"を marks the object even in questions."},
   {jp:"おちゃ ___ おねがいします。",blank:"を",en:"Tea, please.",explain:"Can be omitted in very casual speech, but を is standard."},
   {jp:"いしゃ ___ なりたい。",blank:"に",en:"I want to become a doctor.",explain:"に marks the target state for なる ('become')."},
   {jp:"はし ___ わたります。",blank:"を",en:"I cross the bridge.",explain:"Movement verbs like わたる, あるく take を for the path."},
-  {jp:"せんせい ___ はなします。",blank:"と",en:"I talk with the teacher.",explain:"と = 'with' for interactions. に is also possible."}
+  {jp:"せんせい ___ はなします。",blank:"と",accept:["と","に"],en:"I talk with the teacher.",explain:"と = 'with' for interactions. に also works for the target of speech."}
 ];
 
 /* ===================== SENTENCE TEMPLATES ===================== */
@@ -1186,10 +1186,14 @@ function recordAttempt(wordId, correct, viaVoice){
   srsBump(st, correct);
   const newMastery = getMasteryForWord(wordId);
 
-  /* Ghost demote: if at Guru+ and miss, demote one stage by injecting "shadow" failures */
-  if(!correct && (prevMastery==='guru' || prevMastery==='master')){
+  /* Ghost demote: miss at Guru+ → inject shadow-failures to drop a stage */
+  if(!correct && (prevMastery==='guru' || prevMastery==='master' || prevMastery==='burned')){
+    const shadowCount = prevMastery === 'burned' ? 4 : (prevMastery === 'master' ? 3 : 2);
+    for(let i = 0; i < shadowCount; i++){
+      st.attempts.push({ts:now()-i-1, correct:false, voice:false, shadow:true});
+    }
     st.demotedAt = now();
-    log('ghost_demote',{id:wordId, from:prevMastery});
+    log('ghost_demote',{id:wordId, from:prevMastery, shadows:shadowCount});
   }
 
   log('attempt',{id:wordId, correct, voice:!!viaVoice, prev:prevMastery, next:newMastery});
@@ -1252,6 +1256,11 @@ function buildSession(overrideSize){
   if(!pool.length) return [];
   const s = state.settings;
   const SZ = overrideSize || 20;
+  /* Avoid serving recently-drilled words at the top of a new session */
+  const recent = (state._recentlyServed || []).slice(-Math.max(5, Math.floor(SZ/3)));
+  const recentSet = new Set(recent);
+  const noRecent = pool.filter(w => !recentSet.has(w.id));
+  if(noRecent.length >= SZ) pool = noRecent;
 
   if(s.mode === 'weakest'){
     pool = pool.slice().sort((a,b) => {
@@ -1285,31 +1294,48 @@ function buildSession(overrideSize){
    ANSWER CHECKING
    ========================================================================= */
 
+/* Find all homograph siblings: words with identical normalised JP */
+function homographSiblings(word){
+  const targetJP = normJP(word.jp);
+  return state.words.filter(w => normJP(w.jp) === targetJP);
+}
+/* Find all EN homograph siblings: words whose EN alternatives include the target EN */
+function enHomographSiblings(word){
+  const targetEN = enAlternatives(word.en);
+  return state.words.filter(w => {
+    const wAlts = enAlternatives(w.en);
+    return wAlts.some(a => targetEN.includes(a));
+  });
+}
+
 function checkAnswer(userInput, word, direction){
   const ui = (userInput||'').trim();
   if(!ui) return {correct:false, reason:'empty'};
 
   if(direction === 'jp-en'){
-    /* English expected */
-    const alts = enAlternatives(word.en);
+    /* English expected — accept ANY meaning across homograph siblings */
+    const siblings = homographSiblings(word);
+    const altSet = new Set();
+    for(const s of siblings) for(const a of enAlternatives(s.en)) altSet.add(a);
+    const alts = [...altSet];
     const uiN = normEN(ui);
     if(alts.includes(uiN)) return {correct:true, match:'exact'};
-    /* Allow 1-char typo for longer answers */
     for(const p of alts){
       if(p && p.length >= 4 && levenshtein(uiN, p) <= 1) return {correct:true, match:'near'};
     }
-    /* Allow user answer being a subset or superset when short meanings overlap */
     for(const p of alts){
-      if(p && uiN && (p === uiN || (p.length >= 3 && uiN.length >= 3 && (p.includes(uiN) && Math.abs(p.length-uiN.length) <= 4)))) return {correct:true, match:'subset'};
+      if(p && uiN && p.length >= 3 && uiN.length >= 3 && p.includes(uiN) && Math.abs(p.length-uiN.length) <= 4) return {correct:true, match:'subset'};
     }
     return {correct:false, reason:'wrong'};
   } else {
-    /* Japanese expected */
-    const target = normJP(word.jp);
+    /* Japanese expected — accept ANY JP form whose EN overlaps the card's EN */
+    const siblings = enHomographSiblings(word);
+    const jpTargets = [...new Set(siblings.map(s => normJP(s.jp)))];
     const uiN = normJP(ui);
-    if(uiN === target) return {correct:true, match:'exact'};
-    /* Allow 1-char typo for words >= 4 chars */
-    if(target.length >= 4 && levenshtein(uiN, target) === 1) return {correct:true, match:'typo'};
+    if(jpTargets.includes(uiN)) return {correct:true, match:'exact'};
+    for(const t of jpTargets){
+      if(t.length >= 4 && levenshtein(uiN, t) === 1) return {correct:true, match:'typo'};
+    }
     return {correct:false, reason:'wrong'};
   }
 }
@@ -1430,15 +1456,18 @@ function getHintsFor(word){
    STREAK
    ========================================================================= */
 
-function updateStreak(){
-  const t = today();
+/* Local-date streak — only counts on correct answers */
+function localToday(){ return new Date().toLocaleDateString('en-CA'); }
+function updateStreak(wasCorrect){
+  if(!wasCorrect) return; /* streak requires real correct answers */
+  const t = localToday();
   const last = state.streak.lastDate;
   if(last === t) return;
   if(!last){
     state.streak.current = 1;
   } else {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
-    if(last === yesterday) state.streak.current = (state.streak.current||0) + 1;
+    const y = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+    if(last === y) state.streak.current = (state.streak.current||0) + 1;
     else state.streak.current = 1;
   }
   state.streak.lastDate = t;
@@ -1589,6 +1618,9 @@ function renderDrill(){
   const promptClass = dir==='jp-en' ? 'jp' : '';
   const mastery = getMasteryForWord(word.id);
   const pct = Math.round(100 * idx / state.sessionQueue.length);
+  /* Disambiguator for homographs (e.g. はな = nose or flower) */
+  const siblings = dir==='jp-en' ? homographSiblings(word) : [];
+  const disambig = siblings.length > 1 ? ` · ${esc((word.en||'').split('/')[0])}` : '';
 
   const showWheels = shouldShowWheels();
   const wheelsWords = showWheels ? getWheelsWords() : [];
@@ -1628,7 +1660,7 @@ function renderDrill(){
     </div>
 
     <div class="drill-card">
-      <div class="drill-cat">${word.theme || ''} · <span class="pill pill-${mastery}">${mastery}</span>${word.source==='user' && !word.verified ? ' <span class="pill pill-unverified">unverified</span>':''}</div>
+      <div class="drill-cat">${word.theme || ''}${disambig} · <span class="pill pill-${mastery}">${mastery}</span>${word.source==='user' && !word.verified ? ' <span class="pill pill-unverified">unverified</span>':''}</div>
       <div class="drill-prompt ${promptClass}">${esc(prompt)}</div>
       ${dir==='jp-en' && word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
     </div>
@@ -1714,7 +1746,7 @@ function submitAns(viaVoice, overrideInput){
     smart = dir==='jp-en' ? analyzeWrongEN(inp, word) : analyzeWrongJP(inp, word);
   }
   recordAttempt(word.id, res.correct, viaVoice);
-  updateStreak();
+  updateStreak(res.correct);
   state.lastAnswer = {correct:res.correct, viaVoice, word, smart, userJP:dir==='en-jp'?inp:'', userEN:dir==='jp-en'?inp:'', correctAnswer:dir==='jp-en'?word.en:word.jp};
   save();
   render();
@@ -1731,9 +1763,15 @@ function revealAnswer(){
 
 function nextCard(){
   _hintStage = 0;
+  const prev = state.sessionQueue[state.sessionIdx];
+  if(prev){
+    state._recentlyServed = state._recentlyServed || [];
+    state._recentlyServed.push(prev.id);
+    if(state._recentlyServed.length > 30) state._recentlyServed.shift();
+  }
   state.sessionIdx++;
   if(state.sessionIdx >= state.sessionQueue.length){
-    state.sessionQueue = buildSession();
+    state.sessionQueue = buildSession(state.sessionQueue.length || 20);
     state.sessionIdx = 0;
   }
   state.lastAnswer = null;
@@ -1745,17 +1783,11 @@ function drillVoice(){
   if(!word) return;
   startVoice(
     (alts) => {
-      /* pick best matching alt */
-      const target = normJP(word.jp);
-      let best = alts[0];
-      let bestScore = levenshtein(normJP(alts[0].transcript), target);
-      for(const a of alts){
-        const s = levenshtein(normJP(a.transcript), target);
-        if(s < bestScore){ best = a; bestScore = s; }
-      }
-      state.voiceResult = best.transcript;
-      const c = $('#ansInput'); if(c) c.value = best.transcript;
-      submitAns(true, best.transcript);
+      /* Use the TOP hypothesis (alts[0]) — don't cherry-pick a lower-ranked one */
+      const top = alts[0];
+      state.voiceResult = top.transcript;
+      const c = $('#ansInput'); if(c) c.value = top.transcript;
+      submitAns(true, top.transcript);
     },
     (err)=>{ if(err) log('voice_end_err',{err:String(err)}); }
   );
@@ -1879,10 +1911,12 @@ function renderParticles(){
   const ans = state._particleAnswer;
   const particles = ['は','が','を','に','で','へ','と','も','の','から','まで','や'];
 
+  const accept = d.accept || [d.blank];
+  const isCorrect = ans && accept.includes(ans);
   return `
     <div class="card">
       <h3>Particle drills · ${state._particleIdx+1} / ${state._particleQueue.length}</h3>
-      <div class="muted">Pick the particle that belongs in the blank.</div>
+      <div class="muted">Pick the particle that belongs in the blank.${accept.length>1?' <i>(multiple acceptable)</i>':''}</div>
     </div>
     <div class="drill-card">
       <div class="drill-cat">fill in the blank</div>
@@ -1893,10 +1927,10 @@ function renderParticles(){
       <button class="audio-btn" onclick="speakJP('${esc(d.jp.replace('___',d.blank))}')">🔊 Listen (with answer)</button>
     </div>
     <div class="tags" style="justify-content:center">
-      ${particles.map(p => `<button class="tag ${ans===p?(p===d.blank?'active':''):''}" style="${ans===p && p!==d.blank?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="answerParticle('${p}')">${p}</button>`).join('')}
+      ${particles.map(p => `<button class="tag ${ans===p?(accept.includes(p)?'active':''):''}" style="${ans===p && !accept.includes(p)?'background:var(--red);color:#fff;border-color:var(--red)':''}" onclick="answerParticle('${p}')">${p}</button>`).join('')}
     </div>
-    ${ans ? `<div class="feedback-card ${ans===d.blank?'correct':'wrong'}">
-      <div class="feedback-head">${ans===d.blank?'✓ Correct':'✗ Wrong — answer: '+esc(d.blank)}</div>
+    ${ans ? `<div class="feedback-card ${isCorrect?'correct':'wrong'}">
+      <div class="feedback-head">${isCorrect?'✓ Correct':'✗ Wrong — accepted: '+accept.map(esc).join(' / ')}</div>
       <div class="feedback-body">${esc(d.jp.replace('___','<b>'+d.blank+'</b>'))}</div>
       <div class="feedback-smart">${esc(d.explain)}</div>
     </div>
@@ -1907,7 +1941,8 @@ function answerParticle(p){
   state._particleAnswer = p;
   const idx = state._particleQueue[state._particleIdx % state._particleQueue.length];
   const d = PARTICLE_DRILLS[idx];
-  log('particle_attempt',{idx, correct:p===d.blank, chose:p});
+  const accept = d.accept || [d.blank];
+  log('particle_attempt',{idx, correct:accept.includes(p), chose:p});
   render();
 }
 function nextParticle(){
@@ -1944,12 +1979,13 @@ function renderDashboard(){
     perWord[id].t++;
     if(l.data?.correct) perWord[id].c++;
   }
-  const weakest = Object.entries(perWord)
-    .filter(([,s])=>s.t >= 3)
+  const weakestAll = Object.entries(perWord)
     .map(([id,s])=>({id, acc:s.c/s.t, t:s.t, w: state.words.find(x=>x.id===id)}))
     .filter(x=>x.w)
-    .sort((a,b)=>a.acc-b.acc)
-    .slice(0,10);
+    .sort((a,b)=>a.acc-b.acc);
+  const weakestPrimary = weakestAll.filter(x=>x.t>=3);
+  const weakest = weakestPrimary.length ? weakestPrimary.slice(0,10) : weakestAll.slice(0,10);
+  const lowSample = !weakestPrimary.length && weakest.length > 0;
 
   /* daily activity last 14 days */
   const days = [];
@@ -1981,7 +2017,7 @@ function renderDashboard(){
       </div>
     </div>
     <div class="card">
-      <h3>Weakest 10 words (by accuracy)</h3>
+      <h3>Weakest 10 words (by accuracy)${lowSample?' <span class="pill pill-unverified" style="font-size:9px">low sample</span>':''}</h3>
       ${weakest.length ? weakest.map(x => `
         <div class="word-row">
           <div class="word-main">
