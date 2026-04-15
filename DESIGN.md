@@ -91,6 +91,14 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.12 (shipped — seamless/smooth polish)
+
+- **Fade transitions between cards** (150ms opacity) — avoid HTML-flash feel when burst shuffles to the next word.
+- **Stable button positions across states.** Reveal and Got-it/Missed-it share the same slot; Submit and feedback share the same slot. No button jumping between renders.
+- **Consistent card frame / no reflow.** Feedback renders *inside* the drill card, not as a new card below it — card height doesn't jump.
+- **Feedback linger: 1000ms correct / 2200ms wrong.** Long enough to actually read; Enter or tap dismisses instantly.
+- **Remove training wheels panel entirely.** Redundant — toggling direction to EN→JP shows the English, and Reveal already covers the "I forgot" case. Cuts visual noise at the top of drill. Drop `trainingWheels` setting, `shouldShowWheels`, `getWheelsWords`, `cycleWheels`, `renderWheels` UI.
+
 ## v4.5 (after real-use feedback)
 
 - SRS-lite (lastSeen + interval)

@@ -79,6 +79,15 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .drill-prompt{font-size:24px;font-weight:700;line-height:1.3;margin-bottom:6px}
 .drill-prompt.jp{font-size:40px;font-weight:900}
 .drill-sub{font-size:12px;color:var(--dim);margin-top:6px}
+.drill-sub-inline{font-size:12px;color:var(--dim);font-weight:400}
+.drill-divider{height:1px;background:var(--border);margin:14px -6px 12px}
+.drill-answer{font-size:22px;font-weight:700;line-height:1.3}
+.drill-answer.ok{color:var(--green)}
+.drill-answer.bad{color:var(--red)}
+.drill-stage{position:relative}
+.action-slot{min-height:58px;display:flex;flex-direction:column;justify-content:center;margin-top:8px}
+.fade-in{animation:fadeIn 180ms ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 /* TTS / Voice buttons */
 .audio-row{display:flex;gap:8px;margin-bottom:10px}
@@ -1019,8 +1028,6 @@ const DEFAULT_SETTINGS = {
   hintsEnabled:true,
   n5PackEnabled:true,
   smartWrongFeedback:true,
-  trainingWheels:'auto',      // auto | on | off
-  pinnedWords:[],             // word IDs manually pinned to wheels panel
   removedWords:[],            // word IDs manually removed from active pool
   srsOn:true,                 // use SRS intervals to pick next cards
   swipeOn:true                // swipe gestures on drill
@@ -1219,42 +1226,6 @@ function getActiveWords(){
     if(s.activeRegister.length && !s.activeRegister.includes(w.register)) return false;
     return true;
   });
-}
-
-/* Training wheels decision — show answers panel for words the user doesn't know yet */
-function shouldShowWheels(){
-  const mode = state.settings.trainingWheels;
-  if(mode === 'on') return true;
-  if(mode === 'off') return false;
-  /* auto: show if most of session queue is New/Learning */
-  if(!state.sessionQueue.length) return false;
-  let weak = 0;
-  for(const w of state.sessionQueue){
-    const m = getMasteryForWord(w.id);
-    if(m === 'new' || m === 'learning') weak++;
-  }
-  return weak / state.sessionQueue.length >= 0.4;
-}
-
-function getWheelsWords(){
-  const pinned = new Set(state.settings.pinnedWords || []);
-  const out = [];
-  const seen = new Set();
-  for(const w of state.sessionQueue){
-    if(seen.has(w.id)) continue;
-    const m = getMasteryForWord(w.id);
-    if(m === 'new' || m === 'learning' || pinned.has(w.id)){
-      out.push({word:w, mastery:m, pinned:pinned.has(w.id)});
-      seen.add(w.id);
-    }
-  }
-  /* also include any pinned words not in current queue */
-  for(const id of pinned){
-    if(seen.has(id)) continue;
-    const w = state.words.find(x=>x.id===id);
-    if(w){ out.push({word:w, mastery:getMasteryForWord(w.id), pinned:true}); seen.add(id); }
-  }
-  return out;
 }
 
 function buildSession(overrideSize){
@@ -1780,11 +1751,6 @@ function renderDrill(){
   const siblings = dir==='jp-en' ? homographSiblings(word) : [];
   const disambig = siblings.length > 1 ? ` · ${esc((word.en||'').split('/')[0])}` : '';
 
-  const showWheels = shouldShowWheels();
-  const wheelsWords = showWheels ? getWheelsWords() : [];
-  const wheelsMode = state.settings.trainingWheels;
-  const wheelsExpanded = state._wheelsExpanded !== false;
-
   const selfGradeMode = (dir === 'jp-en');
   const feedbackShowing = !!state.lastAnswer;
   const revealShowing = !!state._reveal;
@@ -1794,70 +1760,56 @@ function renderDrill(){
     <div class="muted" style="text-align:center;font-size:12px;margin:4px 0">
       Burst · ${wordsPassed} / ${b.words.length} passed · ${isReview ? '🔁 review' : '✨ new'} · this word ${wordProgress}/${BURST_PASS_TARGET}
     </div>
-    ${showWheels ? `
-      <div class="collapsible ${wheelsExpanded?'open':''}" style="border-color:#3b82f6;background:linear-gradient(180deg,rgba(59,130,246,.10),rgba(168,85,247,.06))">
-        <div class="collapsible-head" onclick="state._wheelsExpanded=!${wheelsExpanded};render()">
-          <h3 style="color:#93c5fd">🚲 Training wheels · ${wheelsWords.length} words</h3>
-          <span class="collapsible-arrow">›</span>
-        </div>
-        <div class="collapsible-body" style="padding:0 12px 10px">
-          ${wheelsWords.length ? `<div class="wheels-list">
-            ${wheelsWords.map(ww => `
-              <div class="wheels-row">
-                <div class="wheels-jp">${esc(ww.word.jp)}</div>
-                <div class="wheels-en">${esc((ww.word.en||'').split('/')[0])}</div>
-                <div class="wheels-actions">
-                  <button class="wheels-btn ${ww.pinned?'pinned':''}" onclick="togglePin('${jsEsc(ww.word.id)}')" title="Pin/unpin">${ww.pinned?'📌':'📍'}</button>
-                  <button class="wheels-btn" onclick="removeWord('${jsEsc(ww.word.id)}')" title="Remove from deck">🗑</button>
-                  <button class="wheels-btn" onclick="speakJP('${jsEsc(ww.word.jp)}')" title="Listen">🔊</button>
-                </div>
-              </div>
-            `).join('')}
-          </div>` : `<div class="wheels-empty">No weak words in session.</div>`}
-          <button class="wheels-toggle" style="margin-top:8px" onclick="cycleWheels()">Mode: ${wheelsMode}</button>
-        </div>
-      </div>
-    ` : ''}
     <div class="direction-toggle">
       <button class="direction-btn ${dir==='jp-en'?'active':''}" onclick="setDirection('jp-en')">JP → EN</button>
       <button class="direction-btn ${dir==='en-jp'?'active':''}" onclick="setDirection('en-jp')">EN → JP</button>
     </div>
 
-    <div class="drill-card">
-      <div class="drill-cat">${word.theme || ''}${disambig} · <span class="pill pill-${mastery}">${mastery}</span>${word.source==='user' && !word.verified ? ' <span class="pill pill-unverified">unverified</span>':''}</div>
-      <div class="drill-prompt ${promptClass}">${esc(prompt)}</div>
-      ${dir==='jp-en' && word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
-    </div>
+    <div class="drill-stage" data-state="${feedbackShowing?'feedback':(revealShowing?'reveal':'prompt')}">
+      <div class="drill-card fade-in">
+        <div class="drill-cat">${word.theme || ''}${disambig} · <span class="pill pill-${mastery}">${mastery}</span>${word.source==='user' && !word.verified ? ' <span class="pill pill-unverified">unverified</span>':''}</div>
+        <div class="drill-prompt ${promptClass}">${esc(prompt)}</div>
+        ${dir==='jp-en' && word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
+        ${(revealShowing || feedbackShowing) && selfGradeMode ? `
+          <div class="drill-divider"></div>
+          <div class="drill-answer fade-in">${esc(word.en)}</div>
+        ` : ''}
+        ${feedbackShowing && !selfGradeMode ? `
+          <div class="drill-divider"></div>
+          <div class="drill-answer fade-in ${state.lastAnswer.correct?'ok':'bad'}">
+            ${state.lastAnswer.correct ? '✓ ' : '✗ '}${esc(word.jp)}${word.romaji?` · <span class="drill-sub-inline">${esc(word.romaji)}</span>`:''}
+          </div>
+          <div class="drill-sub" style="margin-top:4px">${esc(word.en)}</div>
+          ${state.lastAnswer.smart && state.lastAnswer.smart.type==='real-word' ? `<div class="feedback-smart" style="margin-top:6px">You wrote <b>${esc(state.lastAnswer.userJP||state.lastAnswer.userEN||'')}</b> — that means "${esc(state.lastAnswer.smart.match.en)}".</div>` : ''}
+        ` : ''}
+      </div>
 
-    <div class="audio-row">
-      <button class="audio-btn" id="ttsBtn" onclick="speakJP('${jsEsc(word.jp)}')">🔊 Listen</button>
-      ${voiceSupported() && dir==='en-jp' ? `<button class="audio-btn" id="voiceBtn" onclick="drillVoice()">🎤 Speak</button>` : ''}
-    </div>
+      <div class="audio-row">
+        <button class="audio-btn" id="ttsBtn" onclick="speakJP('${jsEsc(word.jp)}')">🔊 Listen</button>
+        ${voiceSupported() && dir==='en-jp' ? `<button class="audio-btn" id="voiceBtn" onclick="drillVoice()">🎤 Speak</button>` : ''}
+      </div>
 
-    ${selfGradeMode ? `
-      ${revealShowing ? `
-        <div class="drill-card" style="text-align:center">
-          <div class="drill-sub">Answer</div>
-          <div class="drill-prompt" style="font-size:20px">${esc(word.en)}</div>
-          ${word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
-        </div>
-        ${feedbackShowing ? renderFeedback(state.lastAnswer) : `
-          <div class="btn-row">
-            <button class="btn btn-secondary" onclick="selfGrade(false)">✗ Missed it</button>
-            <button class="btn btn-primary" onclick="selfGrade(true)">✓ Got it</button>
-          </div>`}
-      ` : `
-        <div class="muted" style="text-align:center;margin:8px 0">Say it in your head, then reveal and self-grade.</div>
-        <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="revealForSelfGrade()">👀 Reveal</button>
-      `}
-    ` : `
-      <input class="input" id="ansInput" placeholder="にほんご で こたえて" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
-      ${feedbackShowing ? renderFeedback(state.lastAnswer) : `
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
-          <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
-        </div>`}
-    `}
+      ${!selfGradeMode ? `
+        <input class="input" id="ansInput" placeholder="にほんご で こたえて" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
+      ` : ''}
+
+      <div class="action-slot">
+        ${selfGradeMode
+          ? (revealShowing
+              ? `<div class="btn-row">
+                  <button class="btn btn-secondary" onclick="selfGrade(false)">✗ Missed it</button>
+                  <button class="btn btn-primary" onclick="selfGrade(true)">✓ Got it</button>
+                </div>`
+              : `<button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="revealForSelfGrade()">👀 Reveal</button>`)
+          : (feedbackShowing
+              ? `<div class="muted" style="text-align:center;font-size:12px;padding:10px 0">Auto-advancing… <span style="opacity:.6">(Enter to skip wait)</span></div>`
+              : `<div class="btn-row">
+                  <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
+                  <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
+                </div>`)
+        }
+      </div>
+    </div>
 
     <div class="collapsible" id="drillExtras">
       <div class="collapsible-head" onclick="document.getElementById('drillExtras').classList.toggle('open')">
@@ -1963,7 +1915,7 @@ function submitAns(viaVoice, overrideInput){
   applyBurstResult(word, res.correct, viaVoice);
   save();
   render();
-  scheduleNext(res.correct ? 800 : 1800);
+  scheduleNext(res.correct ? 1000 : 2200);
 }
 
 function selfGrade(correct){
@@ -1973,11 +1925,13 @@ function selfGrade(correct){
   if(!word) return;
   recordAttempt(word.id, correct, false);
   updateStreak(correct);
-  state.lastAnswer = {correct, viaVoice:false, word, smart:null, userJP:'', userEN:'', correctAnswer:word.en, selfGraded:true};
   applyBurstResult(word, correct, false);
+  /* Self-grade: no feedback phase — user already knows. Advance immediately. */
+  state._reveal = false;
+  state.lastAnswer = null;
+  if(!b.queue.length) completeBurst();
   save();
   render();
-  scheduleNext(correct ? 700 : 1500);
 }
 
 function revealForSelfGrade(){
@@ -1995,7 +1949,7 @@ function revealAnswer(){
   applyBurstResult(word, false, false);
   save();
   render();
-  scheduleNext(1800);
+  scheduleNext(2200);
 }
 
 function nextCard(){
@@ -2413,19 +2367,9 @@ function renderSettings(){
     </div>
 
     <div class="card">
-      <h3>Pinned words (${(state.settings.pinnedWords||[]).length})</h3>
-      <div class="muted" style="margin-bottom:8px">Always shown in training wheels panel.</div>
-      ${(state.settings.pinnedWords||[]).length ? (state.settings.pinnedWords||[]).map(id => {
-        const w = state.words.find(x=>x.id===id);
-        if(!w) return '';
-        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="togglePin('${jsEsc(id)}')">Unpin</button></div>`;
-      }).join('') : '<div class="muted">None. Pin words from the drill screen.</div>'}
-    </div>
-
-    <div class="card">
       <h3>About</h3>
       <div class="muted">
-        v4 · conversation edition<br>
+        v4.12 · conversation edition<br>
         ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
@@ -2626,7 +2570,7 @@ function init(){
   }catch(e){}
   render();
   updateBackFab();
-  log('init',{v:411, words:state.words.length});
+  log('init',{v:412, words:state.words.length});
 }
 
 window.addEventListener('DOMContentLoaded', init);
@@ -2661,19 +2605,6 @@ window.saveNote = saveNote;
 window.deleteNote = deleteNote;
 window.playScenario = playScenario;
 
-function cycleWheels(){
-  const order = ['auto','on','off'];
-  const cur = state.settings.trainingWheels || 'auto';
-  state.settings.trainingWheels = order[(order.indexOf(cur)+1) % order.length];
-  save(); render();
-}
-function togglePin(id){
-  const p = state.settings.pinnedWords || [];
-  const i = p.indexOf(id);
-  if(i>=0) p.splice(i,1); else p.push(id);
-  state.settings.pinnedWords = p;
-  save(); render();
-}
 function removeWord(id){
   if(!confirm('Remove this word from your active deck? You can restore it later in Settings.')) return;
   const r = state.settings.removedWords || [];
@@ -2691,8 +2622,6 @@ function restoreWord(id){
   state.settings.removedWords = (state.settings.removedWords||[]).filter(x=>x!==id);
   save(); render();
 }
-window.cycleWheels = cycleWheels;
-window.togglePin = togglePin;
 window.removeWord = removeWord;
 window.restoreWord = restoreWord;
 window.goBack = goBack;
