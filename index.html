@@ -135,14 +135,15 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .notes-fab:active{transform:scale(.92)}
 .ask-fab{position:fixed;right:16px;bottom:148px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#60a5fa,#a78bfa);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(96,165,250,.45);display:flex;align-items:center;justify-content:center}
 .ask-fab:active{transform:scale(.92)}
-.chat-log{max-height:40dvh;overflow-y:auto;padding:8px 4px;display:flex;flex-direction:column;gap:10px}
-.chat-msg{padding:10px 12px;border-radius:14px;max-width:85%;line-height:1.45;font-size:14px;white-space:pre-wrap;word-wrap:break-word}
+.chat-log{max-height:40dvh;overflow-y:auto;padding:8px 4px;display:flex;flex-direction:column;gap:10px;direction:ltr;unicode-bidi:isolate}
+.chat-msg{padding:10px 12px;border-radius:14px;max-width:85%;line-height:1.45;font-size:14px;white-space:pre-wrap;word-wrap:break-word;direction:ltr;unicode-bidi:isolate;text-align:left}
 .chat-msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
 .chat-msg.asst{align-self:flex-start;background:var(--card2);color:var(--text);border:1px solid var(--border);border-bottom-left-radius:4px}
 .chat-msg.err{align-self:stretch;background:rgba(248,113,113,.12);color:#fca5a5;border:1px solid rgba(248,113,113,.3);font-size:12px}
 .chat-msg .jp{font-family:inherit}
-.chat-input-row{display:flex;gap:6px;margin-top:8px}
-.chat-input-row .input{flex:1}
+.chat-input-row{display:flex;gap:6px;margin-top:8px;position:sticky;bottom:0;background:var(--bg);padding:8px 0;z-index:2}
+.chat-input-row .input{flex:1;direction:ltr;unicode-bidi:isolate;text-align:left}
+.chat-input-row .input[lang="ja"]{direction:ltr}
 .chat-status{font-size:11px;color:var(--dim);padding:4px 2px}
 .back-fab{position:fixed;left:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--card2);color:var(--text);border:1px solid var(--border);font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(0,0,0,.45);display:none;align-items:center;justify-content:center}
 .back-fab:active{transform:scale(.92)}
@@ -2671,10 +2672,12 @@ function toggleFilter(field, val){
 function clearFilters(){ state.settings.activeThemes=[]; state.settings.activePOS=[]; state.settings.activeRegister=[]; save(); render(); }
 function toggleSetting(k){ state.settings[k] = !state.settings[k]; save(); load(); render(); }
 function saveAnthropicKey(){
-  const v = ($('#anthropicKeyInput')?.value || '').trim();
+  const raw = ($('#anthropicKeyInput')?.value || '');
+  const v = raw.replace(/\s+/g,'').trim();
   state.settings.anthropicKey = v;
   save();
-  alert(v ? 'Key saved. Tap the 🤖 bubble to chat.' : 'Key cleared.');
+  const looksValid = /^sk-ant-/.test(v);
+  alert(v ? (looksValid ? 'Key saved. Tap the 🤖 bubble to chat.' : 'Saved, but this does not look like an Anthropic key (expected sk-ant-...). Double-check.') : 'Key cleared.');
   render();
 }
 function clearAnthropicKey(){
@@ -2912,7 +2915,12 @@ async function sendAskClaude(){
     });
     if(!res.ok){
       const errTxt = await res.text().catch(()=>String(res.status));
-      throw new Error(`${res.status} — ${errTxt.slice(0,400)}`);
+      let friendly = `${res.status}`;
+      if(res.status === 401) friendly += ' — API key rejected. Re-check the key in Settings (extra spaces? wrong account?).';
+      else if(res.status === 400) friendly += ' — bad request. Try a shorter message or different model.';
+      else if(res.status === 429) friendly += ' — rate limited or out of credits. Check console.anthropic.com billing.';
+      else if(res.status === 529 || res.status === 503) friendly += ' — Anthropic overloaded. Try again in a moment.';
+      throw new Error(`${friendly}\n\n${errTxt.slice(0,400)}`);
     }
     const data = await res.json();
     const reply = (data.content || []).map(c => c.text || '').join('').trim() || '(empty reply)';

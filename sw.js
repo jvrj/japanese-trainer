@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jp-trainer-v416';
+const CACHE_NAME = 'jp-trainer-v417';
 const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -19,6 +19,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
+
+  if (url.origin !== location.origin) return;
 
   if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('/')) {
     event.respondWith(
