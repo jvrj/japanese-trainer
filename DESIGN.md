@@ -91,6 +91,29 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.24 (shipped — continuous Blitz flow + next-review hint)
+
+Sessions no longer end when the pool empties. The pool auto-refills as cards graduate, so you can keep drilling in one unbroken flow. SM-2 still schedules future reviews — v4.24 just makes the session itself flow-shaped instead of batch-shaped.
+
+### Continuous flow
+- `poolTarget` = `blitzPoolLearning + blitzPoolMature` (default 12). Stored on the session.
+- `blitzRefillIfNeeded()` runs on every advance. If `pool.length <= ceil(target/2)`, pull `deficit` more cards. Deficit split ~1:2 mature:learning.
+- Refill uses the same priority tree as initial build: **mature-due > young-due > unseen > young-not-due**. Excludes cards currently in pool or already graduated.
+- Session ends only when the refill returns nothing — i.e. the deck is exhausted. Complete screen is now "Deck clear", not "Session complete".
+- Dropped the 60-answer cap. User is in control; End button is the manual stop.
+
+### Recall visibility
+- Feedback card on a graduation now shows "Graduated ✓ · next in 25 min" (or whatever `smIntervalLabel(smInterval)` produces). Makes the SM-2 spacing visible as it kicks in.
+- Schedule: 25 min → 62 min → 2.6 hr → 6.5 hr → 16 hr → 1.7 d → 4.2 d → 10.5 d → 4 wk → 10 wk → … (starts at 10 min × ease 2.5^n per graduation; ease drops 0.2 on a lapse).
+
+### End behavior
+- `blitzEnd()` (manual stop) now applies `smGrade('again')` only to pool cards the user struggled on (`everWrong === true`). Clean quits on never-wrong cards don't touch the schedule — you can walk away without penalty.
+- Removed `blitzBailOutRemaining`. Struggled-Again logic lives in `blitzEnd` directly.
+
+### Data
+- `state.blitz` adds `poolTarget`. Tally adds `refills`. Removes `answerCap` and `tally.bailed`.
+- `buildBlitzPool` now accepts `{targetLearn, targetMature, excludeIds}` so it can serve both initial-build and refill calls.
+
 ## v4.23 (shipped — Form Drills eligibility lowered)
 
 Form Drills now unlock after **one** Blitz graduation on a verb, not after the 7-day SM-2 interval. The old gate was functionally unreachable — 7 d = ~6 Good grades = ~6 daily sessions per verb. Form Drills were locked behind a week of grinding per verb, which defeats the "learn verb then drill its forms" flow.

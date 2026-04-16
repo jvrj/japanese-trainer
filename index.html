@@ -1937,20 +1937,19 @@ function blitzCounts(){
 }
 
 /* v4.22 — streak-to-graduate learning phase layered on SM-2.
-   Pool = (mature-due: 1 correct to re-confirm) + (learning: 3-in-a-row to graduate).
-   Graduation triggers smGrade('good'); session-end bail-out triggers smGrade('again')
-   for any pool item that never graduated (answer-cap safety). */
+   v4.24 — continuous flow: pool auto-refills as cards graduate; no answer cap. */
 
-const BLITZ_ANSWER_CAP = 60;
 const BLITZ_STREAK_REQUIRED = 3;
 const BLITZ_MATURE_MIN = SM_MASTERED_DAYS * 24 * 60; /* 7 d */
 
-function buildBlitzPool(){
-  const targetLearn = state.settings.blitzPoolLearning ?? 8;
-  const targetMature = state.settings.blitzPoolMature ?? 4;
-  const active = getActiveWords();
+function buildBlitzPool(opts){
+  opts = opts || {};
+  const targetLearn = opts.targetLearn ?? (state.settings.blitzPoolLearning ?? 8);
+  const targetMature = opts.targetMature ?? (state.settings.blitzPoolMature ?? 4);
+  const exclude = opts.excludeIds || new Set();
+  const active = getActiveWords().filter(w => !exclude.has(w.id));
   const t = now();
-  const unseen = [], youngOrLapsed = [], matureDue = [];
+  const unseen = [], youngDue = [], youngNotDue = [], matureDue = [];
   for(const w of active){
     const st = state.stats[w.id];
     if(!st || !st.attempts?.length){ unseen.push(w); continue; }
@@ -1958,16 +1957,19 @@ function buildBlitzPool(){
     if(st.smInterval >= BLITZ_MATURE_MIN){
       if(st.smNext <= t) matureDue.push({w, next: st.smNext});
     } else {
-      youngOrLapsed.push({w, next: st.smNext});
+      if(st.smNext <= t) youngDue.push({w, next: st.smNext});
+      else youngNotDue.push({w, next: st.smNext});
     }
   }
   matureDue.sort((a,b) => a.next - b.next);
-  youngOrLapsed.sort((a,b) => a.next - b.next);
+  youngDue.sort((a,b) => a.next - b.next);
+  youngNotDue.sort((a,b) => a.next - b.next); /* soonest-due last-resort */
   const matureSel = matureDue.slice(0, targetMature).map(x => x.w);
-  /* Prefer young/lapsed (already seen, struggling) over unseen. */
+  /* Priority: young-due > unseen > young-not-due. */
   const learningSel = [
-    ...youngOrLapsed.slice(0, targetLearn).map(x => x.w),
+    ...youngDue.map(x => x.w),
     ...shuffleFY(unseen),
+    ...youngNotDue.map(x => x.w),
   ].slice(0, targetLearn);
   return shuffleFY([
     ...matureSel.map(w => ({id:w.id, streak:0, required:1, answers:0, everWrong:false, mature:true})),
@@ -1975,7 +1977,34 @@ function buildBlitzPool(){
   ]);
 }
 
+function blitzRefillIfNeeded(){
+  if(!state.blitz || !state.blitz.active) return;
+  const target = state.blitz.poolTarget;
+  if(!target) return;
+  const halfway = Math.ceil(target / 2);
+  if(state.blitz.pool.length > halfway) return;
+  const deficit = target - state.blitz.pool.length;
+  if(deficit <= 0) return;
+  const exclude = new Set([
+    ...state.blitz.pool.map(p => p.id),
+    ...state.blitz.graduated,
+  ]);
+  /* Keep the mature:learning ratio roughly 1:2 when backfilling. */
+  const defMature = Math.floor(deficit / 3);
+  const defLearn = deficit - defMature;
+  const fresh = buildBlitzPool({
+    targetLearn: defLearn,
+    targetMature: defMature,
+    excludeIds: exclude,
+  });
+  if(!fresh.length) return;
+  state.blitz.pool.push(...fresh);
+  state.blitz.tally.total += fresh.length;
+  state.blitz.tally.refills = (state.blitz.tally.refills || 0) + 1;
+}
+
 function startBlitz(){
+  const poolTarget = (state.settings.blitzPoolLearning ?? 8) + (state.settings.blitzPoolMature ?? 4);
   const pool = buildBlitzPool();
   if(!pool.length){
     alert('No words due or available. Add words or enable the N5 pack in Settings.');
@@ -1990,8 +2019,8 @@ function startBlitz(){
     currentId: pool[0].id,
     submitted: false, input: '', autoCorrect: null, justGraduated: null,
     totalAnswers: 0,
-    answerCap: BLITZ_ANSWER_CAP,
-    tally: {correct:0, wrong:0, graduated:0, total: pool.length, bailed:0},
+    poolTarget,
+    tally: {correct:0, wrong:0, graduated:0, total: pool.length, refills:0, struggled:0},
   };
   clearNextTimer();
   nav('blitz');
@@ -2103,18 +2132,6 @@ function blitzReveal(){
 }
 window.blitzReveal = blitzReveal;
 
-function blitzBailOutRemaining(){
-  /* Session ended before everyone graduated (answer-cap or manual end mid-session):
-     grade remaining pool as SM-2 Again so they surface again tomorrow. */
-  const remaining = state.blitz.pool.slice();
-  for(const p of remaining){
-    const st = smStatFor(p.id);
-    smGrade(st, 'again');
-  }
-  state.blitz.tally.bailed = remaining.length;
-  state.blitz.pool = [];
-}
-
 function blitzAdvance(){
   clearBlitzAdvanceTimer();
   if(!state.blitz) return;
@@ -2122,11 +2139,9 @@ function blitzAdvance(){
   state.blitz.input = '';
   state.blitz.autoCorrect = null;
   state.blitz.justGraduated = null;
-  const hitCap = state.blitz.totalAnswers >= (state.blitz.answerCap ?? BLITZ_ANSWER_CAP);
-  if(hitCap && state.blitz.pool.length){
-    blitzBailOutRemaining();
-  }
+  blitzRefillIfNeeded();
   if(!state.blitz.pool.length){
+    /* Deck exhausted — no more cards to pull. Session ends naturally. */
     state.blitz.active = false;
     state.blitz.complete = true;
     state.blitz.currentId = null;
@@ -2165,6 +2180,16 @@ window.blitzSkip = blitzSkip;
 
 function blitzEnd(){
   clearBlitzAdvanceTimer();
+  if(state.blitz && state.blitz.active){
+    /* Apply SM-2 Again only to cards the user struggled on (wrong ≥ once) but didn't graduate.
+       Clean quits on never-touched cards don't penalize the schedule. */
+    const struggled = state.blitz.pool.filter(p => p.everWrong);
+    for(const p of struggled){
+      const st = smStatFor(p.id);
+      smGrade(st, 'again');
+    }
+    save();
+  }
   state.blitz = null;
   nav('home');
 }
@@ -2180,14 +2205,14 @@ function renderBlitz(){
     const attempts = t.correct + t.wrong;
     const accPct = attempts ? Math.round(100 * t.correct / attempts) : 0;
     return `<div class="card">
-      <h2 style="margin-top:0">Session complete</h2>
+      <h2 style="margin-top:0">Deck clear</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">Nothing left to pull — every available card graduated. Come back later when reviews are due.</div>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
         <div class="stat-box"><div class="stat-num">${t.correct}</div><div class="stat-label">Correct</div></div>
         <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
         <div class="stat-box"><div class="stat-num">${accPct}%</div><div class="stat-label">Accuracy</div></div>
       </div>
-      ${t.bailed ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:8px">${t.bailed} card${t.bailed>1?'s':''} didn't graduate (session cap) — scheduled Again tomorrow</div>` : ''}
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startBlitz()">Start another session</button>
       <div class="spacer"></div>
@@ -2235,7 +2260,9 @@ function renderBlitz(){
   const correct = !!b.autoCorrect;
   const graduated = !!b.justGraduated;
   const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
-  const verdict = graduated ? 'Graduated ✓' : (correct ? 'Correct' : 'Wrong');
+  const gradStat = graduated ? state.stats[b.justGraduated] : null;
+  const nextLbl = gradStat ? smIntervalLabel(gradStat.smInterval) : '';
+  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Wrong');
   const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
   const streakAfter = graduated ? '' : (correct
     ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak ${poolItem.streak}/${poolItem.required}</div>`
