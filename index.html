@@ -1984,39 +1984,12 @@ function blitzToggleDir(){
 }
 window.blitzToggleDir = blitzToggleDir;
 
-function blitzSubmit(){
-  if(!state.blitz || state.blitz.submitted) return;
-  const w = blitzCurrent();
-  if(!w) return;
-  const inp = $('#blitzInput');
-  state.blitz.input = inp?.value || '';
-  /* Informational auto-check — user still self-grades. */
-  const res = checkAnswer(state.blitz.input, w, state.blitz.direction);
-  state.blitz.autoCorrect = !!res.correct;
-  state.blitz.submitted = true;
-  render();
-  setTimeout(() => $('#blitzGradeGood')?.focus(), 30);
-}
-window.blitzSubmit = blitzSubmit;
+/* v4.21: auto-grade on submit. checkAnswer is authoritative — match = Good, no match = Again. */
+let blitzAdvanceTimer = null;
+function clearBlitzAdvanceTimer(){ if(blitzAdvanceTimer){ clearTimeout(blitzAdvanceTimer); blitzAdvanceTimer = null; } }
 
-function blitzReveal(){
-  /* Allow skipping input — just reveal and let the user self-grade as Again. */
-  if(!state.blitz || state.blitz.submitted) return;
-  const inp = $('#blitzInput');
-  state.blitz.input = inp?.value || '';
-  state.blitz.autoCorrect = false;
-  state.blitz.submitted = true;
-  render();
-  setTimeout(() => $('#blitzGradeAgain')?.focus(), 30);
-}
-window.blitzReveal = blitzReveal;
-
-function blitzGrade(grade){
-  if(!state.blitz || !state.blitz.submitted) return;
-  const w = blitzCurrent();
-  if(!w) return;
+function blitzApplyGrade(w, grade){
   const st = smStatFor(w.id);
-  /* Mirror into the existing attempts log so mastery ladder stays informed. */
   const wasCorrect = grade !== 'again';
   st.attempts = st.attempts || [];
   st.attempts.push({ts: now(), correct: wasCorrect, voice: false, blitz: true});
@@ -2024,12 +1997,56 @@ function blitzGrade(grade){
   st.lastSeen = now();
   smGrade(st, grade);
   state.blitz.tally[grade]++;
-  /* Advance. */
+  state.blitz.graded = grade;
+}
+
+function blitzSubmit(){
+  if(!state.blitz || state.blitz.submitted) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const inp = $('#blitzInput');
+  state.blitz.input = inp?.value || '';
+  const res = checkAnswer(state.blitz.input, w, state.blitz.direction);
+  state.blitz.autoCorrect = !!res.correct;
+  state.blitz.submitted = true;
+  const grade = res.correct ? 'good' : 'again';
+  blitzApplyGrade(w, grade);
+  save();
+  render();
+  clearBlitzAdvanceTimer();
+  setTimeout(() => $('#blitzContinue')?.focus(), 30);
+  /* Longer pause on wrong so the user can read the correct answer. */
+  const ms = grade === 'good' ? 900 : 2000;
+  blitzAdvanceTimer = setTimeout(blitzAdvance, ms);
+}
+window.blitzSubmit = blitzSubmit;
+
+function blitzReveal(){
+  /* "I don't know" — reveal and grade as Again. */
+  if(!state.blitz || state.blitz.submitted) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const inp = $('#blitzInput');
+  state.blitz.input = inp?.value || '';
+  state.blitz.autoCorrect = false;
+  state.blitz.submitted = true;
+  blitzApplyGrade(w, 'again');
+  save();
+  render();
+  clearBlitzAdvanceTimer();
+  setTimeout(() => $('#blitzContinue')?.focus(), 30);
+  blitzAdvanceTimer = setTimeout(blitzAdvance, 2000);
+}
+window.blitzReveal = blitzReveal;
+
+function blitzAdvance(){
+  clearBlitzAdvanceTimer();
+  if(!state.blitz) return;
   state.blitz.idx++;
   state.blitz.submitted = false;
   state.blitz.input = '';
   state.blitz.autoCorrect = null;
-  save();
+  state.blitz.graded = null;
   if(state.blitz.idx >= state.blitz.queue.length){
     state.blitz.active = false;
     state.blitz.complete = true;
@@ -2037,15 +2054,17 @@ function blitzGrade(grade){
   render();
   setTimeout(() => $('#blitzInput')?.focus(), 30);
 }
-window.blitzGrade = blitzGrade;
+window.blitzAdvance = blitzAdvance;
 
 function blitzSkip(){
   if(!state.blitz) return;
   if(!confirm('Skip this card without recording it?')) return;
+  clearBlitzAdvanceTimer();
   state.blitz.idx++;
   state.blitz.submitted = false;
   state.blitz.input = '';
   state.blitz.autoCorrect = null;
+  state.blitz.graded = null;
   if(state.blitz.idx >= state.blitz.queue.length){
     state.blitz.active = false;
     state.blitz.complete = true;
@@ -2056,6 +2075,7 @@ function blitzSkip(){
 window.blitzSkip = blitzSkip;
 
 function blitzEnd(){
+  clearBlitzAdvanceTimer();
   state.blitz = null;
   nav('home');
 }
@@ -2098,11 +2118,6 @@ function renderBlitz(){
   const inputPlaceholder = b.direction === 'jp-en' ? 'type English meaning' : 'type Japanese in hiragana';
   const dirLabel = b.direction === 'jp-en' ? 'JP → EN' : 'EN → JP';
 
-  /* Previews for the grade buttons — let the user see the interval each grade will produce. */
-  const dryAgain = {...(st||smDefault())}; ensureSm(dryAgain); smGrade(dryAgain, 'again');
-  const dryGood  = {...(st||smDefault())}; ensureSm(dryGood);  smGrade(dryGood,  'good');
-  const dryEasy  = {...(st||smDefault())}; ensureSm(dryEasy);  smGrade(dryEasy,  'easy');
-
   const head = `<div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
@@ -2126,39 +2141,39 @@ function renderBlitz(){
     </div>`;
   }
 
-  /* Submitted: reveal + self-grade */
-  const correctBadge = b.autoCorrect
-    ? `<span style="color:var(--green);font-size:13px">● match</span>`
-    : `<span style="color:var(--orange);font-size:13px">● no match</span>`;
+  /* Submitted: auto-graded feedback. Match = Good (green), no match = Again (red). */
+  const correct = !!b.autoCorrect;
+  const accent = correct ? 'var(--green)' : 'var(--red)';
+  const verdict = correct ? 'Correct' : 'Wrong';
   const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
 
-  return head + `<div class="card">
+  return head + `<div class="card" style="border:2px solid ${accent}">
+    <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
     <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
-    <div style="font-size:28px;text-align:center;padding:8px 0 12px">${esc(prompt)}</div>
+    <div style="font-size:28px;text-align:center;padding:4px 0 10px">${esc(prompt)}</div>
     <div class="divider"></div>
-    <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown} ${correctBadge}</div>
-    <div style="font-size:13px;margin-top:4px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
+    <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
+    <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
     <div class="spacer"></div>
-    <div class="btn-row">
-      <button id="blitzGradeAgain" class="btn" style="background:var(--red);color:#fff" onclick="blitzGrade('again')">Again<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryAgain.smInterval))}</div></button>
-      <button id="blitzGradeGood" class="btn btn-green" onclick="blitzGrade('good')">Good<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryGood.smInterval))}</div></button>
-      <button id="blitzGradeEasy" class="btn btn-blue" onclick="blitzGrade('easy')">Easy<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryEasy.smInterval))}</div></button>
-    </div>
-    <div class="spacer"></div>
-    <div class="muted" style="font-size:11px;text-align:center">Shortcut: 1 = Again · 2 = Good · 3 = Easy</div>
+    <button id="blitzContinue" class="btn btn-primary" style="width:100%" onclick="blitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();blitzAdvance();}">Continue ↵</button>
   </div>`;
 }
 
-/* Keyboard shortcuts on the blitz screen — 1/2/3 grade when revealed. */
+/* Keyboard shortcuts when a card is revealed.
+   Blitz (v4.21): Enter/Space advance; no per-grade keys (auto-graded).
+   Form Drill: 1 = Again · 2 = Good · 3 = Easy (self-graded). */
 document.addEventListener('keydown', e => {
   if(state.screen !== 'blitz' && state.screen !== 'formDrill') return;
   const live = state.screen === 'blitz' ? state.blitz : state.formDrill;
   if(!live || !live.submitted) return;
   if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-  const fn = state.screen === 'blitz' ? blitzGrade : formDrillGrade;
-  if(e.key === '1'){ e.preventDefault(); fn('again'); }
-  else if(e.key === '2'){ e.preventDefault(); fn('good'); }
-  else if(e.key === '3'){ e.preventDefault(); fn('easy'); }
+  if(state.screen === 'blitz'){
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); blitzAdvance(); }
+    return;
+  }
+  if(e.key === '1'){ e.preventDefault(); formDrillGrade('again'); }
+  else if(e.key === '2'){ e.preventDefault(); formDrillGrade('good'); }
+  else if(e.key === '3'){ e.preventDefault(); formDrillGrade('easy'); }
 });
 
 /* =========================================================================

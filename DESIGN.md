@@ -91,6 +91,20 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.21 (shipped — Blitz auto-grading)
+
+Vocab Blitz now auto-grades from `checkAnswer()` instead of asking the user to self-rate. One less decision per card; feedback is the whole UX.
+
+- Submit → `checkAnswer()` verdict is authoritative. Match → SM-2 `good`. No match → SM-2 `again`. Easy removed from Blitz (still lives in `smGrade` for Form Drills).
+- Feedback card: green border + "Correct" on match, red border + "Wrong" + correct answer on miss. Auto-advances after 900ms correct / 2000ms wrong. `Continue ↵` button focuses immediately so Enter/Space advances early.
+- `blitzReveal()` ("I don't know") applies `again` immediately and enters the same feedback state.
+- Removed: `blitzGrade()`, the three-button grade row, the per-grade interval previews (`dryAgain/Good/Easy`), the 1/2/3 shortcut for Blitz. Form Drill keeps its self-graded buttons and 1/2/3 shortcut — conjugation has real synonym/nuance cases that auto-match can't judge.
+- Advance timer is a module-level `blitzAdvanceTimer` so it survives `save()`-time JSON without polluting state. Cleared on every entry/exit point (advance, skip, end).
+- SW cache `jp-trainer-v420` → `jp-trainer-v421`.
+
+### Decision — why auto-grade Blitz but not Form Drills
+Julius's own read: the self-grade buttons were asking him to repeat a judgment the auto-match already made. For EN/JP recall in Blitz, `checkAnswer()` is objective enough (exact + homograph siblings + Levenshtein-1 + subset). For conjugation in Form Drills, strict `normJP()` is less forgiving and the learner's self-read still matters (e.g. group-classification errors are a different signal than pure form errors). Different problems, different UX.
+
 ## v4.20 (shipped — Vocab Blitz + Form Drills)
 
 Two new core features. Home restructured so Vocab Blitz is the primary entry point; Form Drills sit under a Grammar section; burst and pattern packs demoted to the Practice row.
