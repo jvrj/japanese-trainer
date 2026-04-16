@@ -250,7 +250,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1>日本語 Trainer</h1>
-    <div class="sub">v4.27 · conversation edition</div>
+    <div class="sub">v4.28 · conversation edition</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1091,10 +1091,68 @@ const jsEsc = s => String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").repla
 
 function shuffleFY(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [r[i],r[j]]=[r[j],r[i]]; } return r; }
 
-/* Normalize Japanese text for matching: kata→hira, strip spaces/punct */
+/* Romaji → hiragana so users can type "kaimasu" and match "かいます".
+   Handles yoon (kya/sha/cha/ja/jya), sokuon (double consonant → っ), and
+   n-before-consonant. Not a full IME — good enough for verb forms. */
+const ROMAJI_KANA = {
+  kya:'きゃ',kyu:'きゅ',kyo:'きょ',
+  sha:'しゃ',shu:'しゅ',sho:'しょ',sya:'しゃ',syu:'しゅ',syo:'しょ',
+  cha:'ちゃ',chu:'ちゅ',cho:'ちょ',tya:'ちゃ',tyu:'ちゅ',tyo:'ちょ',
+  nya:'にゃ',nyu:'にゅ',nyo:'にょ',
+  hya:'ひゃ',hyu:'ひゅ',hyo:'ひょ',
+  mya:'みゃ',myu:'みゅ',myo:'みょ',
+  rya:'りゃ',ryu:'りゅ',ryo:'りょ',
+  gya:'ぎゃ',gyu:'ぎゅ',gyo:'ぎょ',
+  ja:'じゃ',ju:'じゅ',jo:'じょ',jya:'じゃ',jyu:'じゅ',jyo:'じょ',zya:'じゃ',zyu:'じゅ',zyo:'じょ',
+  bya:'びゃ',byu:'びゅ',byo:'びょ',
+  pya:'ぴゃ',pyu:'ぴゅ',pyo:'ぴょ',
+  ka:'か',ki:'き',ku:'く',ke:'け',ko:'こ',
+  sa:'さ',si:'し',shi:'し',su:'す',se:'せ',so:'そ',
+  ta:'た',ti:'ち',chi:'ち',tu:'つ',tsu:'つ',te:'て',to:'と',
+  na:'な',ni:'に',nu:'ぬ',ne:'ね',no:'の',
+  ha:'は',hi:'ひ',hu:'ふ',fu:'ふ',he:'へ',ho:'ほ',
+  ma:'ま',mi:'み',mu:'む',me:'め',mo:'も',
+  ya:'や',yu:'ゆ',yo:'よ',
+  ra:'ら',ri:'り',ru:'る',re:'れ',ro:'ろ',
+  wa:'わ',wo:'を',
+  ga:'が',gi:'ぎ',gu:'ぐ',ge:'げ',go:'ご',
+  za:'ざ',zi:'じ',ji:'じ',zu:'ず',ze:'ぜ',zo:'ぞ',
+  da:'だ',di:'ぢ',du:'づ',de:'で',do:'ど',
+  ba:'ば',bi:'び',bu:'ぶ',be:'べ',bo:'ぼ',
+  pa:'ぱ',pi:'ぴ',pu:'ぷ',pe:'ぺ',po:'ぽ',
+  a:'あ',i:'い',u:'う',e:'え',o:'お',
+  n:'ん'
+};
+function romajiToKana(s){
+  if(!s) return s;
+  const t = s.toLowerCase();
+  let out = '';
+  let i = 0;
+  while(i < t.length){
+    /* Sokuon: double consonant (k,s,t,p,b,g,d,j,z,r,m,h,f) → っ + single */
+    if(i+1 < t.length && t[i] === t[i+1] && 'bcdfghjkmprstz'.includes(t[i])){
+      out += 'っ'; i++; continue;
+    }
+    const tri = t.slice(i, i+3);
+    if(ROMAJI_KANA[tri]){ out += ROMAJI_KANA[tri]; i += 3; continue; }
+    const bi = t.slice(i, i+2);
+    if(ROMAJI_KANA[bi]){ out += ROMAJI_KANA[bi]; i += 2; continue; }
+    /* "n" before consonant (not before y-initial yoon) → ん */
+    if(t[i] === 'n' && i+1 < t.length && !'aiueoy'.includes(t[i+1])){
+      out += 'ん'; i++; continue;
+    }
+    const single = t[i];
+    if(ROMAJI_KANA[single]){ out += ROMAJI_KANA[single]; i++; continue; }
+    out += single; i++;
+  }
+  return out;
+}
+
+/* Normalize Japanese text for matching: romaji→hira, kata→hira, strip spaces/punct */
 function normJP(s){
   if(!s) return '';
   let t = String(s).trim();
+  t = romajiToKana(t);
   t = t.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60));
   t = t.replace(/[\s、。！？,\.!?・]/g, '');
   t = t.replace(/[ー]/g,'');
@@ -1955,16 +2013,10 @@ const FORMS = [
     accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"doesn't "+b])}
 ];
 
-/* v4.23: eligibility = graduated in Blitz at least once (correctCount >= 1).
-   Old 7-day-interval gate was too slow — SM-2 math needed ~6 Good grades to reach it. */
+/* v4.28: gate removed — all verbs available for form drilling immediately.
+   Julius uses this app alone and doesn't need the "earn your way in" flow. */
 function formEligibleVerbs(){
-  return getActiveWords().filter(w => {
-    if(w.pos !== 'v') return false;
-    const st = state.stats[w.id];
-    if(!st || !st.attempts || !st.attempts.length) return false;
-    ensureSm(st);
-    return (st.correctCount || 0) >= 1;
-  });
+  return getActiveWords().filter(w => w.pos === 'v');
 }
 
 function formDueCount(formId){
@@ -2419,22 +2471,18 @@ function renderForms(){
   const available = verbs.length;
   if(!available){
     return `<div class="card">
-      <h3 style="margin-top:0">Not ready yet</h3>
-      <div class="muted">Form Drills unlock once you've graduated at least one verb in Vocab Blitz (3-in-a-row correct).
-      Run a Blitz session with verbs in it and they'll show up here.</div>
+      <h3 style="margin-top:0">No verbs in your deck</h3>
+      <div class="muted">Add a verb or enable the N5 pack in Settings and form drills will populate here.</div>
     </div>`;
   }
   const totalPairs = available * FORMS.length;
-  const fbReady = totalPairs >= FORM_BLITZ_MIN_PAIRS;
   const blitzCard = `<div class="card" style="border:1px solid var(--border)">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
       <h3 style="margin:0">⚡ Mixed Form Blitz</h3>
       <span class="muted" style="font-size:12px">${totalPairs} pairs</span>
     </div>
     <div class="muted" style="font-size:13px;margin:4px 0 10px">Recall drill across all forms. JP form shown → type the English meaning. Same rhythm as Vocab Blitz.</div>
-    <button class="btn ${fbReady?'btn-primary':'btn-secondary'}" style="width:100%" ${fbReady?'':'disabled'} onclick="startFormBlitz()">
-      ${fbReady ? '▶ Start mixed form blitz' : `Need at least ${Math.ceil(FORM_BLITZ_MIN_PAIRS/FORMS.length)} graduated verbs`}
-    </button>
+    <button class="btn btn-primary" style="width:100%" onclick="startFormBlitz()">▶ Start mixed form blitz</button>
   </div>`;
   const cards = FORMS.map(f => {
     const counts = formDueCount(f.id);
@@ -2664,7 +2712,7 @@ const FORM_BLITZ_STREAK_REQUIRED = 3;
 const FORM_BLITZ_MATURE_MIN = SM_MASTERED_DAYS * 24 * 60; /* 7 d */
 const FORM_BLITZ_POOL_LEARNING = 8;
 const FORM_BLITZ_POOL_MATURE = 4;
-const FORM_BLITZ_MIN_PAIRS = 12; /* match pool target — refill has room to breathe */
+const FORM_BLITZ_MIN_PAIRS = 1; /* v4.28: gate effectively removed — any deck with a verb unlocks Form Blitz */
 
 function fbKey(verbId, formId){ return verbId + '|' + formId; }
 
@@ -2734,16 +2782,14 @@ function formBlitzRefillIfNeeded(){
 
 function startFormBlitz(){
   const pairs = eligibleFormPairs();
-  if(pairs.length < FORM_BLITZ_MIN_PAIRS){
-    const verbCount = formEligibleVerbs().length;
-    const need = Math.ceil(FORM_BLITZ_MIN_PAIRS / FORMS.length);
-    alert(`Graduate more verbs in Vocab Blitz first — need at least ${need}, you have ${verbCount}.`);
+  if(!pairs.length){
+    alert('Your deck has no verbs yet. Add a verb or enable the N5 pack in Settings.');
     return;
   }
   const poolTarget = FORM_BLITZ_POOL_LEARNING + FORM_BLITZ_POOL_MATURE;
   const pool = buildFormBlitzPool();
   if(!pool.length){
-    alert('No form pairs due right now. Come back later or drill a specific form.');
+    alert('No form pairs available right now.');
     return;
   }
   state.formBlitz = {

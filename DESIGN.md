@@ -91,6 +91,21 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.28 (shipped — Form Blitz gate removed + romaji→kana input)
+
+### No more gating
+Julius asked for the Form Blitz / Form Drills gate to be removed — this app is his alone, he doesn't need to "earn" access. Changes:
+- `formEligibleVerbs()` now returns every verb in the deck (`pos === 'v'`), not just Vocab-Blitz-graduated ones.
+- `FORM_BLITZ_MIN_PAIRS` effectively relaxed to 1 — any deck with a verb unlocks Form Blitz.
+- Removed the "graduate more verbs first" message from `renderForms`; per-form drill cards no longer gate by `correctCount >= 1`.
+
+### Romaji → kana for Japanese input
+Real bug on v4.27: Julius drilled masu form of `かう`, typed `kaimasu`, got rejected. The Form Drill compares against the hiragana expected (`かいます`), so latin-typed romaji never matched.
+
+Added `romajiToKana(s)` helper (greedy longest-match tokenizer over yoon / sokuon / n-before-consonant / single-kana), plumbed into `normJP`. Every path that compares Japanese input now tolerates romaji. Works for mixed input too (`かimasu` → `かいます`). Smoke-tested against kaimasu, tabemasu, shimashita, konnichiwa, kitto, shippai, nemasenka, etc.
+
+This also incidentally fixes Vocab Blitz's `en→jp` direction for anyone typing romaji on desktop.
+
 ## v4.27 (shipped — Form Blitz verb-by-verb audit + version badge)
 
 ### Full verb audit
