@@ -91,6 +91,20 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.27 (shipped — Form Blitz verb-by-verb audit + version badge)
+
+### Full verb audit
+Ran all 65 verbs × 10 forms through `enPast` and `enIng`. Flagged 1 missing irregular + 7 over-doubling false positives + 1 data-quality issue.
+
+**Added irregulars:** `hang→hung`, plus rounded out the map with `bite/blow/draw/freeze/shake/steal/throw/win/lie/lay/shoot/stick/sweep`. Switched `learn→learnt` and `dream→dreamt` to US spellings (`learned`/`dreamed`).
+
+**Over-doubling fix.** `needsDouble` in v4.26 fired on any CVC-ending stem, which mis-doubled polysyllabic verbs: `listen→listenned`, `open→openned`, `remember→rememberring`, `enter→enterred`, `travel→travelled`, `exit→exitted`. Now: double only if the stem has exactly one vowel group (`run`, `shop`, `swim`) OR is in an explicit stress-on-last list (`begin`, `forget`, etc.). Correctly produces `listened`, `opened`, `remembered`, `traveled`, `exited`.
+
+**Data fix.** `できる` was `"to be able to/can do"` — splitting on `/` yielded `"can do"` which conjugated to `canned do` / `canning do`. Shortened to `"to be able to"` — no loss, the meaning is covered.
+
+### Version badge
+Home-screen subtitle now reads `v4.27 · conversation edition` instead of the generic `v4`. If the number you see on your device doesn't match what I just shipped, the PWA service worker is serving a stale cache — force-refresh, or clear app data.
+
 ## v4.26 (shipped — Form Blitz display + grading fixes)
 
 Three real bugs reported on v4.25. All rooted in naive string handling of multi-meaning verb entries and naive English conjugation.

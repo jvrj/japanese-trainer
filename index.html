@@ -250,7 +250,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1>日本語 Trainer</h1>
-    <div class="sub">v4 · conversation edition</div>
+    <div class="sub">v4.27 · conversation edition</div>
   </div>
   <main id="main"></main>
 </div>
@@ -831,7 +831,7 @@ const N5_PACK = [
   {jp:"はいる",romaji:"hairu",en:"to enter",pos:"v",theme:"daily",register:"neutral",jlpt:5},
   {jp:"でる",romaji:"deru",en:"to exit/leave",pos:"v",theme:"daily",register:"neutral",jlpt:5},
   {jp:"ちがう",romaji:"chigau",en:"to be different/wrong",pos:"v",theme:"daily",register:"neutral",jlpt:5},
-  {jp:"できる",romaji:"dekiru",en:"to be able to/can do",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"できる",romaji:"dekiru",en:"to be able to",pos:"v",theme:"daily",register:"neutral",jlpt:5},
   {jp:"りょうりする",romaji:"ryouri suru",en:"to cook",pos:"v",theme:"food",register:"neutral",jlpt:5},
   {jp:"でんわする",romaji:"denwa suru",en:"to call (phone)",pos:"v",theme:"tech",register:"neutral",jlpt:5},
   {jp:"けっこんする",romaji:"kekkon suru",en:"to get married",pos:"v",theme:"people",register:"neutral",jlpt:5},
@@ -1845,7 +1845,8 @@ function baseVerbAlts(w){
 }
 
 /* Irregular English past tense for the first verb in a multi-word base.
-   Covers the common verbs in the N5 pack; regular fallback is +ed. */
+   Covers the common verbs in the N5 pack; regular fallback is +ed with
+   consonant doubling for CVC single-syllable verbs. US spellings preferred. */
 const EN_IRREG_PAST = {
   eat:'ate', go:'went', drink:'drank', sleep:'slept', come:'came', see:'saw',
   say:'said', make:'made', do:'did', write:'wrote', read:'read', run:'ran',
@@ -1859,8 +1860,33 @@ const EN_IRREG_PAST = {
   ride:'rode', drive:'drove', wake:'woke', fall:'fell', forget:'forgot',
   begin:'began', become:'became', wear:'wore', hide:'hid', cut:'cut',
   let:'let', set:'set', hit:'hit', cost:'cost', shut:'shut', spread:'spread',
-  dream:'dreamt', mean:'meant', learn:'learnt', lend:'lent', beat:'beat'
+  mean:'meant', lend:'lent', beat:'beat', hang:'hung',
+  bite:'bit', blow:'blew', draw:'drew', freeze:'froze', shake:'shook',
+  steal:'stole', throw:'threw', win:'won', lie:'lay', lay:'laid',
+  shoot:'shot', stick:'stuck', sweep:'swept'
 };
+
+/* CVC verbs double their final consonant before -ed / -ing only if:
+   (a) monosyllabic (single vowel group), or
+   (b) polysyllabic with stress on the last syllable (explicit list).
+   Avoids false positives on open/listen/remember/enter/travel. */
+const EN_STRESS_LAST = new Set([
+  'begin','forget','regret','admit','submit','permit','commit','occur','refer',
+  'prefer','control','equip','omit','transfer','concur','propel','patrol',
+  'repel','compel','rebel','expel','occur'
+]);
+function needsDouble(first){
+  if(!first || first.length < 3) return false;
+  const c1 = first[first.length-3];
+  const v  = first[first.length-2];
+  const c2 = first[first.length-1];
+  if(!/[bcdfgklmnprst]/.test(c2)) return false;
+  if(!/[aeiou]/.test(v)) return false;
+  if(/[aeiou]/.test(c1)) return false;
+  const vowelGroups = (first.match(/[aeiou]+/g) || []).length;
+  if(vowelGroups === 1) return true;
+  return EN_STRESS_LAST.has(first);
+}
 
 function enPast(base){
   const parts = (base||'').split(/\s+/).filter(Boolean);
@@ -1870,6 +1896,7 @@ function enPast(base){
   let past;
   if(first.endsWith('e')) past = first + 'd';
   else if(first.endsWith('y') && first.length > 1 && !/[aeiou]/.test(first[first.length-2])) past = first.slice(0,-1) + 'ied';
+  else if(needsDouble(first)) past = first + first[first.length-1] + 'ed';
   else past = first + 'ed';
   return [past, ...parts.slice(1)].join(' ');
 }
@@ -1884,6 +1911,7 @@ function enIng(base){
   let ing;
   if(first.endsWith('ie')) ing = first.slice(0,-2) + 'ying';
   else if(first.endsWith('e') && first.length > 1) ing = first.slice(0,-1) + 'ing';
+  else if(needsDouble(first)) ing = first + first[first.length-1] + 'ing';
   else ing = first + 'ing';
   return [ing, ...parts.slice(1)].join(' ');
 }
