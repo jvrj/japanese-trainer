@@ -91,6 +91,35 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.20 (shipped — Vocab Blitz + Form Drills)
+
+Two new core features. Home restructured so Vocab Blitz is the primary entry point; Form Drills sit under a Grammar section; burst and pattern packs demoted to the Practice row.
+
+### Vocab Blitz (SRS recall)
+- SM-2 scheduler on `state.stats[wordId]`. New fields: `smInterval` (minutes), `ease` (default 2.5, floor 1.3), `reviewCount`, `correctCount`, `wrongCount`, `lastReviewed`, `smNext`. Lazy-migrated via `ensureSm()`; old SRS-lite fields (`srsInterval`, `nextReview`) are left in place so the burst scheduler keeps working.
+- Rating rules: **Again** → interval = 1 day, ease −0.2 (floor 1.3); **Good** → interval × ease; **Easy** → interval × ease × 1.3, ease +0.15. New cards start at 10 min. Cap 1 year.
+- Session shape = default 20 reviews (due) + 10 new (unseen), configurable in settings. Scheduler picks most-overdue first, fills with unseen, shuffles.
+- JP → EN default with per-session toggle. User types, then self-grades via Again/Good/Easy. Typed input auto-checked with existing `checkAnswer()` for a green/orange "match" badge — but the rating is always the user's call (follows Anki). Each button shows the preview interval it will produce.
+- Blitz attempts are mirrored into `stats[wordId].attempts[]` (`{blitz:true}` tag) so the mastery ladder and dashboard stats stay consistent.
+- Keyboard: Enter submits, then 1 / 2 / 3 grade.
+
+### Form Drills (per-form per-verb SRS)
+- Sub-sections per verb form: `ます / ました / ません / ましょう / ませんか / たい / て / た / ている / ない`.
+- Eligibility: only verbs whose Vocab Blitz `smInterval ≥ 7 days` show up. Keeps form drills from surfacing verbs you haven't learned the meaning of yet.
+- Independent SRS per (word, form) pair in `state.formStats[wordId][formId]` — same SM-2 shape. Does NOT touch Vocab Blitz stats, so drilling て-form on たべる can't demote たべる's vocab interval.
+- Drill: dictionary form shown, user types conjugated form in hiragana, strict `normJP()` compare for the auto-match badge, same Again/Good/Easy self-grade. Group classification (1/2/3) surfaced on the result screen so the user learns to identify godan / ichidan / irregular.
+- Conjugation helpers (new): `aStem`, `toNai` (with ある→ない exception), `toMashou`, `toMasenka`, `toTe` (full godan branching + いく→いって exception), `toTa`, `toTeiru`, `verbGroupInfo`. Existing helpers (`iStem`, `toMasu`, `toMashita`, `toMasen`, `toTai`) reused.
+
+### Data / storage
+- New LS key `jp4_form_stats`. Round-trips through `exportJSON` / `handleImport` (merge strategy: existing entries kept). Cleared by Reset All.
+- SW cache `jp-trainer-v419` → `jp-trainer-v420`.
+
+### Decisions
+- Kept the existing SRS-lite fields side-by-side with SM-2. The two schedulers operate on different screens (burst uses SRS-lite, Vocab Blitz uses SM-2), so no collision. Migration is lazy via `ensureSm()`.
+- Self-grade in both directions for Vocab Blitz (not just JP→EN). Consistent UX; `checkAnswer()` is still used for the informational badge.
+- Form Drills do NOT feed `stats[wordId].attempts[]`. Keeps Vocab Blitz's SRS clean — conjugation struggle is a different signal than meaning-recall struggle.
+- Kept burst + pattern packs reachable from Home (Practice section). Both still work and fill a different niche than SRS.
+
 ## v4.12 (shipped — seamless/smooth polish)
 
 - **Fade transitions between cards** (150ms opacity) — avoid HTML-flash feel when burst shuffles to the next word.

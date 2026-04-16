@@ -1027,7 +1027,8 @@ const SENTENCE_TEMPLATES = [
 const LS = {
   words:'jp4_words', stats:'jp4_stats', settings:'jp4_settings',
   notes:'jp4_notes', logs:'jp4_logs', streak:'jp4_streak',
-  enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude'
+  enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude',
+  formStats:'jp4_form_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1045,7 +1046,10 @@ const DEFAULT_SETTINGS = {
   srsOn:true,                 // use SRS intervals to pick next cards
   swipeOn:true,               // swipe gestures on drill
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
-  anthropicModel:'claude-haiku-4-5-20251001'
+  anthropicModel:'claude-haiku-4-5-20251001',
+  blitzReviews:20,            // Vocab Blitz target review count per session
+  blitzNew:10,                // Vocab Blitz target new-word count per session
+  blitzDirection:'jp-en'      // Vocab Blitz direction — jp-en (default) | en-jp
 };
 
 let state = {
@@ -1063,6 +1067,9 @@ let state = {
   voiceResult:null,
   burst:{bursts:0, passedIds:[], active:false, complete:false, words:[], queue:[], progress:{}, isReview:{}},
   askClaude:{messages:[]}, // chat history with Claude; persists across sessions
+  formStats:{},         // wordId -> form -> {smInterval, ease, reviewCount, correctCount, wrongCount, lastReviewed, smNext}
+  blitz:null,           // active Vocab Blitz session; see startBlitz()
+  formDrill:null,       // active Form Drill session; see startFormDrill()
   _reveal:false,
   _sentenceAnswer:null
 };
@@ -1149,6 +1156,7 @@ function save(){
     localStorage.setItem(LS.logs, JSON.stringify(state.logs.slice(-500)));
     localStorage.setItem(LS.streak, JSON.stringify(state.streak));
     localStorage.setItem(LS.askClaude, JSON.stringify(state.askClaude || {messages:[]}));
+    localStorage.setItem(LS.formStats, JSON.stringify(state.formStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1160,6 +1168,7 @@ function load(){
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
     state.streak = {...state.streak, ...(JSON.parse(localStorage.getItem(LS.streak)||'{}'))};
     state.askClaude = JSON.parse(localStorage.getItem(LS.askClaude)||'{"messages":[]}');
+    state.formStats = JSON.parse(localStorage.getItem(LS.formStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -1198,13 +1207,105 @@ function getMasteryForWord(wordId){
   return 'learning';
 }
 
-/* SRS-lite intervals: minutes until next review, doubles on correct, resets to 10min on wrong */
+/* SRS-lite intervals: minutes until next review, doubles on correct, resets to 10min on wrong.
+   Retained so the existing burst scheduler keeps working. Vocab Blitz uses the SM-2 fields below. */
 const SRS_BASE_MIN = 10;
 function srsBump(st, correct){
   const cur = st.srsInterval || SRS_BASE_MIN;
   const next = correct ? Math.min(cur * 2, 60*24*30) : SRS_BASE_MIN; /* cap at 30 days */
   st.srsInterval = next;
   st.nextReview = now() + next * 60 * 1000;
+}
+
+/* =========================================================================
+   SM-2 SRS — Vocab Blitz + Form Drills share this model.
+
+   Per-card fields (stored on stats[wordId] for Vocab Blitz, on
+   formStats[wordId][form] for Form Drills):
+     smInterval    minutes until next review
+     ease          multiplier, default 2.5, floor 1.3
+     reviewCount   total gradings
+     correctCount  # of Good + Easy
+     wrongCount    # of Again
+     lastReviewed  timestamp of last grading
+     smNext        timestamp when card is next due
+
+   Grading:
+     Again → interval = 1 day; ease -= 0.2 (floor 1.3); wrongCount++
+     Good  → interval = interval × ease;                correctCount++
+     Easy  → interval = interval × ease × 1.3; ease += 0.15; correctCount++
+   New cards start at 10 minutes. Cap: 1 year. */
+
+const SM_BASE_MIN = 10;
+const SM_AGAIN_MIN = 60*24;           /* 1 day */
+const SM_DEFAULT_EASE = 2.5;
+const SM_MIN_EASE = 1.3;
+const SM_MAX_MIN = 60*24*365;         /* 1 year */
+const SM_MASTERED_DAYS = 7;           /* "mastered" threshold for Form Drills eligibility */
+
+function smDefault(){
+  return {
+    smInterval: SM_BASE_MIN, ease: SM_DEFAULT_EASE,
+    reviewCount: 0, correctCount: 0, wrongCount: 0,
+    lastReviewed: null, smNext: now()
+  };
+}
+
+function ensureSm(st){
+  if(!st) return;
+  if(st.smInterval === undefined) st.smInterval = SM_BASE_MIN;
+  if(st.ease === undefined) st.ease = SM_DEFAULT_EASE;
+  if(st.reviewCount === undefined) st.reviewCount = 0;
+  if(st.correctCount === undefined) st.correctCount = 0;
+  if(st.wrongCount === undefined) st.wrongCount = 0;
+  if(st.lastReviewed === undefined) st.lastReviewed = null;
+  if(st.smNext === undefined) st.smNext = now();
+}
+
+function smGrade(st, grade){
+  ensureSm(st);
+  st.reviewCount++;
+  st.lastReviewed = now();
+  if(grade === 'again'){
+    st.wrongCount++;
+    st.smInterval = SM_AGAIN_MIN;
+    st.ease = Math.max(SM_MIN_EASE, +(st.ease - 0.2).toFixed(2));
+  } else if(grade === 'good'){
+    st.correctCount++;
+    st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease)));
+  } else if(grade === 'easy'){
+    st.correctCount++;
+    st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease * 1.3)));
+    st.ease = +(st.ease + 0.15).toFixed(2);
+  }
+  st.smNext = now() + st.smInterval * 60 * 1000;
+}
+
+/* Human-readable interval, e.g. "10 min", "2.3 hr", "5 d", "2.1 mo" */
+function smIntervalLabel(minutes){
+  if(minutes == null) return '';
+  if(minutes < 60) return `${Math.round(minutes)} min`;
+  const hours = minutes / 60;
+  if(hours < 24) return `${hours < 10 ? hours.toFixed(1) : Math.round(hours)} hr`;
+  const days = hours / 24;
+  if(days < 30) return `${days < 10 ? days.toFixed(1) : Math.round(days)} d`;
+  const months = days / 30;
+  return `${months < 10 ? months.toFixed(1) : Math.round(months)} mo`;
+}
+
+/* Get/ensure the SM-2 stats slot on state.stats[wordId] (creates attempts shell too). */
+function smStatFor(wordId){
+  if(!state.stats[wordId]) state.stats[wordId] = {attempts:[], firstCorrect:null, lastSeen:null};
+  ensureSm(state.stats[wordId]);
+  return state.stats[wordId];
+}
+
+/* Get/ensure the SM-2 stats slot for a (verb, form) pair. */
+function formStatFor(wordId, formId){
+  if(!state.formStats) state.formStats = {};
+  if(!state.formStats[wordId]) state.formStats[wordId] = {};
+  if(!state.formStats[wordId][formId]) state.formStats[wordId][formId] = smDefault();
+  return state.formStats[wordId][formId];
 }
 
 function recordAttempt(wordId, correct, viaVoice){
@@ -1575,6 +1676,75 @@ function toKunai(jp){
 }
 function toJanai(jp){ return jp + ' じゃない'; }
 
+/* ---------- Conjugations for Form Drills ---------- */
+
+/* a-row stem for godan ない-form: final う → わ (exception), else final kana → a-row equivalent */
+const GODAN_NAI_MAP = {'う':'わ','く':'か','ぐ':'が','す':'さ','つ':'た','ぬ':'な','ぶ':'ば','む':'ま','る':'ら'};
+
+function aStem(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1);
+  if(cls === 'v-irr-suru') return 'し';
+  if(cls === 'v-irr-kuru') return 'こ';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'し';
+  const last = jp.slice(-1);
+  const m = GODAN_NAI_MAP[last];
+  return m ? jp.slice(0,-1) + m : jp;
+}
+
+function toNai(jp){
+  /* special case: ある → ない (no あらない) */
+  if(jp === 'ある') return 'ない';
+  return aStem(jp) + 'ない';
+}
+function toMashou(jp){ return iStem(jp) + 'ましょう'; }
+function toMasenka(jp){ return iStem(jp) + 'ませんか'; }
+
+/* て-form — group-dependent.
+   Group 1 (godan):
+     う,つ,る → って    (exception: いく → いって)
+     ぬ,ぶ,む → んで
+     く → いて
+     ぐ → いで
+     す → して
+   Group 2 (ichidan): drop る + て
+   Group 3: する → して, くる → きて, 〜する → 〜して */
+function toTe(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'て';
+  if(cls === 'v-irr-suru') return 'して';
+  if(cls === 'v-irr-kuru') return 'きて';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'して';
+  if(jp === 'いく') return 'いって';
+  const last = jp.slice(-1);
+  const stem = jp.slice(0,-1);
+  switch(last){
+    case 'う': case 'つ': case 'る': return stem + 'って';
+    case 'ぬ': case 'ぶ': case 'む': return stem + 'んで';
+    case 'く': return stem + 'いて';
+    case 'ぐ': return stem + 'いで';
+    case 'す': return stem + 'して';
+    default: return jp + 'て';
+  }
+}
+
+/* た-form = て-form with て→た, で→だ */
+function toTa(jp){
+  const te = toTe(jp);
+  if(te.endsWith('て')) return te.slice(0,-1) + 'た';
+  if(te.endsWith('で')) return te.slice(0,-1) + 'だ';
+  return te;
+}
+
+function toTeiru(jp){ return toTe(jp) + 'いる'; }
+
+function verbGroupInfo(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-u') return {group:1, label:'Group 1 · u-verb (godan)'};
+  if(cls === 'v-ru') return {group:2, label:'Group 2 · ru-verb (ichidan)'};
+  return {group:3, label:'Group 3 · irregular'};
+}
+
 /* English helpers for the card's en-prompt */
 function toVerbInfinitive(en){
   return (en && en.startsWith('to ')) ? en : 'to ' + (en || '');
@@ -1660,6 +1830,48 @@ const PATTERNS = [
   }
 ];
 
+/* =========================================================================
+   FORM DRILLS — v4.20
+   One sub-section per verb form. Eligibility: Vocab Blitz smInterval ≥ 7 days.
+   Each (word, form) pair has its own SM-2 schedule in state.formStats.
+   ========================================================================= */
+
+const FORMS = [
+  {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,    en:w=>stripTo(w.en)+' (polite)'},
+  {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita, en:w=>stripTo(w.en)+'d (polite past)'},
+  {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,   en:w=>"don't "+stripTo(w.en)+' (polite)'},
+  {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,  en:w=>"let's "+stripTo(w.en)},
+  {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka, en:w=>"won't you "+stripTo(w.en)+"?"},
+  {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,     en:w=>'want to '+stripTo(w.en)},
+  {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,      en:w=>stripTo(w.en)+' and…'},
+  {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,      en:w=>stripTo(w.en)+'d (plain past)'},
+  {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,   en:w=>'doing ('+stripTo(w.en)+')'},
+  {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,     en:w=>"don't "+stripTo(w.en)}
+];
+
+function formEligibleVerbs(){
+  return getActiveWords().filter(w => {
+    if(w.pos !== 'v') return false;
+    const st = state.stats[w.id];
+    if(!st || !st.attempts || !st.attempts.length) return false;
+    ensureSm(st);
+    return st.smInterval >= SM_MASTERED_DAYS * 24 * 60;
+  });
+}
+
+function formDueCount(formId){
+  const verbs = formEligibleVerbs();
+  const t = now();
+  let due = 0, unseen = 0;
+  for(const w of verbs){
+    const fst = state.formStats?.[w.id]?.[formId];
+    if(!fst){ unseen++; continue; }
+    ensureSm(fst);
+    if(fst.smNext <= t) due++;
+  }
+  return {due, unseen, total: verbs.length};
+}
+
 function patternEligibleWords(pat){
   const active = getActiveWords();
   return active.filter(w => {
@@ -1705,6 +1917,480 @@ function startPatternBurst(patternId){
 }
 window.startPatternBurst = startPatternBurst;
 
+/* =========================================================================
+   VOCAB BLITZ — SM-2 spaced repetition. Home's primary entry point.
+   ========================================================================= */
+
+function blitzCounts(){
+  const active = getActiveWords();
+  const t = now();
+  let due = 0, overdue = 0, unseen = 0;
+  for(const w of active){
+    const st = state.stats[w.id];
+    if(!st || !st.attempts?.length){ unseen++; continue; }
+    ensureSm(st);
+    if(st.smNext <= t){ due++; overdue++; }
+  }
+  return {due, overdue, unseen};
+}
+
+function buildBlitzQueue(){
+  const targetR = state.settings.blitzReviews || 20;
+  const targetN = state.settings.blitzNew || 10;
+  const active = getActiveWords();
+  const t = now();
+  const due = [], unseen = [];
+  for(const w of active){
+    const st = state.stats[w.id];
+    if(!st || !st.attempts?.length){ unseen.push(w); continue; }
+    ensureSm(st);
+    if(st.smNext <= t) due.push({w, next: st.smNext});
+  }
+  due.sort((a,b) => a.next - b.next); /* most overdue first */
+  const reviews = due.slice(0, targetR).map(x => x.w);
+  const news = shuffleFY(unseen).slice(0, targetN);
+  return shuffleFY([...reviews, ...news]);
+}
+
+function startBlitz(){
+  const q = buildBlitzQueue();
+  if(!q.length){
+    alert('No words due or available. Add words or enable the N5 pack in Settings.');
+    return;
+  }
+  state.blitz = {
+    active:true, queue:q, idx:0, submitted:false,
+    input:'', autoCorrect:null,
+    direction: state.settings.blitzDirection || 'jp-en',
+    tally: {again:0, good:0, easy:0, total:q.length}
+  };
+  clearNextTimer();
+  nav('blitz');
+}
+window.startBlitz = startBlitz;
+
+function blitzCurrent(){
+  if(!state.blitz || !state.blitz.active) return null;
+  return state.blitz.queue[state.blitz.idx] || null;
+}
+
+function blitzToggleDir(){
+  if(!state.blitz) return;
+  state.blitz.direction = state.blitz.direction === 'jp-en' ? 'en-jp' : 'jp-en';
+  state.settings.blitzDirection = state.blitz.direction;
+  save();
+  render();
+  setTimeout(() => $('#blitzInput')?.focus(), 30);
+}
+window.blitzToggleDir = blitzToggleDir;
+
+function blitzSubmit(){
+  if(!state.blitz || state.blitz.submitted) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const inp = $('#blitzInput');
+  state.blitz.input = inp?.value || '';
+  /* Informational auto-check — user still self-grades. */
+  const res = checkAnswer(state.blitz.input, w, state.blitz.direction);
+  state.blitz.autoCorrect = !!res.correct;
+  state.blitz.submitted = true;
+  render();
+  setTimeout(() => $('#blitzGradeGood')?.focus(), 30);
+}
+window.blitzSubmit = blitzSubmit;
+
+function blitzReveal(){
+  /* Allow skipping input — just reveal and let the user self-grade as Again. */
+  if(!state.blitz || state.blitz.submitted) return;
+  const inp = $('#blitzInput');
+  state.blitz.input = inp?.value || '';
+  state.blitz.autoCorrect = false;
+  state.blitz.submitted = true;
+  render();
+  setTimeout(() => $('#blitzGradeAgain')?.focus(), 30);
+}
+window.blitzReveal = blitzReveal;
+
+function blitzGrade(grade){
+  if(!state.blitz || !state.blitz.submitted) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const st = smStatFor(w.id);
+  /* Mirror into the existing attempts log so mastery ladder stays informed. */
+  const wasCorrect = grade !== 'again';
+  st.attempts = st.attempts || [];
+  st.attempts.push({ts: now(), correct: wasCorrect, voice: false, blitz: true});
+  if(wasCorrect && !st.firstCorrect) st.firstCorrect = now();
+  st.lastSeen = now();
+  smGrade(st, grade);
+  state.blitz.tally[grade]++;
+  /* Advance. */
+  state.blitz.idx++;
+  state.blitz.submitted = false;
+  state.blitz.input = '';
+  state.blitz.autoCorrect = null;
+  save();
+  if(state.blitz.idx >= state.blitz.queue.length){
+    state.blitz.active = false;
+    state.blitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#blitzInput')?.focus(), 30);
+}
+window.blitzGrade = blitzGrade;
+
+function blitzSkip(){
+  if(!state.blitz) return;
+  if(!confirm('Skip this card without recording it?')) return;
+  state.blitz.idx++;
+  state.blitz.submitted = false;
+  state.blitz.input = '';
+  state.blitz.autoCorrect = null;
+  if(state.blitz.idx >= state.blitz.queue.length){
+    state.blitz.active = false;
+    state.blitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#blitzInput')?.focus(), 30);
+}
+window.blitzSkip = blitzSkip;
+
+function blitzEnd(){
+  state.blitz = null;
+  nav('home');
+}
+window.blitzEnd = blitzEnd;
+
+function renderBlitz(){
+  const b = state.blitz;
+  if(!b) return `<div class="card"><div class="muted">No active session.</div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="startBlitz()">Start</button></div>`;
+
+  if(b.complete){
+    const t = b.tally;
+    const correct = t.good + t.easy;
+    const pct = t.total ? Math.round(100*correct/t.total) : 0;
+    return `<div class="card">
+      <h2 style="margin-top:0">Session complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${t.total}</div><div class="stat-label">Cards</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Retention</div></div>
+        <div class="stat-box"><div class="stat-num">${t.again}</div><div class="stat-label">Again</div></div>
+        <div class="stat-box"><div class="stat-num">${t.good}</div><div class="stat-label">Good</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startBlitz()">Start another session</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="blitzEnd()">Done</button>
+    </div>`;
+  }
+
+  const w = blitzCurrent();
+  if(!w) return `<div class="card"><div class="muted">No cards.</div></div>`;
+  const total = b.queue.length;
+  const pos = b.idx + 1;
+  const st = state.stats[w.id];
+  const ease = (st?.ease ?? SM_DEFAULT_EASE).toFixed(2);
+  const curInterval = st?.smInterval != null ? smIntervalLabel(st.smInterval) : 'new';
+
+  const prompt = b.direction === 'jp-en' ? w.jp : w.en;
+  const answer = b.direction === 'jp-en' ? w.en : w.jp;
+  const inputPlaceholder = b.direction === 'jp-en' ? 'type English meaning' : 'type Japanese in hiragana';
+  const dirLabel = b.direction === 'jp-en' ? 'JP → EN' : 'EN → JP';
+
+  /* Previews for the grade buttons — let the user see the interval each grade will produce. */
+  const dryAgain = {...(st||smDefault())}; ensureSm(dryAgain); smGrade(dryAgain, 'again');
+  const dryGood  = {...(st||smDefault())}; ensureSm(dryGood);  smGrade(dryGood,  'good');
+  const dryEasy  = {...(st||smDefault())}; ensureSm(dryEasy);  smGrade(dryEasy,  'easy');
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">${esc(curInterval)} · ease ${ease}</span>
+      <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
+    </div>
+  </div>`;
+
+  if(!b.submitted){
+    return head + `<div class="card">
+      <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
+      <div style="font-size:32px;text-align:center;padding:16px 0">${esc(prompt)}</div>
+      <input id="blitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${esc(inputPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="blitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="blitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="blitzSkip()">Skip card</button>
+    </div>`;
+  }
+
+  /* Submitted: reveal + self-grade */
+  const correctBadge = b.autoCorrect
+    ? `<span style="color:var(--green);font-size:13px">● match</span>`
+    : `<span style="color:var(--orange);font-size:13px">● no match</span>`;
+  const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
+
+  return head + `<div class="card">
+    <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
+    <div style="font-size:28px;text-align:center;padding:8px 0 12px">${esc(prompt)}</div>
+    <div class="divider"></div>
+    <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown} ${correctBadge}</div>
+    <div style="font-size:13px;margin-top:4px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
+    <div class="spacer"></div>
+    <div class="btn-row">
+      <button id="blitzGradeAgain" class="btn" style="background:var(--red);color:#fff" onclick="blitzGrade('again')">Again<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryAgain.smInterval))}</div></button>
+      <button id="blitzGradeGood" class="btn btn-green" onclick="blitzGrade('good')">Good<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryGood.smInterval))}</div></button>
+      <button id="blitzGradeEasy" class="btn btn-blue" onclick="blitzGrade('easy')">Easy<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryEasy.smInterval))}</div></button>
+    </div>
+    <div class="spacer"></div>
+    <div class="muted" style="font-size:11px;text-align:center">Shortcut: 1 = Again · 2 = Good · 3 = Easy</div>
+  </div>`;
+}
+
+/* Keyboard shortcuts on the blitz screen — 1/2/3 grade when revealed. */
+document.addEventListener('keydown', e => {
+  if(state.screen !== 'blitz' && state.screen !== 'formDrill') return;
+  const live = state.screen === 'blitz' ? state.blitz : state.formDrill;
+  if(!live || !live.submitted) return;
+  if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+  const fn = state.screen === 'blitz' ? blitzGrade : formDrillGrade;
+  if(e.key === '1'){ e.preventDefault(); fn('again'); }
+  else if(e.key === '2'){ e.preventDefault(); fn('good'); }
+  else if(e.key === '3'){ e.preventDefault(); fn('easy'); }
+});
+
+/* =========================================================================
+   FORM DRILLS — one sub-section per verb form; per-form per-verb SRS.
+   ========================================================================= */
+
+function renderForms(){
+  const verbs = formEligibleVerbs();
+  const available = verbs.length;
+  if(!available){
+    return `<div class="card">
+      <h3 style="margin-top:0">Not ready yet</h3>
+      <div class="muted">Form Drills unlock verbs once their Vocab Blitz interval reaches <b>${SM_MASTERED_DAYS} days</b>.
+      Keep running Vocab Blitz and the verbs you know well will show up here.</div>
+    </div>`;
+  }
+  const cards = FORMS.map(f => {
+    const counts = formDueCount(f.id);
+    const ready = counts.total > 0;
+    const label = counts.due > 0
+      ? `${counts.due} due · ${counts.unseen} new`
+      : (counts.unseen > 0 ? `${counts.unseen} new · 0 due` : 'all scheduled');
+    return `<div class="card" style="padding:12px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+        <h3 style="margin:0">${esc(f.name)}</h3>
+        <span class="muted" style="font-size:12px">${esc(label)}</span>
+      </div>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">${esc(f.hint)}</div>
+      <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startFormDrill('${f.id}')">
+        ${ready ? '▶ Drill this form' : 'No eligible verbs yet'}
+      </button>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} mastered in Vocab Blitz (interval ≥ ${SM_MASTERED_DAYS} days).</div>
+  </div>${cards}`;
+}
+
+function buildFormQueue(formId, maxN){
+  const verbs = formEligibleVerbs();
+  const t = now();
+  const due = [], unseen = [];
+  for(const w of verbs){
+    const fst = state.formStats?.[w.id]?.[formId];
+    if(!fst){ unseen.push(w); continue; }
+    ensureSm(fst);
+    if(fst.smNext <= t) due.push({w, next: fst.smNext});
+  }
+  due.sort((a,b) => a.next - b.next);
+  const q = [...due.slice(0, Math.ceil(maxN*2/3)).map(x => x.w), ...shuffleFY(unseen).slice(0, Math.ceil(maxN/3))];
+  return shuffleFY(q).slice(0, maxN);
+}
+
+function startFormDrill(formId){
+  const f = FORMS.find(x => x.id === formId);
+  if(!f){ alert('Unknown form'); return; }
+  const q = buildFormQueue(formId, 15);
+  if(!q.length){
+    alert(`No verbs ready for ${f.name} drill right now. All scheduled for later.`);
+    return;
+  }
+  state.formDrill = {
+    active:true, complete:false, formId, queue:q, idx:0,
+    submitted:false, input:'', autoCorrect:null,
+    tally:{again:0, good:0, easy:0, total:q.length}
+  };
+  clearNextTimer();
+  nav('formDrill', formId);
+}
+window.startFormDrill = startFormDrill;
+
+function formDrillCurrent(){
+  if(!state.formDrill || !state.formDrill.active) return null;
+  return state.formDrill.queue[state.formDrill.idx] || null;
+}
+
+function formDrillSubmit(){
+  if(!state.formDrill || state.formDrill.submitted) return;
+  const w = formDrillCurrent();
+  if(!w) return;
+  const f = FORMS.find(x => x.id === state.formDrill.formId);
+  const inp = $('#formInput');
+  state.formDrill.input = inp?.value || '';
+  const expected = f.conj(w.jp);
+  state.formDrill.autoCorrect = normJP(state.formDrill.input) === normJP(expected);
+  state.formDrill.submitted = true;
+  render();
+  setTimeout(() => $('#formGradeGood')?.focus(), 30);
+}
+window.formDrillSubmit = formDrillSubmit;
+
+function formDrillReveal(){
+  if(!state.formDrill || state.formDrill.submitted) return;
+  const inp = $('#formInput');
+  state.formDrill.input = inp?.value || '';
+  state.formDrill.autoCorrect = false;
+  state.formDrill.submitted = true;
+  render();
+  setTimeout(() => $('#formGradeAgain')?.focus(), 30);
+}
+window.formDrillReveal = formDrillReveal;
+
+function formDrillGrade(grade){
+  if(!state.formDrill || !state.formDrill.submitted) return;
+  const w = formDrillCurrent();
+  if(!w) return;
+  const fst = formStatFor(w.id, state.formDrill.formId);
+  smGrade(fst, grade);
+  state.formDrill.tally[grade]++;
+  state.formDrill.idx++;
+  state.formDrill.submitted = false;
+  state.formDrill.input = '';
+  state.formDrill.autoCorrect = null;
+  save();
+  if(state.formDrill.idx >= state.formDrill.queue.length){
+    state.formDrill.active = false;
+    state.formDrill.complete = true;
+  }
+  render();
+  setTimeout(() => $('#formInput')?.focus(), 30);
+}
+window.formDrillGrade = formDrillGrade;
+
+function formDrillSkip(){
+  if(!state.formDrill) return;
+  state.formDrill.idx++;
+  state.formDrill.submitted = false;
+  state.formDrill.input = '';
+  state.formDrill.autoCorrect = null;
+  if(state.formDrill.idx >= state.formDrill.queue.length){
+    state.formDrill.active = false;
+    state.formDrill.complete = true;
+  }
+  render();
+  setTimeout(() => $('#formInput')?.focus(), 30);
+}
+window.formDrillSkip = formDrillSkip;
+
+function formDrillEnd(){
+  state.formDrill = null;
+  nav('forms');
+}
+window.formDrillEnd = formDrillEnd;
+
+function renderFormDrill(){
+  const d = state.formDrill;
+  if(!d){
+    return `<div class="card"><div class="muted">No active form drill.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('forms')">Pick a form</button></div>`;
+  }
+  const f = FORMS.find(x => x.id === d.formId);
+
+  if(d.complete){
+    const t = d.tally;
+    const correct = t.good + t.easy;
+    const pct = t.total ? Math.round(100*correct/t.total) : 0;
+    return `<div class="card">
+      <h2 style="margin-top:0">${esc(f?.name||'Form')} drill complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${t.total}</div><div class="stat-label">Cards</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Retention</div></div>
+        <div class="stat-box"><div class="stat-num">${t.again}</div><div class="stat-label">Again</div></div>
+        <div class="stat-box"><div class="stat-num">${t.good}</div><div class="stat-label">Good</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startFormDrill('${f.id}')">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="formDrillEnd()">Back to forms</button>
+    </div>`;
+  }
+
+  const w = formDrillCurrent();
+  if(!w) return `<div class="card"><div class="muted">No cards.</div></div>`;
+  const expected = f.conj(w.jp);
+  const group = verbGroupInfo(w.jp);
+  const fst = state.formStats?.[w.id]?.[f.id];
+  const ease = (fst?.ease ?? SM_DEFAULT_EASE).toFixed(2);
+  const curInterval = fst?.smInterval != null ? smIntervalLabel(fst.smInterval) : 'new';
+  const total = d.queue.length;
+  const pos = d.idx + 1;
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">${esc(f.name)} · ${esc(curInterval)} · ease ${ease}</span>
+    </div>
+  </div>`;
+
+  if(!d.submitted){
+    return head + `<div class="card">
+      <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
+      <div style="font-size:30px;text-align:center;padding:8px 0 4px">${esc(w.jp)}</div>
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:12px">${esc(stripTo(w.en))}</div>
+      <div style="text-align:center;font-size:14px;margin-bottom:10px">→ <b>${esc(f.name)}</b> form</div>
+      <input id="formInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type ${esc(f.name)} form in hiragana" onkeydown="if(event.key==='Enter'){event.preventDefault();formDrillSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="formDrillReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="formDrillSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="formDrillSkip()">Skip card</button>
+    </div>`;
+  }
+
+  const dryAgain = {...(fst||smDefault())}; ensureSm(dryAgain); smGrade(dryAgain, 'again');
+  const dryGood  = {...(fst||smDefault())}; ensureSm(dryGood);  smGrade(dryGood,  'good');
+  const dryEasy  = {...(fst||smDefault())}; ensureSm(dryEasy);  smGrade(dryEasy,  'easy');
+
+  const correctBadge = d.autoCorrect
+    ? `<span style="color:var(--green);font-size:13px">● correct</span>`
+    : `<span style="color:var(--orange);font-size:13px">● miss</span>`;
+  const userShown = d.input ? esc(d.input) : '<span class="muted">(nothing typed)</span>';
+
+  return head + `<div class="card">
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
+    <div style="font-size:26px;text-align:center;padding:4px 0">${esc(w.jp)}</div>
+    <div class="muted" style="text-align:center;font-size:13px">${esc(stripTo(w.en))} · ${esc(group.label)}</div>
+    <div class="divider"></div>
+    <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown} ${correctBadge}</div>
+    <div style="font-size:13px;margin-top:4px"><span class="muted">Correct ${esc(f.name)}:</span> <b style="font-size:18px">${esc(expected)}</b></div>
+    <div class="spacer"></div>
+    <div class="btn-row">
+      <button id="formGradeAgain" class="btn" style="background:var(--red);color:#fff" onclick="formDrillGrade('again')">Again<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryAgain.smInterval))}</div></button>
+      <button id="formGradeGood" class="btn btn-green" onclick="formDrillGrade('good')">Good<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryGood.smInterval))}</div></button>
+      <button id="formGradeEasy" class="btn btn-blue" onclick="formDrillGrade('easy')">Easy<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryEasy.smInterval))}</div></button>
+    </div>
+    <div class="spacer"></div>
+    <div class="muted" style="font-size:11px;text-align:center">Shortcut: 1 = Again · 2 = Good · 3 = Easy</div>
+  </div>`;
+}
+
 function renderPatterns(){
   const cards = PATTERNS.map(p => {
     const n = patternEligibleWords(p).length;
@@ -1734,11 +2420,16 @@ window.renderPatterns = renderPatterns;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs'};
+const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
-  const title = state.screen === 'convoDetail' ? (SCENARIOS.find(s=>s.id===state._navData)?.title || 'Scenario') : SCREEN_TITLES[state.screen];
+  let title = SCREEN_TITLES[state.screen];
+  if(state.screen === 'convoDetail') title = SCENARIOS.find(s=>s.id===state._navData)?.title || 'Scenario';
+  else if(state.screen === 'formDrill'){
+    const f = FORMS.find(x => x.id === state._navData);
+    title = f ? `Form drill · ${f.name}` : 'Form drill';
+  }
   return `<div class="topbar">
     <button class="topbar-back" onclick="goBack()" title="Back">←</button>
     <div class="topbar-title">${esc(title)}</div>
@@ -1747,7 +2438,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -1820,15 +2511,33 @@ function renderHome(){
       </div>
     </div>
 
+    ${(() => {
+      const bc = blitzCounts();
+      const targetR = state.settings.blitzReviews || 20;
+      const targetN = state.settings.blitzNew || 10;
+      const reviewsLabel = Math.min(bc.due, targetR);
+      const newsLabel = Math.min(bc.unseen, targetN);
+      const sub = bc.due === 0 && bc.unseen === 0
+        ? 'No words yet — enable the N5 pack in Settings.'
+        : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue waiting`:''}`;
+      const disabled = (bc.due === 0 && bc.unseen === 0) ? 'disabled' : '';
+      return `<div class="card">
+        <h3>Start</h3>
+        <button class="btn btn-primary" style="font-size:17px;padding:18px;width:100%" ${disabled} onclick="startBlitz()">⚡ Vocab Blitz</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">${esc(sub)}</div>
+      </div>`;
+    })()}
+
     <div class="card">
-      <h3>Start</h3>
-      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startBurst()">▶ Start burst (5 new${(state.burst?.bursts||0)>0?' + 3 review':''})</button>
-      <div class="muted" style="font-size:12px;margin-top:6px">Each word must be correct 2× to pass. Next burst mixes in review.</div>
+      <h3>Grammar</h3>
+      <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">🈁 Form drills</button>
+      <div class="muted" style="font-size:12px;margin-top:6px">Conjugate verbs you've mastered in Vocab Blitz.</div>
     </div>
 
     <div class="card">
       <h3>Practice</h3>
-      <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('patterns')">🧩 Pattern packs</button>
+      <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="startBurst()">▶ Burst (5 new${(state.burst?.bursts||0)>0?' + 3 review':''})</button>
+      <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="nav('patterns')">🧩 Pattern packs</button>
       <div class="btn-row">
         <button class="btn btn-blue" onclick="nav('convo')">💬 Conversation</button>
         <button class="btn btn-purple" onclick="nav('sentence')">✍️ Sentences</button>
@@ -2705,7 +3414,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:4, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:4, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
@@ -2721,6 +3430,15 @@ function handleImport(ev){
       if(!confirm(`Import ${Object.keys(d.stats||{}).length} word stats + ${(d.notes||[]).length} notes? Existing data will be merged (existing keys kept).`)) return;
       if(d.words) for(const w of d.words) if(!state.words.find(x=>x.id===w.id)) state.words.push(w);
       if(d.stats) for(const k in d.stats) if(!state.stats[k]) state.stats[k] = d.stats[k];
+      if(d.formStats){
+        if(!state.formStats) state.formStats = {};
+        for(const wid in d.formStats){
+          if(!state.formStats[wid]) state.formStats[wid] = {};
+          for(const fid in d.formStats[wid]){
+            if(!state.formStats[wid][fid]) state.formStats[wid][fid] = d.formStats[wid][fid];
+          }
+        }
+      }
       if(d.notes) for(const n of d.notes) if(!state.notes.find(x=>x.id===n.id)) state.notes.push(n);
       if(d.settings) state.settings = {...state.settings, ...d.settings};
       if(d.streak) state.streak = {...state.streak, ...d.streak};
@@ -2742,6 +3460,7 @@ function resetAll(){
   const c = prompt('Type YES to confirm reset:'); if(c !== 'YES') return;
   localStorage.removeItem(LS.words); localStorage.removeItem(LS.stats); localStorage.removeItem(LS.settings);
   localStorage.removeItem(LS.notes); localStorage.removeItem(LS.logs); localStorage.removeItem(LS.streak);
+  localStorage.removeItem(LS.formStats);
   location.reload();
 }
 
