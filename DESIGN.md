@@ -91,6 +91,23 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.26 (shipped — Form Blitz display + grading fixes)
+
+Three real bugs reported on v4.25. All rooted in naive string handling of multi-meaning verb entries and naive English conjugation.
+
+### Fixes
+1. **Multi-meaning `/` split in `accept()`**. For `ねる` = `"to sleep/go to bed"`, v4.25's acceptor produced literal strings like `"won't you sleep/go to bed"` as one blob, so typing `"wont you sleep"` was rejected. Fixed: new `baseVerbAlts(w)` splits on `/` and `,`, and every form's `accept` now `flatMap`s over each base alternative. Same fix lets `"dont sleep"` match ねない.
+2. **Proper English past tense on reveal.** v4.25 displayed `"sleep/go to bedd (polite past)"` for ねました — garbage from naive `+"d"` concatenation. New `enPast(base)` helper with an irregular-verb map (`sleep→slept`, `go→went`, `eat→ate`, ~50 common N5-relevant irregulars) plus regular `+ed` / `-y→-ied` fallback. Past-tense forms now render cleanly, e.g. `"slept / went to bed (polite past)"`.
+3. **Proper English -ing form on reveal.** New `enIng(base)` helper handles the `-e` drop (`make→making`) and a small irregular list. Progressive (`ている`) now renders `"sleeping / going to bed"` instead of `"doing (sleep/go to bed)"`.
+
+### Data
+- `baseVerbAlts(w)`, `enPast(base)`, `enIng(base)` are plain helpers — no state, no persistence. Added above `FORMS`.
+- `EN_IRREG_PAST` covers ~50 common irregulars; `EN_IRREG_ING` covers only the drop-`e`-doesn't-apply cases (be/have/do/go/see/say).
+- Acceptor now includes both the naive suffixes (`+ed`, `+ing`) *and* the irregular forms, so either/both match regardless of what the user types.
+
+### Still deferred
+- Irregular past/ing for verbs outside the ~50-verb map fall back to naive `+ed`/`+ing`. Display will show `"buyed"` instead of `"bought"` if `buy` isn't mapped — but `buy` is mapped. The fallback will only trigger on rarer verbs not in the map.
+
 ## v4.25 (shipped — Mixed Form Blitz, recall-direction)
 
 **Motivation.** Vocab Blitz works because it's a *recall* test: see JP → recall EN meaning. Form Drills (self-graded, production-direction) exercise rule-application but break that rhythm — every card, the user switches to hiragana typing and thinks about conjugation rules. For daily flow, Julius wanted "something similar" for forms. The faithful transplant is recall-direction, not production-direction.

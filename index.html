@@ -1837,32 +1837,94 @@ const PATTERNS = [
    Each (word, form) pair has its own SM-2 schedule in state.formStats.
    ========================================================================= */
 
+/* Split a verb's English into base-meaning alternatives so multi-meaning entries
+   like "to sleep/go to bed" become ["sleep", "go to bed"] for acceptor templates. */
+function baseVerbAlts(w){
+  const raw = stripTo(w.en || '');
+  return raw.split(/[\/,]/).map(s => s.replace(/\([^)]*\)/g, ' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+}
+
+/* Irregular English past tense for the first verb in a multi-word base.
+   Covers the common verbs in the N5 pack; regular fallback is +ed. */
+const EN_IRREG_PAST = {
+  eat:'ate', go:'went', drink:'drank', sleep:'slept', come:'came', see:'saw',
+  say:'said', make:'made', do:'did', write:'wrote', read:'read', run:'ran',
+  sit:'sat', stand:'stood', think:'thought', buy:'bought', take:'took',
+  get:'got', give:'gave', have:'had', be:'was', put:'put', meet:'met',
+  hear:'heard', feel:'felt', keep:'kept', leave:'left', lose:'lost',
+  find:'found', send:'sent', sell:'sold', tell:'told', understand:'understood',
+  speak:'spoke', know:'knew', grow:'grew', fly:'flew', sing:'sang', swim:'swam',
+  teach:'taught', catch:'caught', bring:'brought', fight:'fought', hold:'held',
+  pay:'paid', spend:'spent', build:'built', break:'broke', choose:'chose',
+  ride:'rode', drive:'drove', wake:'woke', fall:'fell', forget:'forgot',
+  begin:'began', become:'became', wear:'wore', hide:'hid', cut:'cut',
+  let:'let', set:'set', hit:'hit', cost:'cost', shut:'shut', spread:'spread',
+  dream:'dreamt', mean:'meant', learn:'learnt', lend:'lent', beat:'beat'
+};
+
+function enPast(base){
+  const parts = (base||'').split(/\s+/).filter(Boolean);
+  if(!parts.length) return base;
+  const first = parts[0].toLowerCase();
+  if(EN_IRREG_PAST[first]) return [EN_IRREG_PAST[first], ...parts.slice(1)].join(' ');
+  let past;
+  if(first.endsWith('e')) past = first + 'd';
+  else if(first.endsWith('y') && first.length > 1 && !/[aeiou]/.test(first[first.length-2])) past = first.slice(0,-1) + 'ied';
+  else past = first + 'ed';
+  return [past, ...parts.slice(1)].join(' ');
+}
+
+/* Irregular/spelling-rule -ing form for the first verb in a multi-word base. */
+const EN_IRREG_ING = {be:'being', have:'having', do:'doing', go:'going', see:'seeing', say:'saying'};
+function enIng(base){
+  const parts = (base||'').split(/\s+/).filter(Boolean);
+  if(!parts.length) return base;
+  const first = parts[0].toLowerCase();
+  if(EN_IRREG_ING[first]) return [EN_IRREG_ING[first], ...parts.slice(1)].join(' ');
+  let ing;
+  if(first.endsWith('ie')) ing = first.slice(0,-2) + 'ying';
+  else if(first.endsWith('e') && first.length > 1) ing = first.slice(0,-1) + 'ing';
+  else ing = first + 'ing';
+  return [ing, ...parts.slice(1)].join(' ');
+}
+
 /* Each form has:
    - en(w): a display string for the form's English meaning (shown as "ideal" answer on reveal).
    - accept(w): array of normalized acceptable strings for Form Blitz recall grading.
-     Lenient: accepts form-flavored phrasing AND the bare verb meaning, so recognition-level
-     answers count. Irregular English past tenses are handled via extra synonyms per entry. */
+     Lenient: accepts form-flavored phrasing for EACH base-meaning alternative AND the bare
+     verb meaning, so recognition-level answers count. For "to sleep/go to bed" + masenka,
+     the acceptor expands to "won't you sleep", "won't you go to bed", etc. */
 const FORMS = [
-  {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,    en:w=>stripTo(w.en)+' (polite)',
-    accept:w=>{const b=stripTo(w.en);return[b,b+' (polite)',b+' politely'];}},
-  {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita, en:w=>stripTo(w.en)+'d (polite past)',
-    accept:w=>{const b=stripTo(w.en);return[b,b+'d',b+'ed',b+' (past)','past '+b,b+' (polite past)'];}},
-  {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,   en:w=>"don't "+stripTo(w.en)+' (polite)',
-    accept:w=>{const b=stripTo(w.en);return["don't "+b,'do not '+b,'not '+b,"don't "+b+' (polite)'];}},
-  {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,  en:w=>"let's "+stripTo(w.en),
-    accept:w=>{const b=stripTo(w.en);return["let's "+b,'lets '+b,'let us '+b,'shall we '+b];}},
-  {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka, en:w=>"won't you "+stripTo(w.en)+"?",
-    accept:w=>{const b=stripTo(w.en);return["won't you "+b,'will you '+b,'would you '+b,'wont you '+b];}},
-  {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,     en:w=>'want to '+stripTo(w.en),
-    accept:w=>{const b=stripTo(w.en);return['want to '+b,'wanna '+b,'want '+b,'i want to '+b];}},
-  {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,      en:w=>stripTo(w.en)+' and…',
-    accept:w=>{const b=stripTo(w.en);return[b,b+' and',b+' and…','and '+b,'please '+b];}},
-  {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,      en:w=>stripTo(w.en)+'d (plain past)',
-    accept:w=>{const b=stripTo(w.en);return[b,b+'d',b+'ed',b+' (past)','past '+b];}},
-  {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,   en:w=>'doing ('+stripTo(w.en)+')',
-    accept:w=>{const b=stripTo(w.en);return[b,b+'ing','doing '+b,'am '+b+'ing','is '+b+'ing'];}},
-  {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,     en:w=>"don't "+stripTo(w.en),
-    accept:w=>{const b=stripTo(w.en);return["don't "+b,'do not '+b,'not '+b,"doesn't "+b];}}
+  {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,
+    en:w=>baseVerbAlts(w).join(' / ')+' (polite)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b,b+' (polite)',b+' politely'])},
+  {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita,
+    en:w=>baseVerbAlts(w).map(enPast).join(' / ')+' (polite past)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return[b,p,b+'d',b+'ed',b+' (past)','past '+b,p+' (polite)'];})},
+  {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,
+    en:w=>baseVerbAlts(w).map(b=>"don't "+b).join(' / ')+' (polite)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"don't "+b+' (polite)'])},
+  {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,
+    en:w=>baseVerbAlts(w).map(b=>"let's "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["let's "+b,'lets '+b,'let us '+b,'shall we '+b])},
+  {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka,
+    en:w=>baseVerbAlts(w).map(b=>"won't you "+b).join(' / ')+'?',
+    accept:w=>baseVerbAlts(w).flatMap(b=>["won't you "+b,'will you '+b,'would you '+b,'wont you '+b])},
+  {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,
+    en:w=>baseVerbAlts(w).map(b=>'want to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['want to '+b,'wanna '+b,'want '+b,'i want to '+b])},
+  {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,
+    en:w=>baseVerbAlts(w).map(b=>b+' and…').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b,b+' and',b+' and…','and '+b,'please '+b])},
+  {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,
+    en:w=>baseVerbAlts(w).map(enPast).join(' / ')+' (plain past)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return[b,p,b+'d',b+'ed',b+' (past)','past '+b];})},
+  {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,
+    en:w=>baseVerbAlts(w).map(enIng).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return[b,i,b+'ing','doing '+b,'am '+i,'is '+i];})},
+  {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,
+    en:w=>baseVerbAlts(w).map(b=>"don't "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"doesn't "+b])}
 ];
 
 /* v4.23: eligibility = graduated in Blitz at least once (correctCount >= 1).
