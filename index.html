@@ -250,7 +250,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1>日本語 Trainer</h1>
-    <div class="sub">v4.28 · conversation edition</div>
+    <div class="sub">v4.29 · conversation edition</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1049,7 +1049,7 @@ const DEFAULT_SETTINGS = {
   anthropicModel:'claude-haiku-4-5-20251001',
   blitzReviews:20,            // Vocab Blitz target review count per session
   blitzNew:10,                // Vocab Blitz target new-word count per session
-  blitzDirection:'jp-en'      // Vocab Blitz direction — jp-en (default) | en-jp
+  blitzDirection:'jp-en'      // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
 };
 
 let state = {
@@ -2168,9 +2168,11 @@ function startBlitz(){
     alert('No words due or available. Add words or enable the N5 pack in Settings.');
     return;
   }
+  const direction = state.settings.blitzDirection || 'jp-en';
   state.blitz = {
     active: true, complete: false,
-    direction: state.settings.blitzDirection || 'jp-en',
+    direction,
+    currentDir: resolveBlitzDir(direction),
     pool,
     graduated: [],
     recent: [],
@@ -2209,9 +2211,16 @@ function blitzPickNext(){
   return candidates[Math.floor(Math.random() * candidates.length)].id;
 }
 
+function resolveBlitzDir(dir){
+  if(dir === 'mixed') return Math.random() < 0.5 ? 'jp-en' : 'en-jp';
+  return dir === 'en-jp' ? 'en-jp' : 'jp-en';
+}
+
 function blitzToggleDir(){
   if(!state.blitz) return;
-  state.blitz.direction = state.blitz.direction === 'jp-en' ? 'en-jp' : 'jp-en';
+  const next = {'jp-en':'en-jp', 'en-jp':'mixed', 'mixed':'jp-en'};
+  state.blitz.direction = next[state.blitz.direction] || 'jp-en';
+  state.blitz.currentDir = resolveBlitzDir(state.blitz.direction);
   state.settings.blitzDirection = state.blitz.direction;
   save();
   render();
@@ -2259,7 +2268,7 @@ function blitzSubmit(){
   if(!w || !poolItem) return;
   const inp = $('#blitzInput');
   state.blitz.input = inp?.value || '';
-  const res = checkAnswer(state.blitz.input, w, state.blitz.direction);
+  const res = checkAnswer(state.blitz.input, w, state.blitz.currentDir || state.blitz.direction);
   state.blitz.autoCorrect = !!res.correct;
   state.blitz.submitted = true;
   blitzRecordAnswer(w, poolItem, !!res.correct);
@@ -2308,6 +2317,7 @@ function blitzAdvance(){
     return;
   }
   state.blitz.currentId = blitzPickNext();
+  state.blitz.currentDir = resolveBlitzDir(state.blitz.direction);
   save();
   render();
   setTimeout(() => $('#blitzInput')?.focus(), 30);
@@ -2329,6 +2339,7 @@ function blitzSkip(){
     state.blitz.currentId = null;
   } else {
     state.blitz.currentId = blitzPickNext();
+    state.blitz.currentDir = resolveBlitzDir(state.blitz.direction);
   }
   save();
   render();
@@ -2382,10 +2393,12 @@ function renderBlitz(){
   const poolItem = blitzPoolItem();
   if(!w || !poolItem) return `<div class="card"><div class="muted">No cards.</div></div>`;
 
-  const prompt = b.direction === 'jp-en' ? w.jp : w.en;
-  const answer = b.direction === 'jp-en' ? w.en : w.jp;
-  const inputPlaceholder = b.direction === 'jp-en' ? 'type English meaning' : 'type Japanese in hiragana';
-  const dirLabel = b.direction === 'jp-en' ? 'JP → EN' : 'EN → JP';
+  const cur = b.currentDir || b.direction;
+  const prompt = cur === 'jp-en' ? w.jp : w.en;
+  const answer = cur === 'jp-en' ? w.en : w.jp;
+  const inputPlaceholder = cur === 'jp-en' ? 'type English meaning' : 'type Japanese in hiragana';
+  const curArrow = cur === 'jp-en' ? 'JP → EN' : 'EN → JP';
+  const dirLabel = b.direction === 'mixed' ? `Mixed · ${curArrow}` : curArrow;
 
   const streakLabel = poolItem.mature
     ? `Mature · confirm 1×`
@@ -2402,7 +2415,7 @@ function renderBlitz(){
 
   if(!b.submitted){
     return head + `<div class="card">
-      <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">${cur === 'jp-en' ? 'Japanese' : 'English'}</div>
       <div style="font-size:32px;text-align:center;padding:16px 0">${esc(prompt)}</div>
       <input id="blitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${esc(inputPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzSubmit();}">
       <div class="spacer"></div>
@@ -2429,7 +2442,7 @@ function renderBlitz(){
   return head + `<div class="card" style="border:2px solid ${accent}">
     <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
     ${streakAfter}
-    <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
+    <div class="muted" style="font-size:12px;margin-bottom:6px">${cur === 'jp-en' ? 'Japanese' : 'English'}</div>
     <div style="font-size:28px;text-align:center;padding:4px 0 10px">${esc(prompt)}</div>
     <div class="divider"></div>
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
