@@ -1849,13 +1849,15 @@ const FORMS = [
   {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,     en:w=>"don't "+stripTo(w.en)}
 ];
 
+/* v4.23: eligibility = graduated in Blitz at least once (correctCount >= 1).
+   Old 7-day-interval gate was too slow — SM-2 math needed ~6 Good grades to reach it. */
 function formEligibleVerbs(){
   return getActiveWords().filter(w => {
     if(w.pos !== 'v') return false;
     const st = state.stats[w.id];
     if(!st || !st.attempts || !st.attempts.length) return false;
     ensureSm(st);
-    return st.smInterval >= SM_MASTERED_DAYS * 24 * 60;
+    return (st.correctCount || 0) >= 1;
   });
 }
 
@@ -2279,8 +2281,8 @@ function renderForms(){
   if(!available){
     return `<div class="card">
       <h3 style="margin-top:0">Not ready yet</h3>
-      <div class="muted">Form Drills unlock verbs once their Vocab Blitz interval reaches <b>${SM_MASTERED_DAYS} days</b>.
-      Keep running Vocab Blitz and the verbs you know well will show up here.</div>
+      <div class="muted">Form Drills unlock once you've graduated at least one verb in Vocab Blitz (3-in-a-row correct).
+      Run a Blitz session with verbs in it and they'll show up here.</div>
     </div>`;
   }
   const cards = FORMS.map(f => {
@@ -2301,7 +2303,7 @@ function renderForms(){
     </div>`;
   }).join('');
   return `<div class="card">
-    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} mastered in Vocab Blitz (interval ≥ ${SM_MASTERED_DAYS} days).</div>
+    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} graduated in Vocab Blitz — available for form drilling.</div>
   </div>${cards}`;
 }
 

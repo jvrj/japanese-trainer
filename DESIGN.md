@@ -91,6 +91,16 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.23 (shipped — Form Drills eligibility lowered)
+
+Form Drills now unlock after **one** Blitz graduation on a verb, not after the 7-day SM-2 interval. The old gate was functionally unreachable — 7 d = ~6 Good grades = ~6 daily sessions per verb. Form Drills were locked behind a week of grinding per verb, which defeats the "learn verb then drill its forms" flow.
+
+- `formEligibleVerbs()`: `correctCount >= 1` instead of `smInterval >= 7 d`.
+- `correctCount` increments on every `smGrade('good')` — in v4.22 that's a streak-3 graduation; in legacy data it's a self-grade Good/Easy. Either counts.
+- Copy updated: "unlocks once you've graduated at least one verb in Vocab Blitz (3-in-a-row correct)".
+- `SM_MASTERED_DAYS` still used by `BLITZ_MATURE_MIN` (7 d for "mature" category in Blitz pool). That's a different concept — long-term retention, not eligibility.
+- SW cache `v422` → `v423`.
+
 ## v4.22 (shipped — streak-to-graduate learning phase)
 
 Words now have to be answered correctly **3 times in a row** within a Blitz session before graduating to SM-2. Julius's read: SM-2 alone had no in-session recall — a word seen once was gone for 25 min. Session recall was the missing middle.
