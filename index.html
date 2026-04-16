@@ -1934,35 +1934,62 @@ function blitzCounts(){
   return {due, overdue, unseen};
 }
 
-function buildBlitzQueue(){
-  const targetR = state.settings.blitzReviews || 20;
-  const targetN = state.settings.blitzNew || 10;
+/* v4.22 — streak-to-graduate learning phase layered on SM-2.
+   Pool = (mature-due: 1 correct to re-confirm) + (learning: 3-in-a-row to graduate).
+   Graduation triggers smGrade('good'); session-end bail-out triggers smGrade('again')
+   for any pool item that never graduated (answer-cap safety). */
+
+const BLITZ_ANSWER_CAP = 60;
+const BLITZ_STREAK_REQUIRED = 3;
+const BLITZ_MATURE_MIN = SM_MASTERED_DAYS * 24 * 60; /* 7 d */
+
+function buildBlitzPool(){
+  const targetLearn = state.settings.blitzPoolLearning ?? 8;
+  const targetMature = state.settings.blitzPoolMature ?? 4;
   const active = getActiveWords();
   const t = now();
-  const due = [], unseen = [];
+  const unseen = [], youngOrLapsed = [], matureDue = [];
   for(const w of active){
     const st = state.stats[w.id];
     if(!st || !st.attempts?.length){ unseen.push(w); continue; }
     ensureSm(st);
-    if(st.smNext <= t) due.push({w, next: st.smNext});
+    if(st.smInterval >= BLITZ_MATURE_MIN){
+      if(st.smNext <= t) matureDue.push({w, next: st.smNext});
+    } else {
+      youngOrLapsed.push({w, next: st.smNext});
+    }
   }
-  due.sort((a,b) => a.next - b.next); /* most overdue first */
-  const reviews = due.slice(0, targetR).map(x => x.w);
-  const news = shuffleFY(unseen).slice(0, targetN);
-  return shuffleFY([...reviews, ...news]);
+  matureDue.sort((a,b) => a.next - b.next);
+  youngOrLapsed.sort((a,b) => a.next - b.next);
+  const matureSel = matureDue.slice(0, targetMature).map(x => x.w);
+  /* Prefer young/lapsed (already seen, struggling) over unseen. */
+  const learningSel = [
+    ...youngOrLapsed.slice(0, targetLearn).map(x => x.w),
+    ...shuffleFY(unseen),
+  ].slice(0, targetLearn);
+  return shuffleFY([
+    ...matureSel.map(w => ({id:w.id, streak:0, required:1, answers:0, everWrong:false, mature:true})),
+    ...learningSel.map(w => ({id:w.id, streak:0, required:BLITZ_STREAK_REQUIRED, answers:0, everWrong:false, mature:false})),
+  ]);
 }
 
 function startBlitz(){
-  const q = buildBlitzQueue();
-  if(!q.length){
+  const pool = buildBlitzPool();
+  if(!pool.length){
     alert('No words due or available. Add words or enable the N5 pack in Settings.');
     return;
   }
   state.blitz = {
-    active:true, queue:q, idx:0, submitted:false,
-    input:'', autoCorrect:null,
+    active: true, complete: false,
     direction: state.settings.blitzDirection || 'jp-en',
-    tally: {again:0, good:0, easy:0, total:q.length}
+    pool,
+    graduated: [],
+    recent: [],
+    currentId: pool[0].id,
+    submitted: false, input: '', autoCorrect: null, justGraduated: null,
+    totalAnswers: 0,
+    answerCap: BLITZ_ANSWER_CAP,
+    tally: {correct:0, wrong:0, graduated:0, total: pool.length, bailed:0},
   };
   clearNextTimer();
   nav('blitz');
@@ -1971,7 +1998,26 @@ window.startBlitz = startBlitz;
 
 function blitzCurrent(){
   if(!state.blitz || !state.blitz.active) return null;
-  return state.blitz.queue[state.blitz.idx] || null;
+  const id = state.blitz.currentId;
+  if(!id) return null;
+  return state.words.find(w => w.id === id) || null;
+}
+
+function blitzPoolItem(){
+  if(!state.blitz) return null;
+  return state.blitz.pool.find(p => p.id === state.blitz.currentId) || null;
+}
+
+function blitzPickNext(){
+  if(!state.blitz) return null;
+  const pool = state.blitz.pool;
+  if(!pool.length) return null;
+  /* Gap: avoid showing the same card back-to-back when the pool is big enough. */
+  const gap = Math.min(3, pool.length - 1);
+  const blocked = new Set((state.blitz.recent || []).slice(-gap));
+  const eligible = pool.filter(p => !blocked.has(p.id));
+  const candidates = eligible.length ? eligible : pool;
+  return candidates[Math.floor(Math.random() * candidates.length)].id;
 }
 
 function blitzToggleDir(){
@@ -1984,53 +2030,69 @@ function blitzToggleDir(){
 }
 window.blitzToggleDir = blitzToggleDir;
 
-/* v4.21: auto-grade on submit. checkAnswer is authoritative — match = Good, no match = Again. */
 let blitzAdvanceTimer = null;
 function clearBlitzAdvanceTimer(){ if(blitzAdvanceTimer){ clearTimeout(blitzAdvanceTimer); blitzAdvanceTimer = null; } }
 
-function blitzApplyGrade(w, grade){
+function blitzRecordAnswer(w, poolItem, isCorrect){
   const st = smStatFor(w.id);
-  const wasCorrect = grade !== 'again';
   st.attempts = st.attempts || [];
-  st.attempts.push({ts: now(), correct: wasCorrect, voice: false, blitz: true});
-  if(wasCorrect && !st.firstCorrect) st.firstCorrect = now();
+  st.attempts.push({ts: now(), correct: isCorrect, voice: false, blitz: true});
+  if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
   st.lastSeen = now();
-  smGrade(st, grade);
-  state.blitz.tally[grade]++;
-  state.blitz.graded = grade;
+  poolItem.answers++;
+  state.blitz.totalAnswers++;
+  state.blitz.recent = [...(state.blitz.recent || []), poolItem.id].slice(-4);
+  if(isCorrect){
+    poolItem.streak++;
+    state.blitz.tally.correct++;
+    if(poolItem.streak >= poolItem.required){
+      /* Graduate: SM-2 Good. Within-session stumbles don't penalize long-term. */
+      smGrade(st, 'good');
+      state.blitz.pool = state.blitz.pool.filter(p => p.id !== poolItem.id);
+      state.blitz.graduated.push(poolItem.id);
+      state.blitz.tally.graduated++;
+      state.blitz.justGraduated = poolItem.id;
+    } else {
+      state.blitz.justGraduated = null;
+    }
+  } else {
+    poolItem.streak = 0;
+    poolItem.everWrong = true;
+    state.blitz.tally.wrong++;
+    state.blitz.justGraduated = null;
+  }
 }
 
 function blitzSubmit(){
   if(!state.blitz || state.blitz.submitted) return;
   const w = blitzCurrent();
-  if(!w) return;
+  const poolItem = blitzPoolItem();
+  if(!w || !poolItem) return;
   const inp = $('#blitzInput');
   state.blitz.input = inp?.value || '';
   const res = checkAnswer(state.blitz.input, w, state.blitz.direction);
   state.blitz.autoCorrect = !!res.correct;
   state.blitz.submitted = true;
-  const grade = res.correct ? 'good' : 'again';
-  blitzApplyGrade(w, grade);
+  blitzRecordAnswer(w, poolItem, !!res.correct);
   save();
   render();
   clearBlitzAdvanceTimer();
   setTimeout(() => $('#blitzContinue')?.focus(), 30);
-  /* Longer pause on wrong so the user can read the correct answer. */
-  const ms = grade === 'good' ? 900 : 2000;
+  const ms = res.correct ? 900 : 2000;
   blitzAdvanceTimer = setTimeout(blitzAdvance, ms);
 }
 window.blitzSubmit = blitzSubmit;
 
 function blitzReveal(){
-  /* "I don't know" — reveal and grade as Again. */
   if(!state.blitz || state.blitz.submitted) return;
   const w = blitzCurrent();
-  if(!w) return;
+  const poolItem = blitzPoolItem();
+  if(!w || !poolItem) return;
   const inp = $('#blitzInput');
   state.blitz.input = inp?.value || '';
   state.blitz.autoCorrect = false;
   state.blitz.submitted = true;
-  blitzApplyGrade(w, 'again');
+  blitzRecordAnswer(w, poolItem, false);
   save();
   render();
   clearBlitzAdvanceTimer();
@@ -2039,18 +2101,39 @@ function blitzReveal(){
 }
 window.blitzReveal = blitzReveal;
 
+function blitzBailOutRemaining(){
+  /* Session ended before everyone graduated (answer-cap or manual end mid-session):
+     grade remaining pool as SM-2 Again so they surface again tomorrow. */
+  const remaining = state.blitz.pool.slice();
+  for(const p of remaining){
+    const st = smStatFor(p.id);
+    smGrade(st, 'again');
+  }
+  state.blitz.tally.bailed = remaining.length;
+  state.blitz.pool = [];
+}
+
 function blitzAdvance(){
   clearBlitzAdvanceTimer();
   if(!state.blitz) return;
-  state.blitz.idx++;
   state.blitz.submitted = false;
   state.blitz.input = '';
   state.blitz.autoCorrect = null;
-  state.blitz.graded = null;
-  if(state.blitz.idx >= state.blitz.queue.length){
+  state.blitz.justGraduated = null;
+  const hitCap = state.blitz.totalAnswers >= (state.blitz.answerCap ?? BLITZ_ANSWER_CAP);
+  if(hitCap && state.blitz.pool.length){
+    blitzBailOutRemaining();
+  }
+  if(!state.blitz.pool.length){
     state.blitz.active = false;
     state.blitz.complete = true;
+    state.blitz.currentId = null;
+    save();
+    render();
+    return;
   }
+  state.blitz.currentId = blitzPickNext();
+  save();
   render();
   setTimeout(() => $('#blitzInput')?.focus(), 30);
 }
@@ -2060,15 +2143,19 @@ function blitzSkip(){
   if(!state.blitz) return;
   if(!confirm('Skip this card without recording it?')) return;
   clearBlitzAdvanceTimer();
-  state.blitz.idx++;
+  state.blitz.pool = state.blitz.pool.filter(p => p.id !== state.blitz.currentId);
   state.blitz.submitted = false;
   state.blitz.input = '';
   state.blitz.autoCorrect = null;
-  state.blitz.graded = null;
-  if(state.blitz.idx >= state.blitz.queue.length){
+  state.blitz.justGraduated = null;
+  if(!state.blitz.pool.length){
     state.blitz.active = false;
     state.blitz.complete = true;
+    state.blitz.currentId = null;
+  } else {
+    state.blitz.currentId = blitzPickNext();
   }
+  save();
   render();
   setTimeout(() => $('#blitzInput')?.focus(), 30);
 }
@@ -2088,16 +2175,17 @@ function renderBlitz(){
 
   if(b.complete){
     const t = b.tally;
-    const correct = t.good + t.easy;
-    const pct = t.total ? Math.round(100*correct/t.total) : 0;
+    const attempts = t.correct + t.wrong;
+    const accPct = attempts ? Math.round(100 * t.correct / attempts) : 0;
     return `<div class="card">
       <h2 style="margin-top:0">Session complete</h2>
       <div class="stats-row">
-        <div class="stat-box"><div class="stat-num">${t.total}</div><div class="stat-label">Cards</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Retention</div></div>
-        <div class="stat-box"><div class="stat-num">${t.again}</div><div class="stat-label">Again</div></div>
-        <div class="stat-box"><div class="stat-num">${t.good}</div><div class="stat-label">Good</div></div>
+        <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
+        <div class="stat-box"><div class="stat-num">${t.correct}</div><div class="stat-label">Correct</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${accPct}%</div><div class="stat-label">Accuracy</div></div>
       </div>
+      ${t.bailed ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:8px">${t.bailed} card${t.bailed>1?'s':''} didn't graduate (session cap) — scheduled Again tomorrow</div>` : ''}
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startBlitz()">Start another session</button>
       <div class="spacer"></div>
@@ -2106,22 +2194,23 @@ function renderBlitz(){
   }
 
   const w = blitzCurrent();
-  if(!w) return `<div class="card"><div class="muted">No cards.</div></div>`;
-  const total = b.queue.length;
-  const pos = b.idx + 1;
-  const st = state.stats[w.id];
-  const ease = (st?.ease ?? SM_DEFAULT_EASE).toFixed(2);
-  const curInterval = st?.smInterval != null ? smIntervalLabel(st.smInterval) : 'new';
+  const poolItem = blitzPoolItem();
+  if(!w || !poolItem) return `<div class="card"><div class="muted">No cards.</div></div>`;
 
   const prompt = b.direction === 'jp-en' ? w.jp : w.en;
   const answer = b.direction === 'jp-en' ? w.en : w.jp;
   const inputPlaceholder = b.direction === 'jp-en' ? 'type English meaning' : 'type Japanese in hiragana';
   const dirLabel = b.direction === 'jp-en' ? 'JP → EN' : 'EN → JP';
 
+  const streakLabel = poolItem.mature
+    ? `Mature · confirm 1×`
+    : `Streak ${poolItem.streak}/${poolItem.required}`;
+  const progressLabel = `${b.tally.graduated}/${b.tally.total} graduated · pool ${b.pool.length}`;
+
   const head = `<div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
-      <span class="muted" style="font-size:12px">${esc(curInterval)} · ease ${ease}</span>
+      <span class="muted" style="font-size:13px">${esc(progressLabel)}</span>
+      <span class="muted" style="font-size:12px">${esc(streakLabel)}</span>
       <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
     </div>
   </div>`;
@@ -2141,14 +2230,18 @@ function renderBlitz(){
     </div>`;
   }
 
-  /* Submitted: auto-graded feedback. Match = Good (green), no match = Again (red). */
   const correct = !!b.autoCorrect;
-  const accent = correct ? 'var(--green)' : 'var(--red)';
-  const verdict = correct ? 'Correct' : 'Wrong';
+  const graduated = !!b.justGraduated;
+  const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
+  const verdict = graduated ? 'Graduated ✓' : (correct ? 'Correct' : 'Wrong');
   const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
+  const streakAfter = graduated ? '' : (correct
+    ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak ${poolItem.streak}/${poolItem.required}</div>`
+    : `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak reset — keep drilling</div>`);
 
   return head + `<div class="card" style="border:2px solid ${accent}">
     <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
+    ${streakAfter}
     <div class="muted" style="font-size:12px;margin-bottom:6px">${b.direction === 'jp-en' ? 'Japanese' : 'English'}</div>
     <div style="font-size:28px;text-align:center;padding:4px 0 10px">${esc(prompt)}</div>
     <div class="divider"></div>

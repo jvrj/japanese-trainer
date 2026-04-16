@@ -91,6 +91,28 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.22 (shipped — streak-to-graduate learning phase)
+
+Words now have to be answered correctly **3 times in a row** within a Blitz session before graduating to SM-2. Julius's read: SM-2 alone had no in-session recall — a word seen once was gone for 25 min. Session recall was the missing middle.
+
+### Session shape
+- Pool = `blitzPoolMature` due-mature (default 4) + `blitzPoolLearning` (default 8, unseen + young/lapsed). Was 20 + 10, pre-refactor.
+- Mature (`smInterval ≥ 7 d`) needs **1 correct** to re-confirm. Learning needs **3 in a row**.
+- Card rotates back into the pool after each answer; a ≥3-card gap before it reappears (when pool is big enough).
+- Wrong answer → streak resets to 0, card stays in pool. Right answer → streak++. Streak ≥ required → graduate → `smGrade('good')` → removed from pool.
+- Session ends when pool is empty, or at `BLITZ_ANSWER_CAP = 60` total answers (bail-out: remaining pool → `smGrade('again')`).
+
+### Decisions
+- **Graduation always applies `good`**, even if the card was wrong earlier in the session. Within-session stumbles shouldn't penalize long-term SM-2 — hitting streak-3 *is* success. The wrong answers still get logged to `stats[id].attempts` for the mastery-ladder signal.
+- **Mature cards get a fast-path** (1 correct to re-confirm) so learned words don't force a grind. Threshold = `SM_MASTERED_DAYS` (7 d), reusing the Form-Drill eligibility constant.
+- **Supersedes the "Again = 1 day" spec** from v4.20. Again now means "keep drilling this session"; the 1-day SM-2 fallout only happens if the card bails out at the cap.
+- **No-repeat window** is `min(3, pool.length - 1)`. Small pools don't soft-lock because the window shrinks automatically.
+- **Answer cap 60** caps a session at ~4-5 minutes. If pool.length × avg-passes exceeds 60, leftovers get SM-2 Again and surface tomorrow — not a penalty, just an honest scheduling admission.
+
+### Data / storage
+- `state.blitz` reshape: `{pool:[{id,streak,required,answers,everWrong,mature}], graduated, recent, currentId, totalAnswers, answerCap, tally:{correct,wrong,graduated,total,bailed}}`. Old `{queue, idx, tally:{again,good,easy}}` gone. No migration needed — Blitz state is session-only, not persisted.
+- New settings keys `blitzPoolMature` / `blitzPoolLearning`. Old `blitzReviews` / `blitzNew` left untouched (unused).
+
 ## v4.21 (shipped — Blitz auto-grading)
 
 Vocab Blitz now auto-grades from `checkAnswer()` instead of asking the user to self-rate. One less decision per card; feedback is the whole UX.
