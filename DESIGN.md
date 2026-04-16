@@ -91,6 +91,53 @@ All Japanese in hiragana/katakana for now. No kanji study yet (defer until teach
 
 - **Auto-advance after submit — zero extra taps.** Currently Next Card requires a second tap in an awkward spot. Flow: type → Enter submits → feedback flashes briefly (~800ms correct, ~1500ms incorrect so you can read it) → next card loads automatically. No second keypress, no screen tap. Input refocuses on the new card.
 
+## v4.25 (shipped — Mixed Form Blitz, recall-direction)
+
+**Motivation.** Vocab Blitz works because it's a *recall* test: see JP → recall EN meaning. Form Drills (self-graded, production-direction) exercise rule-application but break that rhythm — every card, the user switches to hiragana typing and thinks about conjugation rules. For daily flow, Julius wanted "something similar" for forms. The faithful transplant is recall-direction, not production-direction.
+
+### Shape
+- New screen `formBlitz`, separate from `formDrill`. Entry point: big **"⚡ Mixed Form Blitz"** card at the top of the Forms page.
+- **Pool** = (verb, form) pairs drawn from Vocab-Blitz-graduated verbs × all 10 forms. Target pool = 12 (4 mature-due + 8 learning/unseen). Continuous refill when pool ≤ 6 — same as Vocab Blitz v4.24.
+- **Prompt** = conjugated JP (e.g. `たべたい`) + form badge (`[たい] · Want to`). No dict form crutch on the front of the card — the user must recognize the conjugation carries `たべる`.
+- **Answer** = English meaning, typed. Auto-graded.
+- **Reveal** shows the ideal English (e.g. `want to eat`) *and* the base verb in both JP and EN, so every wrong answer is a teaching moment.
+
+### Grading — lenient recall
+Each `FORMS` entry now carries an `accept(w)` function returning acceptable English variants. The acceptor accepts either:
+1. The form-flavored phrasing (e.g. `"want to eat"`, `"wanna eat"`, `"i want to eat"` for `tai`).
+2. The bare verb meaning (e.g. `"eat"`) via `enAlternatives(w.en)`.
+
+The second fallback is deliberate: at beginner/intermediate level, the hardest recall step is *"which verb is this?"* — the tense/mood flavor is secondary and is taught by the reveal. Stricter grading would make the rhythm punishing without adding learning value at this level.
+
+Past-tense irregulars (`eat → ate`, `go → went`) would require an irregular-verb map; not built. Instead the acceptor tolerates naive `"+d"`/`"+ed"` suffixes *and* accepts the bare verb, so `"ate"` and `"eat"` both count for `ta`-form of `eat`.
+
+### Scheduling
+- Per-(verb, form) SM-2 in `state.formStats` (unchanged from Form Drills).
+- Streak = 3 correct in a row → `smGrade('good')` graduates the pair.
+- Mature fast-path: pairs with `smInterval ≥ 7 d` graduate on 1 correct.
+- Wrong answer resets streak, marks `everWrong`, card stays in pool.
+- Manual `formBlitzEnd()` applies `smGrade('again')` only to `everWrong` pool cards — matches Vocab Blitz's v4.24 end semantics.
+
+### Eligibility & guards
+- `eligibleFormPairs()` = `formEligibleVerbs()` × `FORMS`.
+- Start button disabled unless `totalPairs >= FORM_BLITZ_MIN_PAIRS` (12 — matches pool target so refill has room to breathe).
+- Empty-pool during refill → session transitions to "Form deck clear" state.
+
+### Why mixed-form, not single-form
+Pool composition mixes all 10 forms (`たべたい`, `のんだ`, `いきます`, …) with per-card form badges. Single-form sessions still exist via the per-form cards below the Blitz entry — use those for focused "I only want to drill `た`-form today" practice. The mixed pool more closely simulates real conversational demand (you don't hear one form at a time).
+
+### Data
+- `state.formBlitz` (in-memory, not persisted): `{active, complete, pool, graduated, recent, currentKey, submitted, input, autoCorrect, justGraduated, totalAnswers, poolTarget, tally}`.
+- `pool` item shape: `{verbId, formId, streak, required, answers, everWrong, mature}`.
+- `currentKey` / `graduated` / `recent` use `fbKey(verbId, formId)` = `verbId + '|' + formId`.
+- `FORMS[].accept(w)` added; existing `en(w)` left intact for production-drill display.
+
+### Deferred
+- Rule-cluster mastery (te-form for all ichidan verbs collapsed into one "skill"). SM-2 currently schedules each verb independently; for rule-governed forms this over-schedules. Not shipped — big new abstraction, not what the user asked for.
+- Romaji→kana input helper (wanakana). Would enable production-direction Blitz on desktop; not needed for recall direction (English keyboard suffices).
+- Strict tense grading (irregular verb map).
+- Voice-input form drill via existing SpeechRecognition ja-JP.
+
 ## v4.24 (shipped — continuous Blitz flow + next-review hint)
 
 Sessions no longer end when the pool empties. The pool auto-refills as cards graduate, so you can keep drilling in one unbroken flow. SM-2 still schedules future reviews — v4.24 just makes the session itself flow-shaped instead of batch-shaped.

@@ -1070,6 +1070,7 @@ let state = {
   formStats:{},         // wordId -> form -> {smInterval, ease, reviewCount, correctCount, wrongCount, lastReviewed, smNext}
   blitz:null,           // active Vocab Blitz session; see startBlitz()
   formDrill:null,       // active Form Drill session; see startFormDrill()
+  formBlitz:null,       // active Mixed Form Blitz session; see startFormBlitz()
   _reveal:false,
   _sentenceAnswer:null
 };
@@ -1836,17 +1837,32 @@ const PATTERNS = [
    Each (word, form) pair has its own SM-2 schedule in state.formStats.
    ========================================================================= */
 
+/* Each form has:
+   - en(w): a display string for the form's English meaning (shown as "ideal" answer on reveal).
+   - accept(w): array of normalized acceptable strings for Form Blitz recall grading.
+     Lenient: accepts form-flavored phrasing AND the bare verb meaning, so recognition-level
+     answers count. Irregular English past tenses are handled via extra synonyms per entry. */
 const FORMS = [
-  {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,    en:w=>stripTo(w.en)+' (polite)'},
-  {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita, en:w=>stripTo(w.en)+'d (polite past)'},
-  {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,   en:w=>"don't "+stripTo(w.en)+' (polite)'},
-  {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,  en:w=>"let's "+stripTo(w.en)},
-  {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka, en:w=>"won't you "+stripTo(w.en)+"?"},
-  {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,     en:w=>'want to '+stripTo(w.en)},
-  {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,      en:w=>stripTo(w.en)+' and…'},
-  {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,      en:w=>stripTo(w.en)+'d (plain past)'},
-  {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,   en:w=>'doing ('+stripTo(w.en)+')'},
-  {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,     en:w=>"don't "+stripTo(w.en)}
+  {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,    en:w=>stripTo(w.en)+' (polite)',
+    accept:w=>{const b=stripTo(w.en);return[b,b+' (polite)',b+' politely'];}},
+  {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita, en:w=>stripTo(w.en)+'d (polite past)',
+    accept:w=>{const b=stripTo(w.en);return[b,b+'d',b+'ed',b+' (past)','past '+b,b+' (polite past)'];}},
+  {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,   en:w=>"don't "+stripTo(w.en)+' (polite)',
+    accept:w=>{const b=stripTo(w.en);return["don't "+b,'do not '+b,'not '+b,"don't "+b+' (polite)'];}},
+  {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,  en:w=>"let's "+stripTo(w.en),
+    accept:w=>{const b=stripTo(w.en);return["let's "+b,'lets '+b,'let us '+b,'shall we '+b];}},
+  {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka, en:w=>"won't you "+stripTo(w.en)+"?",
+    accept:w=>{const b=stripTo(w.en);return["won't you "+b,'will you '+b,'would you '+b,'wont you '+b];}},
+  {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,     en:w=>'want to '+stripTo(w.en),
+    accept:w=>{const b=stripTo(w.en);return['want to '+b,'wanna '+b,'want '+b,'i want to '+b];}},
+  {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,      en:w=>stripTo(w.en)+' and…',
+    accept:w=>{const b=stripTo(w.en);return[b,b+' and',b+' and…','and '+b,'please '+b];}},
+  {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,      en:w=>stripTo(w.en)+'d (plain past)',
+    accept:w=>{const b=stripTo(w.en);return[b,b+'d',b+'ed',b+' (past)','past '+b];}},
+  {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,   en:w=>'doing ('+stripTo(w.en)+')',
+    accept:w=>{const b=stripTo(w.en);return[b,b+'ing','doing '+b,'am '+b+'ing','is '+b+'ing'];}},
+  {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,     en:w=>"don't "+stripTo(w.en),
+    accept:w=>{const b=stripTo(w.en);return["don't "+b,'do not '+b,'not '+b,"doesn't "+b];}}
 ];
 
 /* v4.23: eligibility = graduated in Blitz at least once (correctCount >= 1).
@@ -2282,15 +2298,21 @@ function renderBlitz(){
 }
 
 /* Keyboard shortcuts when a card is revealed.
-   Blitz (v4.21): Enter/Space advance; no per-grade keys (auto-graded).
+   Blitz + Form Blitz: Enter/Space advance; no per-grade keys (auto-graded).
    Form Drill: 1 = Again · 2 = Good · 3 = Easy (self-graded). */
 document.addEventListener('keydown', e => {
-  if(state.screen !== 'blitz' && state.screen !== 'formDrill') return;
-  const live = state.screen === 'blitz' ? state.blitz : state.formDrill;
+  if(state.screen !== 'blitz' && state.screen !== 'formDrill' && state.screen !== 'formBlitz') return;
+  const live = state.screen === 'blitz' ? state.blitz
+             : state.screen === 'formBlitz' ? state.formBlitz
+             : state.formDrill;
   if(!live || !live.submitted) return;
   if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   if(state.screen === 'blitz'){
     if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); blitzAdvance(); }
+    return;
+  }
+  if(state.screen === 'formBlitz'){
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); formBlitzAdvance(); }
     return;
   }
   if(e.key === '1'){ e.preventDefault(); formDrillGrade('again'); }
@@ -2312,6 +2334,18 @@ function renderForms(){
       Run a Blitz session with verbs in it and they'll show up here.</div>
     </div>`;
   }
+  const totalPairs = available * FORMS.length;
+  const fbReady = totalPairs >= FORM_BLITZ_MIN_PAIRS;
+  const blitzCard = `<div class="card" style="border:1px solid var(--border)">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+      <h3 style="margin:0">⚡ Mixed Form Blitz</h3>
+      <span class="muted" style="font-size:12px">${totalPairs} pairs</span>
+    </div>
+    <div class="muted" style="font-size:13px;margin:4px 0 10px">Recall drill across all forms. JP form shown → type the English meaning. Same rhythm as Vocab Blitz.</div>
+    <button class="btn ${fbReady?'btn-primary':'btn-secondary'}" style="width:100%" ${fbReady?'':'disabled'} onclick="startFormBlitz()">
+      ${fbReady ? '▶ Start mixed form blitz' : `Need at least ${Math.ceil(FORM_BLITZ_MIN_PAIRS/FORMS.length)} graduated verbs`}
+    </button>
+  </div>`;
   const cards = FORMS.map(f => {
     const counts = formDueCount(f.id);
     const ready = counts.total > 0;
@@ -2329,8 +2363,8 @@ function renderForms(){
       </button>
     </div>`;
   }).join('');
-  return `<div class="card">
-    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} graduated in Vocab Blitz — available for form drilling.</div>
+  return `${blitzCard}<div class="card">
+    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} graduated in Vocab Blitz — available for form drilling. Pick a single form below for focused self-graded practice.</div>
   </div>${cards}`;
 }
 
@@ -2528,6 +2562,378 @@ function renderFormDrill(){
   </div>`;
 }
 
+/* =========================================================================
+   FORM BLITZ (v4.25) — mixed-form, recall-direction.
+   Pool = (verb, form) pairs drawn from Vocab-Blitz-graduated verbs × all forms.
+   Card shows conjugated JP + form badge; user types English meaning.
+   Graded lenient via form.accept() — base-verb recognition counts.
+   Mirrors Vocab Blitz rhythm: streak=3, mature fast-path, continuous refill.
+   ========================================================================= */
+
+const FORM_BLITZ_STREAK_REQUIRED = 3;
+const FORM_BLITZ_MATURE_MIN = SM_MASTERED_DAYS * 24 * 60; /* 7 d */
+const FORM_BLITZ_POOL_LEARNING = 8;
+const FORM_BLITZ_POOL_MATURE = 4;
+const FORM_BLITZ_MIN_PAIRS = 12; /* match pool target — refill has room to breathe */
+
+function fbKey(verbId, formId){ return verbId + '|' + formId; }
+
+function eligibleFormPairs(){
+  const verbs = formEligibleVerbs();
+  const out = [];
+  for(const w of verbs){
+    for(const f of FORMS) out.push({verbId:w.id, formId:f.id});
+  }
+  return out;
+}
+
+function buildFormBlitzPool(opts){
+  opts = opts || {};
+  const targetLearn = opts.targetLearn ?? FORM_BLITZ_POOL_LEARNING;
+  const targetMature = opts.targetMature ?? FORM_BLITZ_POOL_MATURE;
+  const exclude = opts.excludeKeys || new Set();
+  const pairs = eligibleFormPairs().filter(p => !exclude.has(fbKey(p.verbId, p.formId)));
+  const t = now();
+  const unseen = [], youngDue = [], youngNotDue = [], matureDue = [];
+  for(const p of pairs){
+    const fst = state.formStats?.[p.verbId]?.[p.formId];
+    if(!fst){ unseen.push(p); continue; }
+    ensureSm(fst);
+    if(fst.smInterval >= FORM_BLITZ_MATURE_MIN){
+      if(fst.smNext <= t) matureDue.push({p, next: fst.smNext});
+    } else {
+      if(fst.smNext <= t) youngDue.push({p, next: fst.smNext});
+      else youngNotDue.push({p, next: fst.smNext});
+    }
+  }
+  matureDue.sort((a,b)=>a.next-b.next);
+  youngDue.sort((a,b)=>a.next-b.next);
+  youngNotDue.sort((a,b)=>a.next-b.next);
+  const matureSel = matureDue.slice(0, targetMature).map(x => x.p);
+  const learningSel = [
+    ...youngDue.map(x => x.p),
+    ...shuffleFY(unseen),
+    ...youngNotDue.map(x => x.p),
+  ].slice(0, targetLearn);
+  return shuffleFY([
+    ...matureSel.map(p => ({verbId:p.verbId, formId:p.formId, streak:0, required:1, answers:0, everWrong:false, mature:true})),
+    ...learningSel.map(p => ({verbId:p.verbId, formId:p.formId, streak:0, required:FORM_BLITZ_STREAK_REQUIRED, answers:0, everWrong:false, mature:false})),
+  ]);
+}
+
+function formBlitzRefillIfNeeded(){
+  if(!state.formBlitz || !state.formBlitz.active) return;
+  const target = state.formBlitz.poolTarget;
+  if(!target) return;
+  const halfway = Math.ceil(target / 2);
+  if(state.formBlitz.pool.length > halfway) return;
+  const deficit = target - state.formBlitz.pool.length;
+  if(deficit <= 0) return;
+  const exclude = new Set([
+    ...state.formBlitz.pool.map(p => fbKey(p.verbId, p.formId)),
+    ...state.formBlitz.graduated,
+  ]);
+  const defMature = Math.floor(deficit / 3);
+  const defLearn = deficit - defMature;
+  const fresh = buildFormBlitzPool({targetLearn:defLearn, targetMature:defMature, excludeKeys:exclude});
+  if(!fresh.length) return;
+  state.formBlitz.pool.push(...fresh);
+  state.formBlitz.tally.total += fresh.length;
+  state.formBlitz.tally.refills = (state.formBlitz.tally.refills || 0) + 1;
+}
+
+function startFormBlitz(){
+  const pairs = eligibleFormPairs();
+  if(pairs.length < FORM_BLITZ_MIN_PAIRS){
+    const verbCount = formEligibleVerbs().length;
+    const need = Math.ceil(FORM_BLITZ_MIN_PAIRS / FORMS.length);
+    alert(`Graduate more verbs in Vocab Blitz first — need at least ${need}, you have ${verbCount}.`);
+    return;
+  }
+  const poolTarget = FORM_BLITZ_POOL_LEARNING + FORM_BLITZ_POOL_MATURE;
+  const pool = buildFormBlitzPool();
+  if(!pool.length){
+    alert('No form pairs due right now. Come back later or drill a specific form.');
+    return;
+  }
+  state.formBlitz = {
+    active:true, complete:false,
+    pool, graduated:[], recent:[],
+    currentKey: fbKey(pool[0].verbId, pool[0].formId),
+    submitted:false, input:'', autoCorrect:null, justGraduated:null,
+    totalAnswers:0, poolTarget,
+    tally:{correct:0, wrong:0, graduated:0, total:pool.length, refills:0}
+  };
+  clearNextTimer();
+  nav('formBlitz');
+}
+window.startFormBlitz = startFormBlitz;
+
+function formBlitzCurrentPair(){
+  if(!state.formBlitz || !state.formBlitz.active) return null;
+  return state.formBlitz.pool.find(p => fbKey(p.verbId, p.formId) === state.formBlitz.currentKey) || null;
+}
+function formBlitzCurrentWord(){
+  const p = formBlitzCurrentPair();
+  if(!p) return null;
+  return state.words.find(w => w.id === p.verbId) || null;
+}
+function formBlitzCurrentForm(){
+  const p = formBlitzCurrentPair();
+  if(!p) return null;
+  return FORMS.find(f => f.id === p.formId) || null;
+}
+
+function formBlitzPickNext(){
+  if(!state.formBlitz) return null;
+  const pool = state.formBlitz.pool;
+  if(!pool.length) return null;
+  const gap = Math.min(3, pool.length - 1);
+  const blocked = new Set((state.formBlitz.recent || []).slice(-gap));
+  const eligible = pool.filter(p => !blocked.has(fbKey(p.verbId, p.formId)));
+  const candidates = eligible.length ? eligible : pool;
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  return fbKey(pick.verbId, pick.formId);
+}
+
+let formBlitzAdvanceTimer = null;
+function clearFormBlitzAdvanceTimer(){ if(formBlitzAdvanceTimer){ clearTimeout(formBlitzAdvanceTimer); formBlitzAdvanceTimer = null; } }
+
+function formBlitzAcceptSet(w, f){
+  const out = new Set();
+  const fromForm = f.accept ? f.accept(w) : [f.en(w)];
+  for(const s of fromForm){
+    const n = normEN(s);
+    if(n) out.add(n);
+  }
+  for(const alt of enAlternatives(w.en)){
+    if(alt) out.add(alt);
+  }
+  return out;
+}
+
+function formBlitzCheck(input, w, f){
+  const n = normEN(input);
+  if(!n) return false;
+  return formBlitzAcceptSet(w, f).has(n);
+}
+
+function formBlitzRecord(pair, isCorrect){
+  const fst = formStatFor(pair.verbId, pair.formId);
+  ensureSm(fst);
+  fst.reviewCount = (fst.reviewCount || 0) + 1;
+  fst.lastReviewed = now();
+  if(isCorrect){ fst.correctCount = (fst.correctCount || 0) + 1; }
+  else { fst.wrongCount = (fst.wrongCount || 0) + 1; }
+  pair.answers++;
+  state.formBlitz.totalAnswers++;
+  state.formBlitz.recent = [...(state.formBlitz.recent || []), fbKey(pair.verbId, pair.formId)].slice(-4);
+  if(isCorrect){
+    pair.streak++;
+    state.formBlitz.tally.correct++;
+    if(pair.streak >= pair.required){
+      smGrade(fst, 'good');
+      const k = fbKey(pair.verbId, pair.formId);
+      state.formBlitz.pool = state.formBlitz.pool.filter(p => fbKey(p.verbId, p.formId) !== k);
+      state.formBlitz.graduated.push(k);
+      state.formBlitz.tally.graduated++;
+      state.formBlitz.justGraduated = k;
+    } else {
+      state.formBlitz.justGraduated = null;
+    }
+  } else {
+    pair.streak = 0;
+    pair.everWrong = true;
+    state.formBlitz.tally.wrong++;
+    state.formBlitz.justGraduated = null;
+  }
+}
+
+function formBlitzSubmit(){
+  if(!state.formBlitz || state.formBlitz.submitted) return;
+  const pair = formBlitzCurrentPair();
+  const w = formBlitzCurrentWord();
+  const f = formBlitzCurrentForm();
+  if(!pair || !w || !f) return;
+  const inp = $('#formBlitzInput');
+  state.formBlitz.input = inp?.value || '';
+  const correct = formBlitzCheck(state.formBlitz.input, w, f);
+  state.formBlitz.autoCorrect = correct;
+  state.formBlitz.submitted = true;
+  formBlitzRecord(pair, correct);
+  save();
+  render();
+  clearFormBlitzAdvanceTimer();
+  setTimeout(() => $('#formBlitzContinue')?.focus(), 30);
+  const ms = correct ? 900 : 2000;
+  formBlitzAdvanceTimer = setTimeout(formBlitzAdvance, ms);
+}
+window.formBlitzSubmit = formBlitzSubmit;
+
+function formBlitzReveal(){
+  if(!state.formBlitz || state.formBlitz.submitted) return;
+  const pair = formBlitzCurrentPair();
+  if(!pair) return;
+  const inp = $('#formBlitzInput');
+  state.formBlitz.input = inp?.value || '';
+  state.formBlitz.autoCorrect = false;
+  state.formBlitz.submitted = true;
+  formBlitzRecord(pair, false);
+  save();
+  render();
+  clearFormBlitzAdvanceTimer();
+  setTimeout(() => $('#formBlitzContinue')?.focus(), 30);
+  formBlitzAdvanceTimer = setTimeout(formBlitzAdvance, 2000);
+}
+window.formBlitzReveal = formBlitzReveal;
+
+function formBlitzAdvance(){
+  clearFormBlitzAdvanceTimer();
+  if(!state.formBlitz) return;
+  state.formBlitz.submitted = false;
+  state.formBlitz.input = '';
+  state.formBlitz.autoCorrect = null;
+  state.formBlitz.justGraduated = null;
+  formBlitzRefillIfNeeded();
+  if(!state.formBlitz.pool.length){
+    state.formBlitz.active = false;
+    state.formBlitz.complete = true;
+    state.formBlitz.currentKey = null;
+    save();
+    render();
+    return;
+  }
+  state.formBlitz.currentKey = formBlitzPickNext();
+  save();
+  render();
+  setTimeout(() => $('#formBlitzInput')?.focus(), 30);
+}
+window.formBlitzAdvance = formBlitzAdvance;
+
+function formBlitzSkip(){
+  if(!state.formBlitz) return;
+  if(!confirm('Skip this card without recording it?')) return;
+  clearFormBlitzAdvanceTimer();
+  const k = state.formBlitz.currentKey;
+  state.formBlitz.pool = state.formBlitz.pool.filter(p => fbKey(p.verbId, p.formId) !== k);
+  state.formBlitz.submitted = false;
+  state.formBlitz.input = '';
+  state.formBlitz.autoCorrect = null;
+  state.formBlitz.justGraduated = null;
+  if(!state.formBlitz.pool.length){
+    state.formBlitz.active = false;
+    state.formBlitz.complete = true;
+    state.formBlitz.currentKey = null;
+  } else {
+    state.formBlitz.currentKey = formBlitzPickNext();
+  }
+  save();
+  render();
+  setTimeout(() => $('#formBlitzInput')?.focus(), 30);
+}
+window.formBlitzSkip = formBlitzSkip;
+
+function formBlitzEnd(){
+  clearFormBlitzAdvanceTimer();
+  if(state.formBlitz && state.formBlitz.active){
+    const struggled = state.formBlitz.pool.filter(p => p.everWrong);
+    for(const p of struggled){
+      const fst = formStatFor(p.verbId, p.formId);
+      smGrade(fst, 'again');
+    }
+    save();
+  }
+  state.formBlitz = null;
+  nav('forms');
+}
+window.formBlitzEnd = formBlitzEnd;
+
+function renderFormBlitz(){
+  const b = state.formBlitz;
+  if(!b) return `<div class="card"><div class="muted">No active Form Blitz session.</div>
+    <button class="btn btn-primary" style="margin-top:12px" onclick="startFormBlitz()">Start</button></div>`;
+
+  if(b.complete){
+    const t = b.tally;
+    const attempts = t.correct + t.wrong;
+    const accPct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    return `<div class="card">
+      <h2 style="margin-top:0">Form deck clear</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">Every pair graduated or the well ran dry. Come back later when reviews come due.</div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
+        <div class="stat-box"><div class="stat-num">${t.correct}</div><div class="stat-label">Correct</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${accPct}%</div><div class="stat-label">Accuracy</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startFormBlitz()">Start another session</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="formBlitzEnd()">Done</button>
+    </div>`;
+  }
+
+  const pair = formBlitzCurrentPair();
+  const w = formBlitzCurrentWord();
+  const f = formBlitzCurrentForm();
+  if(!pair || !w || !f) return `<div class="card"><div class="muted">No cards.</div></div>`;
+
+  const conj = f.conj(w.jp);
+  const streakLabel = pair.mature ? 'Mature · confirm 1×' : `Streak ${pair.streak}/${pair.required}`;
+  const progressLabel = `${b.tally.graduated}/${b.tally.total} graduated · pool ${b.pool.length}`;
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">${esc(progressLabel)}</span>
+      <span class="muted" style="font-size:12px">${esc(streakLabel)}</span>
+    </div>
+  </div>`;
+
+  if(!b.submitted){
+    return head + `<div class="card">
+      <div class="muted" style="font-size:12px;margin-bottom:6px">Japanese · ${esc(f.name)} form</div>
+      <div style="font-size:32px;text-align:center;padding:16px 0 6px">${esc(conj)}</div>
+      <div class="muted" style="text-align:center;font-size:12px;margin-bottom:12px">[${esc(f.name)}] · ${esc(f.hint)}</div>
+      <input id="formBlitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type English meaning" onkeydown="if(event.key==='Enter'){event.preventDefault();formBlitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="formBlitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="formBlitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="formBlitzSkip()">Skip card</button>
+    </div>`;
+  }
+
+  const correct = !!b.autoCorrect;
+  const graduated = !!b.justGraduated;
+  const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
+  const fst = state.formStats?.[pair.verbId]?.[pair.formId];
+  const nextLbl = (graduated && fst) ? smIntervalLabel(fst.smInterval) : '';
+  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Wrong');
+  const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
+  const idealEn = f.en(w);
+  const baseEn = stripTo(w.en);
+  const streakAfter = graduated ? '' : (correct
+    ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak ${pair.streak}/${pair.required}</div>`
+    : `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak reset — keep drilling</div>`);
+
+  return head + `<div class="card" style="border:2px solid ${accent}">
+    <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
+    ${streakAfter}
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Japanese · ${esc(f.name)} form</div>
+    <div style="font-size:28px;text-align:center;padding:4px 0">${esc(conj)}</div>
+    <div class="muted" style="text-align:center;font-size:12px">[${esc(f.name)}] · ${esc(f.hint)}</div>
+    <div class="divider"></div>
+    <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
+    <div style="font-size:15px;margin-top:6px"><span class="muted">Meaning:</span> <b>${esc(idealEn)}</b></div>
+    <div style="font-size:12px;margin-top:2px" class="muted">Base verb: ${esc(w.jp)} — ${esc(baseEn)}</div>
+    <div class="spacer"></div>
+    <button id="formBlitzContinue" class="btn btn-primary" style="width:100%" onclick="formBlitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();formBlitzAdvance();}">Continue ↵</button>
+  </div>`;
+}
+window.renderFormBlitz = renderFormBlitz;
+
 function renderPatterns(){
   const cards = PATTERNS.map(p => {
     const n = patternEligibleWords(p).length;
@@ -2575,7 +2981,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
