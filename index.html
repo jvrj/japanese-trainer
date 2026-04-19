@@ -251,7 +251,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.1</div>
+    <div class="sub">一心 · v5.2</div>
   </div>
   <main id="main"></main>
 </div>
@@ -277,7 +277,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -1266,7 +1266,8 @@ const DEFAULT_SETTINGS = {
   blitzReviews:20,            // Vocab Blitz target review count per session
   blitzNew:10,                // Vocab Blitz target new-word count per session
   blitzDirection:'jp-en',     // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
-  formBlitzDirection:'jp-en'  // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
+  formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
+  includeKatakana:false       // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
 };
 
 let state = {
@@ -1624,14 +1625,27 @@ function recordAttempt(wordId, correct, viaVoice){
    CARD SELECTION
    ========================================================================= */
 
+/* v5.2: true if jp string contains any katakana codepoint (U+30A0–U+30FF).
+   Used to exclude loanword katakana vocab from hiragana-only learners' pools. */
+function hasKatakana(s){
+  if(!s) return false;
+  for(let i = 0; i < s.length; i++){
+    const c = s.charCodeAt(i);
+    if(c >= 0x30A0 && c <= 0x30FF) return true;
+  }
+  return false;
+}
+
 function getActiveWords(){
   const s = state.settings;
   const removed = new Set(s.removedWords || []);
+  const includeKata = s.includeKatakana === true;
   return state.words.filter(w => {
     if(removed.has(w.id)) return false;
     if(s.activeThemes.length && !s.activeThemes.includes(w.theme)) return false;
     if(s.activePOS.length && !s.activePOS.includes(w.pos)) return false;
     if(s.activeRegister.length && !s.activeRegister.includes(w.register)) return false;
+    if(!includeKata && hasKatakana(w.jp)) return false;
     return true;
   });
 }
@@ -4575,6 +4589,8 @@ function renderSettings(){
       <h3>Preferences</h3>
       <label class="word-row"><div class="word-main"><div class="word-jp">N5 pack enabled</div><div class="word-en">${N5_PACK.length} words</div></div>
         <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
+        <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Hints enabled</div></div>
         <input type="checkbox" ${s.hintsEnabled?'checked':''} onchange="toggleSetting('hintsEnabled')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Smart wrong-answer feedback</div><div class="word-en">Tell me what I wrote if it's a real word</div></div>
