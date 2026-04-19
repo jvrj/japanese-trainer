@@ -245,6 +245,20 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .wheels-btn:hover{opacity:1}
 .wheels-btn.pinned{color:#fbbf24;opacity:1}
 .wheels-empty{font-size:11px;color:var(--dim);padding:6px;text-align:center}
+/* Build Mode — Paul Noble-style sentence construction */
+.build-chip{display:inline-block;font-size:10px;padding:3px 8px;border-radius:4px;letter-spacing:.5px;text-transform:uppercase;font-weight:700}
+.build-chip-introduce{background:#1e3a5f;color:#93c5fd}
+.build-chip-recall{background:#3f2a10;color:#fbbf24}
+.build-chip-build{background:#0f3d1f;color:#86efac}
+.build-chip-substitute{background:#3b1c3d;color:#e9a7ed}
+.build-chip-callback{background:#4a1010;color:#fca5a5}
+.build-progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.build-progress-fill{height:100%;background:var(--red);transition:width .2s}
+.build-big-jp{font-size:38px;text-align:center;padding:14px 0;font-weight:500}
+.build-big-en{font-size:18px;text-align:center;color:var(--muted);padding:6px 0}
+.build-romaji{font-size:13px;text-align:center;color:var(--faint);padding:2px 0}
+.build-placeholder{text-align:center;font-size:14px;padding:16px 0;color:var(--faint);border:1px dashed var(--border);border-radius:8px;margin-top:4px}
+.build-callback-banner{text-align:center;font-size:12px;color:#fca5a5;background:#2a0f0f;border:1px solid #4a1010;border-radius:6px;padding:6px 10px;margin-bottom:10px;letter-spacing:.3px;font-weight:700}
 </style>
 </head>
 <body>
@@ -586,7 +600,7 @@ const N5_PACK = [
   /* Food */
   {jp:"たべもの",romaji:"tabemono",en:"food",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"のみもの",romaji:"nomimono",en:"drink",pos:"n",theme:"food",register:"neutral",jlpt:5},
-  {jp:"ごはん",romaji:"gohan",en:"rice/meal",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"ごはん",romaji:"gohan",en:"rice",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"パン",romaji:"pan",en:"bread",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"みず",romaji:"mizu",en:"water",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"おちゃ",romaji:"ocha",en:"tea",pos:"n",theme:"food",register:"neutral",jlpt:5},
@@ -612,7 +626,7 @@ const N5_PACK = [
   {jp:"ばんごはん",romaji:"bangohan",en:"dinner",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"りょうり",romaji:"ryouri",en:"cooking/cuisine",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"レストラン",romaji:"resutoran",en:"restaurant",pos:"n",theme:"places",register:"neutral",jlpt:5},
-  {jp:"おかし",romaji:"okashi",en:"sweets/snacks",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"おかし",romaji:"okashi",en:"sweets",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"さとう",romaji:"satou",en:"sugar",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"しお",romaji:"shio",en:"salt",pos:"n",theme:"food",register:"neutral",jlpt:5},
   {jp:"ラーメン",romaji:"raamen",en:"ramen",pos:"n",theme:"food",register:"neutral",jlpt:5},
@@ -1291,6 +1305,7 @@ let state = {
   formBlitz:null,       // active Mixed Form Blitz session; see startFormBlitz()
   kanaStats:{},         // kana char -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount}
   kanaBlitz:null,       // active Kana Blitz session
+  buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null
 };
@@ -3694,10 +3709,843 @@ function renderKanaBlitz(){
 }
 
 /* =========================================================================
+   BUILD MODE — Paul Noble-style audio-led sentence construction
+   Templates drive sentences, deck provides slot-fillers. Trust-based:
+   produce out loud, reveal the answer, tap Next. Structure-driven —
+   no scoring, no writeback to jp4_stats. Only writes jp4_build_sequence
+   so callbacks draw from prior cold words.
+   ========================================================================= */
+
+const BUILD_STARTER_LESSON = {
+  id:'starter_lesson_2',
+  title:'Reactions and agreement (starter)',
+  duration_mins:12,
+  new_words:[
+    { id:'w_sugoi',    jp:'すごい',    en:'amazing / wow',           r:'sugoi' },
+    { id:'w_hontou',   jp:'ほんとう',  en:'really / truly',           r:'hontou' },
+    { id:'w_naruhodo', jp:'なるほど',  en:'I see / makes sense',      r:'naruhodo' },
+    { id:'w_tabun',    jp:'たぶん',    en:'probably / maybe',         r:'tabun' },
+    { id:'w_yappari',  jp:'やっぱり',  en:'as expected / after all',  r:'yappari' },
+    { id:'w_chotto',   jp:'ちょっと',  en:'a little / wait a sec',    r:'chotto' },
+    { id:'w_daijoubu', jp:'だいじょうぶ', en:"I'm OK / it's fine",     r:'daijoubu' }
+  ],
+  carryover_words:[
+    { id:'w_mizu',      jp:'みず',      en:'water',     r:'mizu' },
+    { id:'w_ocha',      jp:'おちゃ',    en:'tea',       r:'ocha' },
+    { id:'w_hoshii',    jp:'ほしい',    en:'want',      r:'hoshii' },
+    { id:'w_sumimasen', jp:'すみません', en:'excuse me', r:'sumimasen' }
+  ],
+  cycles:[
+    { id:'cycle_1', name:'Reactions cluster',
+      steps:[
+        { type:'introduce', word_id:'w_sugoi' },
+        { type:'introduce', word_id:'w_hontou' },
+        { type:'introduce', word_id:'w_naruhodo' },
+        { type:'recall',    word_id:'w_sugoi' }
+      ]},
+    { id:'cycle_2', name:'Qualifiers — with cold callbacks',
+      steps:[
+        { type:'introduce', word_id:'w_tabun' },
+        { type:'recall',    word_id:'w_tabun' },
+        { type:'introduce', word_id:'w_yappari' },
+        { type:'callback',  word_id:'w_hontou', note:'from cycle 1' },
+        { type:'introduce', word_id:'w_chotto' },
+        { type:'recall',    word_id:'w_chotto' },
+        { type:'callback',  word_id:'w_naruhodo', note:'from cycle 1' },
+        { type:'recall',    word_id:'w_yappari' }
+      ]},
+    { id:'cycle_3', name:'Combine — builds + cross-lesson callbacks',
+      steps:[
+        { type:'introduce', word_id:'w_daijoubu' },
+        { type:'recall',    word_id:'w_daijoubu' },
+        { type:'build',      sentence_jp:'ほんとうに すごい',  sentence_en:'Really amazing' },
+        { type:'substitute', swap_word_id:'w_tabun', result_jp:'たぶん すごい', result_en:'Probably amazing' },
+        { type:'callback',  word_id:'w_mizu', note:'cold — water' },
+        { type:'build',      sentence_jp:'たぶん だいじょうぶ', sentence_en:'Probably fine' },
+        { type:'callback',  sentence_jp:'すみません、おちゃが ほしい', sentence_en:'Excuse me, I want tea', note:'cold — sentence' },
+        { type:'build',      sentence_jp:'やっぱり すごい',    sentence_en:'As expected, amazing' }
+      ]}
+  ]
+};
+
+const BUILD_TEMPLATES = [
+  { id:'want',     slotKey:'N', pattern:'{N}が ほしい',               en:'I want {N}',                slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
+  { id:'please',   slotKey:'N', pattern:'{N}を ください',             en:'{N}, please',               slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
+  { id:'like',     slotKey:'N', pattern:'{N}が すき',                 en:'I like {N}',                slotThemes:['food'], slotExclude:['water','sugar','salt','food','drink'] },
+  { id:'dislike',  slotKey:'N', pattern:'{N}が きらい',               en:"I don't like {N}",           slotThemes:['food'], slotExclude:['water','rice','food','drink','sugar','salt'] },
+  { id:'this_is',  slotKey:'N', pattern:'これは {N}',                 en:'This is {N}',               slotThemes:['food','objects'], slotExclude:['food','drink','cooking/cuisine'] },
+  { id:'howmuch',  slotKey:'N', pattern:'{N}は いくら ですか',         en:'How much is {N}?',          slotThemes:['food','objects'] },
+  { id:'one_of',   slotKey:'N', pattern:'{N}を ひとつ おねがいします', en:'One {N}, please',          slotThemes:['food','objects'] },
+  { id:'have',     slotKey:'N', pattern:'{N}が あります',              en:'I have {N} / there is {N}', slotThemes:['food','objects'] },
+  { id:'where_is', slotKey:'N', pattern:'{N}は どこ ですか',           en:'Where is the {N}?',         slotThemes:['food','objects'] },
+  { id:'is_tasty', slotKey:'N', pattern:'{N}は おいしい',              en:'The {N} is delicious',      slotThemes:['food'] },
+  { id:'give_me',  slotKey:'N', pattern:'{N}を おねがいします',         en:'{N}, please (polite)',     slotThemes:['food','objects'] }
+];
+
+const BUILD_DRINKABLES = ['water','tea','milk','drink'];
+
+const BUILD_COMPLEX_TEMPLATES = [
+  { id:'want_to_eat',     slotKey:'N', pattern:'{N}を たべたい',              en:'I want to eat {N}',       slotThemes:['food'] },
+  { id:'want_to_drink',   slotKey:'N', pattern:'{N}を のみたい',              en:'I want to drink {N}',     slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'ate_yesterday',   slotKey:'N', pattern:'きのう {N}を たべました',      en:'I ate {N} yesterday',     slotThemes:['food'] },
+  { id:'drank_yesterday', slotKey:'N', pattern:'きのう {N}を のみました',      en:'I drank {N} yesterday',   slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',   slotThemes:['food'] },
+  { id:'really_like',     slotKey:'N', pattern:'{N}が だいすき です',           en:'I really like {N}',      slotThemes:['food'] },
+  { id:'every_day',       slotKey:'N', pattern:'まいにち {N}を のみます',       en:'I drink {N} every day',  slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",  slotThemes:['food'] }
+];
+
+const HARD_EAT_EXCLUDES = ['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'];
+const HARD_PLACE_EXCLUDES = ['road/way','country'];
+const HARD_LIKE_EXCLUDES = ['water','sugar','salt','food','drink'];
+const HARD_DISLIKE_EXCLUDES = ['water','rice','food','drink','sugar','salt'];
+const HARD_PLACE_EAT_ALLOW = ['restaurant','cafe','house/home','home/my place','park'];
+
+function buildFoodCat(en){
+  if(['breakfast','lunch','dinner'].includes(en)) return 'meal';
+  if(['water','tea','coffee','milk','juice','beer','wine','alcohol/sake','drink'].includes(en)) return 'drink';
+  if(en === 'meat') return 'meat_parent';
+  if(['beef','chicken (meat)','pork'].includes(en)) return 'meat_child';
+  if(en === 'fruit') return 'fruit_parent';
+  if(['apple','mandarin orange','banana'].includes(en)) return 'fruit_child';
+  return 'other';
+}
+function buildFoodContrastOk(words){
+  const a = words.N1.en, b = words.N2.en;
+  const ca = buildFoodCat(a), cb = buildFoodCat(b);
+  if(ca === 'meal' || cb === 'meal') return ca === cb;
+  if(ca === 'drink' || cb === 'drink') return ca === cb;
+  if(ca === 'meat_parent' && cb === 'meat_child') return false;
+  if(cb === 'meat_parent' && ca === 'meat_child') return false;
+  if(ca === 'fruit_parent' && cb === 'fruit_child') return false;
+  if(cb === 'fruit_parent' && ca === 'fruit_child') return false;
+  return true;
+}
+
+const BUILD_HARD_TEMPLATES = [
+  { id:'time_eat',
+    pattern:'{T} {N}を たべました',
+    en:'I ate {N} {T}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'time_go_place',
+    pattern:'{T} {P}に いきました',
+    en:'I went to {P} {T}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
+    }},
+  { id:'person_place',
+    pattern:'{F}と {P}に いきました',
+    en:'I went to {P} with {F}',
+    slots:{
+      F:{ slotThemes:['family'] },
+      P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
+    }},
+  { id:'time_person_place',
+    pattern:'{T} {F}と {P}に いきました',
+    en:'{T} I went to {P} with {F}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      F:{ slotThemes:['family'] },
+      P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
+    }},
+  { id:'food_contrast',
+    pattern:'{N1}は すき ですが、{N2}は きらい',
+    en:'I like {N1} but dislike {N2}',
+    slots:{
+      N1:{ slotThemes:['food'], slotExclude: HARD_LIKE_EXCLUDES },
+      N2:{ slotThemes:['food'], slotExclude: HARD_DISLIKE_EXCLUDES, distinctFrom:'N1' }
+    },
+    validate: buildFoodContrastOk },
+  { id:'place_eat',
+    pattern:'{P}で {N}を たべました',
+    en:'I ate {N} at {P}',
+    slots:{
+      P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'family_likes',
+    pattern:'{F}は {N}が すき',
+    en:'{F} likes {N}',
+    slots:{
+      F:{ slotThemes:['family'] },
+      N:{ slotThemes:['food'], slotExclude: HARD_LIKE_EXCLUDES }
+    }}
+];
+
+const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
+
+function buildFillTemplate(tmpl, word){
+  const slotKey = tmpl.slotKey || 'N';
+  const re = new RegExp('\\{' + slotKey + '\\}', 'g');
+  return { jp: tmpl.pattern.replace(re, word.jp), en: tmpl.en.replace(re, word.en) };
+}
+function buildMultiSlotFill(tmpl, deck){
+  const maxTries = tmpl.validate ? 30 : 1;
+  for(let attempt = 0; attempt < maxTries; attempt++){
+    const keys = Object.keys(tmpl.slots);
+    const chosen = {};
+    let failed = false;
+    for(const key of keys){
+      const cfg = tmpl.slots[key];
+      let pool = deck.filter(w =>
+        w.pos === 'n' &&
+        (cfg.allowKatakana || !hasKatakana(w.jp)) &&
+        w.jp && w.en && w.romaji &&
+        (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
+        (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
+        (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
+      );
+      if(cfg.distinctFrom && chosen[cfg.distinctFrom]){
+        pool = pool.filter(w => w.jp !== chosen[cfg.distinctFrom].jp);
+      }
+      if(pool.length === 0){ failed = true; break; }
+      chosen[key] = pool[Math.floor(Math.random() * pool.length)];
+    }
+    if(failed) return null;
+    if(tmpl.validate && !tmpl.validate(chosen)) continue;
+    let jp = tmpl.pattern, en = tmpl.en;
+    for(const key of keys){
+      const re = new RegExp('\\{' + key + '\\}', 'g');
+      jp = jp.replace(re, chosen[key].jp);
+      en = en.replace(re, chosen[key].en);
+    }
+    return { jp, en, words: chosen };
+  }
+  return null;
+}
+function buildGenWordId(w){ return 'w_' + (w.romaji || w.r || '').replace(/\s+/g, '_'); }
+function buildGetSequence(){ try{ return JSON.parse(localStorage.getItem(BUILD_LS_SEQUENCE) || '[]'); }catch(e){ return []; } }
+function buildPushSequence(e){ const s = buildGetSequence(); s.push(e); try{ localStorage.setItem(BUILD_LS_SEQUENCE, JSON.stringify(s)); }catch(_){} }
+function buildClearSequence(){ try{ localStorage.removeItem(BUILD_LS_SEQUENCE); }catch(_){} }
+window.buildClearSequence = buildClearSequence;
+function buildPickRandom(arr, n){
+  const pool = arr.slice(); const out = [];
+  while(out.length < n && pool.length){
+    const i = Math.floor(Math.random()*pool.length);
+    out.push(pool.splice(i,1)[0]);
+  }
+  return out;
+}
+
+function buildGenerateLesson(mode){
+  mode = mode || 'simple';
+  const pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
+  if(pool.length < 2) throw new Error('need at least 2 templates in pool');
+
+  const primary = pool[Math.floor(Math.random() * pool.length)];
+  const sequence = buildGetSequence();
+  const introducedIds = new Set();
+  sequence.forEach(e => (e.introduced || []).forEach(id => introducedIds.add(id)));
+  const deck = state.words || [];
+
+  const eligibleForPair = (p, s) => {
+    const common = p.slotThemes.filter(t => s.slotThemes.includes(t));
+    return deck.filter(w =>
+      w.pos === 'n' &&
+      common.includes(w.theme) &&
+      !hasKatakana(w.jp) &&
+      w.jp && w.en && w.romaji &&
+      (!p.slotWords || p.slotWords.includes(w.en)) &&
+      (!s.slotWords || s.slotWords.includes(w.en)) &&
+      (!p.slotExclude || !p.slotExclude.includes(w.en)) &&
+      (!s.slotExclude || !s.slotExclude.includes(w.en))
+    );
+  };
+
+  const sCands = pool.filter(t =>
+    t.id !== primary.id &&
+    t.slotKey === primary.slotKey &&
+    t.slotThemes.some(th => primary.slotThemes.includes(th)) &&
+    eligibleForPair(primary, t).length >= 3
+  );
+  if(sCands.length === 0) throw new Error('no compatible secondary for ' + primary.id);
+  const secondary = sCands[Math.floor(Math.random() * sCands.length)];
+  const commonThemes = primary.slotThemes.filter(t => secondary.slotThemes.includes(t));
+  const eligible = eligibleForPair(primary, secondary);
+  if(eligible.length < 3) throw new Error('not enough deck nouns for ' + commonThemes.join(','));
+
+  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w)));
+  let newWords = buildPickRandom(unintroduced, 3);
+  if(newWords.length < 3){
+    const extra = buildPickRandom(eligible.filter(w => !newWords.includes(w)), 3 - newWords.length);
+    newWords = newWords.concat(extra);
+  }
+
+  const newIdSet = new Set(newWords.map(buildGenWordId));
+  const cbPool = [];
+  for(const entry of sequence){
+    for(const id of (entry.introduced || [])){
+      if(newIdSet.has(id)) continue;
+      const w = eligible.find(x => buildGenWordId(x) === id);
+      if(w && !cbPool.some(p => buildGenWordId(p) === id)) cbPool.push(w);
+    }
+  }
+  let callbacks = cbPool.slice(0, 2);
+  if(callbacks.length < 2){
+    const cbIds = new Set(callbacks.map(buildGenWordId));
+    const extra = buildPickRandom(
+      eligible.filter(w => !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w))),
+      2 - callbacks.length
+    );
+    callbacks = callbacks.concat(extra);
+  }
+
+  const [w1, w2, w3] = newWords;
+  const [cb1, cb2] = callbacks;
+  const lessonId = (mode === 'complex' ? 'Gc' : 'Gs') + (sequence.length + 1);
+  const toRef = w => ({ id: buildGenWordId(w), jp: w.jp, en: w.en, r: w.romaji });
+
+  const p1 = buildFillTemplate(primary, w1), p2 = buildFillTemplate(primary, w2), p3 = buildFillTemplate(primary, w3);
+  const s2 = buildFillTemplate(secondary, w2), s3 = buildFillTemplate(secondary, w3);
+  const sCb1 = buildFillTemplate(secondary, cb1);
+  const pCb2 = buildFillTemplate(primary, cb2);
+
+  const pEn = primary.en.replace(/\{N\}/g,'X');
+  const sEn = secondary.en.replace(/\{N\}/g,'X');
+
+  return {
+    id: lessonId,
+    title: `${mode === 'complex' ? 'Complex' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
+    duration_mins: mode === 'complex' ? 10 : 8,
+    new_words: newWords.map(toRef),
+    carryover_words: callbacks.map(toRef),
+    cycles: [
+      { id:'cycle_1', name:`Introduce — ${w1.en}, ${w2.en}, ${w3.en}`,
+        steps:[
+          { type:'introduce', word_id: buildGenWordId(w1) },
+          { type:'introduce', word_id: buildGenWordId(w2) },
+          { type:'introduce', word_id: buildGenWordId(w3) },
+          { type:'recall',    word_id: buildGenWordId(w1) }
+        ]},
+      { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`,
+        steps:[
+          { type:'build',      sentence_jp: p1.jp, sentence_en: p1.en },
+          { type:'substitute', swap_word_id: buildGenWordId(w2), result_jp: p2.jp, result_en: p2.en },
+          { type:'build',      sentence_jp: s2.jp, sentence_en: s2.en },
+          { type:'substitute', swap_word_id: buildGenWordId(w3), result_jp: s3.jp, result_en: s3.en },
+          { type:'build',      sentence_jp: p3.jp, sentence_en: p3.en }
+        ]},
+      { id:'cycle_3', name:`Callbacks — mix frames`,
+        steps:[
+          { type:'callback',   word_id: buildGenWordId(cb1), note:'cold — from earlier' },
+          { type:'build',      sentence_jp: sCb1.jp, sentence_en: sCb1.en },
+          { type:'callback',   word_id: buildGenWordId(cb2), note:'cold — from earlier' },
+          { type:'build',      sentence_jp: pCb2.jp, sentence_en: pCb2.en }
+        ]}
+    ],
+    _meta: {
+      mode,
+      introduced_ids: newWords.map(buildGenWordId),
+      callback_ids: callbacks.map(buildGenWordId),
+      primary_template: primary.pattern,
+      secondary_template: secondary.pattern
+    }
+  };
+}
+
+function buildGenerateHardLesson(){
+  const deck = state.words || [];
+  const lessonId = 'Gh' + (buildGetSequence().length + 1);
+  const steps = [];
+  const usedRefs = new Map();
+  let lastTmplId = null;
+  let tries = 0;
+  while(steps.length < 7 && tries < 60){
+    tries++;
+    const pool = BUILD_HARD_TEMPLATES.filter(t => t.id !== lastTmplId);
+    const tmpl = pool[Math.floor(Math.random() * pool.length)];
+    const filled = buildMultiSlotFill(tmpl, deck);
+    if(!filled) continue;
+    lastTmplId = tmpl.id;
+    steps.push({ type:'build', sentence_jp: filled.jp, sentence_en: filled.en });
+    for(const w of Object.values(filled.words)){
+      const id = buildGenWordId(w);
+      if(!usedRefs.has(id)) usedRefs.set(id, { id, jp: w.jp, en: w.en, r: w.romaji });
+    }
+  }
+  if(steps.length === 0) throw new Error('no multi-slot templates could be filled — enable N5 pack in Settings');
+  return {
+    id: lessonId,
+    title: `Hard ${lessonId} — multi-slot mix`,
+    duration_mins: 8,
+    new_words: [],
+    carryover_words: Array.from(usedRefs.values()),
+    cycles: [
+      { id:'cycle_hard', name:'Multi-slot — cold production', steps }
+    ],
+    _meta: {
+      mode: 'hard',
+      introduced_ids: [],
+      callback_ids: Array.from(usedRefs.keys())
+    }
+  };
+}
+
+function buildMakeSession(lesson){
+  const steps = [];
+  for(const c of lesson.cycles){
+    c.steps.forEach((s,i) => steps.push({...s, _cycleId: c.id, _cycleName: c.name, _cycleStepIdx: i}));
+  }
+  return { lesson, steps, stepIdx: 0, revealed: false, done: false };
+}
+
+function startBuildMode(){
+  if(!state.buildMode || state.buildMode.done){
+    state.buildMode = { lesson:null, steps:[], stepIdx:0, revealed:false, done:false };
+  }
+  nav('buildMode');
+}
+window.startBuildMode = startBuildMode;
+
+function startBuildModeHand(){
+  state.buildMode = buildMakeSession(BUILD_STARTER_LESSON);
+  render();
+}
+window.startBuildModeHand = startBuildModeHand;
+
+function startBuildModeGenerated(mode){
+  try{
+    const lesson = mode === 'hard' ? buildGenerateHardLesson() : buildGenerateLesson(mode);
+    state.buildMode = buildMakeSession(lesson);
+    render();
+  } catch(e){
+    alert("Can't generate: " + e.message + "\n\nEnable the N5 pack in Settings if your deck is empty.");
+  }
+}
+window.startBuildModeGenerated = startBuildModeGenerated;
+
+function buildWordById(id){
+  const b = state.buildMode;
+  if(!b?.lesson) return null;
+  return b.lesson.new_words.find(w => w.id === id)
+      || (b.lesson.carryover_words || []).find(w => w.id === id);
+}
+
+function _buildSpeakEN(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) ss.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0;
+    ss.speak(u);
+  }catch(e){}
+}
+
+function _buildSpeakJPThenEN(jp, en){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) ss.cancel();
+    const utter = () => {
+      const u = new SpeechSynthesisUtterance(String(jp).replace(/\s+/g,''));
+      u.lang = 'ja-JP';
+      u.rate = state.settings.ttsRate || 0.9;
+      const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
+      if(v) u.voice = v;
+      let finished = false;
+      const chain = () => { if(finished) return; finished = true; setTimeout(() => _buildSpeakEN(en), 250); };
+      u.onend = chain;
+      u.onerror = chain;
+      ss.speak(u);
+    };
+    if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
+    else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
+    else utter();
+  }catch(e){}
+}
+
+function buildAutoplayStep(step){
+  if(step.type === 'introduce'){
+    const w = buildWordById(step.word_id);
+    if(w){ _buildSpeakJPThenEN(w.jp, w.en); }
+  } else if(step.type === 'recall'){
+    const w = buildWordById(step.word_id);
+    if(w) _buildSpeakEN(w.en);
+  } else if(step.type === 'callback'){
+    if(step.word_id){
+      const w = buildWordById(step.word_id);
+      if(w) _buildSpeakEN(w.en);
+    } else if(step.sentence_en){ _buildSpeakEN(step.sentence_en); }
+  } else if(step.type === 'build'){
+    _buildSpeakEN(step.sentence_en);
+  } else if(step.type === 'substitute'){
+    _buildSpeakEN(step.result_en);
+  }
+}
+
+function buildReplayAudio(){
+  const b = state.buildMode;
+  if(!b?.steps) return;
+  const step = b.steps[b.stepIdx];
+  if(!step) return;
+  if(b.revealed){
+    if(step.type === 'introduce' || step.type === 'recall'){
+      const w = buildWordById(step.word_id); if(w) speakJP(w.jp);
+    } else if(step.type === 'callback'){
+      if(step.word_id){ const w = buildWordById(step.word_id); if(w) speakJP(w.jp); }
+      else if(step.sentence_jp){ speakJP(step.sentence_jp); }
+    } else if(step.type === 'build'){ speakJP(step.sentence_jp); }
+    else if(step.type === 'substitute'){ speakJP(step.result_jp); }
+  } else { buildAutoplayStep(step); }
+}
+window.buildReplayAudio = buildReplayAudio;
+
+function buildRevealStep(){
+  const b = state.buildMode;
+  b.revealed = true;
+  render();
+  const step = b.steps[b.stepIdx];
+  if(step.type === 'recall' || step.type === 'introduce'){
+    const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150);
+  } else if(step.type === 'callback'){
+    if(step.word_id){ const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150); }
+    else if(step.sentence_jp){ setTimeout(() => speakJP(step.sentence_jp), 150); }
+  } else if(step.type === 'build'){ setTimeout(() => speakJP(step.sentence_jp), 150); }
+  else if(step.type === 'substitute'){ setTimeout(() => speakJP(step.result_jp), 150); }
+}
+window.buildRevealStep = buildRevealStep;
+
+function buildNextStep(){
+  const b = state.buildMode;
+  b.revealed = false;
+  try{ window.speechSynthesis?.cancel(); }catch(e){}
+  if(b.stepIdx >= b.steps.length - 1){
+    if(!b.done) buildOnComplete();
+    b.done = true;
+  } else { b.stepIdx++; }
+  render();
+}
+window.buildNextStep = buildNextStep;
+
+function buildPrevStep(){
+  const b = state.buildMode;
+  b.revealed = false;
+  try{ window.speechSynthesis?.cancel(); }catch(e){}
+  if(b.stepIdx > 0) b.stepIdx--;
+  render();
+}
+window.buildPrevStep = buildPrevStep;
+
+function buildRestart(){
+  const b = state.buildMode;
+  b.stepIdx = 0; b.revealed = false; b.done = false;
+  if(b.lesson) b.lesson._completed = false;
+  render();
+}
+window.buildRestart = buildRestart;
+
+function buildOnComplete(){
+  const l = state.buildMode?.lesson;
+  if(l?._meta && !l._completed){
+    l._completed = true;
+    buildPushSequence({
+      id: l.id, mode: l._meta.mode,
+      templates: [l._meta.primary_template, l._meta.secondary_template],
+      introduced: l._meta.introduced_ids,
+      callbacks: l._meta.callback_ids,
+      date: new Date().toISOString()
+    });
+  }
+}
+
+function buildExit(){
+  state.buildMode = { lesson:null, steps:[], stepIdx:0, revealed:false, done:false };
+  render();
+}
+window.buildExit = buildExit;
+
+function buildAuditAll(){
+  const deck = state.words || [];
+  const out = [];
+  const pools = [
+    ['SIMPLE', BUILD_TEMPLATES],
+    ['COMPLEX', BUILD_COMPLEX_TEMPLATES]
+  ];
+  for(const [label, pool] of pools){
+    out.push('\n===== ' + label + ' =====');
+    for(const t of pool){
+      const eligible = deck.filter(w =>
+        w.pos === 'n' &&
+        t.slotThemes.includes(w.theme) &&
+        !hasKatakana(w.jp) &&
+        w.jp && w.en && w.romaji &&
+        (!t.slotWords || t.slotWords.includes(w.en)) &&
+        (!t.slotExclude || !t.slotExclude.includes(w.en))
+      );
+      out.push('\n--- ' + t.id + '  (' + eligible.length + ' words)  ' + t.pattern + '  |  ' + t.en);
+      for(const w of eligible){
+        const filled = buildFillTemplate(t, w);
+        out.push('  ' + filled.jp.padEnd(36) + '  ' + filled.en);
+      }
+    }
+  }
+  const text = out.join('\n');
+  console.log(text);
+  try{ navigator.clipboard.writeText(text); console.log('[buildAuditAll] copied to clipboard'); }catch(_){}
+  return text;
+}
+window.buildAuditAll = buildAuditAll;
+
+function buildAuditHard(samples){
+  const n = samples || 5;
+  const deck = state.words || [];
+  const out = [];
+  out.push('===== HARD (multi-slot, ' + n + ' samples per template) =====');
+  for(const t of BUILD_HARD_TEMPLATES){
+    const keys = Object.keys(t.slots);
+    const slotSizes = keys.map(k => {
+      const cfg = t.slots[k];
+      const pool = deck.filter(w =>
+        w.pos === 'n' && (cfg.allowKatakana || !hasKatakana(w.jp)) && w.jp && w.en && w.romaji &&
+        (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
+        (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
+        (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
+      );
+      return k + '=' + pool.length;
+    }).join(', ');
+    out.push('\n--- ' + t.id + '  [' + slotSizes + ']  ' + t.pattern + '  |  ' + t.en);
+    const seen = new Set();
+    let tries = 0;
+    while(seen.size < n && tries < n * 10){
+      tries++;
+      const filled = buildMultiSlotFill(t, deck);
+      if(!filled) break;
+      const key = filled.jp;
+      if(seen.has(key)) continue;
+      seen.add(key);
+      out.push('  ' + filled.jp.padEnd(40) + '  ' + filled.en);
+    }
+  }
+  const text = out.join('\n');
+  console.log(text);
+  try{ navigator.clipboard.writeText(text); console.log('[buildAuditHard] copied to clipboard'); }catch(_){}
+  return text;
+}
+window.buildAuditHard = buildAuditHard;
+
+function renderBuildMode(){
+  const b = state.buildMode;
+  if(!b || !b.lesson) return renderBuildModeStart();
+  if(b.done) return renderBuildModeComplete();
+  return renderBuildModeStep();
+}
+
+function renderBuildModeStart(){
+  const seqLen = buildGetSequence().length;
+  const seqStatus = seqLen === 0
+    ? 'First roll — callbacks filled with fresh deck picks.'
+    : `${seqLen} prior generation${seqLen === 1 ? '' : 's'} — cold callbacks drawn from coldest.`;
+  const hasFood = (state.words || []).some(w => w.pos==='n' && w.theme==='food' && !hasKatakana(w.jp));
+  const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> no hiragana food nouns in your deck. Enable the N5 pack in Settings, or dice rolls will fail.</div></div>` : '';
+
+  return `
+    ${warnDeck}
+    <div class="card">
+      <h3>🎲 Simple — one-clause</h3>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">
+        want · please · like · dislike · this-is · how-much · one-please · have · where · delicious
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('simple')">🎲 Roll simple lesson</button>
+    </div>
+
+    <div class="card">
+      <h3>🎲🎲 Complex — multi-clause</h3>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">
+        want-to-eat · ate-yesterday · was-delicious · tired/want · every-day · really-like
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('complex')">🎲🎲 Roll complex lesson</button>
+    </div>
+
+    <div class="card">
+      <h3>🎲🎲🎲 Hard — multi-slot</h3>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">
+        time + place + person slots · every sentence has 2–3 variables · no substitute scaffolding · cold production
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('hard')">🎲🎲🎲 Roll hard lesson</button>
+    </div>
+
+    <div class="card">
+      <h3>Starter — reactions & agreement</h3>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">Hand-authored reference. 7 words, 3 cycles. Good first-time to feel the rhythm.</div>
+      <button class="btn btn-secondary" style="width:100%" onclick="startBuildModeHand()">▶ Start starter</button>
+    </div>
+
+    <div class="card">
+      <div class="muted" style="font-size:12px;line-height:1.5">
+        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. Structure-driven — no scoring, nothing written back to your SRS stats. ${esc(seqStatus)}
+      </div>
+      ${seqLen > 0 ? `
+      <div style="margin-top:10px;text-align:center">
+        <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px" onclick="if(confirm('Clear ${seqLen} prior generation${seqLen === 1 ? '' : 's'}? Simple and complex share the sequence.')){buildClearSequence();render();}">Reset generation history</button>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function renderBuildModeStep(){
+  const b = state.buildMode;
+  const step = b.steps[b.stepIdx];
+  const total = b.steps.length;
+  const pct = Math.round(100 * b.stepIdx / total);
+
+  let body = '';
+  switch(step.type){
+    case 'introduce':  body = _buildRenderIntroduce(step); break;
+    case 'recall':     body = _buildRenderRecall(step); break;
+    case 'build':      body = _buildRenderBuild(step); break;
+    case 'substitute': body = _buildRenderSubstitute(step); break;
+    case 'callback':   body = _buildRenderCallback(step); break;
+    default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
+  }
+
+  if(!b.revealed){ setTimeout(() => buildAutoplayStep(step), 100); }
+
+  return `
+    <div class="build-progress"><div class="build-progress-fill" style="width:${pct}%"></div></div>
+    <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}</div>
+
+    <div class="card">
+      <div style="margin-bottom:10px"><span class="build-chip build-chip-${step.type}">${step.type}</span></div>
+      ${body}
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="buildPrevStep()" ${b.stepIdx === 0 ? 'disabled' : ''}>‹ Back</button>
+      <button class="btn btn-secondary" onclick="buildReplayAudio()">🔊 Replay</button>
+      ${b.revealed || step.type === 'introduce'
+        ? `<button class="btn btn-primary" onclick="buildNextStep()">${b.stepIdx === total - 1 ? 'Finish ✓' : 'Next ›'}</button>`
+        : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`
+      }
+    </div>
+
+    <div style="text-align:center;margin-top:10px">
+      <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px" onclick="buildExit()">Exit lesson</button>
+    </div>
+  `;
+}
+
+function _buildRenderIntroduce(step){
+  const w = buildWordById(step.word_id); if(!w) return '';
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">New word — listen, repeat aloud</div>
+    <div class="build-big-jp">${esc(w.jp)}</div>
+    <div class="build-romaji">${esc(w.r)}</div>
+    <div class="build-big-en">${esc(w.en)}</div>
+  `;
+}
+
+function _buildRenderRecall(step){
+  const b = state.buildMode;
+  const w = buildWordById(step.word_id); if(!w) return '';
+  if(b.revealed){
+    return `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct answer:</div>
+      <div class="build-big-jp">${esc(w.jp)}</div>
+      <div class="build-romaji">${esc(w.r)}</div>
+      <div class="build-big-en">${esc(w.en)}</div>
+    `;
+  }
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">How do you say this? (out loud)</div>
+    <div class="build-big-en">${esc(w.en)}</div>
+    <div class="build-placeholder">say it, then tap Reveal</div>
+  `;
+}
+
+function _buildRenderBuild(step){
+  const b = state.buildMode;
+  if(b.revealed){
+    return `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
+      <div class="build-big-jp">${esc(step.sentence_jp)}</div>
+      <div class="build-big-en">${esc(step.sentence_en)}</div>
+    `;
+  }
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Build this sentence in Japanese (out loud)</div>
+    <div class="build-big-en">${esc(step.sentence_en)}</div>
+    <div class="build-placeholder">produce it, then tap Reveal</div>
+  `;
+}
+
+function _buildRenderSubstitute(step){
+  const b = state.buildMode;
+  const w = buildWordById(step.swap_word_id);
+  if(b.revealed){
+    return `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
+      <div class="build-big-jp">${esc(step.result_jp)}</div>
+      <div class="build-big-en">${esc(step.result_en)}</div>
+    `;
+  }
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Same pattern — swap in: <b>${esc(w?.jp || '?')}</b> (${esc(w?.en || '?')})</div>
+    <div class="build-big-en">${esc(step.result_en)}</div>
+    <div class="build-placeholder">produce it, then tap Reveal</div>
+  `;
+}
+
+function _buildRenderCallback(step){
+  const b = state.buildMode;
+  const banner = `<div class="build-callback-banner">↺ CALLBACK — ${esc(step.note || 'from earlier')}</div>`;
+  if(step.word_id){
+    const w = buildWordById(step.word_id); if(!w) return banner;
+    if(b.revealed){
+      return banner + `
+        <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct answer:</div>
+        <div class="build-big-jp">${esc(w.jp)}</div>
+        <div class="build-romaji">${esc(w.r)}</div>
+        <div class="build-big-en">${esc(w.en)}</div>
+      `;
+    }
+    return banner + `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Cold recall — how do you say this?</div>
+      <div class="build-big-en">${esc(w.en)}</div>
+      <div class="build-placeholder">pull from memory, then tap Reveal</div>
+    `;
+  }
+  if(b.revealed){
+    return banner + `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
+      <div class="build-big-jp">${esc(step.sentence_jp)}</div>
+      <div class="build-big-en">${esc(step.sentence_en)}</div>
+    `;
+  }
+  return banner + `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Cold recall — produce this sentence</div>
+    <div class="build-big-en">${esc(step.sentence_en)}</div>
+    <div class="build-placeholder">pull from memory, then tap Reveal</div>
+  `;
+}
+
+function renderBuildModeComplete(){
+  const l = state.buildMode.lesson;
+  return `
+    <div class="card" style="text-align:center;padding:30px 20px">
+      <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
+      <h2 style="margin:0 0 8px 0">Lesson complete</h2>
+      <div class="muted" style="font-size:14px;margin-bottom:20px">
+        ${l._meta?.mode === 'hard'
+          ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words. Nothing written to your SRS stats.`
+          : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks. Nothing written to your SRS stats.`}
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
+    </div>
+  `;
+}
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz'};
+const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -3715,7 +4563,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, buildMode:renderBuildMode}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -3819,6 +4667,12 @@ function renderHome(){
       <h3>Grammar</h3>
       <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">🈁 Form drills</button>
       <div class="muted" style="font-size:12px;margin-top:6px">Conjugate verbs you've mastered in Vocab Blitz.</div>
+    </div>
+
+    <div class="card">
+      <h3>Build Mode</h3>
+      <button class="btn btn-blue" style="width:100%" onclick="startBuildMode()">🎲 Build Mode</button>
+      <div class="muted" style="font-size:12px;margin-top:6px">Paul Noble–style sentence construction. Dice-roll lessons from your deck. Trust-based, audio-led.</div>
     </div>
 
     <div class="card">
