@@ -251,7 +251,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.0</div>
+    <div class="sub">一心 · v5.1</div>
   </div>
   <main id="main"></main>
 </div>
@@ -277,7 +277,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -2431,8 +2431,9 @@ function blitzPickNext(){
   if(!state.blitz) return null;
   const pool = state.blitz.pool;
   if(!pool.length) return null;
-  /* Gap: avoid showing the same card back-to-back when the pool is big enough. */
-  const gap = Math.min(3, pool.length - 1);
+  /* v5.1: widened gap to combat shape-recognition zombie reviewing — force
+     real forgetting between exposures of the same card in-session. */
+  const gap = Math.min(6, pool.length - 1);
   const blocked = new Set((state.blitz.recent || []).slice(-gap));
   const eligible = pool.filter(p => !blocked.has(p.id));
   const candidates = eligible.length ? eligible : pool;
@@ -2467,7 +2468,7 @@ function blitzRecordAnswer(w, poolItem, isCorrect){
   st.lastSeen = now();
   poolItem.answers++;
   state.blitz.totalAnswers++;
-  state.blitz.recent = [...(state.blitz.recent || []), poolItem.id].slice(-4);
+  state.blitz.recent = [...(state.blitz.recent || []), poolItem.id].slice(-8);
   if(isCorrect){
     poolItem.streak++;
     state.blitz.tally.correct++;
@@ -2503,9 +2504,14 @@ function blitzSubmit(){
   save();
   render();
   clearBlitzAdvanceTimer();
-  setTimeout(() => $('#blitzContinue')?.focus(), 30);
-  const ms = res.correct ? 900 : 2000;
-  blitzAdvanceTimer = setTimeout(blitzAdvance, ms);
+  if(res.correct){
+    setTimeout(() => $('#blitzContinue')?.focus(), 30);
+    blitzAdvanceTimer = setTimeout(blitzAdvance, 900);
+  } else {
+    /* v5.1: wrong answer — force user to type the correct answer to continue
+       (kills shape-recognition / zombie reviewing). */
+    setTimeout(() => $('#blitzConfirm')?.focus(), 30);
+  }
 }
 window.blitzSubmit = blitzSubmit;
 
@@ -2522,8 +2528,8 @@ function blitzReveal(){
   save();
   render();
   clearBlitzAdvanceTimer();
-  setTimeout(() => $('#blitzContinue')?.focus(), 30);
-  blitzAdvanceTimer = setTimeout(blitzAdvance, 2000);
+  /* v5.1: reveal = wrong, force typing to continue. */
+  setTimeout(() => $('#blitzConfirm')?.focus(), 30);
 }
 window.blitzReveal = blitzReveal;
 
@@ -2667,6 +2673,10 @@ function renderBlitz(){
     ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak ${poolItem.streak}/${poolItem.required}</div>`
     : `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak reset — keep drilling</div>`);
 
+  const continueCtl = correct
+    ? `<button id="blitzContinue" class="btn btn-primary" style="width:100%" onclick="blitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();blitzAdvance();}">Continue ↵</button>`
+    : `<div class="muted" style="font-size:12px;margin-bottom:4px">Type <b>${esc(answer)}</b> to continue:</div>
+       <input id="blitzConfirm" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="retype the correct answer" oninput="blitzTypeToContinue()" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzTypeToContinue();}">`;
   return head + `<div class="card" style="border:2px solid ${accent}">
     <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
     ${streakAfter}
@@ -2676,9 +2686,22 @@ function renderBlitz(){
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
     <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
     <div class="spacer"></div>
-    <button id="blitzContinue" class="btn btn-primary" style="width:100%" onclick="blitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();blitzAdvance();}">Continue ↵</button>
+    ${continueCtl}
   </div>`;
 }
+
+function blitzTypeToContinue(){
+  const b = state.blitz;
+  if(!b || !b.submitted || b.autoCorrect) return;
+  const inp = $('#blitzConfirm');
+  if(!inp) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const cur = b.currentDir || b.direction;
+  const res = checkAnswer(inp.value, w, cur);
+  if(res.correct) blitzAdvance();
+}
+window.blitzTypeToContinue = blitzTypeToContinue;
 
 /* Keyboard shortcuts when a card is revealed.
    Blitz + Form Blitz: Enter/Space advance; no per-grade keys (auto-graded).
@@ -2692,7 +2715,9 @@ document.addEventListener('keydown', e => {
   if(!live || !live.submitted) return;
   if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   if(state.screen === 'blitz'){
-    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); blitzAdvance(); }
+    /* v5.1: wrong answers must be typed to continue — don't let Enter/Space
+       bypass the typing gate when confirm input has lost focus. */
+    if((e.key === 'Enter' || e.key === ' ') && live.autoCorrect){ e.preventDefault(); blitzAdvance(); }
     return;
   }
   if(state.screen === 'formBlitz'){
