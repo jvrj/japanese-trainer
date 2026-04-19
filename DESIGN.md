@@ -1,6 +1,8 @@
-# Japanese Trainer — Design & Roadmap
+# Isshin — Design & Roadmap
 
-**Live:** https://jvrj.github.io/japanese-trainer/
+**App:** Isshin (一心 · one heart / single-minded focus)
+**Ethos:** 迷えば敗る — hesitate and you lose.
+**Live:** https://jvrj.github.io/japanese-trainer/ (forked from japanese-trainer v4.30 at v5.0).
 **Goal:** Conversational fluency with Japanese people (not JLPT).
 
 ## Learning philosophy
@@ -11,6 +13,43 @@ Active recall is the spine. Wrap it in:
 - **Feedback** — correctness + JAPANEASY teacher review on flagged content
 
 All Japanese in hiragana/katakana for now. No kanji study yet (defer until teacher says otherwise).
+
+## v5.0 (shipped — Isshin rebrand + Kana Blitz)
+
+Rename: 日本語 Trainer → Isshin (一心, one heart / single-minded focus). Ethos: 迷えば敗る — hesitate and you lose.
+
+### Rebrand
+- Name, manifest, theme colour (now #ef4444 red), icon (刀 in red on white).
+- `APP_VERSION` const introduced as single source of truth. Footer and init log now read from it.
+- Fixed version-string drift (About card previously showed v4.15 while header showed v4.30).
+- Added missing `<link rel="icon">` so desktop browser tabs show the new icon (was only `apple-touch-icon` before).
+
+### Kana Blitz (new)
+- Character-recognition drill over 46 hiragana + 46 katakana + dakuten/handakuten + yōon = ~200 characters.
+- Three entry points from home: ひらがな, カタカナ, Mixed.
+- Retention: streak-based, NOT SM-2. 5 correct in a row retires a character. Retired kana resurface weekly for maintenance; any fail un-retires.
+- Confusion-pair surfacing: シ/ツ, ソ/ン, ク/タ tagged as confusion groups. On fail, the partner character is spliced as the next card so the brain is forced to discriminate back-to-back.
+- Mnemonics shown on fail for the three confusion pairs (stroke direction / alignment tips).
+- New LS key `jp4_kana_stats`. In-memory session state on `state.kanaBlitz`. Round-trips through export/import (both endpoints patched; export version bumped 4 → 5).
+
+### Tutor prompt refinement
+- Added explicit register-tag requirement (`[casual]`, `[polite]`, `[formal]`) on every Japanese example.
+- Added proactive error-pattern recognition for い-adjective drop, に/で, は/が, transitive-intransitive pairs, stem-vs-dictionary, particle-drops-in-polite-speech.
+- Tightened peer-sparring-partner framing.
+
+### Content
+- ~44 new katakana loanwords added to `N5_PACK` (food, tech, travel, places, work, daily). Deduped against existing 29 entries. Total katakana: ~72.
+
+### SM-2 defence-in-depth
+- `smGrade('again')` now caps ease drops to once per 24h per card. Prevents "ease hell" on Form Drills during a bad session. Vocab Blitz unaffected (auto-grades 'good' on graduation, never 'again' mid-session).
+- New field `lastEaseDrop` on SM-2 state. Lazy-migrated via `ensureSm()`.
+
+### Data
+- localStorage key prefix stays `jp4_` — preserves all existing user SRS state across the rename. No migration.
+- New key `jp4_kana_stats`. Round-trips through `exportJSON`/`importJSON`.
+
+### Deploy
+- `sw.js` cache `jp-trainer-v430` → `jp-trainer-v500`. Rule going forward: `APP_VERSION` and `CACHE_NAME` move in lockstep on every ship.
 
 ## v3 (shipped)
 

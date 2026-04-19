@@ -1,11 +1,11 @@
 {
-  "name": "日本語 Trainer",
-  "short_name": "JP Trainer",
-  "description": "Julius's Japanese vocabulary trainer",
+  "name": "Isshin",
+  "short_name": "Isshin",
+  "description": "一心 — Japanese drill trainer. One heart, single-minded focus.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#ffffff",
+  "theme_color": "#ef4444",
   "orientation": "portrait",
   "icons": [
     {

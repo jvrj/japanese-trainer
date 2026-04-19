@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0a0a0a">
-<title>日本語 Trainer v4</title>
+<meta name="theme-color" content="#ef4444">
+<title>Isshin</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;600;700;900&display=swap');
@@ -249,8 +250,8 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <body>
 <div class="app" id="app">
   <div class="header">
-    <h1>日本語 Trainer</h1>
-    <div class="sub">v4.30 · conversation edition</div>
+    <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
+    <div class="sub">一心 · v5.0</div>
   </div>
   <main id="main"></main>
 </div>
@@ -271,10 +272,12 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 <script>
 /* =========================================================================
-   日本語 Trainer v4
+   Isshin (一心)
    ========================================================================= */
 
 'use strict';
+
+const APP_VERSION = '5.0';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -955,7 +958,52 @@ const N5_PACK = [
   {jp:"はい",romaji:"hai",en:"yes",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
   {jp:"いいえ",romaji:"iie",en:"no",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
   {jp:"うん",romaji:"un",en:"yeah (casual)",pos:"expr",theme:"daily",register:"casual",jlpt:5},
-  {jp:"ううん",romaji:"uun",en:"nope (casual)",pos:"expr",theme:"daily",register:"casual",jlpt:5}
+  {jp:"ううん",romaji:"uun",en:"nope (casual)",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+  /* v5.0 — Katakana expansion (loanwords for conversational Japanese) */
+  {jp:"スマホ",romaji:"sumaho",en:"smartphone",pos:"n",theme:"tech",register:"neutral",jlpt:5},
+  {jp:"アプリ",romaji:"apuri",en:"app",pos:"n",theme:"tech",register:"neutral",jlpt:5},
+  {jp:"インターネット",romaji:"intaanetto",en:"internet",pos:"n",theme:"tech",register:"neutral",jlpt:5},
+  {jp:"ピザ",romaji:"piza",en:"pizza",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"スープ",romaji:"suupu",en:"soup",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"チーズ",romaji:"chiizu",en:"cheese",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"ケーキ",romaji:"keeki",en:"cake",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"アイスクリーム",romaji:"aisukuriimu",en:"ice cream",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"サラダ",romaji:"sarada",en:"salad",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"サンドイッチ",romaji:"sandoicchi",en:"sandwich",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"チョコレート",romaji:"chokoreeto",en:"chocolate",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"ハンバーガー",romaji:"hanbaagaa",en:"hamburger",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"チケット",romaji:"chiketto",en:"ticket",pos:"n",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"パスポート",romaji:"pasupooto",en:"passport",pos:"n",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"スーツケース",romaji:"suutsukeesu",en:"suitcase",pos:"n",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"アメリカ",romaji:"amerika",en:"America",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"イギリス",romaji:"igirisu",en:"UK/England",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"オーストラリア",romaji:"oosutoraria",en:"Australia",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"フランス",romaji:"furansu",en:"France",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"ドイツ",romaji:"doitsu",en:"Germany",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"イタリア",romaji:"itaria",en:"Italy",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"カナダ",romaji:"kanada",en:"Canada",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"アジア",romaji:"ajia",en:"Asia",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"ヨーロッパ",romaji:"yooroppa",en:"Europe",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"シャワー",romaji:"shawaa",en:"shower",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"エアコン",romaji:"eakon",en:"air conditioner",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"ソファ",romaji:"sofa",en:"sofa",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"キッチン",romaji:"kicchin",en:"kitchen",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"ゲーム",romaji:"geemu",en:"game",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"スポーツ",romaji:"supootsu",en:"sports",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"テニス",romaji:"tenisu",en:"tennis",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"サッカー",romaji:"sakkaa",en:"soccer",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"コンサート",romaji:"konsaato",en:"concert",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"プレゼント",romaji:"purezento",en:"gift",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"パーティー",romaji:"paatii",en:"party",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ニュース",romaji:"nyuusu",en:"news",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"アルバイト",romaji:"arubaito",en:"part-time job",pos:"n",theme:"work",register:"neutral",jlpt:5},
+  {jp:"ミーティング",romaji:"miitingu",en:"meeting",pos:"n",theme:"work",register:"neutral",jlpt:5},
+  {jp:"イベント",romaji:"ibento",en:"event",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ルール",romaji:"ruuru",en:"rule",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"シンプル",romaji:"shinpuru",en:"simple",pos:"adj-na",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"バイク",romaji:"baiku",en:"motorcycle",pos:"n",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"ジム",romaji:"jimu",en:"gym",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"カフェ",romaji:"kafe",en:"cafe",pos:"n",theme:"places",register:"neutral",jlpt:5}
 ];
 
 /* ===================== SENTENCE TEMPLATES ===================== */
@@ -1021,6 +1069,173 @@ const SENTENCE_TEMPLATES = [
 ];
 
 /* =========================================================================
+   KANA DATA — hiragana + katakana, organised by row for teaching order.
+   confusion_group: cards in the same group are surfaced back-to-back on fail.
+   ========================================================================= */
+
+const KANA_SET = [
+  /* Hiragana — basic (gojūon) */
+  {k:'あ', r:'a',   script:'h', row:'a'},  {k:'い', r:'i',  script:'h', row:'a'},
+  {k:'う', r:'u',   script:'h', row:'a'},  {k:'え', r:'e',  script:'h', row:'a'},
+  {k:'お', r:'o',   script:'h', row:'a'},
+  {k:'か', r:'ka',  script:'h', row:'ka'}, {k:'き', r:'ki', script:'h', row:'ka'},
+  {k:'く', r:'ku',  script:'h', row:'ka'}, {k:'け', r:'ke', script:'h', row:'ka'},
+  {k:'こ', r:'ko',  script:'h', row:'ka'},
+  {k:'さ', r:'sa',  script:'h', row:'sa'}, {k:'し', r:'shi',script:'h', row:'sa'},
+  {k:'す', r:'su',  script:'h', row:'sa'}, {k:'せ', r:'se', script:'h', row:'sa'},
+  {k:'そ', r:'so',  script:'h', row:'sa'},
+  {k:'た', r:'ta',  script:'h', row:'ta'}, {k:'ち', r:'chi',script:'h', row:'ta'},
+  {k:'つ', r:'tsu', script:'h', row:'ta'}, {k:'て', r:'te', script:'h', row:'ta'},
+  {k:'と', r:'to',  script:'h', row:'ta'},
+  {k:'な', r:'na',  script:'h', row:'na'}, {k:'に', r:'ni', script:'h', row:'na'},
+  {k:'ぬ', r:'nu',  script:'h', row:'na'}, {k:'ね', r:'ne', script:'h', row:'na'},
+  {k:'の', r:'no',  script:'h', row:'na'},
+  {k:'は', r:'ha',  script:'h', row:'ha'}, {k:'ひ', r:'hi', script:'h', row:'ha'},
+  {k:'ふ', r:'fu',  script:'h', row:'ha'}, {k:'へ', r:'he', script:'h', row:'ha'},
+  {k:'ほ', r:'ho',  script:'h', row:'ha'},
+  {k:'ま', r:'ma',  script:'h', row:'ma'}, {k:'み', r:'mi', script:'h', row:'ma'},
+  {k:'む', r:'mu',  script:'h', row:'ma'}, {k:'め', r:'me', script:'h', row:'ma'},
+  {k:'も', r:'mo',  script:'h', row:'ma'},
+  {k:'や', r:'ya',  script:'h', row:'ya'}, {k:'ゆ', r:'yu', script:'h', row:'ya'},
+  {k:'よ', r:'yo',  script:'h', row:'ya'},
+  {k:'ら', r:'ra',  script:'h', row:'ra'}, {k:'り', r:'ri', script:'h', row:'ra'},
+  {k:'る', r:'ru',  script:'h', row:'ra'}, {k:'れ', r:'re', script:'h', row:'ra'},
+  {k:'ろ', r:'ro',  script:'h', row:'ra'},
+  {k:'わ', r:'wa',  script:'h', row:'wa'}, {k:'を', r:'wo', script:'h', row:'wa'},
+  {k:'ん', r:'n',   script:'h', row:'n'},
+
+  /* Hiragana — dakuten */
+  {k:'が', r:'ga',  script:'h', row:'ga', mod:'dakuten'},
+  {k:'ぎ', r:'gi',  script:'h', row:'ga', mod:'dakuten'},
+  {k:'ぐ', r:'gu',  script:'h', row:'ga', mod:'dakuten'},
+  {k:'げ', r:'ge',  script:'h', row:'ga', mod:'dakuten'},
+  {k:'ご', r:'go',  script:'h', row:'ga', mod:'dakuten'},
+  {k:'ざ', r:'za',  script:'h', row:'za', mod:'dakuten'},
+  {k:'じ', r:'ji',  script:'h', row:'za', mod:'dakuten'},
+  {k:'ず', r:'zu',  script:'h', row:'za', mod:'dakuten'},
+  {k:'ぜ', r:'ze',  script:'h', row:'za', mod:'dakuten'},
+  {k:'ぞ', r:'zo',  script:'h', row:'za', mod:'dakuten'},
+  {k:'だ', r:'da',  script:'h', row:'da', mod:'dakuten'},
+  {k:'ぢ', r:'ji',  script:'h', row:'da', mod:'dakuten', alt:['di']},
+  {k:'づ', r:'zu',  script:'h', row:'da', mod:'dakuten', alt:['du']},
+  {k:'で', r:'de',  script:'h', row:'da', mod:'dakuten'},
+  {k:'ど', r:'do',  script:'h', row:'da', mod:'dakuten'},
+  {k:'ば', r:'ba',  script:'h', row:'ba', mod:'dakuten'},
+  {k:'び', r:'bi',  script:'h', row:'ba', mod:'dakuten'},
+  {k:'ぶ', r:'bu',  script:'h', row:'ba', mod:'dakuten'},
+  {k:'べ', r:'be',  script:'h', row:'ba', mod:'dakuten'},
+  {k:'ぼ', r:'bo',  script:'h', row:'ba', mod:'dakuten'},
+
+  /* Hiragana — handakuten */
+  {k:'ぱ', r:'pa',  script:'h', row:'pa', mod:'handakuten'},
+  {k:'ぴ', r:'pi',  script:'h', row:'pa', mod:'handakuten'},
+  {k:'ぷ', r:'pu',  script:'h', row:'pa', mod:'handakuten'},
+  {k:'ぺ', r:'pe',  script:'h', row:'pa', mod:'handakuten'},
+  {k:'ぽ', r:'po',  script:'h', row:'pa', mod:'handakuten'},
+
+  /* Katakana — basic. Confusion groups tagged. */
+  {k:'ア', r:'a',   script:'k', row:'a'},  {k:'イ', r:'i',  script:'k', row:'a'},
+  {k:'ウ', r:'u',   script:'k', row:'a'},  {k:'エ', r:'e',  script:'k', row:'a'},
+  {k:'オ', r:'o',   script:'k', row:'a'},
+  {k:'カ', r:'ka',  script:'k', row:'ka'}, {k:'キ', r:'ki', script:'k', row:'ka'},
+  {k:'ク', r:'ku',  script:'k', row:'ka', confusion_group:'ku_ta'},
+  {k:'ケ', r:'ke',  script:'k', row:'ka'}, {k:'コ', r:'ko', script:'k', row:'ka'},
+  {k:'サ', r:'sa',  script:'k', row:'sa'},
+  {k:'シ', r:'shi', script:'k', row:'sa', confusion_group:'shi_tsu'},
+  {k:'ス', r:'su',  script:'k', row:'sa'}, {k:'セ', r:'se', script:'k', row:'sa'},
+  {k:'ソ', r:'so',  script:'k', row:'sa', confusion_group:'so_n'},
+  {k:'タ', r:'ta',  script:'k', row:'ta', confusion_group:'ku_ta'},
+  {k:'チ', r:'chi', script:'k', row:'ta'},
+  {k:'ツ', r:'tsu', script:'k', row:'ta', confusion_group:'shi_tsu'},
+  {k:'テ', r:'te',  script:'k', row:'ta'}, {k:'ト', r:'to', script:'k', row:'ta'},
+  {k:'ナ', r:'na',  script:'k', row:'na'}, {k:'ニ', r:'ni', script:'k', row:'na'},
+  {k:'ヌ', r:'nu',  script:'k', row:'na'}, {k:'ネ', r:'ne', script:'k', row:'na'},
+  {k:'ノ', r:'no',  script:'k', row:'na'},
+  {k:'ハ', r:'ha',  script:'k', row:'ha'}, {k:'ヒ', r:'hi', script:'k', row:'ha'},
+  {k:'フ', r:'fu',  script:'k', row:'ha'}, {k:'ヘ', r:'he', script:'k', row:'ha'},
+  {k:'ホ', r:'ho',  script:'k', row:'ha'},
+  {k:'マ', r:'ma',  script:'k', row:'ma'}, {k:'ミ', r:'mi', script:'k', row:'ma'},
+  {k:'ム', r:'mu',  script:'k', row:'ma'}, {k:'メ', r:'me', script:'k', row:'ma'},
+  {k:'モ', r:'mo',  script:'k', row:'ma'},
+  {k:'ヤ', r:'ya',  script:'k', row:'ya'}, {k:'ユ', r:'yu', script:'k', row:'ya'},
+  {k:'ヨ', r:'yo',  script:'k', row:'ya'},
+  {k:'ラ', r:'ra',  script:'k', row:'ra'}, {k:'リ', r:'ri', script:'k', row:'ra'},
+  {k:'ル', r:'ru',  script:'k', row:'ra'}, {k:'レ', r:'re', script:'k', row:'ra'},
+  {k:'ロ', r:'ro',  script:'k', row:'ra'},
+  {k:'ワ', r:'wa',  script:'k', row:'wa'}, {k:'ヲ', r:'wo', script:'k', row:'wa'},
+  {k:'ン', r:'n',   script:'k', row:'n',  confusion_group:'so_n'},
+
+  /* Katakana — dakuten */
+  {k:'ガ', r:'ga',  script:'k', row:'ga', mod:'dakuten'},
+  {k:'ギ', r:'gi',  script:'k', row:'ga', mod:'dakuten'},
+  {k:'グ', r:'gu',  script:'k', row:'ga', mod:'dakuten'},
+  {k:'ゲ', r:'ge',  script:'k', row:'ga', mod:'dakuten'},
+  {k:'ゴ', r:'go',  script:'k', row:'ga', mod:'dakuten'},
+  {k:'ザ', r:'za',  script:'k', row:'za', mod:'dakuten'},
+  {k:'ジ', r:'ji',  script:'k', row:'za', mod:'dakuten'},
+  {k:'ズ', r:'zu',  script:'k', row:'za', mod:'dakuten'},
+  {k:'ゼ', r:'ze',  script:'k', row:'za', mod:'dakuten'},
+  {k:'ゾ', r:'zo',  script:'k', row:'za', mod:'dakuten'},
+  {k:'ダ', r:'da',  script:'k', row:'da', mod:'dakuten'},
+  {k:'ヂ', r:'ji',  script:'k', row:'da', mod:'dakuten', alt:['di']},
+  {k:'ヅ', r:'zu',  script:'k', row:'da', mod:'dakuten', alt:['du']},
+  {k:'デ', r:'de',  script:'k', row:'da', mod:'dakuten'},
+  {k:'ド', r:'do',  script:'k', row:'da', mod:'dakuten'},
+  {k:'バ', r:'ba',  script:'k', row:'ba', mod:'dakuten'},
+  {k:'ビ', r:'bi',  script:'k', row:'ba', mod:'dakuten'},
+  {k:'ブ', r:'bu',  script:'k', row:'ba', mod:'dakuten'},
+  {k:'ベ', r:'be',  script:'k', row:'ba', mod:'dakuten'},
+  {k:'ボ', r:'bo',  script:'k', row:'ba', mod:'dakuten'},
+
+  /* Katakana — handakuten */
+  {k:'パ', r:'pa',  script:'k', row:'pa', mod:'handakuten'},
+  {k:'ピ', r:'pi',  script:'k', row:'pa', mod:'handakuten'},
+  {k:'プ', r:'pu',  script:'k', row:'pa', mod:'handakuten'},
+  {k:'ペ', r:'pe',  script:'k', row:'pa', mod:'handakuten'},
+  {k:'ポ', r:'po',  script:'k', row:'pa', mod:'handakuten'},
+];
+
+const YOON_PAIRS = [
+  ['き','ki'],['し','shi'],['ち','chi'],['に','ni'],['ひ','hi'],['み','mi'],['り','ri'],
+  ['ぎ','gi'],['じ','ji'],['び','bi'],['ぴ','pi']
+];
+const YOON_SUFFIX = [['ゃ','ya'],['ゅ','yu'],['ょ','yo']];
+const YOON_EXCEPTIONS = {shi:{ya:'sha',yu:'shu',yo:'sho'}, chi:{ya:'cha',yu:'chu',yo:'cho'}, ji:{ya:'ja',yu:'ju',yo:'jo'}};
+const HIRA_TO_KATA = {'き':'キ','し':'シ','ち':'チ','に':'ニ','ひ':'ヒ','み':'ミ','り':'リ',
+                     'ぎ':'ギ','じ':'ジ','び':'ビ','ぴ':'ピ',
+                     'ゃ':'ャ','ゅ':'ュ','ょ':'ョ'};
+
+function buildYoonSet(scriptKey){
+  const out = [];
+  for(const [base, baseR] of YOON_PAIRS){
+    for(const [suf, sufR] of YOON_SUFFIX){
+      const k = scriptKey === 'h' ? base + suf : HIRA_TO_KATA[base] + HIRA_TO_KATA[suf];
+      const exc = YOON_EXCEPTIONS[baseR];
+      const r = exc ? exc[sufR] : baseR.slice(0,-1) + sufR;
+      out.push({k, r, script:scriptKey, row:'yoon'});
+    }
+  }
+  return out;
+}
+
+const KANA_FULL = [...KANA_SET, ...buildYoonSet('h'), ...buildYoonSet('k')];
+
+const KANA_CONFUSION_GROUPS = {
+  shi_tsu: ['シ','ツ'],
+  so_n:    ['ソ','ン'],
+  ku_ta:   ['ク','タ'],
+};
+
+const KANA_MNEMONICS = {
+  'シ':'Left-aligned strokes. Long stroke sweeps UP from bottom-left. Overlay hiragana し to confirm.',
+  'ツ':'Top-aligned strokes. Long stroke sweeps DOWN from top-right. Overlay hiragana つ to confirm.',
+  'ソ':'First stroke comes DOWN from upper right. "So low" — pointing down.',
+  'ン':'First stroke comes UP from lower left. Like the tip of a pen.',
+  'ク':'Two strokes only, no cross bar.',
+  'タ':'Has an extra horizontal stroke that ク lacks.',
+};
+
+/* =========================================================================
    STORAGE & STATE
    ========================================================================= */
 
@@ -1028,7 +1243,8 @@ const LS = {
   words:'jp4_words', stats:'jp4_stats', settings:'jp4_settings',
   notes:'jp4_notes', logs:'jp4_logs', streak:'jp4_streak',
   enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude',
-  formStats:'jp4_form_stats'
+  formStats:'jp4_form_stats',
+  kanaStats:'jp4_kana_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1072,6 +1288,8 @@ let state = {
   blitz:null,           // active Vocab Blitz session; see startBlitz()
   formDrill:null,       // active Form Drill session; see startFormDrill()
   formBlitz:null,       // active Mixed Form Blitz session; see startFormBlitz()
+  kanaStats:{},         // kana char -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount}
+  kanaBlitz:null,       // active Kana Blitz session
   _reveal:false,
   _sentenceAnswer:null
 };
@@ -1217,6 +1435,7 @@ function save(){
     localStorage.setItem(LS.streak, JSON.stringify(state.streak));
     localStorage.setItem(LS.askClaude, JSON.stringify(state.askClaude || {messages:[]}));
     localStorage.setItem(LS.formStats, JSON.stringify(state.formStats || {}));
+    localStorage.setItem(LS.kanaStats, JSON.stringify(state.kanaStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1229,6 +1448,7 @@ function load(){
     state.streak = {...state.streak, ...(JSON.parse(localStorage.getItem(LS.streak)||'{}'))};
     state.askClaude = JSON.parse(localStorage.getItem(LS.askClaude)||'{"messages":[]}');
     state.formStats = JSON.parse(localStorage.getItem(LS.formStats)||'{}');
+    state.kanaStats = JSON.parse(localStorage.getItem(LS.kanaStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -1320,6 +1540,7 @@ function ensureSm(st){
   if(st.wrongCount === undefined) st.wrongCount = 0;
   if(st.lastReviewed === undefined) st.lastReviewed = null;
   if(st.smNext === undefined) st.smNext = now();
+  if(st.lastEaseDrop === undefined) st.lastEaseDrop = null;
 }
 
 function smGrade(st, grade){
@@ -1329,7 +1550,13 @@ function smGrade(st, grade){
   if(grade === 'again'){
     st.wrongCount++;
     st.smInterval = SM_AGAIN_MIN;
-    st.ease = Math.max(SM_MIN_EASE, +(st.ease - 0.2).toFixed(2));
+    /* Ease-hell mitigation: only decrement ease once per 24h per card. */
+    const dayMs = 24*60*60*1000;
+    const recentDrop = st.lastEaseDrop && (now() - st.lastEaseDrop) < dayMs;
+    if(!recentDrop){
+      st.ease = Math.max(SM_MIN_EASE, +(st.ease - 0.2).toFixed(2));
+      st.lastEaseDrop = now();
+    }
   } else if(grade === 'good'){
     st.correctCount++;
     st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease)));
@@ -2457,9 +2684,10 @@ function renderBlitz(){
    Blitz + Form Blitz: Enter/Space advance; no per-grade keys (auto-graded).
    Form Drill: 1 = Again · 2 = Good · 3 = Easy (self-graded). */
 document.addEventListener('keydown', e => {
-  if(state.screen !== 'blitz' && state.screen !== 'formDrill' && state.screen !== 'formBlitz') return;
+  if(state.screen !== 'blitz' && state.screen !== 'formDrill' && state.screen !== 'formBlitz' && state.screen !== 'kanaBlitz') return;
   const live = state.screen === 'blitz' ? state.blitz
              : state.screen === 'formBlitz' ? state.formBlitz
+             : state.screen === 'kanaBlitz' ? state.kanaBlitz
              : state.formDrill;
   if(!live || !live.submitted) return;
   if(e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
@@ -2469,6 +2697,10 @@ document.addEventListener('keydown', e => {
   }
   if(state.screen === 'formBlitz'){
     if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); formBlitzAdvance(); }
+    return;
+  }
+  if(state.screen === 'kanaBlitz'){
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); kanaBlitzAdvance(); }
     return;
   }
   if(e.key === '1'){ e.preventDefault(); formDrillGrade('again'); }
@@ -3149,10 +3381,284 @@ function renderPatterns(){
 window.renderPatterns = renderPatterns;
 
 /* =========================================================================
+   KANA BLITZ — streak-based retention. Separate track from SM-2.
+   Retire: 5 correct in a row. Maintenance: retired kana resurface weekly.
+   Confusion-pair surfacing: on fail of a tagged char, partner is next.
+   ========================================================================= */
+
+const KANA_RETIRE_STREAK = 5;
+const KANA_MAINTENANCE_DAYS = 7;
+const KANA_SESSION_TARGET = 15;
+
+function kanaStatFor(k){
+  if(!state.kanaStats) state.kanaStats = {};
+  if(!state.kanaStats[k]){
+    state.kanaStats[k] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0};
+  }
+  return state.kanaStats[k];
+}
+
+function kanaDueForMaintenance(k){
+  const st = state.kanaStats && state.kanaStats[k];
+  if(!st || !st.retired) return false;
+  const days = (now() - (st.retiredAt || 0)) / (1000*60*60*24);
+  return days >= KANA_MAINTENANCE_DAYS;
+}
+
+function buildKanaPool(scope){
+  const eligible = KANA_FULL.filter(item => {
+    if(scope === 'hiragana' && item.script !== 'h') return false;
+    if(scope === 'katakana' && item.script !== 'k') return false;
+    const st = state.kanaStats[item.k];
+    if(!st) return true;
+    if(!st.retired) return true;
+    return kanaDueForMaintenance(item.k);
+  });
+  const maintenance = [], unseen = [], learning = [];
+  for(const item of eligible){
+    const st = state.kanaStats[item.k];
+    if(!st) unseen.push(item);
+    else if(st.retired) maintenance.push(item);
+    else learning.push(item);
+  }
+  return [
+    ...shuffleFY(maintenance).slice(0, 4),
+    ...shuffleFY(unseen).slice(0, 8),
+    ...shuffleFY(learning),
+  ].slice(0, KANA_SESSION_TARGET);
+}
+
+function startKanaBlitz(scope){
+  scope = scope || 'all';
+  if(!state.kanaStats) state.kanaStats = {};
+  const pool = buildKanaPool(scope);
+  if(!pool.length){
+    alert('All kana retired! Great work. Check back in a week for maintenance.');
+    return;
+  }
+  state.kanaBlitz = {
+    active:true, complete:false,
+    scope,
+    pool,
+    idx:0,
+    submitted:false,
+    input:'',
+    autoCorrect:null,
+    lastFailedK:null,
+    tally:{correct:0, wrong:0, retired:0, total:pool.length},
+  };
+  nav('kanaBlitz');
+}
+window.startKanaBlitz = startKanaBlitz;
+
+function kanaBlitzCurrent(){
+  if(!state.kanaBlitz || !state.kanaBlitz.active) return null;
+  return state.kanaBlitz.pool[state.kanaBlitz.idx] || null;
+}
+
+function kanaBlitzCheck(input, item){
+  const i = (input||'').toLowerCase().trim().replace(/\s+/g,'');
+  if(!i) return false;
+  if(i === item.r) return true;
+  if(item.alt && item.alt.includes(i)) return true;
+  return false;
+}
+
+function kanaBlitzRecordAnswer(item, correct){
+  const st = kanaStatFor(item.k);
+  st.lastSeen = now();
+  if(correct){
+    st.streak++;
+    st.correctCount++;
+    state.kanaBlitz.tally.correct++;
+    if(st.streak >= KANA_RETIRE_STREAK && !st.retired){
+      st.retired = true;
+      st.retiredAt = now();
+      state.kanaBlitz.tally.retired++;
+    } else if(st.retired){
+      st.retiredAt = now();
+    }
+    state.kanaBlitz.lastFailedK = null;
+  } else {
+    st.streak = 0;
+    st.wrongCount++;
+    st.retired = false;
+    st.retiredAt = null;
+    state.kanaBlitz.tally.wrong++;
+    state.kanaBlitz.lastFailedK = item.k;
+  }
+}
+
+function kanaBlitzSubmit(){
+  if(!state.kanaBlitz || state.kanaBlitz.submitted) return;
+  const item = kanaBlitzCurrent();
+  if(!item) return;
+  const inp = $('#kanaInput');
+  state.kanaBlitz.input = inp?.value || '';
+  const correct = kanaBlitzCheck(state.kanaBlitz.input, item);
+  state.kanaBlitz.autoCorrect = correct;
+  state.kanaBlitz.submitted = true;
+  kanaBlitzRecordAnswer(item, correct);
+  save();
+  render();
+  setTimeout(() => $('#kanaContinue')?.focus(), 30);
+}
+window.kanaBlitzSubmit = kanaBlitzSubmit;
+
+function kanaBlitzReveal(){
+  if(!state.kanaBlitz || state.kanaBlitz.submitted) return;
+  const item = kanaBlitzCurrent();
+  if(!item) return;
+  const inp = $('#kanaInput');
+  state.kanaBlitz.input = inp?.value || '';
+  state.kanaBlitz.autoCorrect = false;
+  state.kanaBlitz.submitted = true;
+  kanaBlitzRecordAnswer(item, false);
+  save();
+  render();
+  setTimeout(() => $('#kanaContinue')?.focus(), 30);
+}
+window.kanaBlitzReveal = kanaBlitzReveal;
+
+function kanaBlitzSkip(){
+  if(!state.kanaBlitz) return;
+  state.kanaBlitz.lastFailedK = null;
+  state.kanaBlitz.submitted = false;
+  state.kanaBlitz.input = '';
+  state.kanaBlitz.autoCorrect = null;
+  state.kanaBlitz.idx++;
+  if(state.kanaBlitz.idx >= state.kanaBlitz.pool.length){
+    state.kanaBlitz.active = false;
+    state.kanaBlitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#kanaInput')?.focus(), 30);
+}
+window.kanaBlitzSkip = kanaBlitzSkip;
+
+function kanaBlitzAdvance(){
+  if(!state.kanaBlitz) return;
+  const failedK = state.kanaBlitz.lastFailedK;
+  if(failedK){
+    const group = Object.values(KANA_CONFUSION_GROUPS).find(g => g.includes(failedK));
+    if(group){
+      const partnerK = group.find(k => k !== failedK);
+      const partnerItem = KANA_FULL.find(it => it.k === partnerK);
+      if(partnerItem){
+        const nextIdx = state.kanaBlitz.idx + 1;
+        const currentNext = state.kanaBlitz.pool[nextIdx];
+        if(!currentNext || currentNext.k !== partnerK){
+          state.kanaBlitz.pool.splice(nextIdx, 0, partnerItem);
+          state.kanaBlitz.tally.total++;
+        }
+      }
+    }
+  }
+  state.kanaBlitz.idx++;
+  state.kanaBlitz.submitted = false;
+  state.kanaBlitz.input = '';
+  state.kanaBlitz.autoCorrect = null;
+  state.kanaBlitz.lastFailedK = null;
+  if(state.kanaBlitz.idx >= state.kanaBlitz.pool.length){
+    state.kanaBlitz.active = false;
+    state.kanaBlitz.complete = true;
+  }
+  save();
+  render();
+  setTimeout(() => $('#kanaInput')?.focus(), 30);
+}
+window.kanaBlitzAdvance = kanaBlitzAdvance;
+
+function kanaBlitzEnd(){
+  state.kanaBlitz = null;
+  nav('home');
+}
+window.kanaBlitzEnd = kanaBlitzEnd;
+
+function renderKanaBlitz(){
+  const kb = state.kanaBlitz;
+  if(!kb){
+    return `<div class="card"><div class="muted">No active Kana Blitz.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('home')">Back home</button></div>`;
+  }
+  if(kb.complete){
+    const t = kb.tally;
+    const attempts = t.correct + t.wrong;
+    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    return `<div class="card">
+      <h2 style="margin-top:0">Kana Blitz complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startKanaBlitz('${esc(kb.scope)}')">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="kanaBlitzEnd()">Back home</button>
+    </div>`;
+  }
+  const item = kanaBlitzCurrent();
+  if(!item) return `<div class="card"><div class="muted">No cards.</div></div>`;
+  const st = state.kanaStats[item.k];
+  const streak = st?.streak || 0;
+  const retired = st?.retired || false;
+  const total = kb.pool.length;
+  const pos = kb.idx + 1;
+
+  const scriptLabel = item.script === 'h' ? 'hiragana' : 'katakana';
+  const modLabel = item.mod ? ' · ' + item.mod : (item.row === 'yoon' ? ' · yōon' : '');
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">${scriptLabel}${modLabel}${retired ? ' · maintenance' : ''}</span>
+    </div>
+  </div>`;
+
+  if(!kb.submitted){
+    return head + `<div class="card">
+      <div style="font-size:120px;text-align:center;font-weight:900;line-height:1;padding:20px 0">${esc(item.k)}</div>
+      <input id="kanaInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type romaji (e.g. ka, shi, kyo)" onkeydown="if(event.key==='Enter'){event.preventDefault();kanaBlitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="kanaBlitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="kanaBlitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="kanaBlitzSkip()">Skip card</button>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:8px">Streak: ${streak} / ${KANA_RETIRE_STREAK}</div>
+    </div>`;
+  }
+
+  const correct = kb.autoCorrect;
+  const mnem = KANA_MNEMONICS[item.k];
+  const confusionGroup = Object.entries(KANA_CONFUSION_GROUPS).find(([_, chars]) => chars.includes(item.k));
+  const partner = confusionGroup ? confusionGroup[1].find(k => k !== item.k) : null;
+
+  return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
+    <div style="font-size:80px;text-align:center;font-weight:900;line-height:1;padding:14px 0">${esc(item.k)}</div>
+    <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
+      ${correct ? '✓ correct' : '✗ wrong'}
+    </div>
+    <div style="text-align:center;font-size:14px;margin-bottom:6px">
+      <span class="muted">Answer:</span> <b>${esc(item.r)}</b>
+    </div>
+    ${!correct && mnem ? `<div class="hint-card" style="margin-top:10px">
+      <div class="hint-head">Remember</div>
+      <div class="hint-body">${esc(mnem)}</div>
+      ${partner ? `<div class="hint-body" style="margin-top:6px">Partner surfacing next: <b>${esc(partner)}</b></div>` : ''}
+    </div>` : ''}
+    <div class="spacer"></div>
+    <button id="kanaContinue" class="btn btn-primary" style="width:100%" onclick="kanaBlitzAdvance()">Continue</button>
+  </div>`;
+}
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill'};
+const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -3170,7 +3676,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -3259,6 +3765,16 @@ function renderHome(){
         <div class="muted" style="font-size:12px;margin-top:6px">${esc(sub)}</div>
       </div>`;
     })()}
+
+    <div class="card">
+      <h3>Kana</h3>
+      <div class="btn-row-3">
+        <button class="btn btn-teal" onclick="startKanaBlitz('hiragana')">ひらがな</button>
+        <button class="btn btn-teal" onclick="startKanaBlitz('katakana')">カタカナ</button>
+        <button class="btn btn-teal" onclick="startKanaBlitz('all')">Mixed</button>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:6px">Character recognition. Retire kana by hitting a 5-streak. Failed twins surface together.</div>
+    </div>
 
     <div class="card">
       <h3>Grammar</h3>
@@ -4095,7 +4611,7 @@ function renderSettings(){
     <div class="card">
       <h3>About</h3>
       <div class="muted">
-        v4.15 · conversation edition · pattern packs + 🤖 ask claude<br>
+        Isshin · v${APP_VERSION}<br>
         ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
@@ -4146,7 +4662,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:4, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:5, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
@@ -4174,6 +4690,10 @@ function handleImport(ev){
       if(d.notes) for(const n of d.notes) if(!state.notes.find(x=>x.id===n.id)) state.notes.push(n);
       if(d.settings) state.settings = {...state.settings, ...d.settings};
       if(d.streak) state.streak = {...state.streak, ...d.streak};
+      if(d.kanaStats){
+        if(!state.kanaStats) state.kanaStats = {};
+        for(const k in d.kanaStats) if(!state.kanaStats[k]) state.kanaStats[k] = d.kanaStats[k];
+      }
       save(); load(); alert('Import complete.'); render();
     }catch(e){ alert('Import failed: '+e.message); }
   };
@@ -4232,18 +4752,33 @@ function deleteNote(id){
 }
 
 /* ---------- ASK CLAUDE ---------- */
-const ASK_CLAUDE_SYSTEM = `You are a friendly Japanese tutor for Julius, a beginner/intermediate learner whose goal is conversational fluency with Japanese people. He attends a weekly JAPANEASY class and a language exchange. He is not studying for JLPT.
+const ASK_CLAUDE_SYSTEM = `You are Julius's Japanese sparring partner. He is a beginner/intermediate learner focused on conversational fluency — not JLPT. He attends a weekly JAPANEASY class and a language exchange.
+
+Teach like a peer, not a teacher. Direct, casual, encouraging. No hedging. Don't lecture.
 
 Hard rules:
-- Write ALL Japanese in HIRAGANA ONLY. No kanji. No romaji unless Julius explicitly asks.
+- Write ALL Japanese in HIRAGANA ONLY. Never kanji. Never romaji unless Julius explicitly asks.
 - Reply in concise English with short Japanese examples inline.
-- Prioritize conversational utility over grammar theory or test-taking.
-- When he asks about a word: give meaning, register (casual/polite), 1-2 short hiragana example sentences, and any close-but-wrong siblings he might confuse it with.
-- When he asks about a grammar pattern: show the pattern with 2-3 substitution examples using common N5-level words in hiragana.
-- If he writes Japanese and asks to check it: correct gently, show the fix in hiragana, explain in one sentence.
-- Keep answers short by default (3-6 sentences). Expand only if asked.
-- Flag anything you are uncertain about so his JAPANEASY teacher can confirm.
-- Tone: encouraging, casual, direct. Peer-to-peer, not teacher-to-student.`;
+- Keep answers to 3–6 sentences by default. Expand only when asked.
+- Prioritise conversational utility over grammar theory.
+- Register-tag every Japanese example: [casual], [polite], or [formal].
+- Flag anything uncertain so his JAPANEASY teacher can confirm.
+
+When he asks about a word: give meaning, register, 1–2 short hiragana examples (register-tagged), and any close-but-wrong siblings he might confuse it with.
+
+When he asks about a grammar pattern: show the pattern with 2–3 substitution examples using common N5-level words in hiragana, each register-tagged.
+
+When he writes Japanese and asks to check it: correct gently, show the fix in hiragana, explain in one sentence.
+
+Watch for these common beginner error patterns and proactively flag when his question touches one:
+- い-adjective drop: dropping い before です (e.g. "たのし です" — wrong; should be "たのしい です")
+- に vs で confusion: に for destinations, existence, and targets; で for locations of action and means/method
+- は vs が: は for topic, が for subject/new information; が goes with すき, ある, いる, ほしい
+- Transitive / intransitive pairs: はじまる vs はじめる, あく vs あける, きえる vs けす, でる vs だす, はいる vs いれる
+- Stem vs dictionary form: ます-stem (たべ) vs dictionary (たべる) — ます-stem does not stand alone
+- Particle drops in polite speech: don't drop を or が the way casual speech allows
+
+Use examples from daily life — food, trains, weather, friends, work. Julius's ethos is "mayoeba yaburu" — hesitate and you lose. Match that energy: pick the most useful thing and say it plainly.`;
 
 function currentClaudeContext(){
   const s = state.screen;
@@ -4503,7 +5038,7 @@ function init(){
   }catch(e){}
   render();
   updateBackFab();
-  log('init',{v:412, words:state.words.length});
+  log('init',{v:APP_VERSION, words:state.words.length});
 }
 
 window.addEventListener('DOMContentLoaded', init);
