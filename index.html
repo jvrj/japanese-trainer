@@ -265,7 +265,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.5</div>
+    <div class="sub">一心 · v5.6</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1871,10 +1871,9 @@ function speakJP(text, rate){
         const ss = window.speechSynthesis;
         if(ss.speaking || ss.pending) ss.cancel();
         const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
-        u.lang = 'ja-JP';
         u.rate = rate || state.settings.ttsRate || 0.9;
         const v = _pickJaVoice();
-        if(v) u.voice = v;
+        if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
         let started = false;
         u.onstart = () => { started = true; speakingFlag = true; updateSpeakBtn(); };
         u.onend = () => {
@@ -4178,10 +4177,9 @@ function _buildSpeakEN(text){
     const ss = window.speechSynthesis;
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
     u.rate = 0.9;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
-    if(v) u.voice = v;
+    if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
     ss.speak(u);
   }catch(e){}
 }
@@ -4193,10 +4191,9 @@ function _buildSpeakJPThenEN(jp, en){
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(jp).replace(/\s+/g,''));
-      u.lang = 'ja-JP';
       u.rate = state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
-      if(v) u.voice = v;
+      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
       let finished = false;
       const chain = () => { if(finished) return; finished = true; setTimeout(() => _buildSpeakEN(en), 250); };
       u.onend = chain;
