@@ -265,7 +265,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.4</div>
+    <div class="sub">一心 · v5.5</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1268,7 +1268,9 @@ const DEFAULT_SETTINGS = {
   activePOS:[],               // empty = all
   activeRegister:[],          // empty = all
   voiceOn:true,
-  ttsRate:0.85,
+  ttsRate:0.75,
+  jpVoiceName:'',
+  enVoiceName:'',
   hintsEnabled:true,
   n5PackEnabled:true,
   smartWrongFeedback:true,
@@ -1458,7 +1460,7 @@ function save(){
 function load(){
   try{
     state.settings = {...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS.settings)||'{}'))};
-    if(state.settings.ttsRate === 0.9) state.settings.ttsRate = 0.85;
+    if([0.9, 0.85, 0.8].includes(state.settings.ttsRate)) state.settings.ttsRate = 0.75;
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -1808,6 +1810,11 @@ function _pickJaVoice(){
     /japanese|日本語/i.test(v.name||'')
   );
   if(!jaVoices.length) return null;
+  const saved = (state.settings && state.settings.jpVoiceName) || '';
+  if(saved){
+    const hit = jaVoices.find(v => v.name === saved);
+    if(hit) return hit;
+  }
   const femaleNames = ['nanami','ayumi','haruka','sayaka','mizuki','kyoko','otoya','female'];
   const preferredNames = ['nanami','ayumi','kyoko','google'];
   return jaVoices.slice().sort((a,b) => _scoreVoice(b, femaleNames, preferredNames) - _scoreVoice(a, femaleNames, preferredNames))[0];
@@ -1818,9 +1825,22 @@ function _pickEnVoice(){
   if(!voices.length) return null;
   const enVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
   if(!enVoices.length) return null;
+  const saved = (state.settings && state.settings.enVoiceName) || '';
+  if(saved){
+    const hit = enVoices.find(v => v.name === saved);
+    if(hit) return hit;
+  }
   const femaleNames = ['aria','jenny','samantha','zira','hazel','susan','kate','serena','allison','ava','sonia','libby','female'];
   const preferredNames = ['aria','jenny','samantha','sonia','libby','google','siri'];
   return enVoices.slice().sort((a,b) => _scoreVoice(b, femaleNames, preferredNames) - _scoreVoice(a, femaleNames, preferredNames))[0];
+}
+function _listVoicesByLang(langPrefix){
+  if(!('speechSynthesis' in window)) return [];
+  const voices = window.speechSynthesis.getVoices() || [];
+  if(langPrefix === 'ja'){
+    return voices.filter(v => (v.lang && v.lang.toLowerCase().startsWith('ja')) || /japanese|日本語/i.test(v.name||''));
+  }
+  return voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
 }
 
 function _waitForVoices(cb){
@@ -4159,7 +4179,7 @@ function _buildSpeakEN(text){
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-US';
-    u.rate = 0.95;
+    u.rate = 0.9;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
     if(v) u.voice = v;
     ss.speak(u);
@@ -4214,14 +4234,15 @@ function buildReplayAudio(){
   const step = b.steps[b.stepIdx];
   if(!step) return;
   if(b.revealed){
-    if(step.type === 'introduce' || step.type === 'recall'){
+    if(step.type === 'introduce'){
       const w = buildWordById(step.word_id); if(w) _buildSpeakJPThenEN(w.jp, w.en);
+    } else if(step.type === 'recall'){
+      const w = buildWordById(step.word_id); if(w) speakJP(w.jp);
     } else if(step.type === 'callback'){
-      if(step.word_id){
-        const w = buildWordById(step.word_id); if(w) _buildSpeakJPThenEN(w.jp, w.en);
-      } else if(step.sentence_jp){ _buildSpeakJPThenEN(step.sentence_jp, step.sentence_en || ''); }
-    } else if(step.type === 'build'){ _buildSpeakJPThenEN(step.sentence_jp, step.sentence_en); }
-    else if(step.type === 'substitute'){ _buildSpeakJPThenEN(step.result_jp, step.result_en); }
+      if(step.word_id){ const w = buildWordById(step.word_id); if(w) speakJP(w.jp); }
+      else if(step.sentence_jp){ speakJP(step.sentence_jp); }
+    } else if(step.type === 'build'){ speakJP(step.sentence_jp); }
+    else if(step.type === 'substitute'){ speakJP(step.result_jp); }
   } else { buildAutoplayStep(step); }
 }
 window.buildReplayAudio = buildReplayAudio;
@@ -4231,19 +4252,15 @@ function buildRevealStep(){
   b.revealed = true;
   render();
   const step = b.steps[b.stepIdx];
-  if(step.type === 'recall' || step.type === 'introduce'){
+  if(step.type === 'introduce'){
     const w = buildWordById(step.word_id); if(w) setTimeout(() => _buildSpeakJPThenEN(w.jp, w.en), 150);
+  } else if(step.type === 'recall'){
+    const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150);
   } else if(step.type === 'callback'){
-    if(step.word_id){
-      const w = buildWordById(step.word_id); if(w) setTimeout(() => _buildSpeakJPThenEN(w.jp, w.en), 150);
-    } else if(step.sentence_jp){
-      setTimeout(() => _buildSpeakJPThenEN(step.sentence_jp, step.sentence_en || ''), 150);
-    }
-  } else if(step.type === 'build'){
-    setTimeout(() => _buildSpeakJPThenEN(step.sentence_jp, step.sentence_en), 150);
-  } else if(step.type === 'substitute'){
-    setTimeout(() => _buildSpeakJPThenEN(step.result_jp, step.result_en), 150);
-  }
+    if(step.word_id){ const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150); }
+    else if(step.sentence_jp){ setTimeout(() => speakJP(step.sentence_jp), 150); }
+  } else if(step.type === 'build'){ setTimeout(() => speakJP(step.sentence_jp), 150); }
+  else if(step.type === 'substitute'){ setTimeout(() => speakJP(step.result_jp), 150); }
 }
 window.buildRevealStep = buildRevealStep;
 
@@ -5491,6 +5508,27 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>Speech voices</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Available voices depend on browser + OS. Edge on Windows has the best "Online (Natural)" voices. Chrome only exposes Google voices. Brave often has no Japanese voice at all.</div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Japanese voice</div><div class="word-en">${_listVoicesByLang('ja').length} available</div></div>
+        <select class="input" style="width:auto;max-width:260px" onchange="setVoiceName('jpVoiceName', this.value)">
+          <option value="">Auto (best guess)</option>
+          ${_listVoicesByLang('ja').map(v => `<option value="${esc(v.name)}" ${s.jpVoiceName===v.name?'selected':''}>${esc(v.name)}</option>`).join('')}
+        </select></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">English voice</div><div class="word-en">${_listVoicesByLang('en').length} available · used for new-word meaning only</div></div>
+        <select class="input" style="width:auto;max-width:260px" onchange="setVoiceName('enVoiceName', this.value)">
+          <option value="">Auto (best guess)</option>
+          ${_listVoicesByLang('en').map(v => `<option value="${esc(v.name)}" ${s.enVoiceName===v.name?'selected':''}>${esc(v.name)}</option>`).join('')}
+        </select></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Japanese speed</div><div class="word-en">${(s.ttsRate||0.75).toFixed(2)}× · slower = clearer</div></div>
+        <input type="range" min="0.5" max="1.1" step="0.05" value="${s.ttsRate||0.75}" oninput="setTtsRate(this.value)" style="width:160px"></label>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-ghost" onclick="testJpVoice()">🔊 Test JP</button>
+        <button class="btn btn-ghost" onclick="testEnVoice()">🔊 Test EN</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Add a word</h3>
       <input class="input" id="addJP" placeholder="にほんご (hiragana)">
       <div class="spacer"></div>
@@ -5577,9 +5615,29 @@ function setAnthropicModel(m){
   state.settings.anthropicModel = m;
   save();
 }
+function setVoiceName(key, name){
+  state.settings[key] = name || '';
+  save(); render();
+}
+function setTtsRate(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.ttsRate = v;
+  save();
+  const label = document.querySelector('label .word-main .word-jp');
+  if(label && label.textContent === 'Japanese speed'){
+    const en = label.nextElementSibling;
+    if(en) en.textContent = v.toFixed(2) + '× · slower = clearer';
+  }
+}
+function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
+function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.'); }
 window.saveAnthropicKey = saveAnthropicKey;
 window.clearAnthropicKey = clearAnthropicKey;
 window.setAnthropicModel = setAnthropicModel;
+window.setVoiceName = setVoiceName;
+window.setTtsRate = setTtsRate;
+window.testJpVoice = testJpVoice;
+window.testEnVoice = testEnVoice;
 
 function addWord(){
   const jp = ($('#addJP')?.value || '').trim();
