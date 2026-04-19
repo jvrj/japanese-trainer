@@ -265,7 +265,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.6</div>
+    <div class="sub">一心 · v5.7</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1271,6 +1271,7 @@ const DEFAULT_SETTINGS = {
   ttsRate:0.75,
   jpVoiceName:'',
   enVoiceName:'',
+  enTtsOn:true,
   hintsEnabled:true,
   n5PackEnabled:true,
   smartWrongFeedback:true,
@@ -4171,9 +4172,10 @@ function buildWordById(id){
       || (b.lesson.carryover_words || []).find(w => w.id === id);
 }
 
-function _buildSpeakEN(text){
+function _buildSpeakEN(text, force){
   try{
     if(!('speechSynthesis' in window)) return;
+    if(!force && state.settings && state.settings.enTtsOn === false) return;
     const ss = window.speechSynthesis;
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
@@ -4482,11 +4484,13 @@ function renderBuildModeStep(){
 
 function _buildRenderIntroduce(step){
   const w = buildWordById(step.word_id); if(!w) return '';
+  const enOff = state.settings && state.settings.enTtsOn === false;
   return `
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">New word — listen, repeat aloud</div>
     <div class="build-big-jp">${esc(w.jp)}</div>
     <div class="build-romaji">${esc(w.r)}</div>
     <div class="build-big-en">${esc(w.en)}</div>
+    ${enOff ? `<div style="text-align:center;margin-top:6px"><button class="btn btn-ghost" style="font-size:12px;padding:4px 12px" onclick="buildSpeakENForce('${jsEsc(w.en)}')">🔊 EN meaning</button></div>` : ''}
   `;
 }
 
@@ -5517,6 +5521,8 @@ function renderSettings(){
           <option value="">Auto (best guess)</option>
           ${_listVoicesByLang('en').map(v => `<option value="${esc(v.name)}" ${s.enVoiceName===v.name?'selected':''}>${esc(v.name)}</option>`).join('')}
         </select></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">English voice auto-play</div><div class="word-en">Off: new-word screens show a 🔊 EN button instead. Japanese still plays automatically.</div></div>
+        <input type="checkbox" ${s.enTtsOn!==false?'checked':''} onchange="toggleSetting('enTtsOn')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Japanese speed</div><div class="word-en">${(s.ttsRate||0.75).toFixed(2)}× · slower = clearer</div></div>
         <input type="range" min="0.5" max="1.1" step="0.05" value="${s.ttsRate||0.75}" oninput="setTtsRate(this.value)" style="width:160px"></label>
       <div class="btn-row" style="margin-top:8px">
@@ -5627,7 +5633,7 @@ function setTtsRate(r){
   }
 }
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
-function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.'); }
+function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
 window.saveAnthropicKey = saveAnthropicKey;
 window.clearAnthropicKey = clearAnthropicKey;
 window.setAnthropicModel = setAnthropicModel;
@@ -5635,6 +5641,7 @@ window.setVoiceName = setVoiceName;
 window.setTtsRate = setTtsRate;
 window.testJpVoice = testJpVoice;
 window.testEnVoice = testEnVoice;
+window.buildSpeakENForce = function(text){ _buildSpeakEN(text, true); };
 
 function addWord(){
   const jp = ($('#addJP')?.value || '').trim();
