@@ -259,13 +259,20 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .build-romaji{font-size:13px;text-align:center;color:var(--faint);padding:2px 0}
 .build-placeholder{text-align:center;font-size:14px;padding:16px 0;color:var(--faint);border:1px dashed var(--border);border-radius:8px;margin-top:4px}
 .build-callback-banner{text-align:center;font-size:12px;color:#fca5a5;background:#2a0f0f;border:1px solid #4a1010;border-radius:6px;padding:6px 10px;margin-bottom:10px;letter-spacing:.3px;font-weight:700}
+.build-countdown{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:8px 0 4px}
+.build-countdown-fill{height:100%;background:var(--blue);width:100%;transform-origin:left center}
+.build-countdown-fill.run{animation:buildCount linear forwards}
+.build-countdown-fill.think{background:var(--orange)}
+.build-countdown-fill.linger{background:var(--green)}
+@keyframes buildCount{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.build-phase-label{text-align:center;font-size:11px;color:var(--faint);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.7</div>
+    <div class="sub">一心 · v5.8</div>
   </div>
   <main id="main"></main>
 </div>
@@ -1284,7 +1291,10 @@ const DEFAULT_SETTINGS = {
   blitzNew:10,                // Vocab Blitz target new-word count per session
   blitzDirection:'jp-en',     // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
   formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
-  includeKatakana:false       // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
+  includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
+  buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
+  buildThinkSec:4,            // v5.8 — Build Mode: seconds to wait after EN prompt before auto-revealing JP
+  buildLingerSec:1.5          // v5.8 — Build Mode: seconds to linger after JP plays before advancing to next step
 };
 
 let state = {
@@ -4172,23 +4182,51 @@ function buildWordById(id){
       || (b.lesson.carryover_words || []).find(w => w.id === id);
 }
 
-function _buildSpeakEN(text, force){
+function _buildSpeakEN(text, force, onDone){
   try{
-    if(!('speechSynthesis' in window)) return;
-    if(!force && state.settings && state.settings.enTtsOn === false) return;
+    if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
+    if(!force && state.settings && state.settings.enTtsOn === false){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 0.9;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
     if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
+    if(onDone){
+      let fired = false;
+      const fire = () => { if(fired) return; fired = true; onDone(); };
+      u.onend = fire; u.onerror = fire;
+    }
     ss.speak(u);
-  }catch(e){}
+  }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
-function _buildSpeakJPThenEN(jp, en){
+function _buildSpeakJP(text, onDone){
   try{
-    if(!('speechSynthesis' in window)) return;
+    if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) ss.cancel();
+    const utter = () => {
+      const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
+      u.rate = state.settings.ttsRate || 0.9;
+      const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
+      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
+      if(onDone){
+        let fired = false;
+        const fire = () => { if(fired) return; fired = true; onDone(); };
+        u.onend = fire; u.onerror = fire;
+      }
+      ss.speak(u);
+    };
+    if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
+    else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
+    else utter();
+  }catch(e){ if(onDone) setTimeout(onDone, 0); }
+}
+
+function _buildSpeakJPThenEN(jp, en, onDone){
+  try{
+    if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
@@ -4197,7 +4235,7 @@ function _buildSpeakJPThenEN(jp, en){
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
       let finished = false;
-      const chain = () => { if(finished) return; finished = true; setTimeout(() => _buildSpeakEN(en), 250); };
+      const chain = () => { if(finished) return; finished = true; setTimeout(() => _buildSpeakEN(en, false, onDone), 250); };
       u.onend = chain;
       u.onerror = chain;
       ss.speak(u);
@@ -4205,27 +4243,145 @@ function _buildSpeakJPThenEN(jp, en){
     if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
     else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
     else utter();
-  }catch(e){}
+  }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
+function _buildClearTimer(){
+  const b = state.buildMode;
+  if(b && b._autoTimer){ clearTimeout(b._autoTimer); b._autoTimer = null; }
+  if(b){ b._phase = null; b._phaseDur = 0; }
+}
+
+function _buildSchedule(fn, ms){
+  const b = state.buildMode;
+  if(!b) return;
+  if(b._autoTimer) clearTimeout(b._autoTimer);
+  b._autoTimer = setTimeout(() => {
+    if(state.buildMode === b){ b._autoTimer = null; b._phase = null; fn(); }
+  }, ms);
+}
+
+function _buildSetPhase(phase, durMs){
+  const b = state.buildMode;
+  if(!b) return;
+  b._phase = phase;
+  b._phaseDur = durMs;
+  // Drive the countdown bar via direct DOM (avoids a full re-render and lets CSS animate cleanly).
+  const fill = document.querySelector('.build-countdown-fill');
+  if(fill){
+    fill.classList.remove('run','think','linger');
+    void fill.offsetWidth; // restart animation
+    if(phase === 'think' || phase === 'linger'){
+      fill.style.animationDuration = (durMs/1000) + 's';
+      fill.classList.add('run', phase);
+    } else {
+      fill.style.animationDuration = '';
+    }
+  }
+  const label = document.querySelector('.build-phase-label');
+  if(label){
+    label.textContent = phase === 'prompt' ? '🔊 listen…'
+                      : phase === 'answer' ? '🔊 answer…'
+                      : phase === 'think' ? 'your turn — say it aloud'
+                      : phase === 'linger' ? 'next step incoming…'
+                      : '';
+  }
+}
+
+function _buildAutoOn(){ return state.settings.buildAutoAdvance !== false; }
+
 function buildAutoplayStep(step){
+  const b = state.buildMode;
+  if(!b) return;
+  _buildClearTimer();
+  const auto = _buildAutoOn() && !b._paused;
+
+  const onEnDone = () => {
+    if(!auto) return;
+    const thinkMs = Math.max(1, (state.settings.buildThinkSec || 4)) * 1000;
+    _buildSetPhase('think', thinkMs);
+    _buildSchedule(() => buildAutoReveal(), thinkMs);
+  };
+
+  if(auto) _buildSetPhase('prompt', 0);
+
   if(step.type === 'introduce'){
     const w = buildWordById(step.word_id);
-    if(w){ _buildSpeakJPThenEN(w.jp, w.en); }
+    if(w){
+      _buildSpeakJPThenEN(w.jp, w.en, () => {
+        if(!auto) return;
+        _buildScheduleLinger();
+      });
+    }
   } else if(step.type === 'recall'){
     const w = buildWordById(step.word_id);
-    if(w) _buildSpeakEN(w.en);
+    if(w) _buildSpeakEN(w.en, false, onEnDone);
   } else if(step.type === 'callback'){
     if(step.word_id){
       const w = buildWordById(step.word_id);
-      if(w) _buildSpeakEN(w.en);
-    } else if(step.sentence_en){ _buildSpeakEN(step.sentence_en); }
+      if(w) _buildSpeakEN(w.en, false, onEnDone);
+    } else if(step.sentence_en){ _buildSpeakEN(step.sentence_en, false, onEnDone); }
   } else if(step.type === 'build'){
-    _buildSpeakEN(step.sentence_en);
+    _buildSpeakEN(step.sentence_en, false, onEnDone);
   } else if(step.type === 'substitute'){
-    _buildSpeakEN(step.result_en);
+    _buildSpeakEN(step.result_en, false, onEnDone);
   }
 }
+
+function buildAutoReveal(){
+  const b = state.buildMode;
+  if(!b || b._paused || !_buildAutoOn()) return;
+  const step = b.steps[b.stepIdx];
+  if(!step) return;
+  b.revealed = true;
+  render();
+  setTimeout(() => {
+    _buildSetPhase('answer', 0);
+    _buildPlayJPForStep(step, () => {
+      if(state.buildMode === b && !b._paused) _buildScheduleLinger();
+    });
+  }, 150);
+}
+
+function buildAutoNext(){
+  const b = state.buildMode;
+  if(!b || b._paused || !_buildAutoOn()) return;
+  if(b.stepIdx >= b.steps.length - 1){
+    if(!b.done) buildOnComplete();
+    b.done = true;
+  } else {
+    b.revealed = false;
+    b.stepIdx++;
+  }
+  render();
+}
+
+function buildTogglePause(){
+  const b = state.buildMode;
+  if(!b) return;
+  b._paused = !b._paused;
+  if(b._paused){
+    _buildClearTimer();
+    try{ window.speechSynthesis?.cancel(); }catch(e){}
+  }
+  render();
+  if(!b._paused){
+    // Resume: replay the current step's audio and re-arm the timer chain.
+    const step = b.steps[b.stepIdx];
+    if(step){
+      if(b.revealed){
+        setTimeout(() => {
+          _buildPlayJPForStep(step, () => {
+            if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
+          });
+        }, 100);
+      } else {
+        buildAutoplayStep(step);
+      }
+    }
+  }
+}
+window.buildTogglePause = buildTogglePause;
 
 function buildReplayAudio(){
   const b = state.buildMode;
@@ -4246,25 +4402,45 @@ function buildReplayAudio(){
 }
 window.buildReplayAudio = buildReplayAudio;
 
+function _buildPlayJPForStep(step, onDone){
+  if(step.type === 'introduce'){
+    const w = buildWordById(step.word_id); if(w) _buildSpeakJPThenEN(w.jp, w.en, onDone); else if(onDone) onDone();
+  } else if(step.type === 'recall'){
+    const w = buildWordById(step.word_id); if(w) _buildSpeakJP(w.jp, onDone); else if(onDone) onDone();
+  } else if(step.type === 'callback'){
+    if(step.word_id){ const w = buildWordById(step.word_id); if(w) _buildSpeakJP(w.jp, onDone); else if(onDone) onDone(); }
+    else if(step.sentence_jp){ _buildSpeakJP(step.sentence_jp, onDone); }
+    else if(onDone) onDone();
+  } else if(step.type === 'build'){ _buildSpeakJP(step.sentence_jp, onDone); }
+  else if(step.type === 'substitute'){ _buildSpeakJP(step.result_jp, onDone); }
+  else if(onDone) onDone();
+}
+
+function _buildScheduleLinger(){
+  const b = state.buildMode;
+  if(!b || b._paused || !_buildAutoOn()) return;
+  const lingerMs = Math.max(0, (state.settings.buildLingerSec ?? 1.5)) * 1000;
+  _buildSetPhase('linger', lingerMs);
+  _buildSchedule(() => buildAutoNext(), lingerMs);
+}
+
 function buildRevealStep(){
   const b = state.buildMode;
+  _buildClearTimer();
   b.revealed = true;
   render();
   const step = b.steps[b.stepIdx];
-  if(step.type === 'introduce'){
-    const w = buildWordById(step.word_id); if(w) setTimeout(() => _buildSpeakJPThenEN(w.jp, w.en), 150);
-  } else if(step.type === 'recall'){
-    const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150);
-  } else if(step.type === 'callback'){
-    if(step.word_id){ const w = buildWordById(step.word_id); if(w) setTimeout(() => speakJP(w.jp), 150); }
-    else if(step.sentence_jp){ setTimeout(() => speakJP(step.sentence_jp), 150); }
-  } else if(step.type === 'build'){ setTimeout(() => speakJP(step.sentence_jp), 150); }
-  else if(step.type === 'substitute'){ setTimeout(() => speakJP(step.result_jp), 150); }
+  setTimeout(() => {
+    _buildPlayJPForStep(step, () => {
+      if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
+    });
+  }, 150);
 }
 window.buildRevealStep = buildRevealStep;
 
 function buildNextStep(){
   const b = state.buildMode;
+  _buildClearTimer();
   b.revealed = false;
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
@@ -4277,6 +4453,7 @@ window.buildNextStep = buildNextStep;
 
 function buildPrevStep(){
   const b = state.buildMode;
+  _buildClearTimer();
   b.revealed = false;
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx > 0) b.stepIdx--;
@@ -4286,6 +4463,8 @@ window.buildPrevStep = buildPrevStep;
 
 function buildRestart(){
   const b = state.buildMode;
+  _buildClearTimer();
+  b._paused = false;
   b.stepIdx = 0; b.revealed = false; b.done = false;
   if(b.lesson) b.lesson._completed = false;
   render();
@@ -4307,6 +4486,8 @@ function buildOnComplete(){
 }
 
 function buildExit(){
+  _buildClearTimer();
+  try{ window.speechSynthesis?.cancel(); }catch(e){}
   state.buildMode = { lesson:null, steps:[], stepIdx:0, revealed:false, done:false };
   render();
 }
@@ -4445,6 +4626,8 @@ function renderBuildModeStep(){
   const step = b.steps[b.stepIdx];
   const total = b.steps.length;
   const pct = Math.round(100 * b.stepIdx / total);
+  const auto = _buildAutoOn();
+  const paused = !!b._paused;
 
   let body = '';
   switch(step.type){
@@ -4456,15 +4639,24 @@ function renderBuildModeStep(){
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
-  if(!b.revealed){ setTimeout(() => buildAutoplayStep(step), 100); }
+  if(!b.revealed && !paused){ setTimeout(() => buildAutoplayStep(step), 100); }
+
+  const countdown = (auto && !paused) ? `
+    <div class="build-countdown"><div class="build-countdown-fill"></div></div>
+    <div class="build-phase-label"></div>
+  ` : '';
 
   return `
     <div class="build-progress"><div class="build-progress-fill" style="width:${pct}%"></div></div>
     <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}</div>
 
     <div class="card">
-      <div style="margin-bottom:10px"><span class="build-chip build-chip-${step.type}">${step.type}</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span class="build-chip build-chip-${step.type}">${step.type}</span>
+        ${auto ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="buildTogglePause()">${paused ? '▶ Resume' : '⏸ Pause'}</button>` : ''}
+      </div>
       ${body}
+      ${countdown}
     </div>
 
     <div class="btn-row">
@@ -5509,6 +5701,17 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>Build Mode pacing</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Paul Noble-style hands-off cadence: prompt plays, you say it aloud, JP reveals automatically, next step incoming. Pause anytime mid-lesson.</div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually like before.</div></div>
+        <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||4).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
+        <input type="range" min="2" max="10" step="0.5" value="${s.buildThinkSec||4}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??1.5).toFixed(1)}s · pause after JP audio before next step</div></div>
+        <input type="range" min="0.5" max="5" step="0.25" value="${s.buildLingerSec??1.5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
+    </div>
+
+    <div class="card">
       <h3>Speech voices</h3>
       <div class="muted" style="font-size:12px;margin-bottom:8px">Available voices depend on browser + OS. Edge on Windows has the best "Online (Natural)" voices. Chrome only exposes Google voices. Brave often has no Japanese voice at all.</div>
       <label class="word-row"><div class="word-main"><div class="word-jp">Japanese voice</div><div class="word-en">${_listVoicesByLang('ja').length} available</div></div>
@@ -5632,6 +5835,31 @@ function setTtsRate(r){
     if(en) en.textContent = v.toFixed(2) + '× · slower = clearer';
   }
 }
+function _updateRangeLabel(matchText, fmt, v){
+  // Find the .word-jp matching the title and update its sibling .word-en text.
+  const labels = document.querySelectorAll('label.word-row .word-main .word-jp');
+  for(const l of labels){
+    if(l.textContent === matchText){
+      const en = l.nextElementSibling;
+      if(en) en.textContent = fmt(v);
+      return;
+    }
+  }
+}
+function setBuildThinkSec(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.buildThinkSec = v;
+  save();
+  _updateRangeLabel('Think time', x => x.toFixed(1) + 's · pause after EN prompt before JP reveals', v);
+}
+function setBuildLingerSec(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.buildLingerSec = v;
+  save();
+  _updateRangeLabel('Linger time', x => x.toFixed(1) + 's · pause after JP audio before next step', v);
+}
+window.setBuildThinkSec = setBuildThinkSec;
+window.setBuildLingerSec = setBuildLingerSec;
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
 function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
 window.saveAnthropicKey = saveAnthropicKey;
