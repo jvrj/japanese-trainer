@@ -272,7 +272,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.8</div>
+    <div class="sub">一心 · v5.9</div>
   </div>
   <main id="main"></main>
 </div>
@@ -298,7 +298,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.9';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -1293,8 +1293,10 @@ const DEFAULT_SETTINGS = {
   formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
   includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
-  buildThinkSec:4,            // v5.8 — Build Mode: seconds to wait after EN prompt before auto-revealing JP
-  buildLingerSec:1.5          // v5.8 — Build Mode: seconds to linger after JP plays before advancing to next step
+  buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
+  buildLingerSec:2.5,         // v5.9 — Build Mode: seconds to linger after JP plays before advancing to next step (was 1.5)
+  buildIntroduceLingerSec:5,  // v5.9 — Build Mode: extra-long linger after a new word is introduced — listening, no recall
+  buildTtsRate:0.6            // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
 };
 
 let state = {
@@ -1472,6 +1474,9 @@ function load(){
   try{
     state.settings = {...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS.settings)||'{}'))};
     if([0.9, 0.85, 0.8].includes(state.settings.ttsRate)) state.settings.ttsRate = 0.75;
+    // v5.9 — bump Build Mode pacing defaults forward for users still on v5.8 values.
+    if(state.settings.buildThinkSec === 4) state.settings.buildThinkSec = 5;
+    if(state.settings.buildLingerSec === 1.5) state.settings.buildLingerSec = 2.5;
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -4208,7 +4213,7 @@ function _buildSpeakJP(text, onDone){
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
-      u.rate = state.settings.ttsRate || 0.9;
+      u.rate = state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
       if(onDone){
@@ -4231,7 +4236,7 @@ function _buildSpeakJPThenEN(jp, en, onDone){
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(jp).replace(/\s+/g,''));
-      u.rate = state.settings.ttsRate || 0.9;
+      u.rate = state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
       let finished = false;
@@ -4419,7 +4424,12 @@ function _buildPlayJPForStep(step, onDone){
 function _buildScheduleLinger(){
   const b = state.buildMode;
   if(!b || b._paused || !_buildAutoOn()) return;
-  const lingerMs = Math.max(0, (state.settings.buildLingerSec ?? 1.5)) * 1000;
+  const step = b.steps[b.stepIdx];
+  // New-word introduce steps get extra time — listening, no recall, more to absorb.
+  const sec = (step && step.type === 'introduce')
+    ? (state.settings.buildIntroduceLingerSec ?? 5)
+    : (state.settings.buildLingerSec ?? 2.5);
+  const lingerMs = Math.max(0, sec) * 1000;
   _buildSetPhase('linger', lingerMs);
   _buildSchedule(() => buildAutoNext(), lingerMs);
 }
@@ -5705,10 +5715,14 @@ function renderSettings(){
       <div class="muted" style="font-size:12px;margin-bottom:8px">Paul Noble-style hands-off cadence: prompt plays, you say it aloud, JP reveals automatically, next step incoming. Pause anytime mid-lesson.</div>
       <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually like before.</div></div>
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||4).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
-        <input type="range" min="2" max="10" step="0.5" value="${s.buildThinkSec||4}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??1.5).toFixed(1)}s · pause after JP audio before next step</div></div>
-        <input type="range" min="0.5" max="5" step="0.25" value="${s.buildLingerSec??1.5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
+        <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??2.5).toFixed(1)}s · pause after JP audio before next step</div></div>
+        <input type="range" min="0.5" max="6" step="0.25" value="${s.buildLingerSec??2.5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">New-word linger</div><div class="word-en">${(s.buildIntroduceLingerSec??5).toFixed(1)}s · extra time after a brand-new word is introduced</div></div>
+        <input type="range" min="1" max="10" step="0.5" value="${s.buildIntroduceLingerSec??5}" oninput="setBuildIntroduceLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">JP speed (Build Mode)</div><div class="word-en">${(s.buildTtsRate??0.6).toFixed(2)}× · slower than Vocab Blitz so you can mimic</div></div>
+        <input type="range" min="0.4" max="1" step="0.05" value="${s.buildTtsRate??0.6}" oninput="setBuildTtsRate(this.value)" style="width:160px"></label>
     </div>
 
     <div class="card">
@@ -5860,6 +5874,20 @@ function setBuildLingerSec(r){
 }
 window.setBuildThinkSec = setBuildThinkSec;
 window.setBuildLingerSec = setBuildLingerSec;
+function setBuildIntroduceLingerSec(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.buildIntroduceLingerSec = v;
+  save();
+  _updateRangeLabel('New-word linger', x => x.toFixed(1) + 's · extra time after a brand-new word is introduced', v);
+}
+function setBuildTtsRate(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.buildTtsRate = v;
+  save();
+  _updateRangeLabel('JP speed (Build Mode)', x => x.toFixed(2) + '× · slower than Vocab Blitz so you can mimic', v);
+}
+window.setBuildIntroduceLingerSec = setBuildIntroduceLingerSec;
+window.setBuildTtsRate = setBuildTtsRate;
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
 function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
 window.saveAnthropicKey = saveAnthropicKey;
