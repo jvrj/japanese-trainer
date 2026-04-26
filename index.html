@@ -272,7 +272,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.9</div>
+    <div class="sub">一心 · v5.9.1</div>
   </div>
   <main id="main"></main>
 </div>
@@ -298,7 +298,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '5.9';
+const APP_VERSION = '5.9.1';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -1294,7 +1294,7 @@ const DEFAULT_SETTINGS = {
   includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
-  buildLingerSec:2.5,         // v5.9 — Build Mode: seconds to linger after JP plays before advancing to next step (was 1.5)
+  buildLingerSec:5,           // v5.9.1 — Build Mode: seconds to linger after JP plays before advancing to next step. Matches buildThinkSec so post-EN and post-JP pauses feel identical (was 2.5)
   buildIntroduceLingerSec:5,  // v5.9 — Build Mode: extra-long linger after a new word is introduced — listening, no recall
   buildTtsRate:0.6            // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
 };
@@ -1477,6 +1477,8 @@ function load(){
     // v5.9 — bump Build Mode pacing defaults forward for users still on v5.8 values.
     if(state.settings.buildThinkSec === 4) state.settings.buildThinkSec = 5;
     if(state.settings.buildLingerSec === 1.5) state.settings.buildLingerSec = 2.5;
+    // v5.9.1 — JP linger now matches EN think (5s) so post-phrase pauses feel symmetric.
+    if(state.settings.buildLingerSec === 2.5) state.settings.buildLingerSec = 5;
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -4428,7 +4430,7 @@ function _buildScheduleLinger(){
   // New-word introduce steps get extra time — listening, no recall, more to absorb.
   const sec = (step && step.type === 'introduce')
     ? (state.settings.buildIntroduceLingerSec ?? 5)
-    : (state.settings.buildLingerSec ?? 2.5);
+    : (state.settings.buildLingerSec ?? 5);
   const lingerMs = Math.max(0, sec) * 1000;
   _buildSetPhase('linger', lingerMs);
   _buildSchedule(() => buildAutoNext(), lingerMs);
@@ -5717,8 +5719,8 @@ function renderSettings(){
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??2.5).toFixed(1)}s · pause after JP audio before next step</div></div>
-        <input type="range" min="0.5" max="6" step="0.25" value="${s.buildLingerSec??2.5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??5).toFixed(1)}s · pause after JP audio before next step</div></div>
+        <input type="range" min="0.5" max="8" step="0.25" value="${s.buildLingerSec??5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">New-word linger</div><div class="word-en">${(s.buildIntroduceLingerSec??5).toFixed(1)}s · extra time after a brand-new word is introduced</div></div>
         <input type="range" min="1" max="10" step="0.5" value="${s.buildIntroduceLingerSec??5}" oninput="setBuildIntroduceLingerSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">JP speed (Build Mode)</div><div class="word-en">${(s.buildTtsRate??0.6).toFixed(2)}× · slower than Vocab Blitz so you can mimic</div></div>
