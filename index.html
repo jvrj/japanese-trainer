@@ -279,7 +279,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v6.0</div>
+    <div class="sub">一心 · v6.1</div>
   </div>
   <main id="main"></main>
 </div>
@@ -305,7 +305,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.0';
+const APP_VERSION = '6.1';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -3530,6 +3530,27 @@ function kanaDueForMaintenance(k){
   return days >= KANA_MAINTENANCE_DAYS;
 }
 
+/* Weighted shuffle (Efraimidis–Spirakis): higher-weight items tend to land
+   earlier in the result. Each item appears once. Used to front-load the
+   worst-performing kana when the learning pool exceeds available slots. */
+function weightedShuffle(items, weightFn){
+  return items
+    .map(item => {
+      const w = Math.max(0.0001, weightFn(item));
+      return { item, key: Math.random() ** (1 / w) };
+    })
+    .sort((a, b) => b.key - a.key)
+    .map(x => x.item);
+}
+
+function kanaStruggleWeight(item){
+  const st = state.kanaStats[item.k];
+  if(!st) return 1;
+  /* Wrongs hurt more when streak is cold; a hot streak dampens past sins. */
+  const coolFactor = 1 - (st.streak || 0) / KANA_RETIRE_STREAK;
+  return 1 + (st.wrongCount || 0) * coolFactor;
+}
+
 function buildKanaPool(scope){
   const eligible = KANA_FULL.filter(item => {
     if(scope === 'hiragana' && item.script !== 'h') return false;
@@ -3549,7 +3570,7 @@ function buildKanaPool(scope){
   return [
     ...shuffleFY(maintenance).slice(0, 4),
     ...shuffleFY(unseen).slice(0, 8),
-    ...shuffleFY(learning),
+    ...weightedShuffle(learning, kanaStruggleWeight),
   ].slice(0, KANA_SESSION_TARGET);
 }
 
