@@ -265,6 +265,13 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .build-countdown-fill.think{background:var(--orange)}
 .build-countdown-fill.linger{background:var(--green)}
 @keyframes buildCount{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+#toast-host{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#1f2937;color:#f3f4f6;padding:10px 16px;border-radius:10px;border:1px solid var(--border);font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.5);max-width:90vw;text-align:center;animation:toast-in .25s ease;pointer-events:auto}
+.toast-warn{background:#3a1d0a;color:#fed7aa;border-color:var(--orange-d)}
+.toast-error{background:#3a0a0a;color:#fca5a5;border-color:#5a1010}
+.toast-out{animation:toast-out .3s ease forwards}
+@keyframes toast-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateY(-10px)}}
 .build-phase-label{text-align:center;font-size:11px;color:var(--faint);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px}
 </style>
 </head>
@@ -272,7 +279,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v5.9.1</div>
+    <div class="sub">一心 · v6.0</div>
   </div>
   <main id="main"></main>
 </div>
@@ -298,7 +305,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '5.9.1';
+const APP_VERSION = '6.0';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -4167,6 +4174,7 @@ window.startBuildMode = startBuildMode;
 
 function startBuildModeHand(){
   state.buildMode = buildMakeSession(BUILD_STARTER_LESSON);
+  _buildWakeLockSync();
   render();
 }
 window.startBuildModeHand = startBuildModeHand;
@@ -4175,9 +4183,10 @@ function startBuildModeGenerated(mode){
   try{
     const lesson = mode === 'hard' ? buildGenerateHardLesson() : buildGenerateLesson(mode);
     state.buildMode = buildMakeSession(lesson);
+    _buildWakeLockSync();
     render();
   } catch(e){
-    alert("Can't generate: " + e.message + "\n\nEnable the N5 pack in Settings if your deck is empty.");
+    showToast("Can't generate lesson — " + e.message + ". Enable the N5 pack in Settings.", {tone:'warn', duration:5500});
   }
 }
 window.startBuildModeGenerated = startBuildModeGenerated;
@@ -4251,6 +4260,84 @@ function _buildSpeakJPThenEN(jp, en, onDone){
     else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
     else utter();
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
+}
+
+// v6.0 — Screen Wake Lock so the phone doesn't sleep mid-session.
+// Held only while a Build Mode lesson is active and auto-advance is on; released on pause/exit/done/hidden.
+let _wakeLock = null;
+async function _wakeLockAcquire(){
+  try{
+    if(!('wakeLock' in navigator)) return;
+    if(_wakeLock) return;
+    _wakeLock = await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+  }catch(e){ /* denied/unsupported — silent */ }
+}
+function _wakeLockRelease(){
+  try{ if(_wakeLock){ _wakeLock.release(); _wakeLock = null; } }catch(e){}
+}
+function _buildWakeLockSync(){
+  const b = state.buildMode;
+  // Hold during any active Build Mode lesson — even manual mode, since the user is reading the screen.
+  const shouldHold = !!b && !!b.lesson && !b.done && !b._paused;
+  if(shouldHold) _wakeLockAcquire(); else _wakeLockRelease();
+}
+
+// v6.0 — Non-blocking toast. Replaces alert() for transient errors that shouldn't break flow.
+function showToast(msg, opts){
+  opts = opts || {};
+  const tone = opts.tone || 'info';
+  let host = document.getElementById('toast-host');
+  if(!host){
+    host = document.createElement('div');
+    host.id = 'toast-host';
+    document.body.appendChild(host);
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + tone;
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => { el.classList.add('toast-out'); setTimeout(() => el.remove(), 300); }, opts.duration || 4000);
+}
+
+// v6.0 — Visibility handler: when the tab is hidden (user switches apps / locks phone),
+// freeze the Build Mode session cleanly. Resume on return only if WE auto-paused, so manual pauses are respected.
+function _buildOnVisibilityChange(){
+  const b = state.buildMode;
+  if(!b || !b.lesson || b.done) return;
+  if(document.visibilityState === 'hidden'){
+    if(!b._paused){
+      b._paused = true;
+      b._autoPaused = true;
+      _buildClearTimer();
+      try{ window.speechSynthesis?.cancel(); }catch(e){}
+      _wakeLockRelease();
+      render();
+    } else {
+      _wakeLockRelease();
+    }
+  } else {
+    if(b._paused && b._autoPaused){
+      b._paused = false;
+      b._autoPaused = false;
+      _wakeLockAcquire();
+      const step = b.steps[b.stepIdx];
+      if(step){
+        if(b.revealed){
+          setTimeout(() => {
+            _buildPlayJPForStep(step, () => {
+              if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
+            });
+          }, 100);
+        } else {
+          buildAutoplayStep(step);
+        }
+      }
+      render();
+    } else if(!b._paused){
+      _wakeLockAcquire();
+    }
+  }
 }
 
 function _buildClearTimer(){
@@ -4367,10 +4454,12 @@ function buildTogglePause(){
   const b = state.buildMode;
   if(!b) return;
   b._paused = !b._paused;
+  b._autoPaused = false; // user-driven pause/resume — not the visibility handler
   if(b._paused){
     _buildClearTimer();
     try{ window.speechSynthesis?.cancel(); }catch(e){}
   }
+  _buildWakeLockSync();
   render();
   if(!b._paused){
     // Resume: replay the current step's audio and re-arm the timer chain.
@@ -4495,12 +4584,14 @@ function buildOnComplete(){
       date: new Date().toISOString()
     });
   }
+  _wakeLockRelease();
 }
 
 function buildExit(){
   _buildClearTimer();
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   state.buildMode = { lesson:null, steps:[], stepIdx:0, revealed:false, done:false };
+  _wakeLockRelease();
   render();
 }
 window.buildExit = buildExit;
@@ -6288,6 +6379,8 @@ function init(){
       else window.speechSynthesis.addEventListener('voiceschanged', () => { _ttsVoicesReady = true; }, {once:true});
     }
   }catch(e){}
+  /* v6.0 — Build Mode resilience: handle tab hide/show so the timer chain doesn't desync from throttled TTS. */
+  document.addEventListener('visibilitychange', _buildOnVisibilityChange);
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
