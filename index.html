@@ -279,7 +279,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v6.1</div>
+    <div class="sub">一心 · v6.2</div>
   </div>
   <main id="main"></main>
 </div>
@@ -305,7 +305,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.1';
+const APP_VERSION = '6.2';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -1272,7 +1272,8 @@ const LS = {
   notes:'jp4_notes', logs:'jp4_logs', streak:'jp4_streak',
   enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude',
   formStats:'jp4_form_stats',
-  kanaStats:'jp4_kana_stats'
+  kanaStats:'jp4_kana_stats',
+  sentenceStats:'jp4_sentence_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1327,6 +1328,8 @@ let state = {
   formBlitz:null,       // active Mixed Form Blitz session; see startFormBlitz()
   kanaStats:{},         // kana char -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount}
   kanaBlitz:null,       // active Kana Blitz session
+  sentenceStats:{},     // sentence id -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount} — v6.2
+  sentenceBlitz:null,   // active Sentence Blitz session — v6.2
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null
@@ -1474,6 +1477,7 @@ function save(){
     localStorage.setItem(LS.askClaude, JSON.stringify(state.askClaude || {messages:[]}));
     localStorage.setItem(LS.formStats, JSON.stringify(state.formStats || {}));
     localStorage.setItem(LS.kanaStats, JSON.stringify(state.kanaStats || {}));
+    localStorage.setItem(LS.sentenceStats, JSON.stringify(state.sentenceStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1493,6 +1497,7 @@ function load(){
     state.askClaude = JSON.parse(localStorage.getItem(LS.askClaude)||'{"messages":[]}');
     state.formStats = JSON.parse(localStorage.getItem(LS.formStats)||'{}');
     state.kanaStats = JSON.parse(localStorage.getItem(LS.kanaStats)||'{}');
+    state.sentenceStats = JSON.parse(localStorage.getItem(LS.sentenceStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -3552,14 +3557,25 @@ function kanaStruggleWeight(item){
 }
 
 function buildKanaPool(scope){
-  const eligible = KANA_FULL.filter(item => {
+  const inScope = item => {
     if(scope === 'hiragana' && item.script !== 'h') return false;
     if(scope === 'katakana' && item.script !== 'k') return false;
+    return true;
+  };
+  const eligible = KANA_FULL.filter(item => {
+    if(!inScope(item)) return false;
     const st = state.kanaStats[item.k];
     if(!st) return true;
     if(!st.retired) return true;
     return kanaDueForMaintenance(item.k);
   });
+  /* v6.2 — Review fallback: if everything in scope is retired and nothing is
+     yet due for maintenance, build a session from all in-scope kana so the
+     user can always drill. Streak/wrong tracking still applies normally. */
+  if(!eligible.length){
+    const all = KANA_FULL.filter(inScope);
+    return weightedShuffle(all, kanaStruggleWeight).slice(0, KANA_SESSION_TARGET);
+  }
   const maintenance = [], unseen = [], learning = [];
   for(const item of eligible){
     const st = state.kanaStats[item.k];
@@ -3797,6 +3813,314 @@ function renderKanaBlitz(){
     </div>` : ''}
     <div class="spacer"></div>
     <button id="kanaContinue" class="btn btn-primary" style="width:100%" onclick="kanaBlitzAdvance()">Continue</button>
+  </div>`;
+}
+
+/* =========================================================================
+   SENTENCE BLITZ (v6.2) — read JP, type it back, reveal English.
+   Same data-driven loop as Kana Blitz: streak retire, struggle weighting,
+   weekly maintenance. Reading drill: typing forces eyes-on-every-character
+   parsing; meaning lands on reveal once vocab clicks.
+   ========================================================================= */
+
+const SENTENCE_BLITZ_POOL = [
+  /* Pure hiragana */
+  {id:'sb01', jp:'わたしは がくせいです。',         en:'I am a student.'},
+  {id:'sb02', jp:'これは ほんです。',                en:'This is a book.'},
+  {id:'sb03', jp:'それは なんですか。',              en:'What is that?'},
+  {id:'sb04', jp:'おなかが すきました。',            en:"I'm hungry."},
+  {id:'sb05', jp:'のどが かわきました。',            en:"I'm thirsty."},
+  {id:'sb06', jp:'きょうは あついですね。',          en:"It's hot today, isn't it?"},
+  {id:'sb07', jp:'あしたは やすみです。',            en:'Tomorrow is a day off.'},
+  {id:'sb08', jp:'まいにち がっこうへ いきます。',   en:'I go to school every day.'},
+  {id:'sb09', jp:'ともだちと えいがを みました。',   en:'I watched a movie with my friend.'},
+  {id:'sb10', jp:'あさごはんを たべました。',        en:'I ate breakfast.'},
+  {id:'sb11', jp:'なまえは なんですか。',            en:"What's your name?"},
+  {id:'sb12', jp:'おちゃを のみます。',              en:'I drink tea.'},
+  {id:'sb13', jp:'すこし わかります。',              en:'I understand a little.'},
+  {id:'sb14', jp:'このほんは おもしろいです。',      en:'This book is interesting.'},
+  {id:'sb15', jp:'すしが すきです。',                en:'I like sushi.'},
+  /* Katakana mixed */
+  {id:'sb16', jp:'コーヒーを のみます。',            en:'I drink coffee.'},
+  {id:'sb17', jp:'バスで いきます。',                en:'I go by bus.'},
+  {id:'sb18', jp:'テレビを みます。',                en:'I watch TV.'},
+  {id:'sb19', jp:'パンを たべます。',                en:'I eat bread.'},
+  {id:'sb20', jp:'これは スマホです。',              en:'This is a smartphone.'},
+  {id:'sb21', jp:'アメリカから きました。',          en:'I came from America.'},
+  {id:'sb22', jp:'ピザが たべたいです。',            en:'I want to eat pizza.'},
+  {id:'sb23', jp:'レストランへ いきます。',          en:'I go to the restaurant.'},
+  {id:'sb24', jp:'プールで およぎます。',            en:'I swim in the pool.'},
+  {id:'sb25', jp:'クラスは くじからです。',          en:'Class starts at nine.'},
+  {id:'sb26', jp:'デパートで かいものを します。',   en:'I shop at the department store.'},
+  {id:'sb27', jp:'タクシーで かえります。',          en:'I go home by taxi.'},
+  {id:'sb28', jp:'ホテルに とまります。',            en:'I stay at the hotel.'},
+  {id:'sb29', jp:'カメラを かいました。',            en:'I bought a camera.'},
+  {id:'sb30', jp:'インターネットを つかいます。',    en:'I use the internet.'},
+];
+
+const SENTENCE_RETIRE_STREAK = 5;
+const SENTENCE_MAINTENANCE_DAYS = 7;
+const SENTENCE_SESSION_TARGET = 12;
+
+function sentenceStatFor(id){
+  if(!state.sentenceStats) state.sentenceStats = {};
+  if(!state.sentenceStats[id]){
+    state.sentenceStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0};
+  }
+  return state.sentenceStats[id];
+}
+
+function sentenceDueForMaintenance(id){
+  const st = state.sentenceStats && state.sentenceStats[id];
+  if(!st || !st.retired) return false;
+  const days = (now() - (st.retiredAt || 0)) / (1000*60*60*24);
+  return days >= SENTENCE_MAINTENANCE_DAYS;
+}
+
+function sentenceStruggleWeight(item){
+  const st = state.sentenceStats[item.id];
+  if(!st) return 1;
+  const coolFactor = 1 - (st.streak || 0) / SENTENCE_RETIRE_STREAK;
+  return 1 + (st.wrongCount || 0) * coolFactor;
+}
+
+function buildSentenceBlitzPool(){
+  const eligible = SENTENCE_BLITZ_POOL.filter(item => {
+    const st = state.sentenceStats[item.id];
+    if(!st) return true;
+    if(!st.retired) return true;
+    return sentenceDueForMaintenance(item.id);
+  });
+  /* Review fallback: if everything is retired and not yet due, build a pool
+     from the full set so the user can always drill. */
+  if(!eligible.length){
+    return weightedShuffle(SENTENCE_BLITZ_POOL.slice(), sentenceStruggleWeight).slice(0, SENTENCE_SESSION_TARGET);
+  }
+  const maintenance = [], unseen = [], learning = [];
+  for(const item of eligible){
+    const st = state.sentenceStats[item.id];
+    if(!st) unseen.push(item);
+    else if(st.retired) maintenance.push(item);
+    else learning.push(item);
+  }
+  return [
+    ...shuffleFY(maintenance).slice(0, 3),
+    ...shuffleFY(unseen).slice(0, 6),
+    ...weightedShuffle(learning, sentenceStruggleWeight),
+  ].slice(0, SENTENCE_SESSION_TARGET);
+}
+
+function sentenceBlitzCounts(){
+  const total = SENTENCE_BLITZ_POOL.length;
+  let retired = 0, learning = 0, unseen = 0;
+  for(const item of SENTENCE_BLITZ_POOL){
+    const st = state.sentenceStats[item.id];
+    if(!st){ unseen++; continue; }
+    if(st.retired) retired++;
+    else learning++;
+  }
+  return {total, retired, learning, unseen};
+}
+
+function startSentenceBlitz(){
+  if(!state.sentenceStats) state.sentenceStats = {};
+  const pool = buildSentenceBlitzPool();
+  if(!pool.length){
+    showToast('All sentences retired! Check back in a week for maintenance.', 'success');
+    return;
+  }
+  state.sentenceBlitz = {
+    active:true, complete:false,
+    pool,
+    idx:0,
+    submitted:false,
+    input:'',
+    autoCorrect:null,
+    tally:{correct:0, wrong:0, retired:0, total:pool.length},
+  };
+  nav('sentenceBlitz');
+}
+window.startSentenceBlitz = startSentenceBlitz;
+
+function sentenceBlitzCurrent(){
+  if(!state.sentenceBlitz || !state.sentenceBlitz.active) return null;
+  return state.sentenceBlitz.pool[state.sentenceBlitz.idx] || null;
+}
+
+function sentenceBlitzCheck(input, item){
+  if(!input) return false;
+  return normJP(input) === normJP(item.jp);
+}
+
+function sentenceBlitzRecordAnswer(item, correct){
+  const st = sentenceStatFor(item.id);
+  st.lastSeen = now();
+  if(correct){
+    st.streak++;
+    st.correctCount++;
+    state.sentenceBlitz.tally.correct++;
+    if(st.streak >= SENTENCE_RETIRE_STREAK && !st.retired){
+      st.retired = true;
+      st.retiredAt = now();
+      state.sentenceBlitz.tally.retired++;
+    } else if(st.retired){
+      st.retiredAt = now();
+    }
+  } else {
+    st.streak = 0;
+    st.wrongCount++;
+    st.retired = false;
+    st.retiredAt = null;
+    state.sentenceBlitz.tally.wrong++;
+  }
+}
+
+function sentenceBlitzSubmit(){
+  if(!state.sentenceBlitz || state.sentenceBlitz.submitted) return;
+  const item = sentenceBlitzCurrent();
+  if(!item) return;
+  const inp = $('#sentenceBlitzInput');
+  state.sentenceBlitz.input = inp?.value || '';
+  const correct = sentenceBlitzCheck(state.sentenceBlitz.input, item);
+  state.sentenceBlitz.autoCorrect = correct;
+  state.sentenceBlitz.submitted = true;
+  sentenceBlitzRecordAnswer(item, correct);
+  save();
+  render();
+  setTimeout(() => $('#sentenceBlitzContinue')?.focus(), 30);
+}
+window.sentenceBlitzSubmit = sentenceBlitzSubmit;
+
+function sentenceBlitzReveal(){
+  if(!state.sentenceBlitz || state.sentenceBlitz.submitted) return;
+  const item = sentenceBlitzCurrent();
+  if(!item) return;
+  const inp = $('#sentenceBlitzInput');
+  state.sentenceBlitz.input = inp?.value || '';
+  state.sentenceBlitz.autoCorrect = false;
+  state.sentenceBlitz.submitted = true;
+  sentenceBlitzRecordAnswer(item, false);
+  save();
+  render();
+  setTimeout(() => $('#sentenceBlitzContinue')?.focus(), 30);
+}
+window.sentenceBlitzReveal = sentenceBlitzReveal;
+
+function sentenceBlitzSkip(){
+  if(!state.sentenceBlitz) return;
+  state.sentenceBlitz.submitted = false;
+  state.sentenceBlitz.input = '';
+  state.sentenceBlitz.autoCorrect = null;
+  state.sentenceBlitz.idx++;
+  if(state.sentenceBlitz.idx >= state.sentenceBlitz.pool.length){
+    state.sentenceBlitz.active = false;
+    state.sentenceBlitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#sentenceBlitzInput')?.focus(), 30);
+}
+window.sentenceBlitzSkip = sentenceBlitzSkip;
+
+function sentenceBlitzAdvance(){
+  if(!state.sentenceBlitz) return;
+  state.sentenceBlitz.idx++;
+  state.sentenceBlitz.submitted = false;
+  state.sentenceBlitz.input = '';
+  state.sentenceBlitz.autoCorrect = null;
+  if(state.sentenceBlitz.idx >= state.sentenceBlitz.pool.length){
+    state.sentenceBlitz.active = false;
+    state.sentenceBlitz.complete = true;
+  }
+  save();
+  render();
+  setTimeout(() => $('#sentenceBlitzInput')?.focus(), 30);
+}
+window.sentenceBlitzAdvance = sentenceBlitzAdvance;
+
+function sentenceBlitzEnd(){
+  state.sentenceBlitz = null;
+  nav('home');
+}
+window.sentenceBlitzEnd = sentenceBlitzEnd;
+
+function renderSentenceBlitz(){
+  const sb = state.sentenceBlitz;
+  if(!sb){
+    return `<div class="card"><div class="muted">No active Sentence Blitz.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('home')">Back home</button></div>`;
+  }
+  if(sb.complete){
+    const t = sb.tally;
+    const attempts = t.correct + t.wrong;
+    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    const counts = sentenceBlitzCounts();
+    return `<div class="card">
+      <h2 style="margin-top:0">Sentence Blitz complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
+        Pool mastery: <b>${counts.retired}</b> / ${counts.total} retired · ${counts.learning} learning · ${counts.unseen} unseen
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startSentenceBlitz()">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="sentenceBlitzEnd()">Back home</button>
+    </div>`;
+  }
+  const item = sentenceBlitzCurrent();
+  if(!item) return `<div class="card"><div class="muted">No cards.</div></div>`;
+  const st = state.sentenceStats[item.id];
+  const streak = st?.streak || 0;
+  const retired = st?.retired || false;
+  const total = sb.pool.length;
+  const pos = sb.idx + 1;
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">sentence${retired ? ' · maintenance' : ''}</span>
+    </div>
+  </div>`;
+
+  if(!sb.submitted){
+    return head + `<div class="card">
+      <div class="jp" style="font-size:32px;text-align:center;font-weight:700;line-height:1.4;padding:20px 8px">${esc(item.jp)}</div>
+      <input id="sentenceBlitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type the sentence in kana (katakana ok as hiragana)" onkeydown="if(event.key==='Enter'){event.preventDefault();sentenceBlitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="audio-row">
+        <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="sentenceBlitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="sentenceBlitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="sentenceBlitzSkip()">Skip card</button>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:8px">Streak: ${streak} / ${SENTENCE_RETIRE_STREAK}</div>
+    </div>`;
+  }
+
+  const correct = sb.autoCorrect;
+  return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
+    <div class="jp" style="font-size:26px;text-align:center;font-weight:700;line-height:1.4;padding:14px 8px">${esc(item.jp)}</div>
+    <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
+      ${correct ? '✓ correct' : '✗ wrong'}
+    </div>
+    <div style="text-align:center;font-size:16px;margin:6px 0 4px;color:var(--text)">
+      ${esc(item.en)}
+    </div>
+    ${!correct && sb.input ? `<div class="feedback-smart" style="margin-top:10px">You wrote: <b>${esc(sb.input)}</b></div>` : ''}
+    <div class="spacer"></div>
+    <div class="audio-row">
+      <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen</button>
+    </div>
+    <div class="spacer"></div>
+    <button id="sentenceBlitzContinue" class="btn btn-primary" style="width:100%" onclick="sentenceBlitzAdvance()">Continue</button>
   </div>`;
 }
 
@@ -4934,7 +5258,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, buildMode:renderBuildMode}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -5033,6 +5357,16 @@ function renderHome(){
       </div>
       <div class="muted" style="font-size:12px;margin-top:6px">Character recognition. Retire kana by hitting a 5-streak. Failed twins surface together.</div>
     </div>
+
+    ${(() => {
+      const sc = sentenceBlitzCounts();
+      const sub = `${sc.retired} / ${sc.total} mastered · ${sc.learning} learning · ${sc.unseen} unseen`;
+      return `<div class="card">
+        <h3>Sentence Blitz</h3>
+        <button class="btn btn-orange" style="width:100%" onclick="startSentenceBlitz()">📖 Read &amp; type</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">Read JP, type it back, reveal English. Retire on 5-streak. Strugglers surface more often. ${esc(sub)}</div>
+      </div>`;
+    })()}
 
     <div class="card">
       <h3>Grammar</h3>
@@ -6026,7 +6360,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:5, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
@@ -6057,6 +6391,10 @@ function handleImport(ev){
       if(d.kanaStats){
         if(!state.kanaStats) state.kanaStats = {};
         for(const k in d.kanaStats) if(!state.kanaStats[k]) state.kanaStats[k] = d.kanaStats[k];
+      }
+      if(d.sentenceStats){
+        if(!state.sentenceStats) state.sentenceStats = {};
+        for(const k in d.sentenceStats) if(!state.sentenceStats[k]) state.sentenceStats[k] = d.sentenceStats[k];
       }
       save(); load(); alert('Import complete.'); render();
     }catch(e){ alert('Import failed: '+e.message); }
