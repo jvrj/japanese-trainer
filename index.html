@@ -279,7 +279,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub">一心 · v6.2</div>
+    <div class="sub" id="appVersionLabel">一心 · v6.3</div>
   </div>
   <main id="main"></main>
 </div>
@@ -305,7 +305,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.3';
+const APP_VERSION = '6.3.1';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -2368,33 +2368,43 @@ function enIng(base){
      the acceptor expands to "won't you sleep", "won't you go to bed", etc. */
 const FORMS = [
   {id:'masu',    name:'ます',     hint:'Polite present',        conj:toMasu,
+    rule:'ru-verbs: drop る, add ます (たべる→たべます). u-verbs: change u-row to i-row, add ます (のむ→のみます, かう→かいます). する→します, くる→きます.',
     en:w=>baseVerbAlts(w).join(' / ')+' (polite)',
     accept:w=>baseVerbAlts(w).flatMap(b=>[b,b+' (polite)',b+' politely'])},
   {id:'mashita', name:'ました',   hint:'Polite past',           conj:toMashita,
+    rule:'Same stem as ます, then ました. たべる→たべました; のむ→のみました.',
     en:w=>baseVerbAlts(w).map(enPast).join(' / ')+' (polite past)',
     accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return[b,p,b+'d',b+'ed',b+' (past)','past '+b,p+' (polite)'];})},
   {id:'masen',   name:'ません',   hint:'Polite negative',       conj:toMasen,
+    rule:'Same stem as ます, then ません. たべる→たべません; のむ→のみません.',
     en:w=>baseVerbAlts(w).map(b=>"don't "+b).join(' / ')+' (polite)',
     accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"don't "+b+' (polite)'])},
   {id:'mashou',  name:'ましょう', hint:"Let's (volitional)",    conj:toMashou,
+    rule:'Same stem as ます, then ましょう. たべる→たべましょう.',
     en:w=>baseVerbAlts(w).map(b=>"let's "+b).join(' / '),
     accept:w=>baseVerbAlts(w).flatMap(b=>["let's "+b,'lets '+b,'let us '+b,'shall we '+b])},
   {id:'masenka', name:'ませんか', hint:'Invitation',            conj:toMasenka,
+    rule:'Same stem as ます, then ませんか — literally "won’t you…?". たべる→たべませんか.',
     en:w=>baseVerbAlts(w).map(b=>"won't you "+b).join(' / ')+'?',
     accept:w=>baseVerbAlts(w).flatMap(b=>["won't you "+b,'will you '+b,'would you '+b,'wont you '+b])},
   {id:'tai',     name:'たい',     hint:'Want to',               conj:toTai,
+    rule:'Same stem as ます, then たい. たべる→たべたい; のむ→のみたい.',
     en:w=>baseVerbAlts(w).map(b=>'want to '+b).join(' / '),
     accept:w=>baseVerbAlts(w).flatMap(b=>['want to '+b,'wanna '+b,'want '+b,'i want to '+b])},
   {id:'te',      name:'て',       hint:'te-form (and…/please…)',conj:toTe,
+    rule:'ru-verbs: drop る, add て (たべる→たべて). u-verbs by ending: く→いて, ぐ→いで, む/ぬ/ぶ→んで, つ/る/う→って, す→して. Irregulars: する→して, くる→きて, いく→いって.',
     en:w=>baseVerbAlts(w).map(b=>b+' and…').join(' / '),
     accept:w=>baseVerbAlts(w).flatMap(b=>[b,b+' and',b+' and…','and '+b,'please '+b])},
   {id:'ta',      name:'た',       hint:'Plain past',            conj:toTa,
+    rule:'Same rules as te-form, but replace て→た and で→だ. たべて→たべた; のんで→のんだ.',
     en:w=>baseVerbAlts(w).map(enPast).join(' / ')+' (plain past)',
     accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return[b,p,b+'d',b+'ed',b+' (past)','past '+b];})},
   {id:'teiru',   name:'ている',    hint:'Progressive (doing…)',  conj:toTeiru,
+    rule:'te-form + いる. たべる→たべて→たべている. Casual drops the い: たべてる.',
     en:w=>baseVerbAlts(w).map(enIng).join(' / '),
     accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return[b,i,b+'ing','doing '+b,'am '+i,'is '+i];})},
   {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,
+    rule:'ru-verbs: drop る, add ない (たべる→たべない). u-verbs: change u-row to a-row, add ない (のむ→のまない). う ending → わ+ない (かう→かわない). する→しない, くる→こない.',
     en:w=>baseVerbAlts(w).map(b=>"don't "+b).join(' / '),
     accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"doesn't "+b])}
 ];
@@ -3089,7 +3099,7 @@ function renderFormDrill(){
     return head + `<div class="card">
       <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
       <div style="font-size:30px;text-align:center;padding:8px 0 4px">${esc(w.jp)}</div>
-      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:12px">${esc(stripTo(w.en))}</div>
+      <div style="text-align:center;font-size:17px;margin-bottom:14px;color:var(--text)"><b>${esc(stripTo(w.en))}</b></div>
       <div style="text-align:center;font-size:14px;margin-bottom:10px">→ <b>${esc(f.name)}</b> form</div>
       <input id="formInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type ${esc(f.name)} form in hiragana" onkeydown="if(event.key==='Enter'){event.preventDefault();formDrillSubmit();}">
       <div class="spacer"></div>
@@ -3114,10 +3124,14 @@ function renderFormDrill(){
   return head + `<div class="card">
     <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
     <div style="font-size:26px;text-align:center;padding:4px 0">${esc(w.jp)}</div>
-    <div class="muted" style="text-align:center;font-size:13px">${esc(stripTo(w.en))} · ${esc(group.label)}</div>
+    <div style="text-align:center;font-size:16px;color:var(--text)"><b>${esc(stripTo(w.en))}</b> <span class="muted" style="font-size:13px">· ${esc(group.label)}</span></div>
     <div class="divider"></div>
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown} ${correctBadge}</div>
     <div style="font-size:13px;margin-top:4px"><span class="muted">Correct ${esc(f.name)}:</span> <b style="font-size:18px">${esc(expected)}</b></div>
+    ${f.rule ? `<details ${d.autoCorrect ? '' : 'open'} style="margin-top:10px;padding:8px 10px;background:var(--bg-soft, rgba(0,0,0,0.04));border-radius:6px;font-size:12.5px;line-height:1.5">
+      <summary style="cursor:pointer;color:var(--muted);font-size:12px">Why? — ${esc(f.name)} rule${d.autoCorrect ? ' (tap to expand)' : ''}</summary>
+      <div style="margin-top:6px"><b>${esc(group.label)}</b> · ${esc(f.rule)}</div>
+    </details>` : ''}
     <div class="spacer"></div>
     <div class="btn-row">
       <button id="formGradeAgain" class="btn" style="background:var(--red);color:#fff" onclick="formDrillGrade('again')">Again<div style="font-size:10px;opacity:.85">${esc(smIntervalLabel(dryAgain.smInterval))}</div></button>
@@ -7199,6 +7213,9 @@ function init(){
   }catch(e){}
   /* v6.0 — Build Mode resilience: handle tab hide/show so the timer chain doesn't desync from throttled TTS. */
   document.addEventListener('visibilitychange', _buildOnVisibilityChange);
+  /* keep header version label in sync with APP_VERSION so it never goes stale */
+  const _vLabel = document.getElementById('appVersionLabel');
+  if(_vLabel) _vLabel.textContent = '一心 · v' + APP_VERSION;
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
