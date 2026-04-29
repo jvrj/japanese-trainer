@@ -279,16 +279,15 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <div class="app" id="app">
   <div class="header">
     <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub" id="appVersionLabel">一心 · v6.3</div>
+    <div class="sub" id="appVersionLabel">一心 · v6.4</div>
   </div>
   <main id="main"></main>
 </div>
 
 <nav class="bottom-nav">
   <button class="nav-btn" data-screen="home"><span class="nav-ico">🏠</span>Home</button>
-  <button class="nav-btn" data-screen="drill"><span class="nav-ico">🎯</span>Drill</button>
-  <button class="nav-btn" data-screen="convo"><span class="nav-ico">💬</span>Convo</button>
-  <button class="nav-btn" data-screen="sentence"><span class="nav-ico">✍️</span>Sentence</button>
+  <button class="nav-btn" data-screen="blitz"><span class="nav-ico">⚡</span>Blitz</button>
+  <button class="nav-btn" data-screen="phrases"><span class="nav-ico">💬</span>Phrases</button>
   <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>More</button>
 </nav>
 
@@ -305,101 +304,8 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.3.1';
+const APP_VERSION = '6.4.0';
 
-/* ------------------- DATA: scenarios, templates, examples ------------------ */
-
-const SCENARIOS = [
-  {id:"cafe",title:"Ordering at a café",emoji:"☕",register:"polite",turns:[
-    {who:"them",jp:"いらっしゃいませ。",en:"Welcome."},
-    {who:"you",jp:"コーヒー を ひとつ ください。",en:"One coffee, please."},
-    {who:"them",jp:"アイス ですか、ホット ですか。",en:"Iced or hot?"},
-    {who:"you",jp:"ホット で おねがいします。",en:"Hot, please."},
-    {who:"them",jp:"かしこまりました。すこし お まち ください。",en:"Certainly. Please wait a moment."}
-  ],notes:"ください = please give. おねがいします = please (softer). かしこまりました is very formal 'understood' used by staff."},
-  {id:"station",title:"Asking directions",emoji:"🚉",register:"polite",turns:[
-    {who:"you",jp:"すみません、しぶや えき は どこ ですか。",en:"Excuse me, where is Shibuya station?"},
-    {who:"them",jp:"まっすぐ いって、つぎ の かど を みぎ です。",en:"Go straight, then right at the next corner."},
-    {who:"you",jp:"ありがとう ございます。あるいて どのくらい ですか。",en:"Thank you. How long on foot?"},
-    {who:"them",jp:"ごふん ぐらい ですよ。",en:"About five minutes."},
-    {who:"you",jp:"たすかりました。",en:"That helps a lot."}
-  ],notes:"すみません opens a polite request. どのくらい = how much/long. たすかりました = 'I was helped' — natural thanks for info."},
-  {id:"intro",title:"Self-introduction",emoji:"🤝",register:"polite",turns:[
-    {who:"you",jp:"はじめまして。ユリウス と もうします。",en:"Nice to meet you. I'm called Julius."},
-    {who:"them",jp:"はじめまして。たなか です。よろしく おねがいします。",en:"Nice to meet you. I'm Tanaka. Pleased to meet you."},
-    {who:"you",jp:"イギリス から きました。にほんご を べんきょう して います。",en:"I'm from the UK. I'm studying Japanese."},
-    {who:"them",jp:"そう ですか。じょうず ですね。",en:"Oh really? You're good at it."},
-    {who:"you",jp:"いえいえ、まだまだ です。",en:"No no, I still have a long way to go."}
-  ],notes:"もうします is humble 'to be called'. いえいえ、まだまだ です is the standard humble response to a compliment."},
-  {id:"doctor",title:"At the doctor",emoji:"🏥",register:"polite",turns:[
-    {who:"them",jp:"きょう は どう されました か。",en:"What seems to be the matter today?"},
-    {who:"you",jp:"きのう から おなか が いたい です。",en:"My stomach has hurt since yesterday."},
-    {who:"them",jp:"ねつ は あります か。",en:"Do you have a fever?"},
-    {who:"you",jp:"すこし あります。あたま も いたい です。",en:"A little. My head also hurts."},
-    {who:"them",jp:"わかりました。くすり を だします ね。",en:"Understood. I'll prescribe some medicine."}
-  ],notes:"いたい = painful. きのう から = since yesterday. くすり を だす = to prescribe medicine."},
-  {id:"shopping",title:"Shopping for clothes",emoji:"🛍️",register:"polite",turns:[
-    {who:"them",jp:"なにか おさがし ですか。",en:"Are you looking for something?"},
-    {who:"you",jp:"この シャツ の Mサイズ は あります か。",en:"Do you have this shirt in medium?"},
-    {who:"them",jp:"しょうしょう おまち ください … はい、こちら です。",en:"One moment please... here you are."},
-    {who:"you",jp:"しちゃく しても いい ですか。",en:"May I try it on?"},
-    {who:"them",jp:"もちろん です。どうぞ。",en:"Of course. Go ahead."}
-  ],notes:"しちゃく = trying on. ～ても いい ですか = may I ～? しょうしょう おまち ください = formal 'please wait a moment'."},
-  {id:"exchange",title:"Language exchange",emoji:"💬",register:"casual",turns:[
-    {who:"them",jp:"ひさしぶり！げんき？",en:"Long time! How are you?"},
-    {who:"you",jp:"うん、げんき だよ。そっち は？",en:"Yeah, I'm good. How about you?"},
-    {who:"them",jp:"まあまあ かな。さいきん なに して た？",en:"So-so I guess. What have you been up to?"},
-    {who:"you",jp:"にほんご の クラス に いって る よ。たのしい。",en:"I've been going to Japanese class. It's fun."},
-    {who:"them",jp:"いい ね！こんど いっしょ に はなそう。",en:"Nice! Let's talk together next time."}
-  ],notes:"Casual markers: よ、ね、～かな、dropped です. はなそう = volitional 'let's talk'."},
-  {id:"class",title:"Asking teacher to repeat",emoji:"📚",register:"polite",turns:[
-    {who:"you",jp:"すみません、せんせい。もういちど おねがいします。",en:"Excuse me, teacher. Once more please."},
-    {who:"them",jp:"はい、ゆっくり いいます ね。",en:"Sure, I'll say it slowly."},
-    {who:"you",jp:"ありがとう ございます。この ことば は どういう いみ ですか。",en:"Thank you. What does this word mean?"},
-    {who:"them",jp:"「たのしい」 は 'fun' と いう いみ です。",en:"'Tanoshii' means 'fun'."},
-    {who:"you",jp:"なるほど、わかりました。",en:"I see, I understand."}
-  ],notes:"もういちど = one more time. どういう いみ ですか = what does it mean? なるほど = 'I see / makes sense'."},
-  {id:"plans",title:"Plans with a friend",emoji:"📅",register:"casual",turns:[
-    {who:"you",jp:"どようび ひま？",en:"Free Saturday?"},
-    {who:"them",jp:"うん、あいて る よ。なに する？",en:"Yeah, I'm open. What are we doing?"},
-    {who:"you",jp:"あたらしい ラーメンや に いかない？",en:"Wanna go to the new ramen place?"},
-    {who:"them",jp:"いい ね、いこう！なんじ に する？",en:"Sounds good, let's go! What time?"},
-    {who:"you",jp:"じゃあ しちじ に えき で ね。",en:"Then 7 at the station, okay?"}
-  ],notes:"～ない？ = casual invitation. いこう = let's go. じゃあ = 'then/well'."}
-];
-
-const EXAMPLES = [
-  {jp:"きょう は あつい ですね。",en:"It's hot today, isn't it?",register:"polite"},
-  {jp:"おなか が すきました。",en:"I'm hungry.",register:"polite"},
-  {jp:"のど が かわきました。",en:"I'm thirsty.",register:"polite"},
-  {jp:"ちょっと まって ください。",en:"Please wait a moment.",register:"polite"},
-  {jp:"もう いちど おねがいします。",en:"Once more, please.",register:"polite"},
-  {jp:"ゆっくり はなして ください。",en:"Please speak slowly.",register:"polite"},
-  {jp:"わかりません。",en:"I don't understand.",register:"polite"},
-  {jp:"にほんご が すこし はなせます。",en:"I can speak a little Japanese.",register:"polite"},
-  {jp:"なまえ は なん ですか。",en:"What's your name?",register:"polite"},
-  {jp:"どこ から きました か。",en:"Where are you from?",register:"polite"},
-  {jp:"トイレ は どこ ですか。",en:"Where is the toilet?",register:"polite"},
-  {jp:"これ を ください。",en:"This one, please.",register:"polite"},
-  {jp:"おいしい です。",en:"It's delicious.",register:"polite"},
-  {jp:"たのしかった です。",en:"It was fun.",register:"polite"},
-  {jp:"また あした ね。",en:"See you tomorrow.",register:"casual"},
-  {jp:"おやすみなさい。",en:"Good night.",register:"polite"},
-  {jp:"いって きます。",en:"I'm heading out.",register:"neutral"},
-  {jp:"ただいま。",en:"I'm home.",register:"neutral"},
-  {jp:"おかえり。",en:"Welcome back.",register:"casual"},
-  {jp:"いただきます。",en:"Thanks for the meal (before).",register:"neutral"},
-  {jp:"ごちそうさま でした。",en:"Thanks for the meal (after).",register:"polite"},
-  {jp:"すみません、みち に まよいました。",en:"Excuse me, I'm lost.",register:"polite"},
-  {jp:"えき まで あるいて いきます。",en:"I'll walk to the station.",register:"polite"},
-  {jp:"でんしゃ が おくれて います。",en:"The train is delayed.",register:"polite"},
-  {jp:"しゃしん を とっても いい ですか。",en:"May I take a photo?",register:"polite"},
-  {jp:"あたま が いたい です。",en:"I have a headache.",register:"polite"},
-  {jp:"かぜ を ひきました。",en:"I caught a cold.",register:"polite"},
-  {jp:"いっしょ に たべない？",en:"Wanna eat together?",register:"casual"},
-  {jp:"きょう は つかれた。",en:"I'm tired today.",register:"casual"},
-  {jp:"にほん の なつ は むしあつい です。",en:"Japanese summers are humid.",register:"polite"}
-];
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
    AI-sourced — flag as "unverified" pending teacher review for register/naturalness. */
@@ -1066,36 +972,6 @@ const PARTICLE_DRILLS = [
   {jp:"せんせい ___ はなします。",blank:"と",accept:["と","に"],en:"I talk with the teacher.",explain:"と = 'with' for interactions. に also works for the target of speech."}
 ];
 
-/* ===================== SENTENCE TEMPLATES ===================== */
-
-const SENTENCE_TEMPLATES = [
-  {pattern:"{N} が すき です。",en:"I like {N}.",slots:{N:["food","nature","places"]},register:"polite",level:"easy"},
-  {pattern:"{N} が きらい です。",en:"I don't like {N}.",slots:{N:["food","weather"]},register:"polite",level:"easy"},
-  {pattern:"わたし は {N} が ほしい です。",en:"I want a/some {N}.",slots:{N:["food","objects"]},register:"polite",level:"easy"},
-  {pattern:"これ は {N} です。",en:"This is (a) {N}.",slots:{N:["food","objects"]},register:"polite",level:"easy"},
-  {pattern:"きょう は {A} ですね。",en:"It's {A} today, isn't it?",slots:{A:["weather","feelings"]},register:"polite",level:"easy"},
-  {pattern:"きのう {P} に いきました。",en:"Yesterday I went to {P}.",slots:{P:["places","travel"]},register:"polite",level:"easy"},
-  {pattern:"あした {P} に いきます。",en:"Tomorrow I'll go to {P}.",slots:{P:["places","travel"]},register:"polite",level:"easy"},
-  {pattern:"{P} で {N} を たべました。",en:"I ate {N} at {P}.",slots:{P:["places"],N:["food"]},register:"polite",level:"medium"},
-  {pattern:"{N} を ください。",en:"{N}, please.",slots:{N:["food","objects"]},register:"polite",level:"easy"},
-  {pattern:"{P} は どこ ですか。",en:"Where is {P}?",slots:{P:["places"]},register:"polite",level:"easy"},
-  {pattern:"{N} は いくら ですか。",en:"How much is {N}?",slots:{N:["food","objects"]},register:"polite",level:"easy"},
-  {pattern:"まいにち {V} ます。",en:"I {V} every day.",slots:{V:["daily"]},register:"polite",level:"easy"},
-  {pattern:"{TM} に {V} ます。",en:"I {V} at {TM}.",slots:{TM:["time"],V:["daily"]},register:"polite",level:"medium"},
-  {pattern:"ともだち と {P} に いきます。",en:"I go to {P} with a friend.",slots:{P:["places"]},register:"polite",level:"medium"},
-  {pattern:"きのう {N} を たべました。おいしかった です。",en:"I ate {N} yesterday. It was delicious.",slots:{N:["food"]},register:"polite",level:"medium"},
-  {pattern:"{N} が ちょっと {A} です。",en:"The {N} is a bit {A}.",slots:{N:["food","weather"],A:["feelings"]},register:"polite",level:"medium"},
-  {pattern:"わたし は {P} から きました。",en:"I come from {P}.",slots:{P:["places"]},register:"polite",level:"easy"},
-  {pattern:"{TM} に {P} で あいましょう。",en:"Let's meet at {P} at {TM}.",slots:{TM:["time"],P:["places"]},register:"polite",level:"hard"},
-  {pattern:"あした {A} かも しれません。",en:"It might be {A} tomorrow.",slots:{A:["weather"]},register:"polite",level:"hard"},
-  {pattern:"きょう は つかれた。{N} を のみたい。",en:"I'm tired today. I want to drink {N}.",slots:{N:["food"]},register:"casual",level:"hard"},
-  {pattern:"{N} を ひとつ おねがいします。",en:"One {N}, please.",slots:{N:["food","objects"]},register:"polite",level:"easy"},
-  {pattern:"{P} に {V} に いきます。",en:"I'm going to {P} to {V}.",slots:{P:["places"],V:["daily"]},register:"polite",level:"hard"},
-  {pattern:"この {N} は {A} ですね。",en:"This {N} is {A}, isn't it.",slots:{N:["food","objects"],A:["feelings"]},register:"polite",level:"medium"},
-  {pattern:"{TM} に おきます。",en:"I wake up at {TM}.",slots:{TM:["time"]},register:"polite",level:"easy"},
-  {pattern:"{N} も {N2} も すき です。",en:"I like both {N} and {N2}.",slots:{N:["food"],N2:["food"]},register:"polite",level:"medium"}
-];
-
 /* =========================================================================
    KANA DATA — hiragana + katakana, organised by row for teaching order.
    confusion_group: cards in the same group are surfaced back-to-back on fail.
@@ -1278,8 +1154,6 @@ const LS = {
 };
 
 const DEFAULT_SETTINGS = {
-  direction:'jp-en',          // jp-en | en-jp
-  mode:'random',              // random | weakest | newest | by-tag
   activeThemes:[],            // empty = all
   activePOS:[],               // empty = all
   activeRegister:[],          // empty = all
@@ -1288,12 +1162,8 @@ const DEFAULT_SETTINGS = {
   jpVoiceName:'',
   enVoiceName:'',
   enTtsOn:true,
-  hintsEnabled:true,
   n5PackEnabled:true,
-  smartWrongFeedback:true,
   removedWords:[],            // word IDs manually removed from active pool
-  srsOn:true,                 // use SRS intervals to pick next cards
-  swipeOn:true,               // swipe gestures on drill
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
   anthropicModel:'claude-haiku-4-5-20251001',
   blitzReviews:20,            // Vocab Blitz target review count per session
@@ -1316,12 +1186,8 @@ let state = {
   logs:[],            // [{ts, evt, data}]
   streak:{current:0, longest:0, lastDate:null},
   screen:'home',
-  sessionQueue:[],
-  sessionIdx:0,
-  lastAnswer:null,
   voiceListening:false,
   voiceResult:null,
-  burst:{bursts:0, passedIds:[], active:false, complete:false, words:[], queue:[], progress:{}, isReview:{}},
   askClaude:{messages:[]}, // chat history with Claude; persists across sessions
   formStats:{},         // wordId -> form -> {smInterval, ease, reviewCount, correctCount, wrongCount, lastReviewed, smNext}
   blitz:null,           // active Vocab Blitz session; see startBlitz()
@@ -1589,16 +1455,6 @@ function getMasteryForWord(wordId){
   return 'learning';
 }
 
-/* SRS-lite intervals: minutes until next review, doubles on correct, resets to 10min on wrong.
-   Retained so the existing burst scheduler keeps working. Vocab Blitz uses the SM-2 fields below. */
-const SRS_BASE_MIN = 10;
-function srsBump(st, correct){
-  const cur = st.srsInterval || SRS_BASE_MIN;
-  const next = correct ? Math.min(cur * 2, 60*24*30) : SRS_BASE_MIN; /* cap at 30 days */
-  st.srsInterval = next;
-  st.nextReview = now() + next * 60 * 1000;
-}
-
 /* =========================================================================
    SM-2 SRS — Vocab Blitz + Form Drills share this model.
 
@@ -1695,31 +1551,6 @@ function formStatFor(wordId, formId){
   if(!state.formStats[wordId]) state.formStats[wordId] = {};
   if(!state.formStats[wordId][formId]) state.formStats[wordId][formId] = smDefault();
   return state.formStats[wordId][formId];
-}
-
-function recordAttempt(wordId, correct, viaVoice){
-  /* Pattern-pack cards are session-only. Don't pollute SRS/mastery with them. */
-  if(state.burst && state.burst.isPattern) return;
-  if(!state.stats[wordId]) state.stats[wordId] = {attempts:[], firstCorrect:null, lastSeen:null};
-  const st = state.stats[wordId];
-  const prevMastery = getMasteryForWord(wordId);
-  st.attempts.push({ts:now(), correct, voice:!!viaVoice});
-  st.lastSeen = now();
-  if(correct && !st.firstCorrect) st.firstCorrect = now();
-  srsBump(st, correct);
-  const newMastery = getMasteryForWord(wordId);
-
-  /* Ghost demote: miss at Guru+ → inject shadow-failures to drop a stage */
-  if(!correct && (prevMastery==='guru' || prevMastery==='master' || prevMastery==='burned')){
-    const shadowCount = prevMastery === 'burned' ? 4 : (prevMastery === 'master' ? 3 : 2);
-    for(let i = 0; i < shadowCount; i++){
-      st.attempts.push({ts:now()-i-1, correct:false, voice:false, shadow:true});
-    }
-    st.demotedAt = now();
-    log('ghost_demote',{id:wordId, from:prevMastery, shadows:shadowCount});
-  }
-
-  log('attempt',{id:wordId, correct, voice:!!viaVoice, prev:prevMastery, next:newMastery});
 }
 
 /* =========================================================================
@@ -1838,31 +1669,6 @@ function checkAnswer(userInput, word, direction){
     }
     return {correct:false, reason:'wrong'};
   }
-}
-
-/* Smart wrong feedback: was it a real (known) word? */
-function analyzeWrongJP(userInput, word){
-  const uiN = normJP(userInput);
-  if(!uiN) return null;
-  /* search dictionary */
-  const hit = state.words.find(w => normJP(w.jp) === uiN && w.id !== word.id);
-  if(hit) return {type:'real-word', match:hit};
-  /* near-real word */
-  for(const w of state.words){
-    if(w.id === word.id) continue;
-    if(levenshtein(uiN, normJP(w.jp)) === 1 && normJP(w.jp).length >= 3){
-      return {type:'near-real', match:w};
-    }
-  }
-  return {type:'unknown'};
-}
-
-function analyzeWrongEN(userInput, word){
-  const uiN = normEN(userInput);
-  if(!uiN) return null;
-  const hit = state.words.find(w => enAlternatives(w.en).includes(uiN) && w.id !== word.id);
-  if(hit) return {type:'real-word', match:hit};
-  return {type:'unknown'};
 }
 
 /* =========================================================================
@@ -2021,23 +1827,6 @@ function updateVoiceBtn(){
    HINTS
    ========================================================================= */
 
-function getHintsFor(word){
-  const hints = [];
-  /* user-written hint wins */
-  if(word.hint) hints.push({label:'your note', text:word.hint});
-  /* theme/category */
-  if(word.theme) hints.push({label:'category', text:`It's a ${word.theme} word.`});
-  /* POS */
-  const posLabels = {n:'a noun',v:'a verb','adj':'an i-adjective','adj-na':'a na-adjective',adv:'an adverb',expr:'a phrase/expression',pron:'a pronoun',num:'a number',part:'a particle',conj:'a conjunction'};
-  if(word.pos) hints.push({label:'word type', text:`It's ${posLabels[word.pos] || word.pos}.`});
-  /* register */
-  if(word.register && word.register!=='neutral') hints.push({label:'register', text:`Used in ${word.register} contexts.`});
-  /* shape hint */
-  const jp = normJP(word.jp);
-  if(jp.length) hints.push({label:'shape', text:`${jp.length} character${jp.length>1?'s':''}, ends in "${jp.slice(-1)}"`});
-  return hints;
-}
-
 /* =========================================================================
    STREAK
    ========================================================================= */
@@ -2046,7 +1835,6 @@ function getHintsFor(word){
 function localToday(){ return new Date().toLocaleDateString('en-CA'); }
 function updateStreak(wasCorrect){
   if(!wasCorrect) return; /* streak requires real correct answers */
-  if(state.burst && state.burst.isPattern) return; /* pattern packs don't count toward streak */
   const t = localToday();
   const last = state.streak.lastDate;
   if(last === t) return;
@@ -2063,9 +1851,8 @@ function updateStreak(wasCorrect){
 }
 
 /* =========================================================================
-   PATTERN PACKS — v4.14
-   Stacked clusters: shared word-ending + common sentence skeleton + vocab.
-   Pattern cards are session-only; no SRS/mastery/streak pollution.
+   VERB CLASSIFICATION & CONJUGATION HELPERS
+   Used by Form Drills / Form Blitz to build conjugated cards.
    ========================================================================= */
 
 /* Common godan verbs that LOOK ichidan (-iru/-eru ending). Conservative list. */
@@ -2190,90 +1977,7 @@ function verbGroupInfo(jp){
   return {group:3, label:'Group 3 · irregular'};
 }
 
-/* English helpers for the card's en-prompt */
-function toVerbInfinitive(en){
-  return (en && en.startsWith('to ')) ? en : 'to ' + (en || '');
-}
 function stripTo(en){ return (en||'').replace(/^to /,''); }
-
-const PATTERNS = [
-  {
-    id:'shii',
-    name:'-しい cluster',
-    hint:'Feeling adjectives — they share the -しい ending',
-    filter: w => w.pos === 'adj' && w.jp.endsWith('しい'),
-    makeCard: w => ({
-      id:`pat-shii-${w.id}`, jp:w.jp, en:w.en, romaji:w.romaji||'',
-      theme:'pattern · -しい', pos:'adj', source:'pattern', patternId:'shii', verified:true
-    })
-  },
-  {
-    id:'tai',
-    name:'-たい (want to do)',
-    hint:'Take a verb, want-to-do form. たべる → たべたい',
-    filter: w => w.pos === 'v',
-    makeCard: w => ({
-      id:`pat-tai-${w.id}`, jp: toTai(w.jp),
-      en: 'want ' + toVerbInfinitive(w.en),
-      romaji:'', theme:'pattern · -たい', pos:'v', source:'pattern', patternId:'tai', verified:true
-    })
-  },
-  {
-    id:'katta',
-    name:'-かった (past adj)',
-    hint:'Past tense of i-adjectives. たのしい → たのしかった',
-    filter: w => w.pos === 'adj' && w.jp.endsWith('い'),
-    makeCard: w => ({
-      id:`pat-katta-${w.id}`, jp: toKatta(w.jp),
-      en: 'was ' + stripTo(w.en),
-      romaji:'', theme:'pattern · -かった', pos:'adj', source:'pattern', patternId:'katta', verified:true
-    })
-  },
-  {
-    id:'kunai',
-    name:'-くない (negative adj)',
-    hint:'Negative i-adjectives. おいしい → おいしくない',
-    filter: w => w.pos === 'adj' && w.jp.endsWith('い'),
-    makeCard: w => ({
-      id:`pat-kunai-${w.id}`, jp: toKunai(w.jp),
-      en: 'not ' + stripTo(w.en),
-      romaji:'', theme:'pattern · -くない', pos:'adj', source:'pattern', patternId:'kunai', verified:true
-    })
-  },
-  {
-    id:'janai',
-    name:'じゃない (not X)',
-    hint:'Negative for nouns and na-adjectives. がくせい → がくせい じゃない',
-    filter: w => (w.pos === 'n' || w.pos === 'adj-na'),
-    makeCard: w => ({
-      id:`pat-janai-${w.id}`, jp: toJanai(w.jp),
-      en: 'not ' + stripTo(w.en),
-      romaji:'', theme:'pattern · じゃない', pos:w.pos, source:'pattern', patternId:'janai', verified:true
-    })
-  },
-  {
-    id:'masen',
-    name:'-ません (polite negative verb)',
-    hint:'Polite negative form of verbs. たべる → たべません',
-    filter: w => w.pos === 'v',
-    makeCard: w => ({
-      id:`pat-masen-${w.id}`, jp: toMasen(w.jp),
-      en: "don't " + stripTo(w.en) + ' (polite)',
-      romaji:'', theme:'pattern · -ません', pos:'v', source:'pattern', patternId:'masen', verified:true
-    })
-  },
-  {
-    id:'mashita',
-    name:'-ました (polite past verb)',
-    hint:'Polite past form of verbs. たべる → たべました',
-    filter: w => w.pos === 'v',
-    makeCard: w => ({
-      id:`pat-mashita-${w.id}`, jp: toMashita(w.jp),
-      en: stripTo(w.en) + 'd (polite past)',
-      romaji:'', theme:'pattern · -ました', pos:'v', source:'pattern', patternId:'mashita', verified:true
-    })
-  }
-];
 
 /* =========================================================================
    FORM DRILLS — v4.20
@@ -2427,51 +2131,6 @@ function formDueCount(formId){
   }
   return {due, unseen, total: verbs.length};
 }
-
-function patternEligibleWords(pat){
-  const active = getActiveWords();
-  return active.filter(w => {
-    try { return pat.filter(w); } catch(e){ return false; }
-  });
-}
-
-function buildPatternCards(patternId, maxN){
-  const pat = PATTERNS.find(p => p.id === patternId);
-  if(!pat) return [];
-  const eligible = patternEligibleWords(pat);
-  const picked = shuffleFY(eligible.slice()).slice(0, maxN || 8);
-  return picked.map(w => pat.makeCard(w));
-}
-
-function startPatternBurst(patternId){
-  const pat = PATTERNS.find(p => p.id === patternId);
-  if(!pat){ alert('Unknown pattern'); return; }
-  const cards = buildPatternCards(patternId, 8);
-  if(cards.length < 3){
-    alert(`Not enough words yet for "${pat.name}". Add or drill more base words first.`);
-    return;
-  }
-  state.burst = state.burst || {bursts:0, passedIds:[]};
-  state.burst.words = cards;
-  state.burst.queue = shuffleFY(cards.slice());
-  state.burst.progress = Object.fromEntries(cards.map(c => [c.id, 0]));
-  state.burst.isReview = Object.fromEntries(cards.map(c => [c.id, false]));
-  state.burst.active = true;
-  state.burst.complete = false;
-  state.burst.isPattern = true;
-  state.burst.patternId = patternId;
-  state.burst.patternName = pat.name;
-  state.sessionQueue = state.burst.queue;
-  state.sessionIdx = 0;
-  state.lastAnswer = null;
-  state._reveal = false;
-  clearNextTimer();
-  /* Force en→jp direction so the user produces the conjugated JP form. */
-  state.settings.direction = 'en-jp';
-  save();
-  nav('drill');
-}
-window.startPatternBurst = startPatternBurst;
 
 /* =========================================================================
    VOCAB BLITZ — SM-2 spaced repetition. Home's primary entry point.
@@ -2629,6 +2288,7 @@ let blitzAdvanceTimer = null;
 function clearBlitzAdvanceTimer(){ if(blitzAdvanceTimer){ clearTimeout(blitzAdvanceTimer); blitzAdvanceTimer = null; } }
 
 function blitzRecordAnswer(w, poolItem, isCorrect){
+  updateStreak(isCorrect);
   const st = smStatFor(w.id);
   st.attempts = st.attempts || [];
   st.attempts.push({ts: now(), correct: isCorrect, voice: false, blitz: true});
@@ -3013,6 +2673,7 @@ function formDrillGrade(grade){
   if(!state.formDrill || !state.formDrill.submitted) return;
   const w = formDrillCurrent();
   if(!w) return;
+  updateStreak(grade !== 'again');
   const fst = formStatFor(w.id, state.formDrill.formId);
   smGrade(fst, grade);
   state.formDrill.tally[grade]++;
@@ -3321,6 +2982,7 @@ function formBlitzToggleDir(){
 window.formBlitzToggleDir = formBlitzToggleDir;
 
 function formBlitzRecord(pair, isCorrect){
+  updateStreak(isCorrect);
   const fst = formStatFor(pair.verbId, pair.formId);
   ensureSm(fst);
   fst.reviewCount = (fst.reviewCount || 0) + 1;
@@ -3552,31 +3214,6 @@ function renderFormBlitz(){
 }
 window.renderFormBlitz = renderFormBlitz;
 
-function renderPatterns(){
-  const cards = PATTERNS.map(p => {
-    const n = patternEligibleWords(p).length;
-    const ready = n >= 3;
-    return `<div class="card" style="padding:12px">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-        <h3 style="margin:0">${esc(p.name)}</h3>
-        <span class="muted" style="font-size:12px">${n} eligible</span>
-      </div>
-      <div class="muted" style="font-size:13px;margin:4px 0 10px">${esc(p.hint)}</div>
-      <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startPatternBurst('${p.id}')">
-        ${ready ? '▶ Drill this pattern' : `Need ≥ 3 words (have ${n})`}
-      </button>
-    </div>`;
-  }).join('');
-  return `
-    <div class="card">
-      <h3>Pattern packs</h3>
-      <div class="muted" style="font-size:13px">Cluster drills on shared word-endings. Your vocab fills the slot; the ending repeats until it sticks. No mastery or streak impact — this is pure pattern practice.</div>
-    </div>
-    ${cards}
-  `;
-}
-window.renderPatterns = renderPatterns;
-
 /* =========================================================================
    KANA BLITZ — streak-based retention. Separate track from SM-2.
    Retire: 5 correct in a row. Maintenance: retired kana resurface weekly.
@@ -3694,6 +3331,7 @@ function kanaBlitzCheck(input, item){
 }
 
 function kanaBlitzRecordAnswer(item, correct){
+  updateStreak(correct);
   const st = kanaStatFor(item.k);
   st.lastSeen = now();
   if(correct){
@@ -4020,6 +3658,7 @@ function sentenceBlitzCheck(input, item){
 }
 
 function sentenceBlitzRecordAnswer(item, correct){
+  updateStreak(correct);
   const st = sentenceStatFor(item.id);
   st.lastSeen = now();
   if(correct){
@@ -4367,6 +4006,7 @@ function phraseBlitzCheck(input, item){
 }
 
 function phraseBlitzRecordAnswer(item, correct){
+  updateStreak(correct);
   const st = phraseStatFor(item.id);
   st.lastSeen = now();
   if(correct){
@@ -5703,13 +5343,12 @@ function renderBuildModeComplete(){
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', drill:'Drill', convo:'Conversation', convoDetail:'Scenario', sentence:'Sentences', settings:'Settings', particles:'Particles', dashboard:'Dashboard', patterns:'Pattern packs', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
   let title = SCREEN_TITLES[state.screen];
-  if(state.screen === 'convoDetail') title = SCENARIOS.find(s=>s.id===state._navData)?.title || 'Scenario';
-  else if(state.screen === 'formDrill'){
+  if(state.screen === 'formDrill'){
     const f = FORMS.find(x => x.id === state._navData);
     title = f ? `Form drill · ${f.name}` : 'Form drill';
   }
@@ -5721,7 +5360,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -5729,13 +5368,6 @@ function render(){
 function nav(screen, data, fromPop){
   /* history tracking: only push when not coming from popstate */
   clearNextTimer();
-  if(screen !== 'drill'){
-    state.lastAnswer = null;
-    state._reveal = false;
-  }
-  if(screen !== 'sentence'){
-    state._sentenceAnswer = null;
-  }
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -5750,8 +5382,7 @@ function goBack(){
   if(history.state && history.length > 1){
     history.back();
   } else {
-    const back = state.screen === 'convoDetail' ? 'convo' : 'home';
-    nav(back);
+    nav('home');
   }
 }
 
@@ -5761,7 +5392,7 @@ function updateBackFab(){
   fab.classList.toggle('show', state.screen !== 'home');
 }
 function updateNav(){
-  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen || (state.screen==='convoDetail' && b.dataset.screen==='convo')));
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen));
 }
 
 /* ---------- HOME ---------- */
@@ -5855,19 +5486,12 @@ function renderHome(){
 
     <div class="card">
       <h3>Practice</h3>
-      <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="startBurst()">▶ Burst (5 new${(state.burst?.bursts||0)>0?' + 3 review':''})</button>
-      <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="nav('patterns')">🧩 Pattern packs</button>
-      <div class="btn-row">
-        <button class="btn btn-blue" onclick="nav('convo')">💬 Conversation</button>
-        <button class="btn btn-purple" onclick="nav('sentence')">✍️ Sentences</button>
-      </div>
-      <button class="btn btn-teal" onclick="nav('particles')">🔗 Particle drills</button>
+      <button class="btn btn-teal" style="width:100%" onclick="nav('particles')">🔗 Particle drills</button>
     </div>
 
     <div class="card">
-      <h3>Track</h3>
-      <button class="btn btn-green" onclick="nav('dashboard')">📊 Dashboard</button>
-      <button class="btn btn-secondary" onclick="nav('settings')">⚙️ Settings & Data</button>
+      <h3>Settings</h3>
+      <button class="btn btn-secondary" style="width:100%" onclick="nav('settings')">⚙️ Settings & Data</button>
     </div>
 
     <div class="collapsible" id="homeTips">
@@ -5878,8 +5502,6 @@ function renderHome(){
       <div class="collapsible-body muted">
         • Tap 🔊 on any card to hear the word.<br>
         • Tap 🎤 to speak the answer (ja-JP).<br>
-        • On drill: swipe right = submit, up = reveal, down = voice.<br>
-        • Each word in a burst must be correct 2× to pass. Finish the burst, then start the next.<br>
         • Tap 💭 anywhere to drop a quick note.<br>
         • ${voiceSupported() ? '<b style="color:var(--green)">Voice supported</b>.' : '<b style="color:var(--orange)">Voice not supported</b> — use Chrome/Edge/Safari.'}
       </div>
@@ -5887,555 +5509,8 @@ function renderHome(){
   `;
 }
 
-/* ---------- BURST SESSIONS ----------
-   A burst = 5 new words (+ 3 review on bursts > 0). Each word must be correct 2×
-   (any direction, shuffled between attempts) to pass. Miss resets progress to 0.
-   When all pass, burst completes → user can start next. */
-
-const BURST_NEW = 5;
-const BURST_REVIEW = 3;
-const BURST_PASS_TARGET = 2;
-
-function buildBurstWords(){
-  const burst = state.burst || {bursts:0, passedIds:[]};
-  const passedInSession = new Set(burst.passedIds || []);
-  const recent = new Set(state._recentlyServed || []);
-  const pool = getActiveWords();
-  if(!pool.length) return {newWords:[], reviewWords:[]};
-
-  const ord = {new:0, learning:1, apprentice:2, guru:3, master:4, burned:5};
-  const scored = pool.map(w => ({
-    w,
-    mastery: getMasteryForWord(w.id),
-    attempts: state.stats[w.id]?.attempts?.length || 0,
-    lastSeen: state.stats[w.id]?.lastSeen || 0
-  }));
-
-  /* New: prefer unseen > learning > apprentice; exclude already-passed-this-session and recently-served */
-  const newPool = scored
-    .filter(x => !passedInSession.has(x.w.id) && !recent.has(x.w.id))
-    .sort((a,b) => ord[a.mastery] - ord[b.mastery] || a.attempts - b.attempts);
-  const newWords = shuffleFY(newPool.slice(0, BURST_NEW * 3)).slice(0, BURST_NEW).map(x => x.w);
-
-  let reviewWords = [];
-  if((burst.bursts || 0) > 0){
-    const newIds = new Set(newWords.map(w => w.id));
-    const reviewPool = scored
-      .filter(x => !newIds.has(x.w.id))
-      .filter(x => x.mastery === 'apprentice' || x.mastery === 'learning')
-      .sort((a,b) => a.lastSeen - b.lastSeen); /* oldest unseen first */
-    reviewWords = shuffleFY(reviewPool.slice(0, BURST_REVIEW * 3)).slice(0, BURST_REVIEW).map(x => x.w);
-  }
-  return {newWords, reviewWords};
-}
-
-function startBurst(){
-  const {newWords, reviewWords} = buildBurstWords();
-  const all = [...newWords, ...reviewWords];
-  if(!all.length){
-    alert('No words available. Add words or enable the N5 pack in Settings.');
-    return;
-  }
-  state.burst = state.burst || {bursts:0, passedIds:[]};
-  state.burst.words = all;
-  state.burst.queue = shuffleFY(all.slice());
-  state.burst.progress = Object.fromEntries(all.map(w => [w.id, 0]));
-  state.burst.isReview = Object.fromEntries([
-    ...newWords.map(w => [w.id, false]),
-    ...reviewWords.map(w => [w.id, true])
-  ]);
-  state.burst.active = true;
-  state.burst.complete = false;
-  state.burst.isPattern = false;
-  state.burst.patternId = null;
-  state.sessionQueue = state.burst.queue;
-  state.sessionIdx = 0;
-  state.lastAnswer = null;
-  clearNextTimer();
-  nav('drill');
-}
-
-function requeueWord(word){
-  /* Put the word back, spaced out so it doesn't appear next card */
-  const q = state.burst.queue;
-  if(q.length <= 1){ q.push(word); return; }
-  const minPos = Math.min(2, q.length);
-  const pos = minPos + Math.floor(Math.random() * (q.length - minPos + 1));
-  q.splice(pos, 0, word);
-}
-
-function completeBurst(){
-  state.burst.complete = true;
-  state.burst.active = false;
-  /* Pattern bursts don't count toward session burst counter or passedIds. */
-  if(!state.burst.isPattern){
-    state.burst.bursts = (state.burst.bursts || 0) + 1;
-    const passed = state.burst.words.map(w => w.id);
-    state.burst.passedIds = [...new Set([...(state.burst.passedIds || []), ...passed])];
-  }
-  log('burst_complete',{n: state.burst.words.length, bursts: state.burst.bursts, pattern: state.burst.patternId || null});
-  save();
-}
-
-/* ---------- DRILL ---------- */
-function renderBurstComplete(){
-  const b = state.burst;
-  const n = b.words.length;
-  if(b.isPattern){
-    const pid = b.patternId;
-    return `
-      <div class="card" style="text-align:center">
-        <div style="font-size:48px;margin-bottom:8px">🧩</div>
-        <h3>Pattern pack complete</h3>
-        <div class="muted">${esc(b.patternName || pid)} — ${n} cards drilled.</div>
-      </div>
-      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startPatternBurst('${pid}')">▶ Run this pattern again</button>
-      <button class="btn btn-secondary" onclick="nav('patterns')">Other patterns</button>
-      <button class="btn btn-secondary" onclick="nav('home')">Home</button>
-    `;
-  }
-  const reviewCount = b.words.filter(w => b.isReview[w.id]).length;
-  const newCount = n - reviewCount;
-  return `
-    <div class="card" style="text-align:center">
-      <div style="font-size:48px;margin-bottom:8px">🎉</div>
-      <h3>Burst complete</h3>
-      <div class="muted">You passed ${newCount} new word${newCount!==1?'s':''}${reviewCount ? ` and ${reviewCount} review` : ''}.</div>
-      <div style="margin-top:6px;font-size:12px;color:var(--dim)">Bursts this session: ${b.bursts}</div>
-    </div>
-    <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="startBurst()">▶ Start next burst</button>
-    <button class="btn btn-secondary" onclick="nav('home')">Home</button>
-  `;
-}
-
-function renderDrill(){
-  const b = state.burst;
-  if(!b || !b.active){
-    if(b && b.complete) return renderBurstComplete();
-    return `<div class="card"><h3>No burst running</h3><div class="muted">Start a burst from the home screen.</div></div>
-    <button class="btn btn-primary" onclick="nav('home')">Home</button>`;
-  }
-  if(!b.queue.length){
-    /* defensive — shouldn't happen because submitAns calls completeBurst */
-    completeBurst(); render(); return '';
-  }
-
-  const word = b.queue[0];
-  const dir = state.settings.direction;
-  const prompt = dir==='jp-en' ? word.jp : word.en;
-  const promptClass = dir==='jp-en' ? 'jp' : '';
-  const mastery = getMasteryForWord(word.id);
-  const isReview = !!b.isReview[word.id];
-  const wordsPassed = b.words.filter(w => (b.progress[w.id]||0) >= BURST_PASS_TARGET).length;
-  const pct = Math.round(100 * wordsPassed / b.words.length);
-  const wordProgress = b.progress[word.id] || 0;
-
-  const siblings = dir==='jp-en' ? homographSiblings(word) : [];
-  const disambig = siblings.length > 1 ? ` · ${esc((word.en||'').split('/')[0])}` : '';
-
-  const selfGradeMode = (dir === 'jp-en');
-  const feedbackShowing = !!state.lastAnswer;
-  const revealShowing = !!state._reveal;
-
-  return `
-    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-    <div class="muted" style="text-align:center;font-size:12px;margin:4px 0">
-      Burst · ${wordsPassed} / ${b.words.length} passed · ${isReview ? '🔁 review' : '✨ new'} · this word ${wordProgress}/${BURST_PASS_TARGET}
-    </div>
-    <div class="direction-toggle">
-      <button class="direction-btn ${dir==='jp-en'?'active':''}" onclick="setDirection('jp-en')">JP → EN</button>
-      <button class="direction-btn ${dir==='en-jp'?'active':''}" onclick="setDirection('en-jp')">EN → JP</button>
-    </div>
-
-    <div class="drill-stage" data-state="${feedbackShowing?'feedback':(revealShowing?'reveal':'prompt')}">
-      <div class="drill-card fade-in">
-        <div class="drill-cat">${word.theme || ''}${disambig} · <span class="pill pill-${mastery}">${mastery}</span>${word.source==='user' && !word.verified ? ' <span class="pill pill-unverified">unverified</span>':''}</div>
-        <div class="drill-prompt ${promptClass}">${esc(prompt)}</div>
-        ${dir==='jp-en' && word.romaji ? `<div class="drill-sub">${esc(word.romaji)}</div>` : ''}
-        ${(revealShowing || feedbackShowing) && selfGradeMode ? `
-          <div class="drill-divider"></div>
-          <div class="drill-answer fade-in">${esc(word.en)}</div>
-        ` : ''}
-        ${feedbackShowing && !selfGradeMode ? `
-          <div class="drill-divider"></div>
-          <div class="drill-answer fade-in ${state.lastAnswer.correct?'ok':'bad'}">
-            ${state.lastAnswer.correct ? '✓ ' : '✗ '}${esc(word.jp)}${word.romaji?` · <span class="drill-sub-inline">${esc(word.romaji)}</span>`:''}
-          </div>
-          <div class="drill-sub" style="margin-top:4px">${esc(word.en)}</div>
-          ${state.lastAnswer.smart && state.lastAnswer.smart.type==='real-word' ? `<div class="feedback-smart" style="margin-top:6px">You wrote <b>${esc(state.lastAnswer.userJP||state.lastAnswer.userEN||'')}</b> — that means "${esc(state.lastAnswer.smart.match.en)}".</div>` : ''}
-        ` : ''}
-      </div>
-
-      <div class="audio-row">
-        <button class="audio-btn" id="ttsBtn" onclick="speakJP('${jsEsc(word.jp)}')">🔊 Listen</button>
-        ${voiceSupported() && dir==='en-jp' ? `<button class="audio-btn" id="voiceBtn" onclick="drillVoice()">🎤 Speak</button>` : ''}
-      </div>
-
-      ${!selfGradeMode ? `
-        <input class="input" id="ansInput" placeholder="にほんご で こたえて" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
-      ` : ''}
-
-      <div class="action-slot">
-        ${selfGradeMode
-          ? (revealShowing
-              ? `<div class="btn-row">
-                  <button class="btn btn-secondary" onclick="selfGrade(false)">✗ Missed it</button>
-                  <button class="btn btn-primary" onclick="selfGrade(true)">✓ Got it</button>
-                </div>`
-              : `<button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="revealForSelfGrade()">👀 Reveal</button>`)
-          : (feedbackShowing
-              ? `<button class="btn btn-primary" style="width:100%" onclick="nextCard()">Next card ›</button>`
-              : `<div class="btn-row">
-                  <button class="btn btn-secondary" onclick="revealAnswer()">👀 Reveal</button>
-                  <button class="btn btn-primary" onclick="submitAns(false)">Submit</button>
-                </div>`)
-        }
-        ${!feedbackShowing && !revealShowing ? `<button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:13px" onclick="skipCard()">Skip — no penalty</button>` : ''}
-      </div>
-    </div>
-
-    <div class="collapsible" id="drillExtras">
-      <div class="collapsible-head" onclick="document.getElementById('drillExtras').classList.toggle('open')">
-        <h3>💡 Hint & example</h3>
-        <span class="collapsible-arrow">›</span>
-      </div>
-      <div class="collapsible-body">
-        ${state.settings.hintsEnabled ? `<div id="hintContainer"></div><button class="btn btn-ghost" style="width:100%" onclick="showNextHint('${jsEsc(word.id)}')">💡 Reveal a hint</button>` : ''}
-        ${(() => {
-          const ex = EXAMPLES.find(e => (e.uses||[]).some(u => normJP(u)===normJP(word.jp) || normEN(u)===normEN(word.en)));
-          return ex ? `<div class="hint-card" style="margin-top:8px"><div class="hint-head">example sentence</div><div class="hint-body"><b>${esc(ex.jp)}</b><br><span style="color:var(--dim);font-size:12px">${esc(ex.en)}</span> <button class="wheels-btn" onclick="speakJP('${jsEsc(ex.jp)}')">🔊</button></div></div>` : '<div class="muted" style="font-size:12px;padding:4px 0">No example sentence for this word yet.</div>';
-        })()}
-      </div>
-    </div>
-  `;
-}
-
-function renderFeedback(fb){
-  const cls = fb.correct ? 'correct' : 'wrong';
-  const head = fb.correct ? '✓ Correct' : '✗ Incorrect';
-  let smart = '';
-  if(!fb.correct && fb.smart){
-    if(fb.smart.type === 'real-word'){
-      const h = fb.smart.match;
-      smart = `<div class="feedback-smart">You wrote <span class="hit">${esc(fb.userJP || fb.userEN)}</span> — that's a real word meaning "<b>${esc(h.en)}</b>" (${h.pos||''}). But the answer was <b>${esc(fb.correctAnswer)}</b>.</div>`;
-    } else if(fb.smart.type === 'near-real'){
-      const h = fb.smart.match;
-      smart = `<div class="feedback-smart">Almost — that's close to <b>${esc(h.jp)}</b> (${esc(h.en)}). But the answer was <b>${esc(fb.correctAnswer)}</b>.</div>`;
-    } else {
-      smart = `<div class="feedback-smart">Not a word I recognize. The answer was <b>${esc(fb.correctAnswer)}</b>.</div>`;
-    }
-  }
-  return `<div class="feedback-card ${cls}">
-    <div class="feedback-head">${head}${fb.viaVoice?' · voice':''}</div>
-    <div class="feedback-body">${esc(fb.word.jp)} <span style="color:var(--dim);font-size:12px">${esc(fb.word.romaji||'')}</span> — <b>${esc(fb.word.en)}</b></div>
-    ${smart}
-  </div>`;
-}
-
-let _hintStage = 0;
-function showNextHint(wordId){
-  const word = state.words.find(w=>w.id===wordId);
-  if(!word) return;
-  const hints = getHintsFor(word);
-  if(_hintStage >= hints.length) _hintStage = 0;
-  const h = hints[_hintStage];
-  _hintStage++;
-  const c = $('#hintContainer');
-  if(c) c.innerHTML += `<div class="hint-card"><div class="hint-head">Hint — ${esc(h.label)}</div><div class="hint-body">${esc(h.text)}</div></div>`;
-  log('hint_used',{id:wordId, stage:_hintStage});
-}
-
-function setDirection(d){
-  state.settings.direction = d;
-  save();
-  state.lastAnswer = null;
-  state._reveal = false;
-  clearNextTimer();
-  render();
-}
-
 let _nextTimer = null;
 function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer = null; } }
-/* _nextTimer is still used by sentence mode (inline setTimeout). Burst drill
-   mode is tap-to-advance only — no auto-advance timer. */
-
-function applyBurstResult(word, correct, viaVoice){
-  /* Update progress only. Queue mutation is deferred to nextCard so the
-     feedback phase renders with b.queue[0] === the word just answered. */
-  const b = state.burst;
-  if(!b || !b.active) return;
-  const cur = b.progress[word.id] || 0;
-  b.progress[word.id] = correct ? cur + 1 : 0;
-}
-
-function submitAns(viaVoice, overrideInput){
-  const b = state.burst;
-  if(!b || !b.active) return;
-  const word = b.queue[0];
-  if(!word) return;
-  const inp = overrideInput !== undefined ? overrideInput : ($('#ansInput')?.value || '');
-  const dir = state.settings.direction;
-  const res = checkAnswer(inp, word, dir);
-  let smart = null;
-  if(!res.correct && state.settings.smartWrongFeedback){
-    smart = dir==='jp-en' ? analyzeWrongEN(inp, word) : analyzeWrongJP(inp, word);
-  }
-  recordAttempt(word.id, res.correct, viaVoice);
-  updateStreak(res.correct);
-  state.lastAnswer = {correct:res.correct, viaVoice, word, smart, userJP:dir==='en-jp'?inp:'', userEN:dir==='jp-en'?inp:'', correctAnswer:dir==='jp-en'?word.en:word.jp};
-  applyBurstResult(word, res.correct, viaVoice);
-  save();
-  render();
-}
-
-function selfGrade(correct){
-  const b = state.burst;
-  if(!b || !b.active) return;
-  const word = b.queue[0];
-  if(!word) return;
-  recordAttempt(word.id, correct, false);
-  updateStreak(correct);
-  applyBurstResult(word, correct, false);
-  /* Self-grade: user already saw the answer via Reveal. Set lastAnswer so
-     nextCard commits the queue shift+requeue, then advance. */
-  state.lastAnswer = {correct, viaVoice:false, word, smart:null, correctAnswer:word.en};
-  state._reveal = false;
-  save();
-  nextCard();
-}
-
-function revealForSelfGrade(){
-  state._reveal = true;
-  render();
-}
-
-function revealAnswer(){
-  const b = state.burst;
-  if(!b || !b.active) return;
-  const word = b.queue[0];
-  if(!word) return;
-  state.lastAnswer = {correct:false, viaVoice:false, word, smart:{type:'revealed'}, correctAnswer:state.settings.direction==='jp-en'?word.en:word.jp};
-  recordAttempt(word.id, false, false);
-  applyBurstResult(word, false, false);
-  save();
-  render();
-}
-
-function nextCard(){
-  clearNextTimer();
-  _hintStage = 0;
-  const b = state.burst;
-  if(!b || !b.active){ render(); return; }
-  const prev = state.lastAnswer && state.lastAnswer.word;
-  if(prev){
-    state._recentlyServed = state._recentlyServed || [];
-    state._recentlyServed.push(prev.id);
-    if(state._recentlyServed.length > 30) state._recentlyServed.shift();
-    /* Commit deferred queue mutation now that feedback has been dismissed. */
-    if(b.queue[0] && b.queue[0].id === prev.id){
-      b.queue.shift();
-      if((b.progress[prev.id] || 0) < BURST_PASS_TARGET){
-        requeueWord(prev);
-      }
-      state.sessionQueue = b.queue;
-      state.sessionIdx = 0;
-    }
-  }
-  state.lastAnswer = null;
-  state._reveal = false;
-  if(!b.queue.length){
-    completeBurst();
-  }
-  render();
-}
-
-function skipCard(){
-  /* Non-penalty skip: requeue to back, don't touch progress or attempt log. */
-  const b = state.burst;
-  if(!b || !b.active || state.lastAnswer) return;
-  const word = b.queue[0];
-  if(!word) return;
-  b.queue.shift();
-  requeueWord(word);
-  state.sessionQueue = b.queue;
-  state.sessionIdx = 0;
-  state._reveal = false;
-  _hintStage = 0;
-  log('skip',{id:word.id});
-  render();
-}
-window.skipCard = skipCard;
-
-function drillVoice(){
-  const b = state.burst;
-  const word = (b && b.active) ? b.queue[0] : null;
-  if(!word) return;
-  startVoice(
-    (alts) => {
-      /* Use the TOP hypothesis (alts[0]) — don't cherry-pick a lower-ranked one */
-      const top = alts[0];
-      state.voiceResult = top.transcript;
-      const c = $('#ansInput'); if(c) c.value = top.transcript;
-      submitAns(true, top.transcript);
-    },
-    (err)=>{ if(err) log('voice_end_err',{err:String(err)}); }
-  );
-}
-
-/* ---------- CONVO ---------- */
-function renderConvo(){
-  return `
-    <div class="card">
-      <h3>Conversation Scenarios</h3>
-      <div class="muted">Real mini-dialogues. Tap 🔊 on any line. Tags: casual / polite.</div>
-    </div>
-    ${SCENARIOS.map(s => `
-      <div class="scenario-item" onclick="nav('convoDetail','${jsEsc(s.id)}')">
-        <div class="scenario-emoji">${s.emoji}</div>
-        <div class="scenario-body">
-          <div class="scenario-title">${esc(s.title)}</div>
-          <div class="scenario-meta">${s.turns.length} turns · ${s.register}</div>
-        </div>
-        <div style="color:var(--faint);font-size:20px">›</div>
-      </div>
-    `).join('')}
-  `;
-}
-
-function renderConvoDetail(){
-  const id = state._navData;
-  const s = SCENARIOS.find(x=>x.id===id);
-  if(!s) return `<div class="card">Scenario not found.</div>`;
-  return `
-    <div class="card">
-      <div class="convo-chip">${s.emoji} ${s.register} · ${s.turns.length} turns</div>
-      <h3>${esc(s.title)}</h3>
-      <div class="convo-list">
-        ${s.turns.map(t => `
-          <div class="convo-turn ${t.who}">
-            <div class="jp-line">${esc(t.jp)}</div>
-            <div class="en-line">${esc(t.en)}</div>
-            <div style="margin-top:6px"><button class="btn btn-ghost" style="padding:2px 6px;font-size:11px" onclick="speakJP('${jsEsc(t.jp)}')">🔊</button></div>
-          </div>
-        `).join('')}
-      </div>
-      ${s.notes ? `<div class="hint-card"><div class="hint-head">Notes</div><div class="hint-body">${esc(s.notes)}</div></div>` : ''}
-      <button class="btn btn-blue" onclick="playScenario('${jsEsc(s.id)}')">▶ Play whole dialogue</button>
-      <div class="warn">Content generated by AI — have your teacher verify register and naturalness.</div>
-    </div>
-  `;
-}
-
-async function playScenario(id){
-  const s = SCENARIOS.find(x=>x.id===id);
-  if(!s) return;
-  for(const t of s.turns){
-    speakJP(t.jp);
-    await new Promise(r => setTimeout(r, Math.max(1800, t.jp.length * 180)));
-  }
-}
-
-/* ---------- SENTENCE MODE ---------- */
-function generateSentence(){
-  /* Only return sentences where every slot got filled (no ___ placeholders) */
-  const active = getActiveWords();
-  for(let tries = 0; tries < 40; tries++){
-    const t = SENTENCE_TEMPLATES[Math.floor(Math.random()*SENTENCE_TEMPLATES.length)];
-    let pattern = t.pattern;
-    let en = t.en;
-    let filled = true;
-    for(const [slot, themes] of Object.entries(t.slots)){
-      const candidates = active.filter(w => themes.includes(w.theme));
-      const pick = candidates.length ? candidates[Math.floor(Math.random()*candidates.length)] : null;
-      if(!pick){ filled = false; break; }
-      pattern = pattern.replaceAll('{'+slot+'}', pick.jp);
-      en = en.replaceAll('{'+slot+'}', pick.en.split('/')[0]);
-    }
-    if(filled) return {jp: pattern, en, register: t.register, level: t.level, template: t};
-  }
-  /* fallback — accept one with placeholder so screen still works */
-  const t = SENTENCE_TEMPLATES[0];
-  return {jp: t.pattern, en: t.en, register: t.register, level: t.level, template: t};
-}
-
-function renderSentence(){
-  const s = state._sentence || generateSentence();
-  state._sentence = s;
-  const fb = state._sentenceAnswer;
-  const feedbackShowing = !!fb;
-  return `
-    <div class="card">
-      <h3>Sentence Drill</h3>
-      <div class="muted">Read the English, type the Japanese (hiragana). Enter submits.</div>
-    </div>
-    <div class="drill-card">
-      <div class="drill-cat">${s.register} · ${s.level}</div>
-      <div class="drill-prompt" style="font-size:22px">${esc(s.en)}</div>
-    </div>
-    <input class="input" id="ansInput" placeholder="にほんご で タイプ して" autocomplete="off" autocapitalize="off" autocorrect="off" ${feedbackShowing?'disabled':''}>
-    ${feedbackShowing ? `
-      <div class="feedback-card ${fb.correct?'correct':'wrong'}">
-        <div class="feedback-head">${fb.correct?'✓ Correct':'✗ Incorrect'}</div>
-        <div class="feedback-body jp" style="font-size:20px">${esc(s.jp)}</div>
-        <div class="drill-sub">${esc(s.en)}</div>
-        ${!fb.correct && fb.userInput ? `<div class="feedback-smart">You wrote: <b>${esc(fb.userInput)}</b></div>` : ''}
-      </div>
-    ` : ''}
-    <div class="audio-row">
-      <button class="audio-btn" onclick="speakJP('${jsEsc(s.jp)}')">🔊 Listen</button>
-      ${voiceSupported() ? `<button class="audio-btn" id="voiceBtn" onclick="sentenceVoice()">🎤 Speak</button>` : ''}
-    </div>
-    ${feedbackShowing ? `
-      <button class="btn btn-primary" style="font-size:16px;padding:16px" onclick="sentenceNext()">Next sentence →</button>
-    ` : `
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="sentenceReveal()">👀 Reveal</button>
-        <button class="btn btn-primary" onclick="sentenceSubmit()">Submit</button>
-      </div>
-      <button class="btn btn-ghost" onclick="sentenceSkip()">🎲 Skip to new sentence</button>
-    `}
-    <div class="card">
-      <h3>Hand-curated examples</h3>
-      ${EXAMPLES.slice(0,10).map(ex => `
-        <div class="word-row">
-          <div class="word-main">
-            <div class="word-jp">${esc(ex.jp)}</div>
-            <div class="word-en">${esc(ex.en)} <span class="pill pill-${ex.register==='casual'?'learning':'guru'}" style="font-size:9px">${ex.register}</span></div>
-          </div>
-          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="speakJP('${jsEsc(ex.jp)}')">🔊</button>
-        </div>
-      `).join('')}
-    </div>
-    <div class="warn">Sentences are AI-generated — verify with your teacher before using with natives.</div>
-  `;
-}
-
-function sentenceSubmit(){
-  const s = state._sentence;
-  if(!s) return;
-  const inp = ($('#ansInput')?.value || '').trim();
-  if(!inp){ return; }
-  const correct = normJP(inp) === normJP(s.jp);
-  state._sentenceAnswer = {correct, userInput: inp};
-  log('sentence_attempt',{correct, tpl: s.template?.pattern});
-  render();
-  clearNextTimer();
-  _nextTimer = setTimeout(() => { _nextTimer = null; sentenceNext(); }, correct ? 1200 : 2200);
-}
-
-function sentenceReveal(){
-  state._sentenceAnswer = {correct:false, userInput: '', revealed:true};
-  render();
-}
-
-function sentenceNext(){
-  clearNextTimer();
-  state._sentence = null;
-  state._sentenceAnswer = null;
-  render();
-}
-
-function sentenceSkip(){ sentenceNext(); }
 
 /* ---------- PARTICLES ---------- */
 function renderParticles(){
@@ -6492,106 +5567,6 @@ function nextParticle(){
 window.answerParticle = answerParticle;
 window.nextParticle = nextParticle;
 
-/* ---------- DASHBOARD ---------- */
-function renderDashboard(){
-  const logs = state.logs || [];
-  const attempts = logs.filter(l=>l.evt==='attempt');
-  const last7d = attempts.filter(l=>l.ts > now() - 7*86400000);
-  const today0 = new Date(); today0.setHours(0,0,0,0);
-  const todayAttempts = attempts.filter(l=>l.ts >= today0.getTime());
-  const todayCorrect = todayAttempts.filter(l=>l.data?.correct).length;
-  const accToday = todayAttempts.length ? Math.round(100*todayCorrect/todayAttempts.length) : 0;
-  const voiceAttempts = attempts.filter(l=>l.data?.voice).length;
-  const hintsUsed = logs.filter(l=>l.evt==='hint_used').length;
-  const particlesTried = logs.filter(l=>l.evt==='particle_attempt').length;
-  const particlesCorrect = logs.filter(l=>l.evt==='particle_attempt' && l.data?.correct).length;
-
-  /* per-word accuracy, weakest N */
-  const perWord = {};
-  for(const l of attempts){
-    const id = l.data?.id; if(!id) continue;
-    perWord[id] = perWord[id] || {c:0,t:0};
-    perWord[id].t++;
-    if(l.data?.correct) perWord[id].c++;
-  }
-  const weakestAll = Object.entries(perWord)
-    .map(([id,s])=>({id, acc:s.c/s.t, t:s.t, w: state.words.find(x=>x.id===id)}))
-    .filter(x=>x.w)
-    .sort((a,b)=>a.acc-b.acc);
-  const weakestPrimary = weakestAll.filter(x=>x.t>=3);
-  const weakest = weakestPrimary.length ? weakestPrimary.slice(0,10) : weakestAll.slice(0,10);
-  const lowSample = !weakestPrimary.length && weakest.length > 0;
-
-  /* daily activity last 14 days */
-  const days = [];
-  for(let i=13;i>=0;i--){
-    const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
-    const d2 = new Date(d); d2.setDate(d2.getDate()+1);
-    const cnt = attempts.filter(l=>l.ts>=d.getTime() && l.ts<d2.getTime()).length;
-    days.push({d:d.toISOString().slice(5,10), cnt});
-  }
-  const maxCnt = Math.max(1, ...days.map(d=>d.cnt));
-
-  return `
-    <div class="card">
-      <h3>Today</h3>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-num">${todayAttempts.length}</div><div class="stat-label">Reps</div></div>
-        <div class="stat-box"><div class="stat-num">${accToday}%</div><div class="stat-label">Accuracy</div></div>
-        <div class="stat-box"><div class="stat-num">${state.streak.current||0}</div><div class="stat-label">Streak</div></div>
-        <div class="stat-box"><div class="stat-num">${voiceAttempts}</div><div class="stat-label">Voice</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Last 14 days</h3>
-      <div style="display:flex;align-items:flex-end;gap:3px;height:60px;padding:4px 0">
-        ${days.map(d => `<div title="${d.d}: ${d.cnt}" style="flex:1;background:var(--red);min-height:2px;height:${Math.round(100*d.cnt/maxCnt)}%;border-radius:2px 2px 0 0"></div>`).join('')}
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--faint)">
-        <span>${days[0].d}</span><span>${days[days.length-1].d}</span>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Weakest 10 words (by accuracy)${lowSample?' <span class="pill pill-unverified" style="font-size:9px">low sample</span>':''}</h3>
-      ${weakest.length ? weakest.map(x => `
-        <div class="word-row">
-          <div class="word-main">
-            <div class="word-jp">${esc(x.w.jp)} <span class="word-r">${esc(x.w.romaji||'')}</span></div>
-            <div class="word-en">${esc(x.w.en)}</div>
-          </div>
-          <div class="word-meta">${Math.round(x.acc*100)}% · ${x.t} tries</div>
-        </div>
-      `).join('') : '<div class="muted">Not enough data yet. Do a few drills.</div>'}
-    </div>
-    <div class="card">
-      <h3>Other</h3>
-      <div class="muted">
-        7-day reps: <b>${last7d.length}</b><br>
-        Hints used: <b>${hintsUsed}</b><br>
-        Particle drills: <b>${particlesCorrect}/${particlesTried}</b> correct<br>
-        Events logged: <b>${logs.length}</b>
-      </div>
-    </div>
-  `;
-}
-
-function sentenceVoice(){
-  const s = state._sentence;
-  if(!s) return;
-  startVoice(
-    (alts)=>{
-      const target = normJP(s.jp);
-      let best = alts[0]; let bestScore = levenshtein(normJP(alts[0].transcript), target);
-      for(const a of alts){ const sc = levenshtein(normJP(a.transcript), target); if(sc < bestScore){ best=a; bestScore=sc; } }
-      const dist = bestScore; const maxLen = target.length;
-      const pct = Math.max(0, Math.round(100*(1 - dist/maxLen)));
-      alert(`Heard: "${best.transcript}"\nMatch: ${pct}% (${dist} char diff)`);
-      log('sentence_voice',{heard:best.transcript, pct});
-    },
-    ()=>{}
-  );
-}
-
 /* ---------- SETTINGS ---------- */
 function renderSettings(){
   const s = state.settings;
@@ -6623,10 +5598,6 @@ function renderSettings(){
         <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Hints enabled</div></div>
-        <input type="checkbox" ${s.hintsEnabled?'checked':''} onchange="toggleSetting('hintsEnabled')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Smart wrong-answer feedback</div><div class="word-en">Tell me what I wrote if it's a real word</div></div>
-        <input type="checkbox" ${s.smartWrongFeedback?'checked':''} onchange="toggleSetting('smartWrongFeedback')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'}</div></div>
         <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
     </div>
@@ -6956,20 +5927,6 @@ Watch for these common beginner error patterns and proactively flag when his que
 Use examples from daily life — food, trains, weather, friends, work. Julius's ethos is "mayoeba yaburu" — hesitate and you lose. Match that energy: pick the most useful thing and say it plainly.`;
 
 function currentClaudeContext(){
-  const s = state.screen;
-  if(s === 'drill'){
-    const b = state.burst;
-    const w = b && b.active ? b.queue[0] : null;
-    if(w) return {hint:'this card', text:`I'm drilling this card: ${w.jp}${w.romaji?' ('+w.romaji+')':''} — ${w.en}${b.isPattern?` · pattern: ${b.patternName}`:''}.`};
-  }
-  if(s === 'sentence'){
-    return {hint:'sentences', text:`I'm in Sentences mode.`};
-  }
-  if(s === 'convoDetail'){
-    const id = state._navData;
-    const sc = SCENARIOS.find(x=>x.id===id);
-    if(sc) return {hint:'this scenario', text:`I'm reviewing the "${sc.title}" conversation scenario.`};
-  }
   return null;
 }
 
@@ -7118,66 +6075,8 @@ window.quickAskContext = quickAskContext;
 /* ---------- SCREEN BINDING ---------- */
 function bindScreen(){
   const inp = $('#ansInput');
-  const isSentence = state.screen === 'sentence';
-  const isDrill = state.screen === 'drill';
-  const sentenceFb = isSentence && !!state._sentenceAnswer;
-  const drillFb = isDrill && !!state.lastAnswer;
-  const feedbackShowing = sentenceFb || drillFb;
-
-  if(inp){
-    if(!inp.disabled) inp.focus();
-    inp.onkeydown = (e) => {
-      if(e.key !== 'Enter') return;
-      e.preventDefault();
-      if(feedbackShowing){
-        if(isSentence) sentenceNext(); else nextCard();
-      } else {
-        if(isSentence) sentenceSubmit(); else submitAns(false);
-      }
-    };
-  }
-  /* Global Enter-to-advance when feedback showing but no active input (self-grade path) */
-  if(feedbackShowing && (!inp || inp.disabled)){
-    document.onkeydown = (e) => {
-      if(e.key === 'Enter'){
-        e.preventDefault();
-        if(isSentence) sentenceNext(); else nextCard();
-        document.onkeydown = null;
-      }
-    };
-  } else {
-    document.onkeydown = null;
-  }
-  if(isDrill && state.settings.swipeOn) bindSwipe();
-}
-
-/* Swipe gestures on drill card */
-let _swipe = {x0:0, y0:0, t0:0};
-function bindSwipe(){
-  const card = $('.drill-card');
-  if(!card) return;
-  card.ontouchstart = (e)=>{ const t=e.touches[0]; _swipe={x0:t.clientX, y0:t.clientY, t0:Date.now()}; };
-  card.ontouchend = (e)=>{
-    const t = e.changedTouches[0];
-    const dx = t.clientX - _swipe.x0;
-    const dy = t.clientY - _swipe.y0;
-    const dt = Date.now() - _swipe.t0;
-    if(dt > 700) return;
-    if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)*1.5){
-      if(dx < 0){
-        /* swipe left → advance only if feedback is showing (no skip in burst mode) */
-        if(state.lastAnswer) nextCard();
-      } else {
-        /* swipe right → submit or advance */
-        if(state.lastAnswer) nextCard(); else submitAns(false);
-      }
-    } else if(Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)*1.5){
-      /* swipe up → reveal. Guard: do nothing while feedback is showing so
-         we don't call applyBurstResult twice on an already-committed word. */
-      if(dy < 0){ if(!state.lastAnswer) revealAnswer(); }
-      else if(voiceSupported() && !state.lastAnswer) drillVoice(); /* swipe down → voice */
-    }
-  };
+  if(inp && !inp.disabled) inp.focus();
+  document.onkeydown = null;
 }
 
 /* ---------- INIT ---------- */
@@ -7222,20 +6121,6 @@ function init(){
 }
 
 window.addEventListener('DOMContentLoaded', init);
-window.startBurst = startBurst;
-window.setDirection = setDirection;
-window.submitAns = submitAns;
-window.selfGrade = selfGrade;
-window.revealForSelfGrade = revealForSelfGrade;
-window.revealAnswer = revealAnswer;
-window.nextCard = nextCard;
-window.drillVoice = drillVoice;
-window.sentenceVoice = sentenceVoice;
-window.sentenceSubmit = sentenceSubmit;
-window.sentenceSkip = sentenceSkip;
-window.sentenceReveal = sentenceReveal;
-window.sentenceNext = sentenceNext;
-window.showNextHint = showNextHint;
 window.nav = nav;
 window.speakJP = speakJP;
 window.toggleFilter = toggleFilter;
@@ -7251,19 +6136,12 @@ window.openNotes = openNotes;
 window.closeModal = closeModal;
 window.saveNote = saveNote;
 window.deleteNote = deleteNote;
-window.playScenario = playScenario;
 
 function removeWord(id){
   if(!confirm('Remove this word from your active deck? You can restore it later in Settings.')) return;
   const r = state.settings.removedWords || [];
   if(!r.includes(id)) r.push(id);
   state.settings.removedWords = r;
-  /* also drop from burst queue if present */
-  if(state.burst && state.burst.active){
-    state.burst.queue = state.burst.queue.filter(w=>w.id!==id);
-    state.burst.words = state.burst.words.filter(w=>w.id!==id);
-    if(!state.burst.queue.length){ completeBurst(); }
-  }
   save(); render();
 }
 function restoreWord(id){
