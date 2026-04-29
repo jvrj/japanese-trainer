@@ -305,7 +305,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.2';
+const APP_VERSION = '6.3';
 
 /* ------------------- DATA: scenarios, templates, examples ------------------ */
 
@@ -1273,7 +1273,8 @@ const LS = {
   enabled:'jp4_enabled_words', askClaude:'jp4_ask_claude',
   formStats:'jp4_form_stats',
   kanaStats:'jp4_kana_stats',
-  sentenceStats:'jp4_sentence_stats'
+  sentenceStats:'jp4_sentence_stats',
+  phraseStats:'jp4_phrase_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1330,6 +1331,8 @@ let state = {
   kanaBlitz:null,       // active Kana Blitz session
   sentenceStats:{},     // sentence id -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount} — v6.2
   sentenceBlitz:null,   // active Sentence Blitz session — v6.2
+  phraseStats:{},       // phrase id -> same shape as sentenceStats — v6.3
+  phraseBlitz:null,     // active Phrase Blitz session — v6.3
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null
@@ -1419,6 +1422,54 @@ function normJP(s){
   return t.toLowerCase();
 }
 
+/* Loose JP matcher for SENTENCE-level drills (Sentence Blitz, Phrase Blitz).
+   Forgives the three classic particle traps and long-vowel ambiguity:
+     - は/わ as topic particle (you HEAR "wa", you SEE は)
+     - を/お as object particle ("o" / "wo" both fine)
+     - へ/え as direction particle ("e" / "he" both fine)
+     - long vowels: "kohi"/"koohii"/"kohii" all match コーヒー
+   Not used for vocab card matching — collision risk in 600+ deck. */
+const _KANA_VOWEL = {
+  'あ':'a','い':'i','う':'u','え':'e','お':'o',
+  'か':'a','き':'i','く':'u','け':'e','こ':'o',
+  'さ':'a','し':'i','す':'u','せ':'e','そ':'o',
+  'た':'a','ち':'i','つ':'u','て':'e','と':'o',
+  'な':'a','に':'i','ぬ':'u','ね':'e','の':'o',
+  'は':'a','ひ':'i','ふ':'u','へ':'e','ほ':'o',
+  'ま':'a','み':'i','む':'u','め':'e','も':'o',
+  'や':'a','ゆ':'u','よ':'o',
+  'ら':'a','り':'i','る':'u','れ':'e','ろ':'o',
+  'わ':'a','を':'o',
+  'が':'a','ぎ':'i','ぐ':'u','げ':'e','ご':'o',
+  'ざ':'a','じ':'i','ず':'u','ぜ':'e','ぞ':'o',
+  'だ':'a','ぢ':'i','づ':'u','で':'e','ど':'o',
+  'ば':'a','び':'i','ぶ':'u','べ':'e','ぼ':'o',
+  'ぱ':'a','ぴ':'i','ぷ':'u','ぺ':'e','ぽ':'o',
+  'ゃ':'a','ゅ':'u','ょ':'o'
+};
+function _collapseLongVowels(s){
+  let out = '';
+  for(let i = 0; i < s.length; i++){
+    const ch = s[i];
+    if(out.length){
+      const v = _KANA_VOWEL[out[out.length - 1]];
+      if(v === 'a' && ch === 'あ') continue;
+      if(v === 'i' && ch === 'い') continue;
+      if(v === 'u' && ch === 'う') continue;
+      if(v === 'e' && (ch === 'え' || ch === 'い')) continue;
+      if(v === 'o' && (ch === 'お' || ch === 'う')) continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+function normJPLoose(s){
+  let t = normJP(s);
+  t = t.replace(/は/g, 'わ').replace(/を/g, 'お').replace(/へ/g, 'え');
+  t = _collapseLongVowels(t);
+  return t;
+}
+
 /* Normalize English for matching — strip parenthetical qualifiers, articles, punctuation */
 function normEN(s){
   let t = String(s||'').toLowerCase().trim();
@@ -1478,6 +1529,7 @@ function save(){
     localStorage.setItem(LS.formStats, JSON.stringify(state.formStats || {}));
     localStorage.setItem(LS.kanaStats, JSON.stringify(state.kanaStats || {}));
     localStorage.setItem(LS.sentenceStats, JSON.stringify(state.sentenceStats || {}));
+    localStorage.setItem(LS.phraseStats, JSON.stringify(state.phraseStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1498,6 +1550,7 @@ function load(){
     state.formStats = JSON.parse(localStorage.getItem(LS.formStats)||'{}');
     state.kanaStats = JSON.parse(localStorage.getItem(LS.kanaStats)||'{}');
     state.sentenceStats = JSON.parse(localStorage.getItem(LS.sentenceStats)||'{}');
+    state.phraseStats = JSON.parse(localStorage.getItem(LS.phraseStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -3949,7 +4002,7 @@ function sentenceBlitzCurrent(){
 
 function sentenceBlitzCheck(input, item){
   if(!input) return false;
-  return normJP(input) === normJP(item.jp);
+  return normJPLoose(input) === normJPLoose(item.jp);
 }
 
 function sentenceBlitzRecordAnswer(item, correct){
@@ -4121,6 +4174,402 @@ function renderSentenceBlitz(){
     </div>
     <div class="spacer"></div>
     <button id="sentenceBlitzContinue" class="btn btn-primary" style="width:100%" onclick="sentenceBlitzAdvance()">Continue</button>
+  </div>`;
+}
+
+/* =========================================================================
+   PHRASE BLITZ — Practical phrase recall (EN cue → produce JP) — v6.3
+   Targets the pragmatic chunks ("I'll be there in 30 min", "be right back",
+   "say that again please") that fill 60% of casual speech. Pre-fab phrases
+   memorized as units, not slotted into templates. Same retire/maintenance
+   shape as Sentence Blitz; uses normJPLoose so particle traps don't bite.
+   ========================================================================= */
+
+const PHRASE_POOL = [
+  /* Timing & logistics — getting there, lateness, back-and-forth */
+  {id:'p_almost',     cat:'timing', jp:'もうすぐ つきます',           en:"I'm almost there"},
+  {id:'p_30min',      cat:'timing', jp:'さんじゅっぷんで つきます',     en:"I'll be there in 30 minutes"},
+  {id:'p_late_bit',   cat:'timing', jp:'ちょっと おくれます',          en:"I'll be a bit late"},
+  {id:'p_coming',     cat:'timing', jp:'いま いきます',                en:"I'm on my way"},
+  {id:'p_brb',        cat:'timing', jp:'すぐ もどります',              en:"I'll be right back"},
+  {id:'p_waited',     cat:'timing', jp:'おまたせしました',             en:'sorry to keep you waiting'},
+  {id:'p_go_ahead',   cat:'timing', jp:'おさきに どうぞ',              en:'go ahead (you first)'},
+
+  /* Social rituals — beyond single-word greetings */
+  {id:'p_otsukare',   cat:'social', jp:'おつかれさまでした',           en:'good work today'},
+  {id:'p_long_time',  cat:'social', jp:'ひさしぶりですね',             en:"it's been a while"},
+  {id:'p_see_tmrw',   cat:'social', jp:'またあした',                   en:'see you tomorrow'},
+  {id:'p_take_care',  cat:'social', jp:'きをつけて',                   en:'take care'},
+  {id:'p_good_wknd',  cat:'social', jp:'よいしゅうまつを',             en:'have a good weekend'},
+  {id:'p_ganbatte',   cat:'social', jp:'がんばってください',           en:'do your best (polite)'},
+  {id:'p_get_well',   cat:'social', jp:'おだいじに',                   en:'take care (when sick)'},
+  {id:'p_been_well',  cat:'social', jp:'おげんきでしたか',             en:'have you been well?'},
+
+  /* Requests & clarification */
+  {id:'p_again_pls',  cat:'request', jp:'もういちど おねがいします',    en:'please say that again'},
+  {id:'p_slowly',     cat:'request', jp:'ゆっくり はなしてください',    en:'please speak slowly'},
+  {id:'p_speak_en',   cat:'request', jp:'えいごで はなせますか',        en:'can you speak English?'},
+  {id:'p_wait_moment',cat:'request', jp:'ちょっと まってください',      en:'please wait a moment'},
+  {id:'p_tell_me',    cat:'request', jp:'おしえてください',             en:'please tell me'},
+  {id:'p_help',       cat:'request', jp:'てつだって もらえますか',      en:'could you help me?'},
+  {id:'p_how_write',  cat:'request', jp:'どう かきますか',              en:'how do you write it?'},
+
+  /* Eating & shopping */
+  {id:'p_bill',       cat:'eating', jp:'おかいけい おねがいします',     en:'the bill, please'},
+  {id:'p_take_this',  cat:'eating', jp:'これ ください',                 en:"I'll take this"},
+  {id:'p_was_yum',    cat:'eating', jp:'おいしかったです',              en:'it was delicious'},
+  {id:'p_separate',   cat:'eating', jp:'べつべつで おねがいします',     en:'separate bills, please'},
+  {id:'p_to_go',      cat:'eating', jp:'もちかえりで おねがいします',   en:'to go, please'},
+
+  /* Reactions & agreement (sentence-level) */
+  {id:'p_thats_true', cat:'reaction', jp:'そうですね',                  en:"that's true / I agree"},
+  {id:'p_didnt_know', cat:'reaction', jp:'しりませんでした',            en:"I didn't know that"},
+  {id:'p_sounds_nice',cat:'reaction', jp:'それは いいですね',           en:'that sounds nice'},
+  {id:'p_you_ok',     cat:'reaction', jp:'だいじょうぶですか',          en:'are you okay?'},
+  {id:'p_how_was',    cat:'reaction', jp:'どうでしたか',                en:'how was it?'},
+  {id:'p_no_problem', cat:'reaction', jp:'もんだい ありません',         en:'no problem'},
+
+  /* Self & status */
+  {id:'p_studying',   cat:'self', jp:'にほんごを べんきょうしています',  en:"I'm studying Japanese"},
+  {id:'p_a_little',   cat:'self', jp:'すこし わかります',                en:'I understand a little'},
+  {id:'p_beginner',   cat:'self', jp:'まだ しょしんしゃです',            en:"I'm still a beginner"},
+  {id:'p_dont_know',  cat:'self', jp:'わかりません',                     en:"I don't understand"},
+  {id:'p_am_tired',   cat:'self', jp:'つかれました',                     en:"I'm tired"},
+  {id:'p_im_busy',    cat:'self', jp:'いそがしいです',                   en:"I'm busy"},
+
+  /* Asking around (situational) */
+  {id:'p_toilet',     cat:'asking', jp:'トイレは どこですか',           en:"where's the bathroom?"},
+  {id:'p_station',    cat:'asking', jp:'えきは どこですか',              en:"where's the station?"},
+  {id:'p_what_is',    cat:'asking', jp:'これは なんですか',              en:'what is this?'},
+  {id:'p_how_much',   cat:'asking', jp:'いくら ですか',                  en:'how much is it?'},
+  {id:'p_what_time',  cat:'asking', jp:'なんじ ですか',                  en:'what time is it?'},
+  {id:'p_what_means', cat:'asking', jp:'どういう いみですか',            en:'what does that mean?'},
+  {id:'p_where_from', cat:'asking', jp:'どこから きましたか',            en:'where are you from?'}
+];
+
+const PHRASE_RETIRE_STREAK = 5;
+const PHRASE_MAINTENANCE_DAYS = 7;
+const PHRASE_SESSION_TARGET = 12;
+
+const PHRASE_CATEGORIES = [
+  {key:'timing',   label:'Timing & logistics'},
+  {key:'social',   label:'Social rituals'},
+  {key:'request',  label:'Requests'},
+  {key:'eating',   label:'Eating & shopping'},
+  {key:'reaction', label:'Reactions'},
+  {key:'self',     label:'Self & status'},
+  {key:'asking',   label:'Asking around'}
+];
+
+function phraseStatFor(id){
+  if(!state.phraseStats) state.phraseStats = {};
+  if(!state.phraseStats[id]){
+    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0};
+  }
+  return state.phraseStats[id];
+}
+
+function phraseDueForMaintenance(id){
+  const st = state.phraseStats && state.phraseStats[id];
+  if(!st || !st.retired) return false;
+  const days = (now() - (st.retiredAt || 0)) / (1000*60*60*24);
+  return days >= PHRASE_MAINTENANCE_DAYS;
+}
+
+function phraseStruggleWeight(item){
+  const st = state.phraseStats && state.phraseStats[item.id];
+  if(!st) return 1;
+  const cool = 1 - (st.streak || 0) / PHRASE_RETIRE_STREAK;
+  return 1 + (st.wrongCount || 0) * cool;
+}
+
+function phraseFilteredPool(catFilter){
+  if(!catFilter || catFilter === 'all') return PHRASE_POOL;
+  return PHRASE_POOL.filter(p => p.cat === catFilter);
+}
+
+function buildPhraseBlitzPool(catFilter){
+  const base = phraseFilteredPool(catFilter);
+  const eligible = base.filter(item => {
+    const st = state.phraseStats[item.id];
+    if(!st) return true;
+    if(!st.retired) return true;
+    return phraseDueForMaintenance(item.id);
+  });
+  if(!eligible.length){
+    return weightedShuffle(base.slice(), phraseStruggleWeight).slice(0, PHRASE_SESSION_TARGET);
+  }
+  const maintenance = [], unseen = [], learning = [];
+  for(const item of eligible){
+    const st = state.phraseStats[item.id];
+    if(!st) unseen.push(item);
+    else if(st.retired) maintenance.push(item);
+    else learning.push(item);
+  }
+  return [
+    ...shuffleFY(maintenance).slice(0, 3),
+    ...shuffleFY(unseen).slice(0, 6),
+    ...weightedShuffle(learning, phraseStruggleWeight)
+  ].slice(0, PHRASE_SESSION_TARGET);
+}
+
+function phraseCounts(catFilter){
+  const base = phraseFilteredPool(catFilter);
+  let retired = 0, learning = 0, unseen = 0;
+  for(const item of base){
+    const st = state.phraseStats && state.phraseStats[item.id];
+    if(!st){ unseen++; continue; }
+    if(st.retired) retired++;
+    else learning++;
+  }
+  return {total: base.length, retired, learning, unseen};
+}
+
+function startPhraseBlitz(catFilter){
+  if(!state.phraseStats) state.phraseStats = {};
+  const cat = catFilter || 'all';
+  const pool = buildPhraseBlitzPool(cat);
+  if(!pool.length){
+    showToast('No phrases to drill in this category.', 'success');
+    return;
+  }
+  state.phraseBlitz = {
+    active:true, complete:false, cat,
+    pool, idx:0, submitted:false, input:'', autoCorrect:null,
+    tally:{correct:0, wrong:0, retired:0, total:pool.length}
+  };
+  nav('phraseBlitz');
+}
+window.startPhraseBlitz = startPhraseBlitz;
+
+function phraseBlitzCurrent(){
+  if(!state.phraseBlitz || !state.phraseBlitz.active) return null;
+  return state.phraseBlitz.pool[state.phraseBlitz.idx] || null;
+}
+
+function phraseBlitzCheck(input, item){
+  if(!input) return false;
+  return normJPLoose(input) === normJPLoose(item.jp);
+}
+
+function phraseBlitzRecordAnswer(item, correct){
+  const st = phraseStatFor(item.id);
+  st.lastSeen = now();
+  if(correct){
+    st.streak++;
+    st.correctCount++;
+    state.phraseBlitz.tally.correct++;
+    if(st.streak >= PHRASE_RETIRE_STREAK && !st.retired){
+      st.retired = true;
+      st.retiredAt = now();
+      state.phraseBlitz.tally.retired++;
+    } else if(st.retired){
+      st.retiredAt = now();
+    }
+  } else {
+    st.streak = 0;
+    st.wrongCount++;
+    st.retired = false;
+    st.retiredAt = null;
+    state.phraseBlitz.tally.wrong++;
+  }
+}
+
+function phraseBlitzSubmit(){
+  if(!state.phraseBlitz || state.phraseBlitz.submitted) return;
+  const item = phraseBlitzCurrent();
+  if(!item) return;
+  const inp = $('#phraseBlitzInput');
+  state.phraseBlitz.input = inp?.value || '';
+  const correct = phraseBlitzCheck(state.phraseBlitz.input, item);
+  state.phraseBlitz.autoCorrect = correct;
+  state.phraseBlitz.submitted = true;
+  phraseBlitzRecordAnswer(item, correct);
+  save();
+  render();
+  setTimeout(() => $('#phraseBlitzContinue')?.focus(), 30);
+}
+window.phraseBlitzSubmit = phraseBlitzSubmit;
+
+function phraseBlitzReveal(){
+  if(!state.phraseBlitz || state.phraseBlitz.submitted) return;
+  const item = phraseBlitzCurrent();
+  if(!item) return;
+  const inp = $('#phraseBlitzInput');
+  state.phraseBlitz.input = inp?.value || '';
+  state.phraseBlitz.autoCorrect = false;
+  state.phraseBlitz.submitted = true;
+  phraseBlitzRecordAnswer(item, false);
+  save();
+  render();
+  setTimeout(() => $('#phraseBlitzContinue')?.focus(), 30);
+}
+window.phraseBlitzReveal = phraseBlitzReveal;
+
+function phraseBlitzSkip(){
+  if(!state.phraseBlitz) return;
+  state.phraseBlitz.submitted = false;
+  state.phraseBlitz.input = '';
+  state.phraseBlitz.autoCorrect = null;
+  state.phraseBlitz.idx++;
+  if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
+    state.phraseBlitz.active = false;
+    state.phraseBlitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#phraseBlitzInput')?.focus(), 30);
+}
+window.phraseBlitzSkip = phraseBlitzSkip;
+
+function phraseBlitzAdvance(){
+  if(!state.phraseBlitz) return;
+  state.phraseBlitz.idx++;
+  state.phraseBlitz.submitted = false;
+  state.phraseBlitz.input = '';
+  state.phraseBlitz.autoCorrect = null;
+  if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
+    state.phraseBlitz.active = false;
+    state.phraseBlitz.complete = true;
+  }
+  save();
+  render();
+  setTimeout(() => $('#phraseBlitzInput')?.focus(), 30);
+}
+window.phraseBlitzAdvance = phraseBlitzAdvance;
+
+function phraseBlitzEnd(){
+  state.phraseBlitz = null;
+  nav('phrases');
+}
+window.phraseBlitzEnd = phraseBlitzEnd;
+
+function renderPhrases(){
+  const counts = phraseCounts();
+  const header = `
+    <div class="card">
+      <h2 style="margin-top:0">Phrases</h2>
+      <div class="muted" style="font-size:13px;line-height:1.5">
+        Practical chunks — what you'd actually say to a friend, in a shop, on the way somewhere. Drill: read the English, type the Japanese.
+      </div>
+      <div class="stats-row" style="margin-top:12px">
+        <div class="stat-box"><div class="stat-num">${counts.retired}</div><div class="stat-label">Mastered</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.learning}</div><div class="stat-label">Learning</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.unseen}</div><div class="stat-label">Unseen</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.total}</div><div class="stat-label">Total</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startPhraseBlitz('all')">▶ Drill all categories</button>
+    </div>
+  `;
+
+  const cats = PHRASE_CATEGORIES.map(c => {
+    const cc = phraseCounts(c.key);
+    const items = PHRASE_POOL.filter(p => p.cat === c.key).map(p => {
+      const st = state.phraseStats && state.phraseStats[p.id];
+      const dot = st && st.retired ? '✓' : st ? '·' : '○';
+      return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:14px"><b>${esc(p.jp)}</b> <span class="muted" style="font-size:12px">${dot}</span></div>
+        <div class="muted" style="font-size:13px">${esc(p.en)}</div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="card" style="padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+          <h3 style="margin:0">${esc(c.label)}</h3>
+          <span class="muted" style="font-size:12px">${cc.retired} / ${cc.total} mastered</span>
+        </div>
+        <button class="btn btn-orange" style="width:100%;font-size:14px;padding:10px" onclick="startPhraseBlitz('${c.key}')">Drill ${esc(c.label.toLowerCase())}</button>
+        <div class="collapsible" id="phr_${c.key}" style="margin-top:8px">
+          <div class="collapsible-head" onclick="document.getElementById('phr_${c.key}').classList.toggle('open')">
+            <span class="muted" style="font-size:13px">Browse phrases</span>
+            <span class="collapsible-arrow">›</span>
+          </div>
+          <div class="collapsible-body" style="padding-top:6px">${items}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return header + cats + `
+    <div class="card">
+      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
+    </div>
+  `;
+}
+
+function renderPhraseBlitz(){
+  const pb = state.phraseBlitz;
+  if(!pb){
+    return `<div class="card"><div class="muted">No active phrase drill.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('phrases')">Back to phrases</button></div>`;
+  }
+  if(pb.complete){
+    const t = pb.tally;
+    const attempts = t.correct + t.wrong;
+    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    const counts = phraseCounts(pb.cat);
+    const scope = pb.cat === 'all' ? 'All categories' : (PHRASE_CATEGORIES.find(c=>c.key===pb.cat)?.label || pb.cat);
+    return `<div class="card">
+      <h2 style="margin-top:0">Phrase drill complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
+        ${esc(scope)}: <b>${counts.retired}</b> / ${counts.total} mastered · ${counts.learning} learning · ${counts.unseen} unseen
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startPhraseBlitz('${pb.cat}')">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="phraseBlitzEnd()">Back to phrases</button>
+    </div>`;
+  }
+  const item = phraseBlitzCurrent();
+  if(!item) return `<div class="card"><div class="muted">No phrases.</div></div>`;
+  const st = state.phraseStats[item.id];
+  const streak = st?.streak || 0;
+  const retired = st?.retired || false;
+  const total = pb.pool.length;
+  const pos = pb.idx + 1;
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Phrase ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">${esc(item.cat)}${retired ? ' · maintenance' : ''}</span>
+    </div>
+  </div>`;
+
+  if(!pb.submitted){
+    return head + `<div class="card">
+      <div style="font-size:22px;text-align:center;font-weight:600;line-height:1.4;padding:20px 8px;color:var(--text)">${esc(item.en)}</div>
+      <input id="phraseBlitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type the phrase in kana / romaji" onkeydown="if(event.key==='Enter'){event.preventDefault();phraseBlitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="phraseBlitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="phraseBlitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="phraseBlitzSkip()">Skip phrase</button>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:8px">Streak: ${streak} / ${PHRASE_RETIRE_STREAK}</div>
+    </div>`;
+  }
+
+  const correct = pb.autoCorrect;
+  return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
+    <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:6px">${esc(item.en)}</div>
+    <div class="jp" style="font-size:26px;text-align:center;font-weight:700;line-height:1.4;padding:8px">${esc(item.jp)}</div>
+    <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
+      ${correct ? '✓ correct' : '✗ wrong'}
+    </div>
+    ${!correct && pb.input ? `<div class="feedback-smart" style="margin-top:10px">You wrote: <b>${esc(pb.input)}</b></div>` : ''}
+    <div class="spacer"></div>
+    <div class="audio-row">
+      <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen</button>
+    </div>
+    <div class="spacer"></div>
+    <button id="phraseBlitzContinue" class="btn btn-primary" style="width:100%" onclick="phraseBlitzAdvance()">Continue</button>
   </div>`;
 }
 
@@ -5258,7 +5707,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode}[state.screen] || renderHome;
+  const r = {home:renderHome, drill:renderDrill, convo:renderConvo, sentence:renderSentence, settings:renderSettings, convoDetail:renderConvoDetail, particles:renderParticles, dashboard:renderDashboard, patterns:renderPatterns, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -5365,6 +5814,16 @@ function renderHome(){
         <h3>Sentence Blitz</h3>
         <button class="btn btn-orange" style="width:100%" onclick="startSentenceBlitz()">📖 Read &amp; type</button>
         <div class="muted" style="font-size:12px;margin-top:6px">Read JP, type it back, reveal English. Retire on 5-streak. Strugglers surface more often. ${esc(sub)}</div>
+      </div>`;
+    })()}
+
+    ${(() => {
+      const pc = phraseCounts();
+      const sub = `${pc.retired} / ${pc.total} mastered · ${pc.learning} learning · ${pc.unseen} unseen`;
+      return `<div class="card">
+        <h3>Phrases</h3>
+        <button class="btn btn-orange" style="width:100%" onclick="nav('phrases')">💬 Practical phrases</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">Pre-fab chunks for real situations — "I'll be there in 30 min", "say it again please". Read EN, produce JP. ${esc(sub)}</div>
       </div>`;
     })()}
 
@@ -6360,7 +6819,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
