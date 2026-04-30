@@ -304,7 +304,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.7.0';
+const APP_VERSION = '6.8.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1282,7 +1282,8 @@ const LS = {
   kanaStats:'jp4_kana_stats',
   sentenceStats:'jp4_sentence_stats',
   phraseStats:'jp4_phrase_stats',
-  particleStats:'jp4_particle_stats'
+  particleStats:'jp4_particle_stats',
+  variationStats:'jp4_variation_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1331,6 +1332,10 @@ let state = {
   sentenceBlitz:null,   // active Sentence Blitz session — v6.2
   phraseStats:{},       // phrase id -> same shape as sentenceStats — v6.3
   phraseBlitz:null,     // active Phrase Blitz session — v6.3
+  particleStats:{},     // drillIdx -> blankIdx -> {streak, retired, retiredAt, correctCount, wrongCount, lastSeen} — v6.7
+  particleSession:null, // active Particle session — v6.7
+  variationStats:{},    // drill id -> variantIdx -> same shape — v6.8
+  variationBlitz:null,  // active Variation Blitz session — v6.8
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null
@@ -1571,6 +1576,7 @@ function save(){
     localStorage.setItem(LS.sentenceStats, JSON.stringify(state.sentenceStats || {}));
     localStorage.setItem(LS.phraseStats, JSON.stringify(state.phraseStats || {}));
     localStorage.setItem(LS.particleStats, JSON.stringify(state.particleStats || {}));
+    localStorage.setItem(LS.variationStats, JSON.stringify(state.variationStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1593,6 +1599,7 @@ function load(){
     state.sentenceStats = JSON.parse(localStorage.getItem(LS.sentenceStats)||'{}');
     state.phraseStats = JSON.parse(localStorage.getItem(LS.phraseStats)||'{}');
     state.particleStats = JSON.parse(localStorage.getItem(LS.particleStats)||'{}');
+    state.variationStats = JSON.parse(localStorage.getItem(LS.variationStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -4452,6 +4459,472 @@ function renderPhraseBlitz(){
 }
 
 /* =========================================================================
+   VARIATIONS — one English intent, multiple Japanese ways to say it.
+   Real life isn't 1:1; you say the same thing casually, politely, with a
+   softener, in past tense, with a different particle. This mode exposes
+   3-4 variants per intent. User types ANY of them; whichever they typed
+   gets streak credit toward retirement. After answering, the OTHER
+   variants are revealed with register notes — that's how new variants
+   surface naturally. Retire per-variant; drill ranks as "fully mastered"
+   only when every variant retires.
+   ========================================================================= */
+const VARIATION_POOL = [
+  {id:'v_late', en:"I'm running late",
+   variants:[
+     {jp:'ちょっと おくれます', register:'polite', note:"plain polite — 'I'll be a bit late'"},
+     {jp:'すみません、おくれます', register:'polite', note:"with apology prefix"},
+     {jp:'いま いきます', register:'polite', note:"'I'm on my way' (en route)"},
+     {jp:'もうすぐ つきます', register:'polite', note:"'I'm almost there' (close)"}
+   ]},
+  {id:'v_toilet', en:"Where's the bathroom?",
+   variants:[
+     {jp:'トイレは どこですか', register:'polite', note:"the standard polite ask"},
+     {jp:'トイレは どこ', register:'casual', note:"casual — friends, family"},
+     {jp:'すみません、トイレは どこですか', register:'polite', note:"with apology prefix — strangers"},
+     {jp:'おてあらいは どこですか', register:'formal', note:"more formal — お手洗い (lit. hand-washing)"}
+   ]},
+  {id:'v_water', en:"Can I have water?",
+   variants:[
+     {jp:'みず ください', register:'polite', note:"basic polite request"},
+     {jp:'みずを おねがいします', register:'polite', note:"a touch more polite"},
+     {jp:'すみません、みずを ください', register:'polite', note:"with apology prefix"},
+     {jp:'みず、もらえますか', register:'polite', note:"asking permission — 'could I get water?'"}
+   ]},
+  {id:'v_dontget', en:"I don't understand",
+   variants:[
+     {jp:'わかりません', register:'polite', note:"the polite default"},
+     {jp:'わからない', register:'casual', note:"casual — friends"},
+     {jp:'ちょっと わかりません', register:'polite', note:"softened with chotto — feels less blunt"},
+     {jp:'よく わかりません', register:'polite', note:"'I don't understand well' — useful when you got partly"}
+   ]},
+  {id:'v_yum', en:"It's delicious",
+   variants:[
+     {jp:'おいしい', register:'casual', note:"plain — friends, family"},
+     {jp:'おいしい です', register:'polite', note:"polite default"},
+     {jp:'とても おいしい です', register:'polite', note:"intensified — really delicious"},
+     {jp:'おいしかった です', register:'polite', note:"past — when you finish the meal"}
+   ]},
+  {id:'v_sorry', en:"Sorry to bother you",
+   variants:[
+     {jp:'すみません', register:'polite', note:"the all-purpose apology / get-attention word"},
+     {jp:'ごめんなさい', register:'polite', note:"more apologetic — friends, smaller infractions"},
+     {jp:'すみません、ちょっと…', register:'polite', note:"trailing — soft interruption"},
+     {jp:'しつれいします', register:'formal', note:"formal 'excuse me' — entering rooms, leaving"}
+   ]},
+  {id:'v_thisone', en:"I'll have this one",
+   variants:[
+     {jp:'これ ください', register:'polite', note:"basic 'this please' — pointing"},
+     {jp:'これを おねがいします', register:'polite', note:"a touch more polite"},
+     {jp:'これに します', register:'polite', note:"decision form — 'I'll go with this one'"},
+     {jp:'これが いい です', register:'polite', note:"'this one's good' — choosing among options"}
+   ]},
+  {id:'v_where_from', en:"Where are you from?",
+   variants:[
+     {jp:'どこから きましたか', register:'polite', note:"literal 'where did you come from'"},
+     {jp:'ごしゅっしんは どこですか', register:'formal', note:"more formal — ご出身 (hometown)"},
+     {jp:'くには どこですか', register:'polite', note:"'what country' — for travelers"},
+     {jp:'どこの しゅっしん ですか', register:'polite', note:"alternate phrasing of the formal ask"}
+   ]},
+  {id:'v_name', en:"What's your name?",
+   variants:[
+     {jp:'おなまえは なんですか', register:'polite', note:"the polite default"},
+     {jp:'おなまえは', register:'polite', note:"trailing — softer, more conversational"},
+     {jp:'なまえは なんですか', register:'polite', note:"without the お — slightly less polite"},
+     {jp:'なんという なまえですか', register:'polite', note:"'what name is it called' — alternate phrasing"}
+   ]},
+  {id:'v_help', en:"Can you help me?",
+   variants:[
+     {jp:'てつだって ください', register:'polite', note:"'please help' — direct"},
+     {jp:'てつだって もらえますか', register:'polite', note:"'could you help' — asking permission"},
+     {jp:'ちょっと おねがい できますか', register:'polite', note:"'could I ask a favor' — softer"},
+     {jp:'てつだって くれませんか', register:'polite', note:"'won't you help' — friendly nudge"}
+   ]},
+  {id:'v_letsgo', en:"Let's go",
+   variants:[
+     {jp:'いきましょう', register:'polite', note:"polite volitional — 'let's go'"},
+     {jp:'いこう', register:'casual', note:"casual volitional — friends"},
+     {jp:'いきましょうか', register:'polite', note:"'shall we go' — questioning, polite"},
+     {jp:'そろそろ いきましょう', register:'polite', note:"'it's about time we got going' — gentle nudge"}
+   ]},
+  {id:'v_tired', en:"I'm tired",
+   variants:[
+     {jp:'つかれた', register:'casual', note:"casual past — friends, family"},
+     {jp:'つかれました', register:'polite', note:"polite past — work, strangers"},
+     {jp:'ちょっと つかれました', register:'polite', note:"softened — 'a bit tired'"},
+     {jp:'とても つかれました', register:'polite', note:"intensified — 'really tired'"}
+   ]},
+  {id:'v_howmuch', en:"How much is it?",
+   variants:[
+     {jp:'いくら ですか', register:'polite', note:"the polite default"},
+     {jp:'いくら', register:'casual', note:"casual — friends, markets"},
+     {jp:'これは いくら ですか', register:'polite', note:"specific — 'how much is THIS'"},
+     {jp:'おいくら ですか', register:'formal', note:"more polite — お adds politeness"}
+   ]},
+  {id:'v_meet', en:"Nice to meet you",
+   variants:[
+     {jp:'はじめまして', register:'polite', note:"'first meeting' — opens introductions"},
+     {jp:'よろしく おねがいします', register:'polite', note:"'please treat me well' — closes introductions"},
+     {jp:'はじめまして、よろしく おねがいします', register:'polite', note:"the full canonical pairing"},
+     {jp:'こちらこそ', register:'polite', note:"'likewise' — the response when they say it first"}
+   ]},
+  {id:'v_looking', en:"I'm just looking",
+   variants:[
+     {jp:'みているだけです', register:'polite', note:"'just looking' — direct decline of help"},
+     {jp:'だいじょうぶです', register:'polite', note:"'I'm fine' — soft decline (very common)"},
+     {jp:'ちょっと みています', register:'polite', note:"'just having a look' — softened"},
+     {jp:'けっこうです', register:'polite', note:"'no thanks' — slightly firmer decline"}
+   ]}
+];
+
+const VARIATION_RETIRE_STREAK = 3;
+const VARIATION_SESSION_TARGET = 10;
+
+function variationStatFor(drillId, variantIdx){
+  if(!state.variationStats) state.variationStats = {};
+  if(!state.variationStats[drillId]) state.variationStats[drillId] = {};
+  if(!state.variationStats[drillId][variantIdx]){
+    state.variationStats[drillId][variantIdx] = {streak:0, retired:false, retiredAt:null, correctCount:0, wrongCount:0, lastSeen:null};
+  }
+  return state.variationStats[drillId][variantIdx];
+}
+function variationStatPeek(drillId, variantIdx){
+  return state.variationStats?.[drillId]?.[variantIdx] || null;
+}
+function variationDrillIsIntroduced(drillId){
+  /* A drill is "introduced" once any variant has been seen. */
+  const m = state.variationStats?.[drillId];
+  if(!m) return false;
+  for(const k in m){
+    if(typeof m[k].lastSeen !== 'undefined' && m[k].lastSeen) return true;
+    if(m[k].correctCount || m[k].wrongCount) return true;
+  }
+  return false;
+}
+function variationMarkIntroduced(drillId){
+  /* Touch the first variant's stat with a timestamp so the introduce screen
+     doesn't show again. Doesn't grant any streak — user still has to type. */
+  const st = variationStatFor(drillId, 0);
+  st.lastSeen = now();
+  save();
+  render();
+}
+window.variationMarkIntroduced = variationMarkIntroduced;
+
+function variationDrillFullyRetired(drillId){
+  const drill = VARIATION_POOL.find(d => d.id === drillId);
+  if(!drill) return false;
+  for(let i = 0; i < drill.variants.length; i++){
+    const st = variationStatPeek(drillId, i);
+    if(!st || !st.retired) return false;
+  }
+  return true;
+}
+
+function buildVariationPool(){
+  const eligible = VARIATION_POOL.filter(d => !variationDrillFullyRetired(d.id));
+  if(!eligible.length) return shuffleFY(VARIATION_POOL.slice()).slice(0, VARIATION_SESSION_TARGET);
+  return shuffleFY(eligible).slice(0, VARIATION_SESSION_TARGET);
+}
+
+function variationCounts(){
+  let totalVariants = 0, retiredVariants = 0, drillsDone = 0;
+  for(const d of VARIATION_POOL){
+    let allRet = true;
+    for(let i = 0; i < d.variants.length; i++){
+      totalVariants++;
+      const st = variationStatPeek(d.id, i);
+      if(st?.retired) retiredVariants++; else allRet = false;
+    }
+    if(allRet) drillsDone++;
+  }
+  return {totalDrills: VARIATION_POOL.length, drillsDone, totalVariants, retiredVariants};
+}
+
+/* Match the user's loose input against ANY variant in the drill. Returns
+   the matched variant index, or -1 if no match. */
+function variationCheck(input, drill){
+  if(!input) return -1;
+  const norm = normJPLoose(input);
+  for(let i = 0; i < drill.variants.length; i++){
+    if(normJPLoose(drill.variants[i].jp) === norm) return i;
+  }
+  return -1;
+}
+
+function startVariationBlitz(){
+  if(!state.variationStats) state.variationStats = {};
+  const pool = buildVariationPool();
+  if(!pool.length){
+    showToast('No variations to drill.', 'success');
+    return;
+  }
+  state.variationBlitz = {
+    active:true, complete:false,
+    pool, idx:0, submitted:false, input:'', matchedIdx:-1,
+    tally:{correct:0, wrong:0, retired:0, total:pool.length}
+  };
+  nav('variationBlitz');
+}
+window.startVariationBlitz = startVariationBlitz;
+
+function variationBlitzCurrent(){
+  if(!state.variationBlitz || !state.variationBlitz.active) return null;
+  return state.variationBlitz.pool[state.variationBlitz.idx] || null;
+}
+
+function variationBlitzSubmit(){
+  if(!state.variationBlitz || state.variationBlitz.submitted) return;
+  const drill = variationBlitzCurrent();
+  if(!drill) return;
+  const inp = $('#variationBlitzInput');
+  state.variationBlitz.input = inp?.value || '';
+  const matchedIdx = variationCheck(state.variationBlitz.input, drill);
+  state.variationBlitz.matchedIdx = matchedIdx;
+  state.variationBlitz.submitted = true;
+  const correct = matchedIdx >= 0;
+  updateStreak(correct);
+  if(correct){
+    const st = variationStatFor(drill.id, matchedIdx);
+    st.lastSeen = now();
+    st.streak++;
+    st.correctCount++;
+    if(st.streak >= VARIATION_RETIRE_STREAK && !st.retired){
+      st.retired = true;
+      st.retiredAt = now();
+      state.variationBlitz.tally.retired++;
+    }
+    state.variationBlitz.tally.correct++;
+  } else {
+    /* Wrong — touch the drill's first variant stat so the introduce screen
+       won't fire again, and bump wrongCount on variant 0 as a proxy. */
+    const st = variationStatFor(drill.id, 0);
+    st.lastSeen = now();
+    st.wrongCount++;
+    st.streak = 0;
+    state.variationBlitz.tally.wrong++;
+  }
+  save();
+  render();
+  setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
+}
+window.variationBlitzSubmit = variationBlitzSubmit;
+
+function variationBlitzReveal(){
+  if(!state.variationBlitz || state.variationBlitz.submitted) return;
+  const drill = variationBlitzCurrent();
+  if(!drill) return;
+  const inp = $('#variationBlitzInput');
+  state.variationBlitz.input = inp?.value || '';
+  state.variationBlitz.matchedIdx = -1;
+  state.variationBlitz.submitted = true;
+  const st = variationStatFor(drill.id, 0);
+  st.lastSeen = now();
+  st.wrongCount++;
+  state.variationBlitz.tally.wrong++;
+  save();
+  render();
+  setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
+}
+window.variationBlitzReveal = variationBlitzReveal;
+
+function variationBlitzSkip(){
+  if(!state.variationBlitz) return;
+  state.variationBlitz.submitted = false;
+  state.variationBlitz.input = '';
+  state.variationBlitz.matchedIdx = -1;
+  state.variationBlitz.idx++;
+  if(state.variationBlitz.idx >= state.variationBlitz.pool.length){
+    state.variationBlitz.active = false;
+    state.variationBlitz.complete = true;
+  }
+  render();
+  setTimeout(() => $('#variationBlitzInput')?.focus(), 30);
+}
+window.variationBlitzSkip = variationBlitzSkip;
+
+function variationBlitzAdvance(){
+  if(!state.variationBlitz) return;
+  state.variationBlitz.idx++;
+  state.variationBlitz.submitted = false;
+  state.variationBlitz.input = '';
+  state.variationBlitz.matchedIdx = -1;
+  if(state.variationBlitz.idx >= state.variationBlitz.pool.length){
+    state.variationBlitz.active = false;
+    state.variationBlitz.complete = true;
+  }
+  save();
+  render();
+  setTimeout(() => $('#variationBlitzInput')?.focus(), 30);
+}
+window.variationBlitzAdvance = variationBlitzAdvance;
+
+function variationBlitzEnd(){
+  state.variationBlitz = null;
+  nav('variations');
+}
+window.variationBlitzEnd = variationBlitzEnd;
+
+function renderVariations(){
+  const counts = variationCounts();
+  const items = VARIATION_POOL.map(d => {
+    const dr = state.variationStats?.[d.id];
+    let retCount = 0;
+    for(let i = 0; i < d.variants.length; i++){
+      if(dr?.[i]?.retired) retCount++;
+    }
+    const fully = retCount === d.variants.length;
+    const dot = fully ? '✓' : (retCount ? `${retCount}/${d.variants.length}` : '○');
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(d.en)}</div>
+        <span class="muted" style="font-size:11px;white-space:nowrap">${dot}</span>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:2px">${d.variants.map(v => esc(v.jp)).join(' · ')}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <h2 style="margin-top:0">Variations</h2>
+      <div class="muted" style="font-size:13px;line-height:1.5">
+        One thing in English, several ways in Japanese — casual, polite, softened, past, alternate phrasing. Type any one variant; the others reveal afterward so you absorb new ways naturally.
+      </div>
+      <div class="stats-row" style="margin-top:12px">
+        <div class="stat-box"><div class="stat-num">${counts.drillsDone}</div><div class="stat-label">Mastered</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.retiredVariants}</div><div class="stat-label">Variants done</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.totalVariants}</div><div class="stat-label">Total variants</div></div>
+        <div class="stat-box"><div class="stat-num">${counts.totalDrills}</div><div class="stat-label">Intents</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startVariationBlitz()">▶ Drill variations</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Browse all intents</h3>
+      ${items}
+    </div>
+    <div class="card">
+      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
+    </div>
+  `;
+}
+
+function renderVariationBlitz(){
+  const vb = state.variationBlitz;
+  if(!vb){
+    return `<div class="card"><div class="muted">No active variation drill.</div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('variations')">Back to variations</button></div>`;
+  }
+  if(vb.complete){
+    const t = vb.tally;
+    const attempts = t.correct + t.wrong;
+    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    const counts = variationCounts();
+    return `<div class="card">
+      <h2 style="margin-top:0">Variation drill complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+      </div>
+      <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
+        <b>${counts.drillsDone}</b> / ${counts.totalDrills} intents fully mastered · ${counts.retiredVariants} / ${counts.totalVariants} variants retired
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startVariationBlitz()">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="variationBlitzEnd()">Back to variations</button>
+    </div>`;
+  }
+
+  const drill = variationBlitzCurrent();
+  if(!drill) return `<div class="card"><div class="muted">No drill.</div></div>`;
+  const total = vb.pool.length;
+  const pos = vb.idx + 1;
+
+  /* Per-variant retired count for header context */
+  let retCount = 0;
+  for(let i = 0; i < drill.variants.length; i++){
+    if(state.variationStats?.[drill.id]?.[i]?.retired) retCount++;
+  }
+
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Intent ${pos} / ${total}</span>
+      <span class="muted" style="font-size:12px">${retCount} / ${drill.variants.length} variants retired</span>
+    </div>
+  </div>`;
+
+  /* Introduce phase: never-seen drill gets all variants exposed first. */
+  if(!vb.submitted && !variationDrillIsIntroduced(drill.id)){
+    if(vb._lastIntroAutoplay !== drill.id){
+      vb._lastIntroAutoplay = drill.id;
+      setTimeout(() => { try{ speakJP(drill.variants[0].jp); }catch(e){} }, 300);
+    }
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">New intent</div>
+      <div style="font-size:20px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(drill.en)}</div>
+      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:8px">${drill.variants.length} ways to say this</div>
+      ${drill.variants.map(v => `
+        <div style="border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;background:rgba(255,255,255,0.02);border-radius:4px">
+          <div class="jp" style="font-size:18px;font-weight:600">${esc(v.jp)}</div>
+          <div class="muted" style="font-size:12px;font-style:italic">${esc(kanaToRomaji(v.jp))}</div>
+          <div class="muted" style="font-size:12px;margin-top:4px"><b>${esc(v.register)}</b> — ${esc(v.note)}</div>
+          <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(v.jp)}')">🔊</button></div>
+        </div>
+      `).join('')}
+      <div class="spacer"></div>
+      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Read each, hear each, then drill — type any one variant. The others surface as you go.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="variationMarkIntroduced('${jsEsc(drill.id)}')">Got it — drill me</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="variationBlitzSkip()">Skip this intent</button>
+    </div>`;
+  }
+
+  if(!vb.submitted){
+    return head + `<div class="card">
+      <div style="font-size:22px;text-align:center;font-weight:600;line-height:1.4;padding:20px 8px;color:var(--text)">${esc(drill.en)}</div>
+      <div class="muted" style="text-align:center;font-size:12px;margin-bottom:8px">type any one Japanese variant</div>
+      <input id="variationBlitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="kana or romaji" onkeydown="if(event.key==='Enter'){event.preventDefault();variationBlitzSubmit();}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="variationBlitzReveal()">Reveal</button>
+        <button class="btn btn-primary" onclick="variationBlitzSubmit()">Submit</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="variationBlitzSkip()">Skip this intent</button>
+    </div>`;
+  }
+
+  /* Feedback: show user's input result + reveal all variants with notes. */
+  const matched = vb.matchedIdx;
+  const correct = matched >= 0;
+  return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
+    <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:6px">${esc(drill.en)}</div>
+    <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
+      ${correct ? `✓ matched variant ${matched+1}` : '✗ no match'}
+    </div>
+    ${vb.input ? `<div class="feedback-smart" style="margin-top:6px">You wrote: <b>${esc(vb.input)}</b></div>` : ''}
+    <div class="spacer"></div>
+    <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">All ways to say it</div>
+    ${drill.variants.map((v, i) => {
+      const st = variationStatPeek(drill.id, i);
+      const isMatched = i === matched;
+      const isRetired = st?.retired;
+      const streak = st?.streak || 0;
+      return `<div style="border-left:3px solid ${isMatched ? 'var(--green)' : (isRetired ? 'var(--accent)' : 'var(--border)')};padding:8px 12px;margin:6px 0;background:rgba(255,255,255,0.02);border-radius:4px">
+        <div class="jp" style="font-size:17px;font-weight:600">${esc(v.jp)} ${isMatched ? '<span style="color:var(--green);font-size:12px">← you wrote this</span>' : ''}${isRetired ? '<span style="color:var(--accent);font-size:11px"> · retired</span>' : ''}</div>
+        <div class="muted" style="font-size:12px;font-style:italic">${esc(kanaToRomaji(v.jp))}</div>
+        <div class="muted" style="font-size:12px;margin-top:4px"><b>${esc(v.register)}</b> — ${esc(v.note)} <span style="opacity:0.7">· streak ${streak}/${VARIATION_RETIRE_STREAK}</span></div>
+        <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(v.jp)}')">🔊</button></div>
+      </div>`;
+    }).join('')}
+    <div class="spacer"></div>
+    <button id="variationBlitzContinue" class="btn btn-primary" style="width:100%" onclick="variationBlitzAdvance()">Continue</button>
+  </div>`;
+}
+
+/* =========================================================================
    BUILD MODE — Paul Noble-style audio-led sentence construction
    Templates drive sentences, deck provides slot-fillers. Trust-based:
    produce out loud, reveal the answer, tap Next. Structure-driven —
@@ -5607,7 +6080,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -5721,6 +6194,16 @@ function renderHome(){
         <h3>Phrases</h3>
         <button class="btn btn-orange" style="width:100%" onclick="nav('phrases')">💬 Practical phrases</button>
         <div class="muted" style="font-size:12px;margin-top:6px">Pre-fab chunks for real situations — "I'll be there in 30 min", "say it again please". Read EN, produce JP. ${esc(sub)}</div>
+      </div>`;
+    })()}
+
+    ${(() => {
+      const vc = variationCounts();
+      const sub = `${vc.drillsDone} / ${vc.totalDrills} intents fully mastered · ${vc.retiredVariants} / ${vc.totalVariants} variants done`;
+      return `<div class="card">
+        <h3>Variations</h3>
+        <button class="btn btn-orange" style="width:100%" onclick="nav('variations')">🔀 Say it multiple ways</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">One English intent, several Japanese ways — casual, polite, softened, alternate phrasing. Type any one variant, the others reveal afterward. ${esc(sub)}</div>
       </div>`;
     })()}
 
@@ -6188,7 +6671,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, particleStats:state.particleStats||{}, variationStats:state.variationStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
@@ -6223,6 +6706,28 @@ function handleImport(ev){
       if(d.sentenceStats){
         if(!state.sentenceStats) state.sentenceStats = {};
         for(const k in d.sentenceStats) if(!state.sentenceStats[k]) state.sentenceStats[k] = d.sentenceStats[k];
+      }
+      if(d.phraseStats){
+        if(!state.phraseStats) state.phraseStats = {};
+        for(const k in d.phraseStats) if(!state.phraseStats[k]) state.phraseStats[k] = d.phraseStats[k];
+      }
+      if(d.particleStats){
+        if(!state.particleStats) state.particleStats = {};
+        for(const di in d.particleStats){
+          if(!state.particleStats[di]) state.particleStats[di] = {};
+          for(const bi in d.particleStats[di]){
+            if(!state.particleStats[di][bi]) state.particleStats[di][bi] = d.particleStats[di][bi];
+          }
+        }
+      }
+      if(d.variationStats){
+        if(!state.variationStats) state.variationStats = {};
+        for(const did in d.variationStats){
+          if(!state.variationStats[did]) state.variationStats[did] = {};
+          for(const vi in d.variationStats[did]){
+            if(!state.variationStats[did][vi]) state.variationStats[did][vi] = d.variationStats[did][vi];
+          }
+        }
       }
       save(); load(); alert('Import complete.'); render();
     }catch(e){ alert('Import failed: '+e.message); }
