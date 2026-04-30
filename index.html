@@ -304,7 +304,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.8.0';
+const APP_VERSION = '6.9.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2399,6 +2399,26 @@ function blitzRefillIfNeeded(){
   state.blitz.tally.refills = (state.blitz.tally.refills || 0) + 1;
 }
 
+/* v6.9 — Vocab Blitz introduce phase: never-seen words get one exposure
+   (EN + JP + romaji + 🔊) before entering test rotation. Mirrors Phrases
+   (v6.6) and Variations (v6.8). Legacy stats with prior attempts are
+   treated as already-introduced so existing learners don't get re-prompted. */
+function vocabIsIntroduced(w){
+  if(!w) return true;
+  const st = state.stats[w.id];
+  if(!st) return false;
+  if(st.attempts && st.attempts.length > 0) return true;
+  return !!st.introduced;
+}
+function vocabMarkIntroduced(id){
+  const st = smStatFor(id);
+  st.introduced = true;
+  save();
+  render();
+  setTimeout(() => $('#blitzInput')?.focus(), 30);
+}
+window.vocabMarkIntroduced = vocabMarkIntroduced;
+
 function startBlitz(){
   const poolTarget = (state.settings.blitzPoolLearning ?? 8) + (state.settings.blitzPoolMature ?? 4);
   const pool = buildBlitzPool();
@@ -2657,6 +2677,31 @@ function renderBlitz(){
       <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
     </div>
   </div>`;
+
+  /* v6.9 — introduce phase: never-seen words get one exposure before test rotation. */
+  if(!b.submitted && !vocabIsIntroduced(w)){
+    const romaji = w.romaji || kanaToRomaji(w.jp);
+    /* autoplay JP once when the introduce card first mounts for this word */
+    if(b._lastIntroAutoplay !== w.id){
+      b._lastIntroAutoplay = w.id;
+      setTimeout(() => { try{ speakJP(w.jp); }catch(e){} }, 300);
+    }
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">New word</div>
+      <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(w.en)}</div>
+      <div class="jp" style="font-size:36px;text-align:center;font-weight:700;line-height:1.4;padding:6px 8px">${esc(w.jp)}</div>
+      ${romaji ? `<div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>` : ''}
+      <div class="spacer"></div>
+      <div class="audio-row">
+        <button class="audio-btn" onclick="speakJP('${jsEsc(w.jp)}')">🔊 Listen again</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Read it, hear it, say it aloud. Tap when ready to drill.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="vocabMarkIntroduced('${jsEsc(w.id)}')">Got it — drill me</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="blitzSkip()">Skip card</button>
+    </div>`;
+  }
 
   if(!b.submitted){
     return head + `<div class="card">
