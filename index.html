@@ -304,7 +304,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.5.0';
+const APP_VERSION = '6.6.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1273,6 +1273,48 @@ function romajiToKana(s){
     const single = t[i];
     if(ROMAJI_KANA[single]){ out += ROMAJI_KANA[single]; i++; continue; }
     out += single; i++;
+  }
+  return out;
+}
+
+/* v6.6 — kana→romaji approximation for study hints (Phrases introduce screen).
+   Greedy 2-char yoon match, then 1-char fallback. Handles っ (sokuon → double next
+   consonant) and ー (long-vowel mark → repeat last vowel). Particle quirks
+   (は=wa, へ=e, を=o) follow the KANA_FULL table (ha/he/wo) — slightly off but
+   close enough as a learning hint. Whitespace + punctuation passed through. */
+let _KANA_ROMAJI_MAP = null;
+function kanaRomajiMap(){
+  if(_KANA_ROMAJI_MAP) return _KANA_ROMAJI_MAP;
+  const m = new Map();
+  for(const item of KANA_FULL) m.set(item.k, item.r);
+  _KANA_ROMAJI_MAP = m;
+  return m;
+}
+function kanaToRomaji(s){
+  if(!s) return '';
+  const map = kanaRomajiMap();
+  let out = '';
+  let pendingDouble = false;
+  for(let i = 0; i < s.length; ){
+    const ch = s[i];
+    const ch2 = s[i+1];
+    if(ch === 'っ' || ch === 'ッ'){ pendingDouble = true; i++; continue; }
+    if(ch === 'ー'){ out += (out.slice(-1) || ''); i++; continue; }
+    if(/\s/.test(ch) || /[、。・！？「」]/.test(ch)){ out += ch; i++; continue; }
+    if(ch2){
+      const yoon = ch + ch2;
+      if(map.has(yoon)){
+        let r = map.get(yoon);
+        if(pendingDouble){ r = r[0] + r; pendingDouble = false; }
+        out += r; i += 2; continue;
+      }
+    }
+    if(map.has(ch)){
+      let r = map.get(ch);
+      if(pendingDouble){ r = r[0] + r; pendingDouble = false; }
+      out += r; i++; continue;
+    }
+    out += ch; i++;
   }
   return out;
 }
@@ -3921,10 +3963,28 @@ const PHRASE_CATEGORIES = [
 function phraseStatFor(id){
   if(!state.phraseStats) state.phraseStats = {};
   if(!state.phraseStats[id]){
-    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0};
+    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0, introduced:false};
   }
   return state.phraseStats[id];
 }
+
+/* v6.6 — never-seen phrases get an introduce screen before they enter test
+   rotation. Legacy stats (pre-v6.6) had no `introduced` field and are treated
+   as already introduced so existing learners don't get re-prompted. */
+function phraseIsIntroduced(item){
+  const st = state.phraseStats && state.phraseStats[item.id];
+  if(!st) return false;
+  if(typeof st.introduced === 'undefined') return true;
+  return !!st.introduced;
+}
+function phraseMarkIntroduced(id){
+  const st = phraseStatFor(id);
+  st.introduced = true;
+  st.lastSeen = now();
+  save();
+  render();
+}
+window.phraseMarkIntroduced = phraseMarkIntroduced;
 
 function phraseDueForMaintenance(id){
   const st = state.phraseStats && state.phraseStats[id];
@@ -4199,6 +4259,31 @@ function renderPhraseBlitz(){
       <span class="muted" style="font-size:12px">${esc(item.cat)}${retired ? ' · maintenance' : ''}</span>
     </div>
   </div>`;
+
+  /* v6.6 — introduce phase: never-seen phrases get one exposure before test rotation. */
+  if(!pb.submitted && !phraseIsIntroduced(item)){
+    const romaji = kanaToRomaji(item.jp);
+    /* autoplay JP once when the introduce card first mounts for this item */
+    if(pb._lastIntroAutoplay !== item.id){
+      pb._lastIntroAutoplay = item.id;
+      setTimeout(() => { try{ speakJP(item.jp); }catch(e){} }, 300);
+    }
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">New phrase</div>
+      <div style="font-size:20px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(item.en)}</div>
+      <div class="jp" style="font-size:28px;text-align:center;font-weight:700;line-height:1.4;padding:6px 8px">${esc(item.jp)}</div>
+      <div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>
+      <div class="spacer"></div>
+      <div class="audio-row">
+        <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen again</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Read it, hear it, say it aloud. Tap when ready to drill.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="phraseMarkIntroduced('${jsEsc(item.id)}')">Got it — drill me</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="phraseBlitzSkip()">Skip this phrase</button>
+    </div>`;
+  }
 
   if(!pb.submitted){
     return head + `<div class="card">
