@@ -304,7 +304,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.4.0';
+const APP_VERSION = '6.5.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3287,11 +3287,14 @@ function buildKanaPool(scope){
     else if(st.retired) maintenance.push(item);
     else learning.push(item);
   }
-  return [
+  /* v6.5 — interleave the three buckets via final shuffle so re-entry
+     doesn't always open with the same maintenance → unseen → learning run. */
+  const composed = [
     ...shuffleFY(maintenance).slice(0, 4),
     ...shuffleFY(unseen).slice(0, 8),
     ...weightedShuffle(learning, kanaStruggleWeight),
   ].slice(0, KANA_SESSION_TARGET);
+  return shuffleFY(composed);
 }
 
 function startKanaBlitz(scope){
@@ -3608,11 +3611,12 @@ function buildSentenceBlitzPool(){
     else if(st.retired) maintenance.push(item);
     else learning.push(item);
   }
-  return [
+  const composed = [
     ...shuffleFY(maintenance).slice(0, 3),
     ...shuffleFY(unseen).slice(0, 6),
     ...weightedShuffle(learning, sentenceStruggleWeight),
   ].slice(0, SENTENCE_SESSION_TARGET);
+  return shuffleFY(composed);
 }
 
 function sentenceBlitzCounts(){
@@ -3959,11 +3963,12 @@ function buildPhraseBlitzPool(catFilter){
     else if(st.retired) maintenance.push(item);
     else learning.push(item);
   }
-  return [
+  const composed = [
     ...shuffleFY(maintenance).slice(0, 3),
     ...shuffleFY(unseen).slice(0, 6),
     ...weightedShuffle(learning, phraseStruggleWeight)
   ].slice(0, PHRASE_SESSION_TARGET);
+  return shuffleFY(composed);
 }
 
 function phraseCounts(catFilter){
@@ -4832,6 +4837,27 @@ function _buildSetPhase(phase, durMs){
 
 function _buildAutoOn(){ return state.settings.buildAutoAdvance !== false; }
 
+/* v6.5 — adaptive pacing. Known words shrink think+linger so easy reviews
+   don't drag. Brand-new exposures (introduce steps, sentence-only steps)
+   keep full pace. Mapping: Build Mode word_ids are 'w_'+romaji; resolve
+   back to state.words via jp+en match to read the SRS mastery bucket. */
+function _buildStateWordIdForStep(step){
+  if(!step || !step.word_id) return null;
+  const ref = buildWordById(step.word_id);
+  if(!ref) return null;
+  const m = (state.words || []).find(w => w.jp === ref.jp && w.en === ref.en);
+  return m ? m.id : null;
+}
+function _buildPaceFactor(step){
+  if(!step || step.type === 'introduce') return 1.0; /* never rush new exposures */
+  const wid = _buildStateWordIdForStep(step);
+  if(!wid) return 1.0; /* sentence-only step or unknown — full pace */
+  const mastery = getMasteryForWord(wid);
+  if(mastery === 'guru' || mastery === 'master' || mastery === 'burned') return 0.5;
+  if(mastery === 'apprentice') return 0.7;
+  return 1.0;
+}
+
 function buildAutoplayStep(step){
   const b = state.buildMode;
   if(!b) return;
@@ -4840,7 +4866,8 @@ function buildAutoplayStep(step){
 
   const onEnDone = () => {
     if(!auto) return;
-    const thinkMs = Math.max(1, (state.settings.buildThinkSec || 4)) * 1000;
+    const baseSec = Math.max(1, (state.settings.buildThinkSec || 4));
+    const thinkMs = baseSec * _buildPaceFactor(step) * 1000;
     _buildSetPhase('think', thinkMs);
     _buildSchedule(() => buildAutoReveal(), thinkMs);
   };
@@ -4968,7 +4995,8 @@ function _buildScheduleLinger(){
   const sec = (step && step.type === 'introduce')
     ? (state.settings.buildIntroduceLingerSec ?? 5)
     : (state.settings.buildLingerSec ?? 5);
-  const lingerMs = Math.max(0, sec) * 1000;
+  /* v6.5 — adaptive: known words shrink linger; introduce stays full. */
+  const lingerMs = Math.max(0, sec) * _buildPaceFactor(step) * 1000;
   _buildSetPhase('linger', lingerMs);
   _buildSchedule(() => buildAutoNext(), lingerMs);
 }
@@ -5368,6 +5396,13 @@ function render(){
 function nav(screen, data, fromPop){
   /* history tracking: only push when not coming from popstate */
   clearNextTimer();
+  /* v6.5 — re-shuffle particle queue on each entry so re-opening Particles
+     doesn't resume the same deck at the same index. */
+  if(screen === 'particles' && state.screen !== 'particles'){
+    state._particleQueue = shuffleFY(PARTICLE_DRILLS.map((_,i)=>i));
+    state._particleIdx = 0;
+    state._particleAnswer = null;
+  }
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -5605,6 +5640,7 @@ function renderSettings(){
     <div class="card">
       <h3>Build Mode pacing</h3>
       <div class="muted" style="font-size:12px;margin-bottom:8px">Paul Noble-style hands-off cadence: prompt plays, you say it aloud, JP reveals automatically, next step incoming. Pause anytime mid-lesson.</div>
+      <div class="muted" style="font-size:12px;margin-bottom:8px"><b>v6.5:</b> think + linger auto-shrink for words you've mastered (apprentice → 0.7×, guru/master/burned → 0.5×). New-word introduce steps stay at full pace.</div>
       <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually like before.</div></div>
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
