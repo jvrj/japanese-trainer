@@ -252,6 +252,9 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .build-chip-build{background:#0f3d1f;color:#86efac}
 .build-chip-substitute{background:#3b1c3d;color:#e9a7ed}
 .build-chip-callback{background:#4a1010;color:#fca5a5}
+.build-chip-variation{background:#1e3f3a;color:#93e6d8}
+.build-chip-qa{background:#3a3f1e;color:#e6e093}
+.build-chip-aiqa{background:#3f1e3a;color:#e693d8}
 .build-progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px}
 .build-progress-fill{height:100%;background:var(--red);transition:width .2s}
 .build-big-jp{font-size:38px;text-align:center;padding:14px 0;font-weight:500}
@@ -264,6 +267,8 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .build-countdown-fill.run{animation:buildCount linear forwards}
 .build-countdown-fill.think{background:var(--orange)}
 .build-countdown-fill.linger{background:var(--green)}
+.build-countdown-fill.listen{background:#e693d8}
+.build-countdown-fill.aithink{background:#9d8df0}
 @keyframes buildCount{from{transform:scaleX(1)}to{transform:scaleX(0)}}
 #toast-host{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 .toast{background:#1f2937;color:#f3f4f6;padding:10px 16px;border-radius:10px;border:1px solid var(--border);font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.5);max-width:90vw;text-align:center;animation:toast-in .25s ease;pointer-events:auto}
@@ -304,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.10.0';
+const APP_VERSION = '6.11.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1311,7 +1316,8 @@ const DEFAULT_SETTINGS = {
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
   buildLingerSec:5,           // v5.9.1 — Build Mode: seconds to linger after JP plays before advancing to next step. Matches buildThinkSec so post-EN and post-JP pauses feel identical (was 2.5)
   buildIntroduceLingerSec:5,  // v5.9 — Build Mode: extra-long linger after a new word is introduced — listening, no recall
-  buildTtsRate:0.6            // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
+  buildTtsRate:0.6,           // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
+  buildAiQa:false             // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
 };
 
 let state = {
@@ -5254,6 +5260,123 @@ const BUILD_HARD_TEMPLATES = [
     }}
 ];
 
+// v6.11 — Variation step. One English intent, multiple Japanese framings.
+// Each group declares a slot config + 2-3 JP frames. Borrowed from Variations mode pedagogy
+// but used inline mid-lesson as audio-led production drill.
+const BUILD_VARIATION_GROUPS = [
+  { id:'want_food',
+    en:'I want {N}',
+    slotThemes:['food'],
+    slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'],
+    ways:[
+      { jp:'{N}が ほしい' },
+      { jp:'{N}を たべたい' },
+      { jp:'{N}を おねがいします' }
+    ]},
+  { id:'want_drink',
+    en:'I want {N}',
+    slotThemes:['food'],
+    slotWords:['water','tea','coffee','milk','juice','drink'],
+    ways:[
+      { jp:'{N}が ほしい' },
+      { jp:'{N}を のみたい' },
+      { jp:'{N}を おねがいします' }
+    ]},
+  { id:'request_food',
+    en:'Could I have {N}?',
+    slotThemes:['food','objects'],
+    slotExclude:['water','sugar','salt','food','drink','cooking/cuisine'],
+    ways:[
+      { jp:'{N}を ください' },
+      { jp:'{N}を おねがいします' },
+      { jp:'{N}を ひとつ おねがいします' }
+    ]},
+  { id:'like_food',
+    en:'I like {N}',
+    slotThemes:['food'],
+    slotExclude:['water','sugar','salt','food','drink'],
+    ways:[
+      { jp:'{N}が すき' },
+      { jp:'{N}が だいすき です' }
+    ]},
+  { id:'is_tasty',
+    en:'The {N} is delicious',
+    slotThemes:['food'],
+    slotExclude:['water','sugar','salt','food','drink'],
+    ways:[
+      { jp:'{N}は おいしい' },
+      { jp:'{N}は とても おいしい' },
+      { jp:'{N}は おいしかった' }
+    ]}
+];
+
+// v6.11 — QA step. Question/answer pairs. Audio-led: TTS asks JP question, EN gloss,
+// user answers out loud, TTS plays both yes/no answer forms in JP+EN. No scoring.
+// AI mode (Flavor B) replaces the canonical answer with a Claude-generated reply
+// based on what the user actually said (via SpeechRecognition).
+const BUILD_QA_TEMPLATES = [
+  { id:'like_q',
+    question_jp:'{N}が すき ですか',
+    question_en:'Do you like {N}?',
+    answers:[
+      { jp:'はい、すき です',           en:'Yes, I like it' },
+      { jp:'いいえ、すき じゃない',     en:"No, I don't like it" }
+    ],
+    slotThemes:['food'],
+    slotExclude:['water','sugar','salt','food','drink']
+  },
+  { id:'want_q',
+    question_jp:'{N}が ほしい ですか',
+    question_en:'Do you want {N}?',
+    answers:[
+      { jp:'はい、ほしい です',         en:'Yes, I want it' },
+      { jp:'いいえ、いりません',         en:"No, I don't need it" }
+    ],
+    slotThemes:['food','objects'],
+    slotExclude:['food','cooking/cuisine']
+  },
+  { id:'have_q',
+    question_jp:'{N}が ありますか',
+    question_en:'Do you have {N}?',
+    answers:[
+      { jp:'はい、あります',             en:'Yes, I have it' },
+      { jp:'いいえ、ありません',         en:"No, I don't have it" }
+    ],
+    slotThemes:['food','objects'],
+    slotExclude:['food','drink']
+  },
+  { id:'tasty_q',
+    question_jp:'{N}は おいしい ですか',
+    question_en:'Is the {N} delicious?',
+    answers:[
+      { jp:'はい、おいしい です',        en:'Yes, it is delicious' },
+      { jp:'いいえ、おいしくない',       en:'No, not delicious' }
+    ],
+    slotThemes:['food'],
+    slotExclude:['water','sugar','salt','food','drink']
+  },
+  { id:'where_q',
+    question_jp:'{N}は どこ ですか',
+    question_en:'Where is the {N}?',
+    answers:[
+      { jp:'ここ です',                  en:"It's here" },
+      { jp:'あそこ です',                en:"It's over there" }
+    ],
+    slotThemes:['food','objects'],
+    slotExclude:['food','drink','cooking/cuisine']
+  },
+  { id:'ate_q',
+    question_jp:'きのう {N}を たべましたか',
+    question_en:'Did you eat {N} yesterday?',
+    answers:[
+      { jp:'はい、たべました',           en:'Yes, I ate it' },
+      { jp:'いいえ、たべませんでした',   en:"No, I didn't eat it" }
+    ],
+    slotThemes:['food'],
+    slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine']
+  }
+];
+
 const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
 
 function buildFillTemplate(tmpl, word){
@@ -5307,6 +5430,90 @@ function buildPickRandom(arr, n){
     out.push(pool.splice(i,1)[0]);
   }
   return out;
+}
+
+// v6.11 — slot-config eligibility for variation groups + qa templates.
+// Same shape as BUILD_TEMPLATES (slotThemes/slotWords/slotExclude),
+// shared so we can pick a random group + word together.
+function buildPoolForCfg(deck, cfg){
+  return deck.filter(w =>
+    w.pos === 'n' &&
+    !hasKatakana(w.jp) &&
+    w.jp && w.en && w.romaji &&
+    (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
+    (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
+    (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
+  );
+}
+function buildWordFitsCfg(word, cfg){
+  if(!word) return false;
+  if(cfg.slotThemes && !cfg.slotThemes.includes(word.theme)) return false;
+  if(cfg.slotWords && !cfg.slotWords.includes(word.en)) return false;
+  if(cfg.slotExclude && cfg.slotExclude.includes(word.en)) return false;
+  return true;
+}
+function _buildMakeVariationStep(group, word){
+  const ways = group.ways.map(w => ({
+    jp: w.jp.replace(/\{N\}/g, word.jp),
+    frame: w.jp
+  }));
+  return {
+    type:'variation',
+    english: group.en.replace(/\{N\}/g, word.en),
+    ways,
+    word_id: buildGenWordId(word),
+    group_id: group.id
+  };
+}
+function _buildMakeQaStep(tmpl, word){
+  return {
+    type:'qa',
+    question_jp: tmpl.question_jp.replace(/\{N\}/g, word.jp),
+    question_en: tmpl.question_en.replace(/\{N\}/g, word.en),
+    answers: tmpl.answers.map(a => ({...a})),
+    word_id: buildGenWordId(word),
+    template_id: tmpl.id
+  };
+}
+function buildGenerateVariationStep(deck, preferredWord){
+  if(preferredWord && state.words){
+    const real = state.words.find(w => w.jp === preferredWord.jp && w.en === preferredWord.en);
+    if(real){
+      const cands = BUILD_VARIATION_GROUPS.filter(g => buildWordFitsCfg(real, g));
+      if(cands.length){
+        const g = cands[Math.floor(Math.random() * cands.length)];
+        return _buildMakeVariationStep(g, real);
+      }
+    }
+  }
+  for(let attempt = 0; attempt < 30; attempt++){
+    const g = BUILD_VARIATION_GROUPS[Math.floor(Math.random() * BUILD_VARIATION_GROUPS.length)];
+    const pool = buildPoolForCfg(deck, g);
+    if(!pool.length) continue;
+    const w = pool[Math.floor(Math.random() * pool.length)];
+    return _buildMakeVariationStep(g, w);
+  }
+  return null;
+}
+function buildGenerateQaStep(deck, preferredWord){
+  if(preferredWord && state.words){
+    const real = state.words.find(w => w.jp === preferredWord.jp && w.en === preferredWord.en);
+    if(real){
+      const cands = BUILD_QA_TEMPLATES.filter(t => buildWordFitsCfg(real, t));
+      if(cands.length){
+        const t = cands[Math.floor(Math.random() * cands.length)];
+        return _buildMakeQaStep(t, real);
+      }
+    }
+  }
+  for(let attempt = 0; attempt < 30; attempt++){
+    const t = BUILD_QA_TEMPLATES[Math.floor(Math.random() * BUILD_QA_TEMPLATES.length)];
+    const pool = buildPoolForCfg(deck, t);
+    if(!pool.length) continue;
+    const w = pool[Math.floor(Math.random() * pool.length)];
+    return _buildMakeQaStep(t, w);
+  }
+  return null;
 }
 
 function buildGenerateLesson(mode){
@@ -5385,6 +5592,32 @@ function buildGenerateLesson(mode){
   const pEn = primary.en.replace(/\{N\}/g,'X');
   const sEn = secondary.en.replace(/\{N\}/g,'X');
 
+  const cycle2Steps = [
+    { type:'build',      sentence_jp: p1.jp, sentence_en: p1.en },
+    { type:'substitute', swap_word_id: buildGenWordId(w2), result_jp: p2.jp, result_en: p2.en },
+    { type:'build',      sentence_jp: s2.jp, sentence_en: s2.en },
+    { type:'substitute', swap_word_id: buildGenWordId(w3), result_jp: s3.jp, result_en: s3.en },
+    { type:'build',      sentence_jp: p3.jp, sentence_en: p3.en }
+  ];
+  // v6.11 — append a variation step using one of the new words. Same English intent,
+  // multiple Japanese framings. Falls back to a deck pick if no new word fits.
+  const varStep = buildGenerateVariationStep(state.words || [], w3) ||
+                  buildGenerateVariationStep(state.words || [], w2) ||
+                  buildGenerateVariationStep(state.words || [], w1);
+  if(varStep) cycle2Steps.push(varStep);
+
+  const cycle3Steps = [
+    { type:'callback',   word_id: buildGenWordId(cb1), note:'cold — from earlier' },
+    { type:'build',      sentence_jp: sCb1.jp, sentence_en: sCb1.en },
+    { type:'callback',   word_id: buildGenWordId(cb2), note:'cold — from earlier' },
+    { type:'build',      sentence_jp: pCb2.jp, sentence_en: pCb2.en }
+  ];
+  // v6.11 — append a QA step. Uses a callback word so it doubles as a 3rd cold review.
+  const qaStep = buildGenerateQaStep(state.words || [], cb1) ||
+                 buildGenerateQaStep(state.words || [], cb2) ||
+                 buildGenerateQaStep(state.words || [], w1);
+  if(qaStep) cycle3Steps.push(qaStep);
+
   return {
     id: lessonId,
     title: `${mode === 'complex' ? 'Complex' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
@@ -5400,20 +5633,9 @@ function buildGenerateLesson(mode){
           { type:'recall',    word_id: buildGenWordId(w1) }
         ]},
       { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`,
-        steps:[
-          { type:'build',      sentence_jp: p1.jp, sentence_en: p1.en },
-          { type:'substitute', swap_word_id: buildGenWordId(w2), result_jp: p2.jp, result_en: p2.en },
-          { type:'build',      sentence_jp: s2.jp, sentence_en: s2.en },
-          { type:'substitute', swap_word_id: buildGenWordId(w3), result_jp: s3.jp, result_en: s3.en },
-          { type:'build',      sentence_jp: p3.jp, sentence_en: p3.en }
-        ]},
+        steps: cycle2Steps },
       { id:'cycle_3', name:`Callbacks — mix frames`,
-        steps:[
-          { type:'callback',   word_id: buildGenWordId(cb1), note:'cold — from earlier' },
-          { type:'build',      sentence_jp: sCb1.jp, sentence_en: sCb1.en },
-          { type:'callback',   word_id: buildGenWordId(cb2), note:'cold — from earlier' },
-          { type:'build',      sentence_jp: pCb2.jp, sentence_en: pCb2.en }
-        ]}
+        steps: cycle3Steps }
     ],
     _meta: {
       mode,
@@ -5446,12 +5668,21 @@ function buildGenerateHardLesson(){
     }
   }
   if(steps.length === 0) throw new Error('no multi-slot templates could be filled — enable N5 pack in Settings');
+  // v6.11 — append a QA capstone using one of the words used in the lesson.
+  const usedList = Array.from(usedRefs.values());
+  let qaStep = null;
+  for(const ref of usedList){
+    qaStep = buildGenerateQaStep(deck, ref);
+    if(qaStep) break;
+  }
+  if(!qaStep) qaStep = buildGenerateQaStep(deck);
+  if(qaStep) steps.push(qaStep);
   return {
     id: lessonId,
     title: `Hard ${lessonId} — multi-slot mix`,
     duration_mins: 8,
     new_words: [],
-    carryover_words: Array.from(usedRefs.values()),
+    carryover_words: usedList,
     cycles: [
       { id:'cycle_hard', name:'Multi-slot — cold production', steps }
     ],
@@ -5547,6 +5778,28 @@ function _buildSpeakJP(text, onDone){
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
+// v6.11 — chain multiple JP utterances with a small linger between each.
+// Each item is { jp, en?, _delay? } — if en is set, plays JP then EN. Final onDone after last.
+function _buildSpeakJPSequence(items, onDone){
+  if(!items || !items.length){ if(onDone) setTimeout(onDone, 0); return; }
+  const list = items.slice();
+  const playOne = (idx) => {
+    if(idx >= list.length){ if(onDone) onDone(); return; }
+    const it = list[idx];
+    const after = () => {
+      const gap = (list[idx+1] && list[idx+1]._delay) || 1000;
+      setTimeout(() => playOne(idx+1), gap);
+    };
+    if(it.en){
+      _buildSpeakJPThenEN(it.jp, it.en, after);
+    } else {
+      _buildSpeakJP(it.jp, after);
+    }
+  };
+  const startDelay = list[0]._delay || 0;
+  setTimeout(() => playOne(0), startDelay);
+}
+
 function _buildSpeakJPThenEN(jp, en, onDone){
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
@@ -5567,6 +5820,146 @@ function _buildSpeakJPThenEN(jp, en, onDone){
     else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
     else utter();
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
+}
+
+// v6.12 — AI conversation mode for QA steps.
+// When Settings → "🤖 AI conversation" is on AND an Anthropic key exists AND SpeechRecognition is supported,
+// QA steps swap their scripted answer for a real Claude reply based on what the user said.
+// Falls back silently to scripted answers on any STT/API failure.
+const BUILD_AI_QA_SYSTEM = `You are a Japanese A1 conversation partner. The learner is a beginner driving in their car practicing spoken Japanese.
+
+Hard rules — never break:
+- ALL Japanese in HIRAGANA ONLY. Never kanji. Never katakana unless it's a loanword.
+- Your reply must be 5–14 Japanese words, A1 vocab level only.
+- Casual or polite register only. Never keigo / formal.
+- ALWAYS end with a short follow-up question or a one-word reaction so they have something to say next.
+
+Output format — EXACTLY two lines, no other text, no labels, no quotes:
+LINE 1: your Japanese reply, hiragana, with normal spaces between words
+LINE 2: short English gloss of the reply, under 14 words
+
+If their answer made grammatical sense, react warmly and ask a follow-up.
+If their answer was garbled (the speech-to-text may have misheard them), make a best guess at meaning and reply naturally — do not say "I didn't understand."
+If they accidentally answered in English, gently model the JP version in your reply.
+If they used the wrong particle or form, model the correct version naturally — do not lecture or correct explicitly.`;
+
+function _buildAiMode(){
+  const s = state.settings || {};
+  if(!s.buildAiQa) return false;
+  if(!(s.anthropicKey || '').trim()) return false;
+  if(!voiceSupported()) return false;
+  if(typeof window.fetch !== 'function') return false;
+  return true;
+}
+function _buildAiQaActive(step){
+  if(!step || step.type !== 'qa') return false;
+  if(step._aiAttempted) return false;
+  return _buildAiMode();
+}
+function _buildQaAiFlow(step){
+  const b = state.buildMode;
+  if(!b) return;
+  step._aiMode = true;
+  step._aiAttempted = true;
+  _buildSpeakJP(step.question_jp, () => {
+    if(state.buildMode !== b || b._paused) return;
+    setTimeout(() => {
+      if(state.buildMode !== b || b._paused) return;
+      _buildSpeakEN(step.question_en, false, () => {
+        if(state.buildMode !== b || b._paused) return;
+        _buildAiQaListen(step);
+      });
+    }, 350);
+  });
+}
+function _buildAiQaListen(step){
+  const b = state.buildMode;
+  if(!b) return;
+  const listenMs = 10000;
+  _buildSetPhase('listen', listenMs);
+  const labelEl = document.querySelector('.build-phase-label');
+  if(labelEl) labelEl.textContent = '🎤 listening — speak Japanese';
+  let captured = null;
+  b._sttActive = true;
+  startVoice(
+    (alts) => {
+      if(alts && alts.length){
+        const best = alts.slice().sort((a,c)=>(c.conf||0)-(a.conf||0))[0];
+        captured = best.transcript;
+      }
+    },
+    (err) => {
+      b._sttActive = false;
+      if(state.buildMode !== b) return;
+      if(b._paused) return;
+      if(captured && captured.trim()){
+        step._userTranscript = captured.trim();
+        _buildAiQaSendToClaude(step, captured.trim());
+      } else {
+        // No speech captured — silent fallback to scripted reveal
+        log('build_ai_qa_no_speech',{});
+        step._aiMode = false;
+        if(state.buildMode === b && !b._paused) buildAutoReveal();
+      }
+    }
+  );
+  // Hard timeout in case onend never fires.
+  if(b._autoTimer) clearTimeout(b._autoTimer);
+  b._autoTimer = setTimeout(() => {
+    if(state.buildMode !== b) return;
+    if(b._sttActive){ try{ stopVoice(); }catch(e){} }
+  }, listenMs + 2500);
+}
+async function _buildAiQaSendToClaude(step, transcript){
+  const b = state.buildMode;
+  if(!b) return;
+  _buildSetPhase('aithink', 6000);
+  const labelEl = document.querySelector('.build-phase-label');
+  if(labelEl) labelEl.textContent = '🤖 Claude is replying…';
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key){
+    step._aiMode = false;
+    if(state.buildMode === b && !b._paused) buildAutoReveal();
+    return;
+  }
+  const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
+  const userMsg = `I asked them this question: "${step.question_jp}" (English: ${step.question_en}).\n\nThey replied (captured via speech-to-text, may be slightly garbled): "${transcript}"\n\nNow reply in exactly two lines: hiragana Japanese on line 1, short English gloss on line 2.`;
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 200,
+        system: [{type:'text', text: BUILD_AI_QA_SYSTEM, cache_control:{type:'ephemeral'}}],
+        messages: [{role:'user', content: userMsg}]
+      })
+    });
+    if(!res.ok){ throw new Error('http ' + res.status); }
+    const data = await res.json();
+    const text = (data.content || []).map(c => c.text || '').join('').trim();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    if(!lines.length) throw new Error('empty reply');
+    const jp = lines[0].replace(/^[A-Z_]+:\s*/i,'').replace(/^["「]|["」]$/g,'');
+    const en = lines[1] ? lines[1].replace(/^[A-Z_]+:\s*/i,'').replace(/^["「]|["」]$/g,'') : '';
+    if(!jp) throw new Error('no jp');
+    step._aiReplyJp = jp;
+    step._aiReplyEn = en;
+    log('build_ai_qa_ok', {model, in:(data.usage||{}).input_tokens, out:(data.usage||{}).output_tokens});
+    if(state.buildMode === b && !b._paused) buildAutoReveal();
+  } catch(e){
+    log('build_ai_qa_err', {err: String(e.message || e)});
+    showToast('AI reply failed — using scripted answer.', {tone:'warn'});
+    step._aiMode = false;
+    step._aiReplyJp = null;
+    step._aiReplyEn = null;
+    if(state.buildMode === b && !b._paused) buildAutoReveal();
+  }
 }
 
 // v6.0 — Screen Wake Lock so the phone doesn't sleep mid-session.
@@ -5650,6 +6043,7 @@ function _buildOnVisibilityChange(){
 function _buildClearTimer(){
   const b = state.buildMode;
   if(b && b._autoTimer){ clearTimeout(b._autoTimer); b._autoTimer = null; }
+  if(b && b._sttActive){ try{ stopVoice(); }catch(e){} b._sttActive = false; }
   if(b){ b._phase = null; b._phaseDur = 0; }
 }
 
@@ -5685,6 +6079,8 @@ function _buildSetPhase(phase, durMs){
                       : phase === 'answer' ? '🔊 answer…'
                       : phase === 'think' ? 'your turn — say it aloud'
                       : phase === 'linger' ? 'next step incoming…'
+                      : phase === 'listen' ? '🎤 listening — speak Japanese'
+                      : phase === 'aithink' ? '🤖 Claude is replying…'
                       : '';
   }
 }
@@ -5748,6 +6144,19 @@ function buildAutoplayStep(step){
     _buildSpeakEN(step.sentence_en, false, onEnDone);
   } else if(step.type === 'substitute'){
     _buildSpeakEN(step.result_en, false, onEnDone);
+  } else if(step.type === 'variation'){
+    _buildSpeakEN(step.english, false, onEnDone);
+  } else if(step.type === 'qa'){
+    // v6.11 — speak JP question, then EN gloss, then enter think phase.
+    // v6.12 — if AI conversation mode is on and STT is supported, branch to AI flow instead.
+    if(_buildAiQaActive(step)){
+      _buildQaAiFlow(step);
+    } else {
+      _buildSpeakJP(step.question_jp, () => {
+        if(state.buildMode !== b || b._paused) return;
+        setTimeout(() => _buildSpeakEN(step.question_en, false, onEnDone), 350);
+      });
+    }
   }
 }
 
@@ -5823,6 +6232,18 @@ function buildReplayAudio(){
       else if(step.sentence_jp){ speakJP(step.sentence_jp); }
     } else if(step.type === 'build'){ speakJP(step.sentence_jp); }
     else if(step.type === 'substitute'){ speakJP(step.result_jp); }
+    else if(step.type === 'variation'){
+      const items = (step.ways || []).map((w, idx) => ({ jp: w.jp, _delay: idx === 0 ? 0 : 1100 }));
+      _buildSpeakJPSequence(items);
+    }
+    else if(step.type === 'qa'){
+      if(step._aiReplyJp){
+        _buildSpeakJPSequence([{ jp: step._aiReplyJp, en: step._aiReplyEn || '' }]);
+      } else {
+        const items = (step.answers || []).map((a, idx) => ({ jp: a.jp, en: a.en, _delay: idx === 0 ? 0 : 1300 }));
+        _buildSpeakJPSequence(items);
+      }
+    }
   } else { buildAutoplayStep(step); }
 }
 window.buildReplayAudio = buildReplayAudio;
@@ -5838,6 +6259,20 @@ function _buildPlayJPForStep(step, onDone){
     else if(onDone) onDone();
   } else if(step.type === 'build'){ _buildSpeakJP(step.sentence_jp, onDone); }
   else if(step.type === 'substitute'){ _buildSpeakJP(step.result_jp, onDone); }
+  else if(step.type === 'variation'){
+    const items = (step.ways || []).map((w, idx) => ({ jp: w.jp, _delay: idx === 0 ? 0 : 1100 }));
+    _buildSpeakJPSequence(items, onDone);
+  }
+  else if(step.type === 'qa'){
+    // v6.12 — if AI mode produced a real reply, play it instead of canonical answers.
+    if(step._aiReplyJp){
+      const items = [{ jp: step._aiReplyJp, en: step._aiReplyEn || '', _delay: 0 }];
+      _buildSpeakJPSequence(items, onDone);
+    } else {
+      const items = (step.answers || []).map((a, idx) => ({ jp: a.jp, en: a.en, _delay: idx === 0 ? 0 : 1300 }));
+      _buildSpeakJPSequence(items, onDone);
+    }
+  }
   else if(onDone) onDone();
 }
 
@@ -6015,7 +6450,8 @@ function renderBuildModeStart(){
     <div class="card">
       <h3>🎲 Simple — one-clause</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        want · please · like · dislike · this-is · how-much · one-please · have · where · delicious
+        want · please · like · dislike · this-is · how-much · one-please · have · where · delicious<br>
+        <span style="color:var(--green)">v6.11:</span> + 1 <b>variation</b> step (same EN, 2–3 JP framings) + 1 <b>Q&amp;A</b> step
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('simple')">🎲 Roll simple lesson</button>
     </div>
@@ -6023,7 +6459,8 @@ function renderBuildModeStart(){
     <div class="card">
       <h3>🎲🎲 Complex — multi-clause</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        want-to-eat · ate-yesterday · was-delicious · tired/want · every-day · really-like
+        want-to-eat · ate-yesterday · was-delicious · tired/want · every-day · really-like<br>
+        <span style="color:var(--green)">v6.11:</span> + 1 <b>variation</b> + 1 <b>Q&amp;A</b> step
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('complex')">🎲🎲 Roll complex lesson</button>
     </div>
@@ -6031,7 +6468,8 @@ function renderBuildModeStart(){
     <div class="card">
       <h3>🎲🎲🎲 Hard — multi-slot</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        time + place + person slots · every sentence has 2–3 variables · no substitute scaffolding · cold production
+        time + place + person slots · every sentence has 2–3 variables · no substitute scaffolding · cold production<br>
+        <span style="color:var(--green)">v6.11:</span> + <b>Q&amp;A</b> capstone
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('hard')">🎲🎲🎲 Roll hard lesson</button>
     </div>
@@ -6069,6 +6507,8 @@ function renderBuildModeStep(){
     case 'build':      body = _buildRenderBuild(step); break;
     case 'substitute': body = _buildRenderSubstitute(step); break;
     case 'callback':   body = _buildRenderCallback(step); break;
+    case 'variation':  body = _buildRenderVariation(step); break;
+    case 'qa':         body = _buildRenderQa(step); break;
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
@@ -6085,7 +6525,7 @@ function renderBuildModeStep(){
 
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span class="build-chip build-chip-${step.type}">${step.type}</span>
+        <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         ${auto ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="buildTogglePause()">${paused ? '▶ Resume' : '⏸ Pause'}</button>` : ''}
       </div>
       ${body}
@@ -6104,6 +6544,77 @@ function renderBuildModeStep(){
     <div style="text-align:center;margin-top:10px">
       <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px" onclick="buildExit()">Exit lesson</button>
     </div>
+  `;
+}
+
+function _buildChipClass(step){
+  if(step.type === 'qa' && step._aiMode) return 'aiqa';
+  return step.type;
+}
+function _buildChipLabel(step){
+  if(step.type === 'variation') return 'ways';
+  if(step.type === 'qa') return step._aiMode ? '🤖 ai chat' : 'q&a';
+  return step.type;
+}
+
+function _buildRenderVariation(step){
+  const b = state.buildMode;
+  if(b.revealed){
+    const blocks = (step.ways || []).map((w, i) => `
+      <div class="build-big-jp" style="font-size:30px;padding:8px 0">${esc(w.jp)}</div>
+      ${i < step.ways.length - 1 ? '<div style="text-align:center;color:var(--faint);font-size:11px;margin:2px 0">— or —</div>' : ''}
+    `).join('');
+    return `
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">${step.ways.length} ways to say:</div>
+      <div class="build-big-en">${esc(step.english)}</div>
+      <div style="height:6px"></div>
+      ${blocks}
+    `;
+  }
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Same English, multiple Japanese — try as many ways as you can</div>
+    <div class="build-big-en">${esc(step.english)}</div>
+    <div class="build-placeholder">say it out loud (any way), then tap Reveal</div>
+  `;
+}
+
+function _buildRenderQa(step){
+  const b = state.buildMode;
+  const aiMode = !!step._aiMode;
+  if(b.revealed){
+    if(step._aiReplyJp){
+      // AI conversation reveal — show what user said + Claude's reply
+      return `
+        ${step._userTranscript ? `<div class="muted" style="text-align:center;font-size:12px;margin-bottom:4px">You said:</div>
+        <div style="text-align:center;font-size:18px;color:#cbd5e1;padding:6px 0">${esc(step._userTranscript)}</div>
+        <div class="divider"></div>` : ''}
+        <div class="muted" style="text-align:center;font-size:12px;margin-bottom:4px">🤖 Claude:</div>
+        <div class="build-big-jp" style="font-size:28px;padding:6px 0">${esc(step._aiReplyJp)}</div>
+        ${step._aiReplyEn ? `<div class="build-big-en" style="font-size:14px">${esc(step._aiReplyEn)}</div>` : ''}
+      `;
+    }
+    const ans = (step.answers || []).map((a, i) => `
+      <div class="build-big-jp" style="font-size:24px;padding:4px 0">${esc(a.jp)}</div>
+      <div class="build-big-en" style="font-size:13px">${esc(a.en)}</div>
+      ${i < step.answers.length - 1 ? '<div style="text-align:center;color:var(--faint);font-size:11px;margin:4px 0">— or —</div>' : ''}
+    `).join('');
+    return `
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Question:</div>
+      <div class="build-big-jp" style="font-size:26px;padding:4px 0">${esc(step.question_jp)}</div>
+      <div class="build-big-en" style="font-size:13px">${esc(step.question_en)}</div>
+      <div class="divider"></div>
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Two answer forms:</div>
+      ${ans}
+    `;
+  }
+  const aiHint = aiMode
+    ? `<div class="build-placeholder">listening — say はい/いいえ + your answer in Japanese</div>`
+    : `<div class="build-placeholder">say はい/いいえ + your answer aloud, then tap Reveal</div>`;
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">${aiMode ? '🤖 Answer Claude' : 'Answer this question (out loud)'}</div>
+    <div class="build-big-jp" style="font-size:30px;padding:8px 0">${esc(step.question_jp)}</div>
+    <div class="build-big-en" style="font-size:14px">${esc(step.question_en)}</div>
+    ${aiHint}
   `;
 }
 
@@ -6904,6 +7415,8 @@ function renderSettings(){
           <option value="claude-sonnet-4-6" ${(s.anthropicModel||'')==='claude-sonnet-4-6'?'selected':''}>Sonnet 4.6</option>
         </select>
       </label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🤖 AI conversation in Build Mode</div><div class="word-en">${voiceSupported() ? 'On: Q&amp;A steps listen via speech, send to Claude, speak a real reply. ~$0.001 per turn on Haiku. Falls back to scripted answers on any failure.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
+        <input type="checkbox" ${s.buildAiQa?'checked':''} onchange="toggleSetting('buildAiQa')"></label>
       <div class="muted" style="font-size:11px;margin-top:6px">Get a key: console.anthropic.com → API Keys. You'll need account credits.</div>
     </div>
 
