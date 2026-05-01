@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.11.0';
+const APP_VERSION = '6.11.1';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5168,18 +5168,20 @@ const BUILD_TEMPLATES = [
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
 
+// v6.11.1 — drinks/condiments/categories that don't belong with たべる verbs.
+// Shared by complex `want_to_eat` / `ate_yesterday` and the hard-template food filters.
+const HARD_EAT_EXCLUDES = ['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'];
+
 const BUILD_COMPLEX_TEMPLATES = [
-  { id:'want_to_eat',     slotKey:'N', pattern:'{N}を たべたい',              en:'I want to eat {N}',       slotThemes:['food'] },
+  { id:'want_to_eat',     slotKey:'N', pattern:'{N}を たべたい',              en:'I want to eat {N}',       slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
   { id:'want_to_drink',   slotKey:'N', pattern:'{N}を のみたい',              en:'I want to drink {N}',     slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'ate_yesterday',   slotKey:'N', pattern:'きのう {N}を たべました',      en:'I ate {N} yesterday',     slotThemes:['food'] },
+  { id:'ate_yesterday',   slotKey:'N', pattern:'きのう {N}を たべました',      en:'I ate {N} yesterday',     slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
   { id:'drank_yesterday', slotKey:'N', pattern:'きのう {N}を のみました',      en:'I drank {N} yesterday',   slotThemes:['food'], slotWords: BUILD_DRINKABLES },
   { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',   slotThemes:['food'] },
   { id:'really_like',     slotKey:'N', pattern:'{N}が だいすき です',           en:'I really like {N}',      slotThemes:['food'] },
   { id:'every_day',       slotKey:'N', pattern:'まいにち {N}を のみます',       en:'I drink {N} every day',  slotThemes:['food'], slotWords: BUILD_DRINKABLES },
   { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",  slotThemes:['food'] }
 ];
-
-const HARD_EAT_EXCLUDES = ['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'];
 const HARD_PLACE_EXCLUDES = ['road/way','country'];
 const HARD_LIKE_EXCLUDES = ['water','sugar','salt','food','drink'];
 const HARD_DISLIKE_EXCLUDES = ['water','rice','food','drink','sugar','salt'];
