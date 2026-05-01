@@ -304,7 +304,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.9.0';
+const APP_VERSION = '6.10.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1296,7 +1296,10 @@ const DEFAULT_SETTINGS = {
   enVoiceName:'',
   enTtsOn:true,
   n5PackEnabled:true,
-  removedWords:[],            // word IDs manually removed from active pool
+  removedWords:[],            // word IDs manually removed from active pool — nuclear option, hides word everywhere
+  suspendedWords:[],          // v6.10 — Library: temp-paused from Vocab Blitz drilling. Other modes still use the word as content.
+  focusWords:[],              // v6.10 — Library: user-boosted; priority slot in every Vocab Blitz pool. Auto-clears at Mature.
+  masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
   anthropicModel:'claude-haiku-4-5-20251001',
   blitzReviews:20,            // Vocab Blitz target review count per session
@@ -1338,7 +1341,8 @@ let state = {
   variationBlitz:null,  // active Variation Blitz session — v6.8
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
-  _sentenceAnswer:null
+  _sentenceAnswer:null,
+  _libraryUi:{search:'', sort:'en', filter:'all', expandedId:null}, // v6.10 — Library transient UI
 };
 
 /* =========================================================================
@@ -1763,6 +1767,104 @@ function getActiveWords(){
     if(!includeKata && hasKatakana(w.jp)) return false;
     return true;
   });
+}
+
+/* v6.10 — Library: drilling-only filter. Removes Suspended + Mastered from
+   Vocab Blitz pool while keeping the word available to Build Mode / Sentence
+   Blitz / Phrases as composition content. Focus words are not filtered out
+   here — they're boosted via libraryFocusedActiveWords() in pool selection. */
+function getDrillableWords(){
+  const active = getActiveWords();
+  const suspended = new Set(state.settings.suspendedWords || []);
+  const mastered = new Set(state.settings.masteredWords || []);
+  return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id));
+}
+
+/* Library status for a word — single source of truth for badges + filters. */
+function libraryWordStatus(w){
+  if(!w) return 'unknown';
+  const s = state.settings;
+  if((s.masteredWords || []).includes(w.id)) return 'mastered';
+  if((s.suspendedWords || []).includes(w.id)) return 'suspended';
+  const st = state.stats[w.id];
+  if(!st || !st.attempts || !st.attempts.length) return 'new';
+  ensureSm(st);
+  if(st.smInterval >= BLITZ_MATURE_MIN) return 'mature';
+  return 'learning';
+}
+
+function libraryIsFocused(id){
+  return (state.settings.focusWords || []).includes(id);
+}
+
+function libraryToggle(listKey, id){
+  const s = state.settings;
+  s[listKey] = s[listKey] || [];
+  const i = s[listKey].indexOf(id);
+  if(i >= 0) s[listKey].splice(i, 1);
+  else s[listKey].push(id);
+  save();
+}
+
+function libraryFocusToggle(id){
+  /* If user focuses a mastered/suspended word, un-mastered/un-suspended it. */
+  const s = state.settings;
+  if(!libraryIsFocused(id)){
+    s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
+    s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
+  }
+  libraryToggle('focusWords', id);
+  render();
+}
+window.libraryFocusToggle = libraryFocusToggle;
+
+function librarySuspendToggle(id){
+  /* Suspending clears focus + mastered (mutually exclusive states). */
+  const s = state.settings;
+  if(!(s.suspendedWords || []).includes(id)){
+    s.focusWords = (s.focusWords || []).filter(x => x !== id);
+    s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
+  }
+  libraryToggle('suspendedWords', id);
+  render();
+}
+window.librarySuspendToggle = librarySuspendToggle;
+
+function libraryMasterToggle(id){
+  const s = state.settings;
+  if(!(s.masteredWords || []).includes(id)){
+    s.focusWords = (s.focusWords || []).filter(x => x !== id);
+    s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
+  }
+  libraryToggle('masteredWords', id);
+  render();
+}
+window.libraryMasterToggle = libraryMasterToggle;
+
+function libraryResetWord(id){
+  if(!confirm('Reset all drill progress for this word? Streaks, intervals, and attempts will be cleared.')) return;
+  delete state.stats[id];
+  /* Reset also clears focus/suspend/mastered so the word starts fresh. */
+  const s = state.settings;
+  s.focusWords = (s.focusWords || []).filter(x => x !== id);
+  s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
+  s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
+  save();
+  render();
+}
+window.libraryResetWord = libraryResetWord;
+
+/* Auto-clear focus when a word reaches mature (smInterval ≥ 7d).
+   Called from blitzRecordAnswer after smGrade graduates a card. */
+function libraryAutoClearFocusIfMature(wordId){
+  const focus = state.settings.focusWords || [];
+  if(!focus.includes(wordId)) return;
+  const st = state.stats[wordId];
+  if(!st) return;
+  ensureSm(st);
+  if(st.smInterval >= BLITZ_MATURE_MIN){
+    state.settings.focusWords = focus.filter(x => x !== wordId);
+  }
 }
 
 function buildSession(overrideSize){
@@ -2343,11 +2445,23 @@ function buildBlitzPool(opts){
   const targetLearn = opts.targetLearn ?? (state.settings.blitzPoolLearning ?? 8);
   const targetMature = opts.targetMature ?? (state.settings.blitzPoolMature ?? 4);
   const exclude = opts.excludeIds || new Set();
-  const active = getActiveWords().filter(w => !exclude.has(w.id));
+  /* v6.10 — drillable (excludes Suspended + Mastered) instead of active. */
+  const drillable = getDrillableWords().filter(w => !exclude.has(w.id));
   const t = now();
-  const unseen = [], youngDue = [], youngNotDue = [], matureDue = [];
-  for(const w of active){
+  const unseen = [], youngDue = [], youngNotDue = [], matureDue = [], focused = [];
+  const focusSet = new Set(state.settings.focusWords || []);
+  for(const w of drillable){
     const st = state.stats[w.id];
+    if(focusSet.has(w.id)){
+      /* v6.10 — focus words always go in (ahead of normal priority), regardless of due-date.
+         Skipped here only if already at Mature — the auto-clear hook will remove the flag
+         on next graduation, but in the meantime we treat them as normal mature reviews. */
+      if(st){ ensureSm(st); }
+      if(!st || st.smInterval < BLITZ_MATURE_MIN){
+        focused.push(w);
+        continue;
+      }
+    }
     if(!st || !st.attempts?.length){ unseen.push(w); continue; }
     ensureSm(st);
     if(st.smInterval >= BLITZ_MATURE_MIN){
@@ -2361,15 +2475,16 @@ function buildBlitzPool(opts){
   youngDue.sort((a,b) => a.next - b.next);
   youngNotDue.sort((a,b) => a.next - b.next); /* soonest-due last-resort */
   const matureSel = matureDue.slice(0, targetMature).map(x => x.w);
-  /* Priority: young-due > unseen > young-not-due. */
+  /* Priority: focus > young-due > unseen > young-not-due. Focus eats from learning slot. */
   const learningSel = [
+    ...focused,
     ...youngDue.map(x => x.w),
     ...shuffleFY(unseen),
     ...youngNotDue.map(x => x.w),
-  ].slice(0, targetLearn);
+  ].slice(0, Math.max(targetLearn, focused.length));
   return shuffleFY([
     ...matureSel.map(w => ({id:w.id, streak:0, required:1, answers:0, everWrong:false, mature:true})),
-    ...learningSel.map(w => ({id:w.id, streak:0, required:BLITZ_STREAK_REQUIRED, answers:0, everWrong:false, mature:false})),
+    ...learningSel.map(w => ({id:w.id, streak:0, required:BLITZ_STREAK_REQUIRED, answers:0, everWrong:false, mature:false, focus: focusSet.has(w.id)})),
   ]);
 }
 
@@ -2506,6 +2621,8 @@ function blitzRecordAnswer(w, poolItem, isCorrect){
     if(poolItem.streak >= poolItem.required){
       /* Graduate: SM-2 Good. Within-session stumbles don't penalize long-term. */
       smGrade(st, 'good');
+      /* v6.10 — auto-clear focus when the word reaches Mature. */
+      libraryAutoClearFocusIfMature(poolItem.id);
       state.blitz.pool = state.blitz.pool.filter(p => p.id !== poolItem.id);
       state.blitz.graduated.push(poolItem.id);
       state.blitz.tally.graduated++;
@@ -6108,7 +6225,7 @@ function renderBuildModeComplete(){
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -6125,7 +6242,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -6205,10 +6322,19 @@ function renderHome(){
         ? 'No words yet — enable the N5 pack in Settings.'
         : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue waiting`:''}`;
       const disabled = (bc.due === 0 && bc.unseen === 0) ? 'disabled' : '';
+      const focusCount = (state.settings.focusWords || []).length;
+      const suspCount = (state.settings.suspendedWords || []).length;
+      const mastCount = (state.settings.masteredWords || []).length;
+      const libSub = focusCount || suspCount || mastCount
+        ? `${focusCount} ⭐ · ${suspCount} suspended · ${mastCount} mastered`
+        : 'Browse, focus, suspend, or master individual words';
       return `<div class="card">
         <h3>Start</h3>
         <button class="btn btn-primary" style="font-size:17px;padding:18px;width:100%" ${disabled} onclick="startBlitz()">⚡ Vocab Blitz</button>
         <div class="muted" style="font-size:12px;margin-top:6px">${esc(sub)}</div>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" style="width:100%" onclick="nav('library')">📚 Library</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">${esc(libSub)}</div>
       </div>`;
     })()}
 
@@ -6286,6 +6412,205 @@ function renderHome(){
         • ${voiceSupported() ? '<b style="color:var(--green)">Voice supported</b>.' : '<b style="color:var(--orange)">Voice not supported</b> — use Chrome/Edge/Safari.'}
       </div>
     </div>
+  `;
+}
+
+/* ---------- LIBRARY (v6.10) ----------
+   Per-word management surface for Vocab Blitz. List + search + sort + filter.
+   Each row tappable → expand-tray with Focus / Suspend / Mark mastered / Reset.
+   Affects only Vocab Blitz drilling; other modes still use the word as content. */
+
+function libraryUpdateUi(field, value){
+  state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null};
+  state._libraryUi[field] = value;
+  if(field !== 'search') render(); /* search re-render is handled inline to keep focus in input */
+}
+window.libraryUpdateUi = libraryUpdateUi;
+
+function librarySearchInput(){
+  const v = $('#libSearch')?.value || '';
+  state._libraryUi = state._libraryUi || {};
+  state._libraryUi.search = v;
+  /* Live re-render only the list, not the whole screen, to keep input focused. */
+  const list = $('#libList');
+  if(list) list.innerHTML = libraryRenderList();
+  /* tally + filter chips don't change with search, so no full re-render. */
+}
+window.librarySearchInput = librarySearchInput;
+
+function libraryToggleExpand(id){
+  state._libraryUi = state._libraryUi || {};
+  state._libraryUi.expandedId = (state._libraryUi.expandedId === id) ? null : id;
+  render();
+}
+window.libraryToggleExpand = libraryToggleExpand;
+
+function libraryStatusBadge(status, focused){
+  const colors = {
+    new: 'background:var(--card2);color:var(--dim)',
+    learning: 'background:#1e3a5f;color:#93c5fd',
+    mature: 'background:#14532d;color:#86efac',
+    suspended: 'background:#3f3f46;color:#a1a1aa',
+    mastered: 'background:#581c87;color:#d8b4fe',
+  };
+  const label = {new:'New', learning:'Learning', mature:'Mature', suspended:'Suspended', mastered:'Mastered'}[status] || status;
+  const focusBit = focused ? `<span class="pill" style="background:var(--orange);color:#fff;margin-right:4px">⭐ Focus</span>` : '';
+  return focusBit + `<span class="pill" style="${colors[status] || ''}">${esc(label)}</span>`;
+}
+
+function libraryRenderList(){
+  const ui = state._libraryUi || {search:'', sort:'en', filter:'all'};
+  const allActive = getActiveWords();
+  const focusSet = new Set(state.settings.focusWords || []);
+  const q = (ui.search || '').trim().toLowerCase();
+  let words = allActive.slice();
+
+  /* Filter chip */
+  if(ui.filter !== 'all'){
+    words = words.filter(w => {
+      const st = libraryWordStatus(w);
+      if(ui.filter === 'focus') return focusSet.has(w.id);
+      return st === ui.filter;
+    });
+  }
+
+  /* Search query — match across EN, JP, romaji */
+  if(q){
+    words = words.filter(w => {
+      const en = (w.en || '').toLowerCase();
+      const jp = (w.jp || '').toLowerCase();
+      const rom = (w.romaji || kanaToRomaji(w.jp) || '').toLowerCase();
+      return en.includes(q) || jp.includes(q) || rom.includes(q);
+    });
+  }
+
+  /* Sort */
+  const sortFns = {
+    en: (a,b) => (a.en || '').localeCompare(b.en || '', 'en', {sensitivity:'base'}),
+    jp: (a,b) => (a.jp || '').localeCompare(b.jp || '', 'ja'),
+    seen: (a,b) => (state.stats[b.id]?.lastSeen || 0) - (state.stats[a.id]?.lastSeen || 0),
+    struggle: (a,b) => {
+      const wA = (state.stats[a.id]?.attempts || []).slice(-10).filter(x => !x.correct).length;
+      const wB = (state.stats[b.id]?.attempts || []).slice(-10).filter(x => !x.correct).length;
+      return wB - wA;
+    },
+  };
+  words.sort(sortFns[ui.sort] || sortFns.en);
+
+  if(!words.length){
+    return `<div class="muted" style="text-align:center;padding:30px 10px">No words match.</div>`;
+  }
+
+  /* v6.10 — render up to 400 to keep DOM light. Most filters slice well below this. */
+  const MAX = 400;
+  const overflow = words.length > MAX;
+  const rendered = words.slice(0, MAX);
+  const expandedId = ui.expandedId;
+
+  return rendered.map(w => {
+    const status = libraryWordStatus(w);
+    const focused = focusSet.has(w.id);
+    const romaji = w.romaji || kanaToRomaji(w.jp) || '';
+    const expanded = (expandedId === w.id);
+    const st = state.stats[w.id];
+    const attempts = st?.attempts?.length || 0;
+    const correctCount = st?.attempts?.filter(a => a.correct).length || 0;
+    const acc = attempts ? Math.round(100*correctCount/attempts) : 0;
+    const next = (st && st.smInterval) ? smIntervalLabel(st.smInterval) : '—';
+
+    const tray = !expanded ? '' : `
+      <div style="border-top:1px solid var(--border);padding:10px 4px 4px;margin-top:8px">
+        <div class="muted" style="font-size:12px;margin-bottom:8px">
+          ${attempts} attempts · ${acc}% accuracy · next ${esc(next)}
+        </div>
+        <div class="btn-row">
+          <button class="btn ${focused ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="libraryFocusToggle('${jsEsc(w.id)}')">${focused ? '⭐ Unfocus' : '⭐ Focus'}</button>
+          <button class="btn ${status === 'suspended' ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="librarySuspendToggle('${jsEsc(w.id)}')">${status === 'suspended' ? '▶ Activate' : '⏸ Suspend'}</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn ${status === 'mastered' ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="libraryMasterToggle('${jsEsc(w.id)}')">${status === 'mastered' ? '↩ Un-master' : '🎓 Mastered'}</button>
+          <button class="btn btn-secondary" style="font-size:12px;padding:10px" onclick="libraryResetWord('${jsEsc(w.id)}')">🔄 Reset</button>
+        </div>
+        <div class="audio-row" style="margin-top:6px">
+          <button class="audio-btn" style="font-size:12px;padding:10px" onclick="speakJP('${jsEsc(w.jp)}')">🔊 Listen</button>
+        </div>
+      </div>`;
+
+    return `<div class="card" style="padding:10px 12px;margin-bottom:6px;cursor:pointer" onclick="libraryToggleExpand('${jsEsc(w.id)}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(w.en || '')}</div>
+          <div class="muted" style="font-size:13px;margin-top:2px">
+            <span class="jp" style="color:var(--text);font-size:14px">${esc(w.jp)}</span>
+            ${romaji ? ` <span style="font-style:italic">· ${esc(romaji)}</span>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right;white-space:nowrap">${libraryStatusBadge(status, focused)}</div>
+      </div>
+      ${tray}
+    </div>`;
+  }).join('') + (overflow ? `<div class="muted" style="text-align:center;padding:10px;font-size:12px">+${words.length - MAX} more — refine search to see them</div>` : '');
+}
+
+function libraryRenderTally(){
+  const all = getActiveWords();
+  const total = all.length;
+  let mature = 0, learning = 0, fresh = 0;
+  const focusSet = new Set(state.settings.focusWords || []);
+  const suspended = (state.settings.suspendedWords || []).length;
+  const mastered = (state.settings.masteredWords || []).length;
+  for(const w of all){
+    const st = libraryWordStatus(w);
+    if(st === 'mature') mature++;
+    else if(st === 'learning') learning++;
+    else if(st === 'new') fresh++;
+  }
+  const focus = focusSet.size;
+  return `<div class="stats-row" style="flex-wrap:wrap;gap:6px">
+    <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Total</div></div>
+    <div class="stat-box"><div class="stat-num">${fresh}</div><div class="stat-label">New</div></div>
+    <div class="stat-box"><div class="stat-num">${learning}</div><div class="stat-label">Learning</div></div>
+    <div class="stat-box"><div class="stat-num">${mature}</div><div class="stat-label">Mature</div></div>
+    <div class="stat-box" style="background:rgba(245,158,11,0.15)"><div class="stat-num">${focus}</div><div class="stat-label">⭐ Focus</div></div>
+    <div class="stat-box"><div class="stat-num">${suspended}</div><div class="stat-label">Suspended</div></div>
+    <div class="stat-box"><div class="stat-num">${mastered}</div><div class="stat-label">Mastered</div></div>
+  </div>`;
+}
+
+function renderLibrary(){
+  const ui = state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null};
+
+  const filterChip = (key, label) => `<button class="tag${ui.filter === key ? ' active' : ''}" onclick="libraryUpdateUi('filter', '${key}')">${esc(label)}</button>`;
+  const sortOption = (key, label) => `<option value="${key}"${ui.sort === key ? ' selected' : ''}>${esc(label)}</option>`;
+
+  return `
+    ${libraryRenderTally()}
+
+    <div class="card">
+      <input id="libSearch" class="input" type="text" placeholder="Search EN, JP, or romaji" autocomplete="off" autocorrect="off" spellcheck="false" oninput="librarySearchInput()" value="${esc(ui.search || '')}">
+      <div class="spacer"></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="muted" style="font-size:12px">Sort:</span>
+        <select class="input" style="width:auto;padding:6px 10px;font-size:13px" onchange="libraryUpdateUi('sort', this.value)">
+          ${sortOption('en', 'EN A→Z')}
+          ${sortOption('jp', 'JP あ→ん')}
+          ${sortOption('seen', 'Last seen')}
+          ${sortOption('struggle', 'Most-wrong recent')}
+        </select>
+      </div>
+      <div class="spacer"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${filterChip('all', 'All')}
+        ${filterChip('new', 'New')}
+        ${filterChip('learning', 'Learning')}
+        ${filterChip('mature', 'Mature')}
+        ${filterChip('focus', '⭐ Focus')}
+        ${filterChip('suspended', 'Suspended')}
+        ${filterChip('mastered', 'Mastered')}
+      </div>
+    </div>
+
+    <div id="libList">${libraryRenderList()}</div>
   `;
 }
 
