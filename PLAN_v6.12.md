@@ -1,92 +1,170 @@
-# Isshin v6.12 — Build Mode honesty pass
+# Isshin v6.12 — integration spine + content expansion
 
-**Goal:** Make the default (AI-off) Build Mode flow demand active output, so the marketing claim of "production pressure" matches the actual UX. Plus: stop the 11-template content ceiling from collapsing into rote memorization, and stop one bad mic moment from permanently scripting the AI path.
+*Replaces the prior "Build Mode honesty pass" plan, which over-pivoted to tap-to-reveal and missed the real complaints.*
 
-**Out of scope (defer to v6.13+):** FSRS scheduler, streak surface, JP voice availability check, two-line parser hardening, kanji guard in Claude output, full TTS↔STT race fix on Android.
+## What Julius actually wants
 
----
+1. Vocab list (Library / what I'm learning) **automatically integrated** into Build Mode lessons
+2. **Build Mode is lackluster** — "fruit, apple, I like this/that" — content domain ceiling
+3. Sequential build-up: words I learned in Blitz → drilled in Build Mode
+4. Cross-mode revisit: see learned words again after a day / few days / week
+5. **"Mastered this" button** — graduate a word out
+6. Vocab Blitz "**NO recalling**" — answer 10 words 3 times each, never see them again. Cumulative across sessions = zero recall
 
-## Item 1 — Production gate on the AI-off flow (the marquee fix)
+(#6 confirmed: SM-2 multiplies interval by ease (~2.5) per correct grade — `smGrade` at index.html:1713. New card 10m → 25m → 62m → days, exit session permanently after 3 corrects. Compounding cohort effect = real bug.)
 
-### Problem
-With `buildAutoAdvance` on (default) and `buildAiQa` off (default and only path for shared/keyless users), every Build step is karaoke: TTS plays English → `setTimeout` for `thinkMs` → JP auto-reveals → TTS plays JP → next step. No tap. No input. No scoring. `_buildPaceFactor` actively *shrinks* the think window for known words (index.html:6108–6109), so mastery is rewarded with *less* time to produce. This is weaker than Anki, which at least requires a self-grade tap.
+## Already built — just not wired
 
-### Fix
-Replace the `setTimeout`-to-reveal with **tap-to-reveal** for any step type that asks for production. `introduce` stays passive (it's the exposure phase). New phase name: `'produce'`. New setting: `buildRequireTap` (default `true`).
-
-### Targets
-- **`index.html:6119–6124`** — `onEnDone` in `buildAutoplayStep`. Currently schedules `buildAutoReveal()` after `thinkMs`. Change: when `state.settings.buildRequireTap !== false` AND step.type ∈ `{recall, callback, build, substitute, variation, qa-non-AI}`, set phase to `'produce'` with no timer, render a "Reveal" button (large, full-width, primary color), and wait for tap. On tap → call existing `buildAutoReveal()` unchanged.
-- **`index.html:6113`** — `buildAutoplayStep`: keep auto-revealing only for `introduce` and the AI-QA branch (which has its own STT-driven gate already).
-- **`_buildSetPhase`** — add `'produce'` as a recognized phase (mirrors `'think'` styling but without the countdown). Find call site and the phase enum (search `_buildSetPhase`).
-- **Settings UI (~index.html:7360)** — add a toggle "Require tap to reveal" under the existing Build Mode section, near the Think time slider. When off, restore old auto-reveal behavior (escape hatch for the few users who actually wanted karaoke).
-- **`_buildPaceFactor` (index.html:6103)** — only used for the `linger` phase now (post-reveal pause), not the produce phase. Leave the function alone, just stop calling it on the produce path. Verify `_buildScheduleLinger` still uses it at line 6290.
-
-### Edge cases
-- `buildAutoOn()` off (manual mode) — already user-driven; this change is a no-op there.
-- `_paused` mid-step — tap button must be hidden; resume restores it.
-- Keyboard: Space or Enter triggers reveal. Document in card hint text.
-
-### Out of this fix (deliberate)
-- Not adding STT-for-everyone. DA flagged the STT path as fragile (race conditions, hiragana-only unverified, `_aiAttempted` permanent downgrade — see Item 3). Reusing a buggy mic path to fix a different problem compounds risk. Tap is universal, reliable, and zero-state.
-- "Say it" voice option stays AI-mode-only. Once the STT path is hardened (v6.13), revisit offering it as an opt-in upgrade for keyless users.
+- `state.settings.masteredWords / suspendedWords / focusWords` — exist
+- `getDrillableWords()` at **index.html:1782** — Vocab Blitz, Library, Sentence Blitz already filter
+- `libraryWordStatus()` at **1790** — single source of truth
+- `libraryMasterToggle()` at **1839**
+- Form Drills (per-verb-form SM-2) at **1742, 2419, 2919** — exists, gate removed v4.28, but Julius has never used it (discoverability problem, not feature gap)
+- SM-2 itself — exists; ramps too fast for new vocab
 
 ---
 
-## Item 2 — Recency dedup for variation/QA templates
+## Ship list (in implementation order — smallest blast radius first)
 
-### Problem
-5 variation groups × 6 QA templates = 11 templated items. Generators at index.html:5486, 5492, 5506, 5512 use bare `Math.random()` with no recency tracking. After ~3 sessions a learner has memorized the verbatim template (`{N}が ほしい`, etc.) — they're memorizing the phrase, not internalizing the pattern.
+### Item 1 — `_aiAttempted` reset (kept from prior plan)
+**Bug.** `_aiAttempted = true` is set eagerly at **index.html:5865** before the network call at 5915. Any STT/network glitch permanently scripts the step.
 
-### Fix
-Ring-buffer the last K picks per generator, persist on `state.buildMode` so it survives within a lesson, and persist to localStorage so it survives across lessons. Filter candidates by `not in recent` before random pick. If filtering yields empty, fall back to full pool (don't infinite-loop).
+**Fix.**
+- Remove eager set at 5865.
+- Set `step._aiAttempted = true` only on successful Claude response in `_buildAiQaSendToClaude` (5915 success branch).
+- STT failure at `_buildAiQaListen` (5877) does not set the flag.
+- On lesson resume, walk steps and reset `_aiAttempted` / `_aiMode` for non-completed steps.
+- Add `_aiFailCount` cap (3 retries) so it can't loop forever.
 
-K = `Math.max(1, Math.floor(poolSize/2))` — for 5 variation groups → K=2 (avoid last 2); for 6 QA templates → K=3 (avoid last 3). Tunable.
-
-### Targets
-- **`index.html:5480–5498`** — `buildGenerateVariationStep`. Wrap both candidate lists (preferred-word path at 5484 and free path at 5491–5495) with recency filter. Push picked group id to `state.buildMode._recent.variations` after `_buildMakeVariationStep`.
-- **`index.html:5500–5518`** — `buildGenerateQaStep`. Same shape: recency filter, push picked template id.
-- **State init** — wherever `state.buildMode` is constructed for a new lesson, init `_recent = { variations: [], qas: [] }`. (Search `state.buildMode = ` to find the constructor site.)
-- **Persistence** — new LS key `jp4_build_recent` with shape `{variations: [...], qas: [...]}`. Load on app start; save after each push. Cap each array at K to prevent unbounded growth across the lifetime of the install.
-- **Export/import (whatever the existing export key list is)** — add `jp4_build_recent` to round-trip. Or: deliberately exclude it (it's ephemeral state, not user content) and document that decision here.
-
-### Decision needed before implementing
-LS persistence vs in-session-only? In-session is simpler and self-cleaning; LS persistence is what the DA actually called for ("3 sessions" implies cross-session memory). Default to LS persistence; revisit if it feels too punishing for short pools.
+~15 LOC. Ship first.
 
 ---
 
-## Item 3 — Fix `_aiAttempted` permanent-downgrade bug
+### Item 2 — Anki-style learning steps for new Vocab Blitz cards (THE "no recalling" fix)
 
-### Problem
-`_aiAttempted` is set to `true` at index.html:5865, *before* the network call at line 5915 (`_buildAiQaSendToClaude`). Any transient failure — STT mishearing, network blip, mic glitch — flips the flag, and `_buildAiQaActive` at line 5856–5859 then permanently routes that step (and all future visits to it) through the scripted non-AI path. The user's premium feature silently dies, with no retry surface.
+**Problem.** `smGrade` at **1697** does `st.smInterval = round(st.smInterval * st.ease)` on every `'good'`. New card seeded at `SM_BASE_MIN` (10 min) × ease 2.5 → 25m → 62m → 156m → days. Three corrects and the word's gone. Each new cohort gets identical treatment, so prior cohorts never resurface. Julius's "zero recall" verdict is mathematically accurate.
 
-### Fix
-Distinguish "we tried" from "we got a real turn." Only set `_aiAttempted = true` after a *successful* Claude response (in `_buildAiQaSendToClaude`'s success branch). On transport / STT / API failure, leave the flag false so the step retries on next visit. Reset on lesson pause/resume to be safe.
+**Fix.** Pre-graduation learning steps. New card stays in tight rotation `[1m, 5m, 15m]` for ~3 successful pulls before SM-2 takes over. Forces actual recall under increasing delay.
 
-### Targets
-- **`index.html:5865`** — remove unconditional `step._aiAttempted = true` at start of `_buildQaAiFlow`.
-- **`index.html:5915` (`_buildAiQaSendToClaude`)** — set `step._aiAttempted = true` only after successful response parse. On any error path (network, parse, empty response), do not set.
-- **`index.html:5877` (`_buildAiQaListen`)** — STT failure should NOT mark `_aiAttempted`; just fall through to scripted flow for *this* visit, leave flag false for next visit.
-- **Lesson pause/resume** — wherever `_paused` flips back to false, walk `b.steps` and reset `_aiAttempted` and `_aiMode` on any non-completed step. (Search `_paused` to find resume site.)
+**Targets.**
+- Add constant `SM_LEARNING_STEPS_MIN = [1, 5, 15]` near **1672**.
+- `smDefault()` at **1677**: add `learningStepIdx: 0`, `inLearning: true`.
+- `ensureSm()` at **1685**: lazy-init. **Migration safety: only set `inLearning: true` if `correctCount === 0`** so existing learners aren't disrupted mid-flow.
+- `smGrade()` at **1697**: branch on `st.inLearning`.
+  - `'again'` → reset `learningStepIdx = 0`, `smInterval = SM_LEARNING_STEPS_MIN[0]`.
+  - `'good'` → advance index. If past last step: `inLearning = false`, seed `smInterval = SM_BASE_MIN * st.ease` and let normal SM-2 take over from next grade.
+  - `'easy'` → exit learning immediately, normal SM-2.
+- `smIntervalLabel()` at **1723**: already handles minutes; verify `1` renders as "1 min" not "1.0 min".
+- `blitzPickNext` at **2581**: in-learning words should be eligible regardless of `smNext`, since their interval is sub-session.
+- `buildBlitzPool` (referenced at **2545**, find definition): include all `inLearning` words alongside due ones.
 
-### Edge cases
-- Repeated failures could loop forever. Add an in-step counter `_aiFailCount`; after 3 consecutive failures within one visit, treat as permanent downgrade (current behavior). This is "honesty without infinite retry."
+~40 LOC. Highest user-felt impact of any item.
 
 ---
+
+### Item 3 — Non-food template expansion (the OTHER lackluster fix)
+
+**Problem.** Templates are a kitchen.
+- `BUILD_TEMPLATES` (5155–5167): 8 of 11 food/objects.
+- `BUILD_COMPLEX_TEMPLATES` (5175–5184): all 8 food/drink.
+- `BUILD_VARIATION_GROUPS`: 5 of 5 food (per DA).
+- `BUILD_QA_TEMPLATES`: 6 of 6 food (per DA).
+
+Recency dedup alone won't break the "I'm at a restaurant again" feeling — the entire universe is restaurants.
+
+**Fix.** Add ~20 non-food templates spanning:
+- **Time** — `いま なんじ ですか` / `あした なにを しますか`
+- **Weather** — `きょうは あつい` / `あめが ふっています`
+- **Location-of-self** — `いま {P}に います`
+- **Daily routine** — `まいにち {V}`
+- **Greetings / closings** — `おはよう` / `また あした`
+- **Simple emotions / states** — `つかれた` / `さびしい` / `うれしい`
+- **Transit / distance** — `{P}まで どのくらい かかりますか`
+- **People / family** — `{F}の {N}` (my friend's car, etc.)
+
+**Targets.**
+- New blocks `BUILD_TIME_TEMPLATES`, `BUILD_WEATHER_TEMPLATES`, `BUILD_GREETING_TEMPLATES` near **5155**, OR extend `BUILD_TEMPLATES` array directly with new `slotThemes`.
+- Verify deck has vocab for new themes (`time`, `weather`, `places`, `family`) — Julius's deck includes these (per existing `slotThemes` references).
+- Add ~3 non-food `BUILD_QA_TEMPLATES` and ~2 non-food `BUILD_VARIATION_GROUPS`.
+
+~80 lines pure data, low risk.
+
+---
+
+### Item 4 — Build Mode reads Library status (integration spine)
+
+**Problem.** Build Mode picks any deck noun (`eligibleForPair` at **5532**, `buildPoolForCfg`, `buildGenerateLesson` at **5521**). Ignores `masteredWords`, `suspendedWords`, `focusWords`. Julius's complaint: "Build Mode and Vocab are disconnected."
+
+**Fix.**
+- `eligibleForPair` (**5532**) and `buildPoolForCfg` (find via grep): filter out `masteredWords` and `suspendedWords`.
+- `buildPickRandom` / seed logic (**5559**): if any eligible word is in `focusWords`, pick from focused first; fall through to full pool only if focused subset < 3.
+- **Callback selection** (**5566–5612 area**): sort previously-introduced words by `state.stats[w.id].smNext` ascending. Words about to come due in Vocab Blitz get pulled into today's Build Mode lesson as callbacks. **This is the cross-mode revisit (#4) — using existing SM-2, not a new system.**
+- Item 2's `inLearning` words also get callback priority (they need recall pressure most).
+
+~40 LOC.
+
+---
+
+### Item 5 — One-tap "mastered" button in Vocab Blitz post-answer
+
+**Problem.** Library has the toggle but it's 3+ taps away. Julius wants it inline.
+
+**Fix.** After correct answer, next to "Continue ↵" button at **index.html:2856**, add small secondary button: `Master ★`. Tap → `libraryMasterToggle(w.id)` → advance. Word vanishes from future sessions (already filtered via `getDrillableWords` at 1786, and via Item 4 in Build Mode).
+
+Optional: also surface in the wrong-answer path's continue button — but only after the user has typed the correct answer (don't let "I missed this" become "actually I'm done with it" with one tap).
+
+~15 LOC + 5 LOC CSS.
+
+---
+
+### Item 6 — Surface Form Drills properly (discoverability)
+
+**Problem.** Home at **6894–6898** says "Conjugate verbs you've mastered in Vocab Blitz." This copy is outdated (gate removed in v4.28) AND Julius has never tapped it. Form Drills *is* the "ace one verb across forms" mode he asked for (#7).
+
+**Fix.**
+- Reword card to: "Drill ます / ました / て / た / ない / たい / ている — independent SRS per (verb × form)."
+- Add small "X verbs · Y due" stat pulled from `state.formStats`.
+- Move Grammar card above Practice section (Particle drills); demote Particles below.
+- Consider renaming "Grammar" → "Verbs" — clearer entry point.
+
+~20 LOC.
+
+---
+
+## Cut / deferred
+
+| Item | Disposition | Reason |
+|---|---|---|
+| Tap-to-reveal AI-off flow (prior Item 1) | Defer v6.13+ | Content expansion (Item 3) addresses bigger felt complaint; tap-to-reveal is correct but expensive |
+| Recency dedup (prior Item 2) | Re-evaluate end of v6.12 | Probably unnecessary once template count doubles |
+| Similar-words discrimination mode (Julius #6) | Defer | If built, do no-API 3-way multiple choice version |
+| Sentence-correction with rationale (Julius #9) | Defer or kill | "With why + alternatives" is Claude-API-only — re-enters v6.11 key-walled fragility |
+| FSRS / streak surface | Defer | Item 2's learning steps gives most of the felt FSRS benefit |
+| New "form mastery" mode (Julius #7) | Already exists | Item 6 surfaces existing Form Drills |
 
 ## Risk register
 
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| Tap-to-reveal feels slower / users complain | Medium | Setting toggle to disable. "Auto-advance after tap" still works (the tap is the gate, not a new screen). |
-| Recency filter empties pool on small decks | Low | Fallback to full pool when filtered=∅. |
-| `_aiAttempted` reset on pause/resume causes re-listen on already-completed step | Low | Only reset for steps where `b.stepIdx` hasn't advanced past them. |
-| Cross-session LS state corrupts | Low | Try/catch around load; default to empty arrays on parse failure. |
+| Risk | Mitigation |
+|---|---|
+| Learning-steps migration breaks existing learners | `ensureSm` sets `inLearning: true` ONLY when `correctCount === 0` |
+| New template themes lack deck vocab | `eligibleForPair` returns 0 → falls through to next template (existing behavior) |
+| Mastered button fat-finger | Smaller secondary button; only show on correct path; status visible in header |
+| Form Drills promotion adds home clutter | Demote Particles below; Particles is less central than verb conjugation |
+| Learning-steps + SM-2 callback priority cause same word to appear too often | Cap "in-learning OR due-soon" callbacks at 1–2 per Build Mode lesson |
 
 ## Ship checklist
-1. `git tag v6.11.1` (already shipped) — start fresh branch
-2. Implement Item 3 first (tiny, high-leverage, unblocks honest measurement of AI mode)
-3. Implement Item 2 (no UI, easy to verify)
-4. Implement Item 1 (largest UI surface, save for last)
-5. Bump `APP_VERSION` to `6.12` and `CACHE_NAME` in sw.js
-6. Smoke-test golden path: new lesson → introduce → recall (tap) → variation (tap, different template than last lesson) → QA non-AI (tap) → QA AI (mic glitch — verify retry on next visit)
-7. Tag, commit, push
+
+1. Item 1 (`_aiAttempted`)
+2. Item 2 (learning steps) — ship; observe a day
+3. Item 5 (mastered button) — pure UI add
+4. Item 4 (Build Mode reads Library / SM-2)
+5. Item 3 (templates) — bulk content drop
+6. Item 6 (Form Drills surface)
+7. Bump `APP_VERSION` to `6.12`, bump `CACHE_NAME` in `sw.js` lockstep
+8. Smoke tests:
+   - New card in Vocab Blitz: 1m → 5m → 15m → graduates to SM-2 (~6.25 min). Same word should reappear within session.
+   - Master button: word vanishes from next session.
+   - Build Mode: focused words preferred, mastered words excluded, in-learning words appear as callbacks.
+   - Build Mode lesson: at least one non-food template across a 6-step sequence.
+   - Form Drills: visible on home with due count.
+9. Tag, commit, push.
