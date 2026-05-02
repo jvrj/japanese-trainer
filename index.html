@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.1';
+const APP_VERSION = '6.12.2';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5570,6 +5570,25 @@ const BUILD_QA_TEMPLATES = [
 ];
 
 const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
+/* v6.12.2 — recency ring buffer to break the random-selector loop. The
+   generator was picking the same templates and same words session after
+   session because nothing remembered "we just used this." */
+const BUILD_LS_RECENT = 'jp4_build_recent';
+const BUILD_RECENT_TEMPLATES_CAP = 4;
+const BUILD_RECENT_WORDS_CAP = 6;
+function buildRecentGet(){
+  try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || []}; }
+  catch(e){ return {templates:[], words:[]}; }
+}
+function buildRecentPush(key, id, cap){
+  if(!id) return;
+  const r = buildRecentGet();
+  r[key] = (r[key] || []).filter(x => x !== id);
+  r[key].push(id);
+  while(r[key].length > cap) r[key].shift();
+  try{ localStorage.setItem(BUILD_LS_RECENT, JSON.stringify(r)); }catch(_){}
+}
+window.buildRecentClear = function(){ try{ localStorage.removeItem(BUILD_LS_RECENT); }catch(_){} };
 
 function buildFillTemplate(tmpl, word){
   const slotKey = tmpl.slotKey || 'N';
@@ -5726,7 +5745,13 @@ function buildGenerateLesson(mode){
   const pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
   if(pool.length < 2) throw new Error('need at least 2 templates in pool');
 
-  const primary = pool[Math.floor(Math.random() * pool.length)];
+  /* v6.12.2 — recency-aware template selection. Skip recently-used templates
+     unless the filtered pool would shrink below 4 (keep generation robust). */
+  const recent = buildRecentGet();
+  const recentTemplates = new Set(recent.templates || []);
+  let primaryPool = pool.filter(t => !recentTemplates.has(t.id));
+  if(primaryPool.length < 4) primaryPool = pool;
+  const primary = primaryPool[Math.floor(Math.random() * primaryPool.length)];
   const sequence = buildGetSequence();
   const introducedIds = new Set();
   sequence.forEach(e => (e.introduced || []).forEach(id => introducedIds.add(id)));
@@ -5762,23 +5787,42 @@ function buildGenerateLesson(mode){
     eligibleForPair(primary, t).length >= 3
   );
   if(sCands.length === 0) throw new Error('no compatible secondary for ' + primary.id);
-  const secondary = sCands[Math.floor(Math.random() * sCands.length)];
+  /* v6.12.2 — bias secondary away from recently-used templates too. */
+  const sFiltered = sCands.filter(t => !recentTemplates.has(t.id));
+  const sPool = sFiltered.length > 0 ? sFiltered : sCands;
+  const secondary = sPool[Math.floor(Math.random() * sPool.length)];
   const commonThemes = primary.slotThemes.filter(t => secondary.slotThemes.includes(t));
   const eligible = eligibleForPair(primary, secondary);
   if(eligible.length < 3) throw new Error('not enough deck nouns for ' + commonThemes.join(','));
 
-  /* v6.12 — prefer focused words (★) for new-word slots when possible. */
+  /* v6.12 — prefer focused words (★) for new-word slots when possible.
+     v6.12.2 — also prefer most-recently-learned vocab (newest firstCorrect / lastSeen first)
+     and de-prefer words used in the last few Build Mode lessons. */
   const focusSet = new Set(state.settings.focusWords || []);
-  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w)));
+  const recentWords = new Set(recent.words || []);
+  const wordRecencyTs = w => {
+    const st = state.stats[w.id];
+    if(!st) return 0;
+    return st.firstCorrect || st.lastSeen || (st.attempts && st.attempts.length ? st.attempts[st.attempts.length - 1].ts : 0) || 0;
+  };
+  const sortByRecentlyLearned = (a, b) => {
+    /* Recently-used in Build Mode goes LAST. */
+    const ar = recentWords.has(a.id) ? 1 : 0;
+    const br = recentWords.has(b.id) ? 1 : 0;
+    if(ar !== br) return ar - br;
+    /* Then most-recently-learned in Vocab Blitz goes FIRST. */
+    return wordRecencyTs(b) - wordRecencyTs(a);
+  };
+  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w))).sort(sortByRecentlyLearned);
   const focusedUnintro = unintroduced.filter(w => focusSet.has(w.id));
-  let newWords = buildPickRandom(focusedUnintro, 3);
+  let newWords = focusedUnintro.slice(0, 3);  /* take top focused, in recency order — no randomness */
   if(newWords.length < 3){
     const rest = unintroduced.filter(w => !newWords.includes(w));
-    newWords = newWords.concat(buildPickRandom(rest, 3 - newWords.length));
+    newWords = newWords.concat(rest.slice(0, 3 - newWords.length));
   }
   if(newWords.length < 3){
-    const extra = buildPickRandom(eligible.filter(w => !newWords.includes(w)), 3 - newWords.length);
-    newWords = newWords.concat(extra);
+    const extra = eligible.filter(w => !newWords.includes(w)).sort(sortByRecentlyLearned);
+    newWords = newWords.concat(extra.slice(0, 3 - newWords.length));
   }
 
   const newIdSet = new Set(newWords.map(buildGenWordId));
@@ -5848,6 +5892,11 @@ function buildGenerateLesson(mode){
                  buildGenerateQaStep(state.words || [], cb2) ||
                  buildGenerateQaStep(state.words || [], w1);
   if(qaStep) cycle3Steps.push(qaStep);
+
+  /* v6.12.2 — record what we just used so the next lesson avoids it. */
+  buildRecentPush('templates', primary.id, BUILD_RECENT_TEMPLATES_CAP);
+  buildRecentPush('templates', secondary.id, BUILD_RECENT_TEMPLATES_CAP);
+  for(const w of newWords) buildRecentPush('words', w.id, BUILD_RECENT_WORDS_CAP);
 
   return {
     id: lessonId,
