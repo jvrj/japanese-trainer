@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12';
+const APP_VERSION = '6.12.1';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1472,7 +1472,8 @@ function normJP(s){
   let t = String(s).trim();
   t = romajiToKana(t);
   t = t.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0)-0x60));
-  t = t.replace(/[\s、。！？,\.!?・]/g, '');
+  /* v6.12.1 - strip ALL Unicode punctuation, symbols, and whitespace. The prior hardcoded list missed full-width period ． / comma ， / Japanese brackets 「」『』 / smart quotes that Japanese keyboards auto-insert, producing false-negative equality checks in Sentence Blitz. */
+  t = t.replace(/[\p{P}\p{S}\s]/gu, '');
   t = t.replace(/[ー]/g,'');
   return t.toLowerCase();
 }
@@ -5576,6 +5577,9 @@ function buildFillTemplate(tmpl, word){
   return { jp: tmpl.pattern.replace(re, word.jp), en: tmpl.en.replace(re, word.en) };
 }
 function buildMultiSlotFill(tmpl, deck){
+  /* v6.12.1 — only use words encountered in Vocab Blitz. Mirror Library exclusions. */
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
   const maxTries = tmpl.validate ? 30 : 1;
   for(let attempt = 0; attempt < maxTries; attempt++){
     const keys = Object.keys(tmpl.slots);
@@ -5587,6 +5591,9 @@ function buildMultiSlotFill(tmpl, deck){
         w.pos === 'n' &&
         (cfg.allowKatakana || !hasKatakana(w.jp)) &&
         w.jp && w.en && w.romaji &&
+        !masteredSet.has(w.id) &&
+        !suspendedSet.has(w.id) &&
+        vocabIsIntroduced(w) &&
         (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
         (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
         (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -5627,7 +5634,8 @@ function buildPickRandom(arr, n){
 // Same shape as BUILD_TEMPLATES (slotThemes/slotWords/slotExclude),
 // shared so we can pick a random group + word together.
 function buildPoolForCfg(deck, cfg){
-  /* v6.12 — exclude mastered + suspended words from Build Mode picks too. */
+  /* v6.12 — exclude mastered + suspended.
+     v6.12.1 — also exclude words the user hasn't encountered in Vocab Blitz. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   return deck.filter(w =>
@@ -5636,6 +5644,7 @@ function buildPoolForCfg(deck, cfg){
     w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) &&
     !suspendedSet.has(w.id) &&
+    vocabIsIntroduced(w) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
     (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -5724,7 +5733,9 @@ function buildGenerateLesson(mode){
   const deck = state.words || [];
 
   /* v6.12 — Build Mode honors Library status: skip mastered + suspended words.
-     Focus is applied later as a preference, not a filter. */
+     Focus is applied later as a preference, not a filter.
+     v6.12.1 — also skip words the user has never encountered in Vocab Blitz.
+     Build Mode is a reinforcement layer, not a place to learn cold vocab. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   const eligibleForPair = (p, s) => {
@@ -5736,6 +5747,7 @@ function buildGenerateLesson(mode){
       w.jp && w.en && w.romaji &&
       !masteredSet.has(w.id) &&
       !suspendedSet.has(w.id) &&
+      vocabIsIntroduced(w) &&
       (!p.slotWords || p.slotWords.includes(w.en)) &&
       (!s.slotWords || s.slotWords.includes(w.en)) &&
       (!p.slotExclude || !p.slotExclude.includes(w.en)) &&
@@ -5937,13 +5949,26 @@ function startBuildModeHand(){
 window.startBuildModeHand = startBuildModeHand;
 
 function startBuildModeGenerated(mode){
+  /* v6.12.1 — pre-check: Build Mode now requires words encountered in Vocab Blitz.
+     Without this guard, the user gets a cryptic "no compatible secondary" toast
+     when the real issue is they haven't drilled any vocab yet. */
+  const introducedNouns = (state.words || []).filter(w =>
+    w.pos === 'n' && !hasKatakana(w.jp) && vocabIsIntroduced(w)
+  );
+  if(introducedNouns.length < 6){
+    showToast(
+      `Build Mode pulls from words you've drilled in Vocab Blitz — you've encountered ${introducedNouns.length} so far. Drill ~6+ nouns in Vocab Blitz first, then come back.`,
+      {tone:'warn', duration:6500}
+    );
+    return;
+  }
   try{
     const lesson = mode === 'hard' ? buildGenerateHardLesson() : buildGenerateLesson(mode);
     state.buildMode = buildMakeSession(lesson);
     _buildWakeLockSync();
     render();
   } catch(e){
-    showToast("Can't generate lesson — " + e.message + ". Enable the N5 pack in Settings.", {tone:'warn', duration:5500});
+    showToast("Can't generate lesson — " + e.message + ". Drill more vocab in Vocab Blitz across varied themes (places, family, body, etc.).", {tone:'warn', duration:6500});
   }
 }
 window.startBuildModeGenerated = startBuildModeGenerated;
