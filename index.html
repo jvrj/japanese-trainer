@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.11.1';
+const APP_VERSION = '6.12';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1674,11 +1674,20 @@ const SM_MIN_EASE = 1.3;
 const SM_MAX_MIN = 60*24*365;         /* 1 year */
 const SM_MASTERED_DAYS = 7;           /* "mastered" threshold for Form Drills eligibility */
 
+/* v6.12 — Anki-style learning steps. New cards cycle through tight intervals
+   before SM-2 takes over. Without this, three correct grades push a card 25m → 62m
+   → 156m, and a string of fast wins exits a card from rotation in under a session.
+   With learning steps, the first three 'good' grades land at 1m / 5m / 15m, so the
+   card is recalled under increasing in-session delay before it ever ramps. After
+   the last step, it graduates to SM-2 starting at SM_BASE_MIN × ease. */
+const SM_LEARNING_STEPS_MIN = [1, 5, 15];
+
 function smDefault(){
   return {
-    smInterval: SM_BASE_MIN, ease: SM_DEFAULT_EASE,
+    smInterval: SM_LEARNING_STEPS_MIN[0], ease: SM_DEFAULT_EASE,
     reviewCount: 0, correctCount: 0, wrongCount: 0,
-    lastReviewed: null, smNext: now()
+    lastReviewed: null, smNext: now(),
+    learningStepIdx: 0, inLearning: true
   };
 }
 
@@ -1692,6 +1701,11 @@ function ensureSm(st){
   if(st.lastReviewed === undefined) st.lastReviewed = null;
   if(st.smNext === undefined) st.smNext = now();
   if(st.lastEaseDrop === undefined) st.lastEaseDrop = null;
+  /* v6.12 — Lazy migration. Existing cards with prior correct grades keep their
+     SM-2 schedule (don't push them back into learning). Truly new cards
+     (correctCount===0) enter learning so they cycle through 1m / 5m / 15m. */
+  if(st.learningStepIdx === undefined) st.learningStepIdx = 0;
+  if(st.inLearning === undefined) st.inLearning = (st.correctCount === 0);
 }
 
 function smGrade(st, grade){
@@ -1700,20 +1714,45 @@ function smGrade(st, grade){
   st.lastReviewed = now();
   if(grade === 'again'){
     st.wrongCount++;
-    st.smInterval = SM_AGAIN_MIN;
-    /* Ease-hell mitigation: only decrement ease once per 24h per card. */
-    const dayMs = 24*60*60*1000;
-    const recentDrop = st.lastEaseDrop && (now() - st.lastEaseDrop) < dayMs;
-    if(!recentDrop){
-      st.ease = Math.max(SM_MIN_EASE, +(st.ease - 0.2).toFixed(2));
-      st.lastEaseDrop = now();
+    if(st.inLearning){
+      /* In learning — reset to first step rather than +1 day. */
+      st.learningStepIdx = 0;
+      st.smInterval = SM_LEARNING_STEPS_MIN[0];
+    } else {
+      st.smInterval = SM_AGAIN_MIN;
+      /* Ease-hell mitigation: only decrement ease once per 24h per card. */
+      const dayMs = 24*60*60*1000;
+      const recentDrop = st.lastEaseDrop && (now() - st.lastEaseDrop) < dayMs;
+      if(!recentDrop){
+        st.ease = Math.max(SM_MIN_EASE, +(st.ease - 0.2).toFixed(2));
+        st.lastEaseDrop = now();
+      }
     }
   } else if(grade === 'good'){
     st.correctCount++;
-    st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease)));
+    if(st.inLearning){
+      st.learningStepIdx++;
+      if(st.learningStepIdx >= SM_LEARNING_STEPS_MIN.length){
+        /* Graduate to SM-2. First post-graduation interval = SM_BASE_MIN × ease,
+           so the card returns in normal SM-2 territory (~25m) instead of 1d. */
+        st.inLearning = false;
+        st.smInterval = Math.round(SM_BASE_MIN * st.ease);
+      } else {
+        st.smInterval = SM_LEARNING_STEPS_MIN[st.learningStepIdx];
+      }
+    } else {
+      st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease)));
+    }
   } else if(grade === 'easy'){
     st.correctCount++;
-    st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease * 1.3)));
+    if(st.inLearning){
+      /* Easy short-circuits learning entirely. */
+      st.inLearning = false;
+      st.learningStepIdx = SM_LEARNING_STEPS_MIN.length;
+      st.smInterval = Math.round(SM_BASE_MIN * st.ease * 1.3);
+    } else {
+      st.smInterval = Math.min(SM_MAX_MIN, Math.max(1, Math.round(st.smInterval * st.ease * 1.3)));
+    }
     st.ease = +(st.ease + 0.15).toFixed(2);
   }
   st.smNext = now() + st.smInterval * 60 * 1000;
@@ -2423,6 +2462,26 @@ function formDueCount(formId){
   return {due, unseen, total: verbs.length};
 }
 
+/* v6.12 — aggregate counts across all (verb × form) pairs, used by the home
+   surface to advertise Form Drills. */
+function formCounts(){
+  const verbs = formEligibleVerbs();
+  const t = now();
+  let due = 0, drilled = 0;
+  const fs = state.formStats || {};
+  for(const w of verbs){
+    const wForms = fs[w.id] || {};
+    for(const fid of Object.keys(wForms)){
+      const st = wForms[fid];
+      if(!st) continue;
+      ensureSm(st);
+      drilled++;
+      if(st.smNext != null && st.smNext <= t) due++;
+    }
+  }
+  return {verbs: verbs.length, due, drilled};
+}
+
 /* =========================================================================
    VOCAB BLITZ — SM-2 spaced repetition. Home's primary entry point.
    ========================================================================= */
@@ -2687,6 +2746,28 @@ function blitzReveal(){
 }
 window.blitzReveal = blitzReveal;
 
+/* v6.12 — one-tap mastered-button shown post-correct-answer in Vocab Blitz.
+   Marks the word as mastered (so it's filtered from future drilling sessions
+   AND from Build Mode picks via getDrillableWords / Item 4 above), removes it
+   from the active session pool, then advances to the next card. */
+function blitzMasterCurrent(){
+  if(!state.blitz) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const s = state.settings;
+  if(!(s.masteredWords || []).includes(w.id)){
+    s.focusWords = (s.focusWords || []).filter(x => x !== w.id);
+    s.suspendedWords = (s.suspendedWords || []).filter(x => x !== w.id);
+    s.masteredWords = s.masteredWords || [];
+    s.masteredWords.push(w.id);
+  }
+  state.blitz.pool = state.blitz.pool.filter(p => p.id !== w.id);
+  if(!state.blitz.graduated.includes(w.id)) state.blitz.graduated.push(w.id);
+  save();
+  blitzAdvance();
+}
+window.blitzMasterCurrent = blitzMasterCurrent;
+
 function blitzAdvance(){
   clearBlitzAdvanceTimer();
   if(!state.blitz) return;
@@ -2853,7 +2934,10 @@ function renderBlitz(){
     : `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak reset — keep drilling</div>`);
 
   const continueCtl = correct
-    ? `<button id="blitzContinue" class="btn btn-primary" style="width:100%" onclick="blitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();blitzAdvance();}">Continue ↵</button>`
+    ? `<div style="display:flex;gap:6px;width:100%">
+         <button id="blitzContinue" class="btn btn-primary" style="flex:1" onclick="blitzAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();blitzAdvance();}">Continue ↵</button>
+         <button class="btn btn-secondary" style="padding:0 14px;font-size:13px" onclick="blitzMasterCurrent()" title="Mastered — never see again">★ Master</button>
+       </div>`
     : `<div class="muted" style="font-size:12px;margin-bottom:4px">Type <b>${esc(answer)}</b> to continue:</div>
        <input id="blitzConfirm" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="retype the correct answer" oninput="blitzTypeToContinue()" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzTypeToContinue();}">`;
   return head + `<div class="card" style="border:2px solid ${accent}">
@@ -5153,6 +5237,7 @@ const BUILD_STARTER_LESSON = {
 };
 
 const BUILD_TEMPLATES = [
+  /* food / objects */
   { id:'want',     slotKey:'N', pattern:'{N}が ほしい',               en:'I want {N}',                slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
   { id:'please',   slotKey:'N', pattern:'{N}を ください',             en:'{N}, please',               slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
   { id:'like',     slotKey:'N', pattern:'{N}が すき',                 en:'I like {N}',                slotThemes:['food'], slotExclude:['water','sugar','salt','food','drink'] },
@@ -5163,7 +5248,41 @@ const BUILD_TEMPLATES = [
   { id:'have',     slotKey:'N', pattern:'{N}が あります',              en:'I have {N} / there is {N}', slotThemes:['food','objects'] },
   { id:'where_is', slotKey:'N', pattern:'{N}は どこ ですか',           en:'Where is the {N}?',         slotThemes:['food','objects'] },
   { id:'is_tasty', slotKey:'N', pattern:'{N}は おいしい',              en:'The {N} is delicious',      slotThemes:['food'] },
-  { id:'give_me',  slotKey:'N', pattern:'{N}を おねがいします',         en:'{N}, please (polite)',     slotThemes:['food','objects'] }
+  { id:'give_me',  slotKey:'N', pattern:'{N}を おねがいします',         en:'{N}, please (polite)',     slotThemes:['food','objects'] },
+
+  /* v6.12 — places (17 nouns: school, station, park, hospital, etc.) */
+  { id:'go_to',       slotKey:'N', pattern:'{N}に いきます',          en:'I go to the {N}',           slotThemes:['places'] },
+  { id:'went_to',     slotKey:'N', pattern:'{N}に いきました',        en:'I went to the {N}',         slotThemes:['places'] },
+  { id:'where_place', slotKey:'N', pattern:'{N}は どこ ですか',       en:'Where is the {N}?',         slotThemes:['places'] },
+  { id:'near_place',  slotKey:'N', pattern:'{N}は ちかい',            en:'The {N} is nearby',         slotThemes:['places'] },
+
+  /* v6.12 — family / people (22 + 11 nouns: father, mother, friend, etc.) */
+  { id:'have_person',     slotKey:'N', pattern:'{N}が います',         en:'I have a {N} / {N} is here', slotThemes:['family','people'] },
+  { id:'genki_person',    slotKey:'N', pattern:'{N}は げんき です',     en:'{N} is well',                slotThemes:['family','people'] },
+  { id:'busy_person',     slotKey:'N', pattern:'{N}は いそがしい',     en:'{N} is busy',                slotThemes:['family','people'] },
+  { id:'where_person',    slotKey:'N', pattern:'{N}は どこ ですか',     en:'Where is {N}?',              slotThemes:['family','people'] },
+
+  /* v6.12 — body (13 nouns: head, eye, hand, etc.) */
+  { id:'body_hurts', slotKey:'N', pattern:'{N}が いたい',              en:'My {N} hurts',              slotThemes:['body'] },
+  { id:'body_big',   slotKey:'N', pattern:'{N}は おおきい',            en:'My {N} is big',             slotThemes:['body'] },
+
+  /* v6.12 — animals (7 nouns: dog, cat, bird, etc.) */
+  { id:'animal_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['animals'] },
+  { id:'animal_cute',  slotKey:'N', pattern:'{N}は かわいい',          en:'{N} is cute',               slotThemes:['animals'] },
+  { id:'animal_have',  slotKey:'N', pattern:'{N}が います',            en:'I have a {N}',              slotThemes:['animals'] },
+
+  /* v6.12 — home (14 nouns: room, kitchen, window, key, etc.) */
+  { id:'home_have',    slotKey:'N', pattern:'{N}が あります',          en:'There is a {N}',            slotThemes:['home'] },
+  { id:'home_where',   slotKey:'N', pattern:'{N}は どこ ですか',       en:'Where is the {N}?',         slotThemes:['home'] },
+  { id:'home_dirty',   slotKey:'N', pattern:'{N}は きれい です',       en:'The {N} is clean',          slotThemes:['home'] },
+
+  /* v6.12 — clothing (7 nouns: shoes, hat, watch, umbrella, etc.) */
+  { id:'wear_thing',   slotKey:'N', pattern:'{N}が ほしい',            en:'I want a {N}',              slotThemes:['clothing'] },
+  { id:'have_thing',   slotKey:'N', pattern:'{N}が あります',          en:'I have a {N}',              slotThemes:['clothing'] },
+
+  /* v6.12 — school subjects / objects (11 nouns: teacher, student, study, etc.) */
+  { id:'school_hard',  slotKey:'N', pattern:'{N}は むずかしい',        en:'{N} is difficult',          slotThemes:['school'] },
+  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -5309,6 +5428,39 @@ const BUILD_VARIATION_GROUPS = [
       { jp:'{N}は おいしい' },
       { jp:'{N}は とても おいしい' },
       { jp:'{N}は おいしかった' }
+    ]},
+  /* v6.12 — non-food variation groups */
+  { id:'went_place',
+    en:'I went to {N}',
+    slotThemes:['places'],
+    ways:[
+      { jp:'{N}に いきました' },
+      { jp:'きのう {N}に いきました' },
+      { jp:'{N}に いって きました' }
+    ]},
+  { id:'animal_cute',
+    en:'{N} is cute',
+    slotThemes:['animals'],
+    ways:[
+      { jp:'{N}は かわいい' },
+      { jp:'{N}は とても かわいい' },
+      { jp:'{N}が だいすき' }
+    ]},
+  { id:'have_family',
+    en:'I have a {N}',
+    slotThemes:['family','people'],
+    ways:[
+      { jp:'{N}が います' },
+      { jp:'わたしの {N}です' },
+      { jp:'{N}が ひとり います' }
+    ]},
+  { id:'body_hurts_var',
+    en:'My {N} hurts',
+    slotThemes:['body'],
+    ways:[
+      { jp:'{N}が いたい' },
+      { jp:'{N}が いたい です' },
+      { jp:'ちょっと {N}が いたい' }
     ]}
 ];
 
@@ -5376,6 +5528,43 @@ const BUILD_QA_TEMPLATES = [
     ],
     slotThemes:['food'],
     slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine']
+  },
+  /* v6.12 — non-food QA templates */
+  { id:'went_q',
+    question_jp:'きのう {N}に いきましたか',
+    question_en:'Did you go to the {N} yesterday?',
+    answers:[
+      { jp:'はい、いきました',           en:'Yes, I went' },
+      { jp:'いいえ、いきませんでした',   en:"No, I didn't go" }
+    ],
+    slotThemes:['places']
+  },
+  { id:'animal_like_q',
+    question_jp:'{N}が すき ですか',
+    question_en:'Do you like {N}?',
+    answers:[
+      { jp:'はい、だいすき です',         en:'Yes, I love them' },
+      { jp:'いいえ、すき じゃない',       en:"No, I don't like them" }
+    ],
+    slotThemes:['animals']
+  },
+  { id:'have_person_q',
+    question_jp:'{N}が いますか',
+    question_en:'Do you have a {N}?',
+    answers:[
+      { jp:'はい、います',                 en:'Yes, I do' },
+      { jp:'いいえ、いません',             en:"No, I don't" }
+    ],
+    slotThemes:['family','people']
+  },
+  { id:'body_hurts_q',
+    question_jp:'{N}が いたい ですか',
+    question_en:'Does your {N} hurt?',
+    answers:[
+      { jp:'はい、いたい です',           en:'Yes, it hurts' },
+      { jp:'いいえ、だいじょうぶ です',   en:"No, I'm okay" }
+    ],
+    slotThemes:['body']
   }
 ];
 
@@ -5438,10 +5627,15 @@ function buildPickRandom(arr, n){
 // Same shape as BUILD_TEMPLATES (slotThemes/slotWords/slotExclude),
 // shared so we can pick a random group + word together.
 function buildPoolForCfg(deck, cfg){
+  /* v6.12 — exclude mastered + suspended words from Build Mode picks too. */
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
   return deck.filter(w =>
     w.pos === 'n' &&
     !hasKatakana(w.jp) &&
     w.jp && w.en && w.romaji &&
+    !masteredSet.has(w.id) &&
+    !suspendedSet.has(w.id) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
     (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -5529,6 +5723,10 @@ function buildGenerateLesson(mode){
   sequence.forEach(e => (e.introduced || []).forEach(id => introducedIds.add(id)));
   const deck = state.words || [];
 
+  /* v6.12 — Build Mode honors Library status: skip mastered + suspended words.
+     Focus is applied later as a preference, not a filter. */
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
   const eligibleForPair = (p, s) => {
     const common = p.slotThemes.filter(t => s.slotThemes.includes(t));
     return deck.filter(w =>
@@ -5536,6 +5734,8 @@ function buildGenerateLesson(mode){
       common.includes(w.theme) &&
       !hasKatakana(w.jp) &&
       w.jp && w.en && w.romaji &&
+      !masteredSet.has(w.id) &&
+      !suspendedSet.has(w.id) &&
       (!p.slotWords || p.slotWords.includes(w.en)) &&
       (!s.slotWords || s.slotWords.includes(w.en)) &&
       (!p.slotExclude || !p.slotExclude.includes(w.en)) &&
@@ -5555,8 +5755,15 @@ function buildGenerateLesson(mode){
   const eligible = eligibleForPair(primary, secondary);
   if(eligible.length < 3) throw new Error('not enough deck nouns for ' + commonThemes.join(','));
 
+  /* v6.12 — prefer focused words (★) for new-word slots when possible. */
+  const focusSet = new Set(state.settings.focusWords || []);
   const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w)));
-  let newWords = buildPickRandom(unintroduced, 3);
+  const focusedUnintro = unintroduced.filter(w => focusSet.has(w.id));
+  let newWords = buildPickRandom(focusedUnintro, 3);
+  if(newWords.length < 3){
+    const rest = unintroduced.filter(w => !newWords.includes(w));
+    newWords = newWords.concat(buildPickRandom(rest, 3 - newWords.length));
+  }
   if(newWords.length < 3){
     const extra = buildPickRandom(eligible.filter(w => !newWords.includes(w)), 3 - newWords.length);
     newWords = newWords.concat(extra);
@@ -5571,6 +5778,16 @@ function buildGenerateLesson(mode){
       if(w && !cbPool.some(p => buildGenWordId(p) === id)) cbPool.push(w);
     }
   }
+  /* v6.12 — sort callback pool by SRS due-soonest first. Words about to come
+     due (or already overdue) in Vocab Blitz get pulled into Build Mode as
+     callbacks today, instead of waiting for the user to start a Blitz session.
+     This is the cross-mode revisit Julius asked for, riding on existing SM-2. */
+  cbPool.sort((a, b) => {
+    const sa = state.stats[a.id], sb = state.stats[b.id];
+    const na = (sa && sa.smNext != null) ? sa.smNext : Number.MAX_SAFE_INTEGER;
+    const nb = (sb && sb.smNext != null) ? sb.smNext : Number.MAX_SAFE_INTEGER;
+    return na - nb;
+  });
   let callbacks = cbPool.slice(0, 2);
   if(callbacks.length < 2){
     const cbIds = new Set(callbacks.map(buildGenWordId));
@@ -5855,14 +6072,18 @@ function _buildAiMode(){
 }
 function _buildAiQaActive(step){
   if(!step || step.type !== 'qa') return false;
+  /* v6.12 — _aiAttempted now means "we got a complete Claude response", not
+     "we started the flow." Transient failures (network, STT, mic) leave the
+     flag false so the next visit can retry. _aiFailCount caps retries per
+     step at 3 to prevent infinite loops. */
   if(step._aiAttempted) return false;
+  if((step._aiFailCount || 0) >= 3) return false;
   return _buildAiMode();
 }
 function _buildQaAiFlow(step){
   const b = state.buildMode;
   if(!b) return;
   step._aiMode = true;
-  step._aiAttempted = true;
   _buildSpeakJP(step.question_jp, () => {
     if(state.buildMode !== b || b._paused) return;
     setTimeout(() => {
@@ -5898,8 +6119,10 @@ function _buildAiQaListen(step){
         step._userTranscript = captured.trim();
         _buildAiQaSendToClaude(step, captured.trim());
       } else {
-        // No speech captured — silent fallback to scripted reveal
+        // No speech captured — silent fallback to scripted reveal.
+        // v6.12 — bump fail count but DON'T set _aiAttempted, so next visit can retry.
         log('build_ai_qa_no_speech',{});
+        step._aiFailCount = (step._aiFailCount || 0) + 1;
         step._aiMode = false;
         if(state.buildMode === b && !b._paused) buildAutoReveal();
       }
@@ -5952,11 +6175,15 @@ async function _buildAiQaSendToClaude(step, transcript){
     if(!jp) throw new Error('no jp');
     step._aiReplyJp = jp;
     step._aiReplyEn = en;
+    /* v6.12 — only NOW mark as attempted. A successful response is the only
+       outcome that should permanently downgrade the step on revisit. */
+    step._aiAttempted = true;
     log('build_ai_qa_ok', {model, in:(data.usage||{}).input_tokens, out:(data.usage||{}).output_tokens});
     if(state.buildMode === b && !b._paused) buildAutoReveal();
   } catch(e){
     log('build_ai_qa_err', {err: String(e.message || e)});
     showToast('AI reply failed — using scripted answer.', {tone:'warn'});
+    step._aiFailCount = (step._aiFailCount || 0) + 1;
     step._aiMode = false;
     step._aiReplyJp = null;
     step._aiReplyEn = null;
@@ -6891,11 +7118,19 @@ function renderHome(){
       </div>`;
     })()}
 
-    <div class="card">
-      <h3>Grammar</h3>
-      <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">🈁 Form drills</button>
-      <div class="muted" style="font-size:12px;margin-top:6px">Conjugate verbs you've mastered in Vocab Blitz.</div>
-    </div>
+    ${(() => {
+      const fc = formCounts();
+      const sub = fc.verbs === 0
+        ? 'No verbs in deck — enable the N5 pack in Settings.'
+        : (fc.drilled === 0
+            ? `${fc.verbs} verbs · 10 forms each — pick one verb, ace it across all conjugations.`
+            : `${fc.verbs} verbs · ${fc.drilled} forms drilled · ${fc.due} due now`);
+      return `<div class="card">
+        <h3>Verb forms</h3>
+        <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">🈁 Drill conjugations</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">ます · ました · て · た · ない · たい · ている. Independent SRS per (verb × form). ${esc(sub)}</div>
+      </div>`;
+    })()}
 
     <div class="card">
       <h3>Build Mode</h3>
