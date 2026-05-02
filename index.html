@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.2';
+const APP_VERSION = '6.12.3';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -942,7 +942,135 @@ const N5_PACK = [
   {jp:"シンプル",romaji:"shinpuru",en:"simple",pos:"adj-na",theme:"daily",register:"neutral",jlpt:5},
   {jp:"バイク",romaji:"baiku",en:"motorcycle",pos:"n",theme:"travel",register:"neutral",jlpt:5},
   {jp:"ジム",romaji:"jimu",en:"gym",pos:"n",theme:"places",register:"neutral",jlpt:5},
-  {jp:"カフェ",romaji:"kafe",en:"cafe",pos:"n",theme:"places",register:"neutral",jlpt:5}
+  {jp:"カフェ",romaji:"kafe",en:"cafe",pos:"n",theme:"places",register:"neutral",jlpt:5},
+
+  /* ===== v6.12.3 — conversational vocab expansion (~115 high-utility words) ===== */
+
+  /* High-frequency verbs (~40) */
+  {jp:"かんがえる",romaji:"kangaeru",en:"to think/consider",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"きめる",romaji:"kimeru",en:"to decide",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"やる",romaji:"yaru",en:"to do (casual)",pos:"v",theme:"daily",register:"casual",jlpt:5},
+  {jp:"なる",romaji:"naru",en:"to become",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"いれる",romaji:"ireru",en:"to put in",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"だす",romaji:"dasu",en:"to take out/submit",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"つける",romaji:"tsukeru",en:"to turn on/attach",pos:"v",theme:"home",register:"neutral",jlpt:5},
+  {jp:"けす",romaji:"kesu",en:"to turn off/erase",pos:"v",theme:"home",register:"neutral",jlpt:5},
+  {jp:"みつける",romaji:"mitsukeru",en:"to find",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"さがす",romaji:"sagasu",en:"to search",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"はらう",romaji:"harau",en:"to pay",pos:"v",theme:"work",register:"neutral",jlpt:5},
+  {jp:"すてる",romaji:"suteru",en:"to throw away",pos:"v",theme:"home",register:"neutral",jlpt:5},
+  {jp:"ひろう",romaji:"hirou",en:"to pick up",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"もどる",romaji:"modoru",en:"to return/go back",pos:"v",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"のぼる",romaji:"noboru",en:"to climb",pos:"v",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"わたる",romaji:"wataru",en:"to cross",pos:"v",theme:"travel",register:"neutral",jlpt:5},
+  {jp:"すすむ",romaji:"susumu",en:"to advance/proceed",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"とまる",romaji:"tomaru",en:"to stop (intr)",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"とめる",romaji:"tomeru",en:"to stop (tr)",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"なおす",romaji:"naosu",en:"to fix",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"なおる",romaji:"naoru",en:"to be fixed/recover",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"つたえる",romaji:"tsutaeru",en:"to convey/tell",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ふえる",romaji:"fueru",en:"to increase",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"へる",romaji:"heru",en:"to decrease",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"はじまる",romaji:"hajimaru",en:"to begin (intr)",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"おくる",romaji:"okuru",en:"to send",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"うけとる",romaji:"uketoru",en:"to receive",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"たすける",romaji:"tasukeru",en:"to help/save",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"たつ",romaji:"tatsu",en:"to stand",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"すわる",romaji:"suwaru",en:"to sit",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"とぶ",romaji:"tobu",en:"to fly/jump",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"さわる",romaji:"sawaru",en:"to touch",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"なく",romaji:"naku",en:"to cry",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"わらう",romaji:"warau",en:"to laugh",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"おこる",romaji:"okoru",en:"to get angry",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"おどろく",romaji:"odoroku",en:"to be surprised",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"しんぱいする",romaji:"shinpai suru",en:"to worry",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"れんしゅうする",romaji:"renshuu suru",en:"to practice",pos:"v",theme:"school",register:"neutral",jlpt:5},
+  {jp:"しらべる",romaji:"shiraberu",en:"to look up/check",pos:"v",theme:"school",register:"neutral",jlpt:5},
+  {jp:"つかれる",romaji:"tsukareru",en:"to get tired",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"いそぐ",romaji:"isogu",en:"to hurry",pos:"v",theme:"daily",register:"neutral",jlpt:5},
+
+  /* High-frequency adjectives (~12 i + 8 na) */
+  {jp:"すごい",romaji:"sugoi",en:"amazing/wow",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"ねむい",romaji:"nemui",en:"sleepy",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"こわい",romaji:"kowai",en:"scary",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"ひどい",romaji:"hidoi",en:"terrible/awful",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"うまい",romaji:"umai",en:"skilled/tasty",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"かたい",romaji:"katai",en:"hard/stiff",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"やわらかい",romaji:"yawarakai",en:"soft",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"うすい",romaji:"usui",en:"thin",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ふかい",romaji:"fukai",en:"deep",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"あさい",romaji:"asai",en:"shallow",pos:"adj",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"きびしい",romaji:"kibishii",en:"strict/harsh",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"うらやましい",romaji:"urayamashii",en:"envious",pos:"adj",theme:"feelings",register:"neutral",jlpt:5},
+
+  {jp:"しんぱい",romaji:"shinpai",en:"worried",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"あんしん",romaji:"anshin",en:"relieved",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"かんたん",romaji:"kantan",en:"easy/simple",pos:"adj-na",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ふくざつ",romaji:"fukuzatsu",en:"complicated",pos:"adj-na",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"むだ",romaji:"muda",en:"wasteful",pos:"adj-na",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"たいくつ",romaji:"taikutsu",en:"boring",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"ざんねん",romaji:"zannen",en:"too bad/regrettable",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"しあわせ",romaji:"shiawase",en:"happy",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:5},
+
+  /* Adverbs (~14) */
+  {jp:"ちょうど",romaji:"choudo",en:"exactly/just",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"さっき",romaji:"sakki",en:"a little while ago",pos:"adv",theme:"time",register:"neutral",jlpt:5},
+  {jp:"もうすぐ",romaji:"mou sugu",en:"very soon",pos:"adv",theme:"time",register:"neutral",jlpt:5},
+  {jp:"これから",romaji:"kore kara",en:"from now on",pos:"adv",theme:"time",register:"neutral",jlpt:5},
+  {jp:"きっと",romaji:"kitto",en:"surely/I'm sure",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ぜったい",romaji:"zettai",en:"definitely/never (with neg)",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ぜひ",romaji:"zehi",en:"by all means",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"やっと",romaji:"yatto",en:"finally/at last",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"なるべく",romaji:"narubeku",en:"as much as possible",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"たまに",romaji:"tama ni",en:"occasionally",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"かなり",romaji:"kanari",en:"quite/considerably",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"けっこう",romaji:"kekkou",en:"quite/fairly",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"やっぱり",romaji:"yappari",en:"as expected/after all",pos:"adv",theme:"daily",register:"casual",jlpt:5},
+  {jp:"たとえば",romaji:"tatoeba",en:"for example",pos:"adv",theme:"daily",register:"neutral",jlpt:5},
+
+  /* Conjunctions (~5) */
+  {jp:"けど",romaji:"kedo",en:"but (casual)",pos:"conj",theme:"grammar",register:"casual",jlpt:5},
+  {jp:"ところで",romaji:"tokoro de",en:"by the way",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"つまり",romaji:"tsumari",en:"in other words",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"それに",romaji:"soreni",en:"moreover/besides",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"または",romaji:"matawa",en:"or/alternatively",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+
+  /* Expressions / fillers (~9) */
+  {jp:"やばい",romaji:"yabai",en:"awesome/terrible (slang)",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+  {jp:"まじ",romaji:"maji",en:"seriously/really",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+  {jp:"へえ",romaji:"hee",en:"wow/oh really",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+  {jp:"なるほど",romaji:"naruhodo",en:"I see/makes sense",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"たしかに",romaji:"tashika ni",en:"certainly/indeed",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"もちろん",romaji:"mochiron",en:"of course",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"だめ",romaji:"dame",en:"no good/can't",pos:"expr",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"むり",romaji:"muri",en:"impossible/no way",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+  {jp:"やめて",romaji:"yamete",en:"stop it",pos:"expr",theme:"daily",register:"casual",jlpt:5},
+
+  /* Modern + practical nouns (~24 — スマホ/アプリ/メール/おかね already in deck above) */
+  {jp:"ライン",romaji:"rain",en:"LINE (messaging)",pos:"n",theme:"tech",register:"neutral",jlpt:5},
+  {jp:"パスワード",romaji:"pasuwaado",en:"password",pos:"n",theme:"tech",register:"neutral",jlpt:5},
+  {jp:"しゃしん",romaji:"shashin",en:"photo",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"どうが",romaji:"douga",en:"video",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"げんきん",romaji:"genkin",en:"cash",pos:"n",theme:"work",register:"neutral",jlpt:5},
+  {jp:"クレジットカード",romaji:"kurejitto kaado",en:"credit card",pos:"n",theme:"work",register:"neutral",jlpt:5},
+  {jp:"はなし",romaji:"hanashi",en:"story/talk",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"やくそく",romaji:"yakusoku",en:"promise/appointment",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"しつもん",romaji:"shitsumon",en:"question",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"こたえ",romaji:"kotae",en:"answer",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"もんだい",romaji:"mondai",en:"problem/issue",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"りゆう",romaji:"riyuu",en:"reason",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"けっか",romaji:"kekka",en:"result",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"つもり",romaji:"tsumori",en:"intention/plan",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"きもち",romaji:"kimochi",en:"feeling/mood",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"かんがえ",romaji:"kangae",en:"thought/idea",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"けいけん",romaji:"keiken",en:"experience",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"しゅみ",romaji:"shumi",en:"hobby",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"ゆめ",romaji:"yume",en:"dream",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"もくひょう",romaji:"mokuhyou",en:"goal",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"しょうらい",romaji:"shourai",en:"future",pos:"n",theme:"time",register:"neutral",jlpt:5},
+  {jp:"かいわ",romaji:"kaiwa",en:"conversation",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"きょうみ",romaji:"kyoumi",en:"interest",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+  {jp:"きかい",romaji:"kikai",en:"opportunity/chance",pos:"n",theme:"daily",register:"neutral",jlpt:5}
 ];
 
 /* ===================== SENTENCE TEMPLATES ===================== */
