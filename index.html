@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.7';
+const APP_VERSION = '6.12.8';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5709,8 +5709,8 @@ const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
    generator was picking the same templates and same words session after
    session because nothing remembered "we just used this." */
 const BUILD_LS_RECENT = 'jp4_build_recent';
-const BUILD_RECENT_TEMPLATES_CAP = 4;
-const BUILD_RECENT_WORDS_CAP = 12;
+const BUILD_RECENT_TEMPLATES_CAP = 6;
+const BUILD_RECENT_WORDS_CAP = 30;
 function buildRecentGet(){
   try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || []}; }
   catch(e){ return {templates:[], words:[]}; }
@@ -6190,6 +6190,15 @@ function buildGenerateHardLesson(){
   for(const wid of lessonWords) buildRecentPush('words', wid, BUILD_RECENT_WORDS_CAP);
   if(totalPicks > 0 && fallbackPicks / totalPicks >= 0.3){
     log('build_hard_low_variety', {fallbackPicks, totalPicks, lessonId});
+    /* v6.12.8 — surface this to the user too. They were yelling "build mode
+       is the same shit" — when the algorithm has had to relax dedup, tell
+       them why so they can drill more vocab to unlock variety. */
+    setTimeout(() => {
+      showToast(
+        `${fallbackPicks}/${totalPicks} slot picks repeated — your introduced pool is thin in some themes. Drill more in Vocab Blitz.`,
+        {tone:'warn', duration:5000}
+      );
+    }, 1200);
   }
   if(steps.length === 0) throw new Error('no multi-slot templates could be filled — drill more nouns across food/places/family in Vocab Blitz');
   // v6.11 — append a QA capstone using one of the words used in the lesson.
@@ -6260,6 +6269,19 @@ function startBuildModeGenerated(mode){
     state.buildMode = buildMakeSession(lesson);
     _buildWakeLockSync();
     render();
+    /* v6.12.8 — pool transparency. Show the user exactly what data Build Mode
+       is drawing from. Counts introduced nouns by theme so they can tell
+       whether repetition is algorithmic (ours) or content (their pool is thin). */
+    const themeCounts = {};
+    introducedNouns.forEach(w => { themeCounts[w.theme] = (themeCounts[w.theme] || 0) + 1; });
+    const themeBreakdown = Object.entries(themeCounts)
+      .sort((a,b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([t,n]) => `${t}×${n}`).join(' · ');
+    showToast(
+      `Drawing from ${introducedNouns.length} introduced words: ${themeBreakdown}`,
+      {tone:'info', duration:4500}
+    );
   } catch(e){
     showToast("Can't generate lesson — " + e.message + ". Drill more vocab in Vocab Blitz across varied themes (places, family, body, etc.).", {tone:'warn', duration:6500});
   }
