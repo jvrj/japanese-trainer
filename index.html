@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.5';
+const APP_VERSION = '6.12.6';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6059,6 +6059,28 @@ function buildGenerateLesson(mode){
   buildRecentPush('templates', secondary.id, BUILD_RECENT_TEMPLATES_CAP);
   for(const w of newWords) buildRecentPush('words', w.id, BUILD_RECENT_WORDS_CAP);
 
+  /* v6.12.6 — cycle 1 honors lifetime Vocab Blitz history. If the user has
+     correctly answered a word ≥1 times in Vocab Blitz (or any other mode that
+     pushes to state.stats), it's NOT a new word — skip the passive introduce
+     step and go straight to active recall. Eliminates the "introducing me to
+     ringo when I just graduated it yesterday" problem. */
+  const knownInApp = (w) => {
+    const st = state.stats[w.id];
+    if(!st) return false;
+    if(st.correctCount && st.correctCount >= 1) return true;
+    if(st.attempts && st.attempts.some(a => a.correct)) return true;
+    return false;
+  };
+  const cycle1Steps = newWords.map(w => ({
+    type: knownInApp(w) ? 'recall' : 'introduce',
+    word_id: buildGenWordId(w)
+  }));
+  cycle1Steps.push({ type:'recall', word_id: buildGenWordId(w1) });
+  const allKnown = newWords.every(knownInApp);
+  const cycle1Name = allKnown
+    ? `Warm-up — ${w1.en}, ${w2.en}, ${w3.en}`
+    : `Introduce — ${w1.en}, ${w2.en}, ${w3.en}`;
+
   return {
     id: lessonId,
     title: `${mode === 'complex' ? 'Complex' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
@@ -6066,13 +6088,7 @@ function buildGenerateLesson(mode){
     new_words: newWords.map(toRef),
     carryover_words: callbacks.map(toRef),
     cycles: [
-      { id:'cycle_1', name:`Introduce — ${w1.en}, ${w2.en}, ${w3.en}`,
-        steps:[
-          { type:'introduce', word_id: buildGenWordId(w1) },
-          { type:'introduce', word_id: buildGenWordId(w2) },
-          { type:'introduce', word_id: buildGenWordId(w3) },
-          { type:'recall',    word_id: buildGenWordId(w1) }
-        ]},
+      { id:'cycle_1', name: cycle1Name, steps: cycle1Steps },
       { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`,
         steps: cycle2Steps },
       { id:'cycle_3', name:`Callbacks — mix frames`,
