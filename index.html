@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.4';
+const APP_VERSION = '6.12.5';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2669,13 +2669,20 @@ function buildBlitzPool(opts){
   youngDue.sort((a,b) => a.next - b.next);
   youngNotDue.sort((a,b) => a.next - b.next); /* soonest-due last-resort */
   const matureSel = matureDue.slice(0, targetMature).map(x => x.w);
-  /* Priority: focus > young-due > unseen > young-not-due. Focus eats from learning slot. */
-  const learningSel = [
-    ...focused,
-    ...youngDue.map(x => x.w),
-    ...shuffleFY(unseen),
-    ...youngNotDue.map(x => x.w),
-  ].slice(0, Math.max(targetLearn, focused.length));
+  /* v6.12.5 — discovery-first composition. Previously surfaced young-due
+     before unseen, so a user who graduated ~12 cards yesterday saw the same
+     12 today and never reached new vocab. Now: focus always wins, then a
+     small dribble (~2 young-due) for recall, then unseen fills the rest.
+     If unseen is depleted, recall fills the leftover slots. */
+  const RECALL_DRIBBLE_SLOTS = 2;
+  const cap = Math.max(targetLearn, focused.length);
+  const slotsAfterFocus = Math.max(0, cap - focused.length);
+  const recallReserve = Math.min(RECALL_DRIBBLE_SLOTS, youngDue.length + youngNotDue.length, slotsAfterFocus);
+  const unseenSlots = Math.max(0, slotsAfterFocus - recallReserve);
+  const unseenTake = shuffleFY(unseen.slice()).slice(0, Math.min(unseenSlots, unseen.length));
+  const recallPool = [...youngDue.map(x => x.w), ...youngNotDue.map(x => x.w)];
+  const recallTake = recallPool.slice(0, slotsAfterFocus - unseenTake.length);
+  const learningSel = [...focused, ...unseenTake, ...recallTake].slice(0, cap);
   return shuffleFY([
     ...matureSel.map(w => ({id:w.id, streak:0, required:1, answers:0, everWrong:false, mature:true})),
     ...learningSel.map(w => ({id:w.id, streak:0, required:BLITZ_STREAK_REQUIRED, answers:0, everWrong:false, mature:false, focus: focusSet.has(w.id)})),
