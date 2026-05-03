@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.9';
+const APP_VERSION = '6.12.11';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2099,30 +2099,50 @@ function enHomographSiblings(word){
 }
 
 /* v6.12.9 — when a wrong Vocab Blitz answer happens to be a real word in
-   the deck, surface what it actually means. "you typed X — that's actually
-   [JP/EN of X]". Strict equality on normalized forms only — no fuzzy match
-   here, otherwise we'd misattribute typos to unrelated words. */
-function blitzFindMatchingWord(input, currentWord, direction){
+   the deck, surface what it actually means.
+   v6.12.10 — Levenshtein ≤1 fuzzy match (min length 4) for typo tolerance.
+   v6.12.11 — try BOTH languages regardless of expected direction. A user
+   typing romaji when EN was expected (or vice versa) should still get the
+   hint. Real case: prompt 'awesome/terrible (slang)', user typed 'yasai'
+   thinking it was yabai — direction was jp-en so old helper only tried EN
+   match, missed it. Now tries JP first, then EN. Exact wins over fuzzy. */
+function blitzFindMatchingWord(input, currentWord, _direction){
   if(!input) return null;
   const trimmed = String(input).trim();
   if(!trimmed) return null;
   const deck = state.words || [];
-  if(direction === 'jp-en'){
-    const uiN = normEN(trimmed);
-    if(!uiN) return null;
+  const skip = w => !w || (currentWord && w.id === currentWord.id);
+
+  /* Pass 1: exact match either language. */
+  const jpN = normJP(trimmed);
+  if(jpN){
     for(const w of deck){
-      if(!w || !w.en) continue;
-      if(currentWord && w.id === currentWord.id) continue;
-      const alts = enAlternatives(w.en);
-      if(alts.includes(uiN)) return w;
+      if(skip(w) || !w.jp) continue;
+      if(normJP(w.jp) === jpN) return w;
     }
-  } else {
-    const uiN = normJP(trimmed);
-    if(!uiN) return null;
+  }
+  const enN = normEN(trimmed);
+  if(enN){
     for(const w of deck){
-      if(!w || !w.jp) continue;
-      if(currentWord && w.id === currentWord.id) continue;
-      if(normJP(w.jp) === uiN) return w;
+      if(skip(w) || !w.en) continue;
+      if(enAlternatives(w.en).includes(enN)) return w;
+    }
+  }
+
+  /* Pass 2: fuzzy ≤1 either language, min length 4. */
+  if(jpN && jpN.length >= 4){
+    for(const w of deck){
+      if(skip(w) || !w.jp) continue;
+      const tN = normJP(w.jp);
+      if(tN.length >= 4 && levenshtein(jpN, tN) <= 1) return w;
+    }
+  }
+  if(enN && enN.length >= 4){
+    for(const w of deck){
+      if(skip(w) || !w.en) continue;
+      for(const a of enAlternatives(w.en)){
+        if(a && a.length >= 4 && levenshtein(enN, a) <= 1) return w;
+      }
     }
   }
   return null;
@@ -3107,16 +3127,14 @@ function renderBlitz(){
     : `<div class="muted" style="font-size:12px;margin-bottom:4px">Type <b>${esc(answer)}</b> to continue:</div>
        <input id="blitzConfirm" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="retype the correct answer" oninput="blitzTypeToContinue()" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzTypeToContinue();}">`;
   /* v6.12.9 — if the user's wrong answer matches another deck word, show what
-     they actually typed. Teaches the mistake instead of just rejecting it. */
+     they actually typed. Teaches the mistake instead of just rejecting it.
+     v6.12.11 — show both JP + EN of the matched word, since input can be
+     either language regardless of direction. */
   const wrongMatch = (!correct && b.input) ? blitzFindMatchingWord(b.input, w, cur) : null;
   let matchHint = '';
   if(wrongMatch){
     const inputShown = String(b.input).trim();
-    if(cur === 'jp-en'){
-      matchHint = `<div style="font-size:13px;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:3px solid var(--blue)"><span class="muted">"${esc(inputShown)}" is actually:</span> <b class="jp">${esc(wrongMatch.jp)}</b>${wrongMatch.romaji ? ` <span class="muted">${esc(wrongMatch.romaji)}</span>` : ''}</div>`;
-    } else {
-      matchHint = `<div style="font-size:13px;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:3px solid var(--blue)"><span class="muted">"${esc(inputShown)}" is actually:</span> <b>${esc(wrongMatch.en)}</b></div>`;
-    }
+    matchHint = `<div style="font-size:13px;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:3px solid var(--blue)"><span class="muted">"${esc(inputShown)}" is actually:</span> <b class="jp">${esc(wrongMatch.jp)}</b>${wrongMatch.romaji ? ` <span class="muted">${esc(wrongMatch.romaji)}</span>` : ''} <span class="muted">→</span> <b>${esc(wrongMatch.en)}</b></div>`;
   }
   return head + `<div class="card" style="border:2px solid ${accent}">
     <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
