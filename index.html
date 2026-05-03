@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.6';
+const APP_VERSION = '6.12.7';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5468,14 +5468,14 @@ const BUILD_HARD_TEMPLATES = [
     pattern:'{T} {N}を たべました',
     en:'I ate {N} {T}',
     slots:{
-      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','day before yesterday','last week','this week'] },
       N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
     }},
   { id:'time_go_place',
     pattern:'{T} {P}に いきました',
     en:'I went to {P} {T}',
     slots:{
-      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','day before yesterday','last week','this week'] },
       P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
     }},
   { id:'person_place',
@@ -5489,7 +5489,7 @@ const BUILD_HARD_TEMPLATES = [
     pattern:'{T} {F}と {P}に いきました',
     en:'{T} I went to {P} with {F}',
     slots:{
-      T:{ slotThemes:['time'], slotWords:['yesterday','today'] },
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','day before yesterday','last week','this week'] },
       F:{ slotThemes:['family'] },
       P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
     }},
@@ -5710,7 +5710,7 @@ const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
    session because nothing remembered "we just used this." */
 const BUILD_LS_RECENT = 'jp4_build_recent';
 const BUILD_RECENT_TEMPLATES_CAP = 4;
-const BUILD_RECENT_WORDS_CAP = 6;
+const BUILD_RECENT_WORDS_CAP = 12;
 function buildRecentGet(){
   try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || []}; }
   catch(e){ return {templates:[], words:[]}; }
@@ -5730,10 +5730,14 @@ function buildFillTemplate(tmpl, word){
   const re = new RegExp('\\{' + slotKey + '\\}', 'g');
   return { jp: tmpl.pattern.replace(re, word.jp), en: tmpl.en.replace(re, word.en) };
 }
-function buildMultiSlotFill(tmpl, deck){
-  /* v6.12.1 — only use words encountered in Vocab Blitz. Mirror Library exclusions. */
+function buildMultiSlotFill(tmpl, deck, excludeWordIds){
+  /* v6.12.1 — only use words encountered in Vocab Blitz. Mirror Library exclusions.
+     v6.12.7 — accept excludeWordIds Set so callers can dedup across slots/lessons.
+     Falls back to the full pool if exclusion would empty it (so we never fail
+     a slot just because every option was recently used). */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const exclude = excludeWordIds || new Set();
   const maxTries = tmpl.validate ? 30 : 1;
   for(let attempt = 0; attempt < maxTries; attempt++){
     const keys = Object.keys(tmpl.slots);
@@ -5741,7 +5745,7 @@ function buildMultiSlotFill(tmpl, deck){
     let failed = false;
     for(const key of keys){
       const cfg = tmpl.slots[key];
-      let pool = deck.filter(w =>
+      const fullPool = deck.filter(w =>
         w.pos === 'n' &&
         (cfg.allowKatakana || !hasKatakana(w.jp)) &&
         w.jp && w.en && w.romaji &&
@@ -5752,6 +5756,8 @@ function buildMultiSlotFill(tmpl, deck){
         (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
         (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
       );
+      let pool = fullPool.filter(w => !exclude.has(w.id));
+      if(pool.length === 0) pool = fullPool;
       if(cfg.distinctFrom && chosen[cfg.distinctFrom]){
         pool = pool.filter(w => w.jp !== chosen[cfg.distinctFrom].jp);
       }
@@ -6136,24 +6142,54 @@ function buildGenerateHardLesson(){
     throw new Error("no hard templates fit your introduced vocab — drill 'yesterday'/'today' (time), a family member, or a place via Vocab Blitz, or try simple/complex mode");
   }
 
+  /* v6.12.7 — round-robin viable templates with cross-session recency dedup.
+     Skip templates used in the last few lessons; fall back to full viable
+     pool if filtered too thin. Then shuffle and round-robin so a single
+     lesson uses each template at most ⌈7/N⌉ times — much better than the
+     old random-with-no-back-to-back approach when N is small. */
+  const recent = buildRecentGet();
+  const recentTemplatesSet = new Set(recent.templates || []);
+  const recentWordsSet = new Set(recent.words || []);
+  let preferredTmpls = viable.filter(t => !recentTemplatesSet.has(t.id));
+  if(preferredTmpls.length < 2) preferredTmpls = viable;
+  const shuffledTmpls = shuffleFY(preferredTmpls.slice());
+
   const lessonId = 'Gh' + (buildGetSequence().length + 1);
   const steps = [];
   const usedRefs = new Map();
-  let lastTmplId = null;
+  /* Lesson-scoped word set — passed to buildMultiSlotFill so the same noun
+     doesn't appear twice in the same lesson (e.g., "park" in two builds). */
+  const lessonWords = new Set();
+  let fallbackPicks = 0, totalPicks = 0;
   let tries = 0;
-  while(steps.length < 7 && tries < 60){
+  while(steps.length < 7 && tries < 80){
     tries++;
-    const tPool = viable.filter(t => t.id !== lastTmplId);
-    const choices = tPool.length > 0 ? tPool : viable;
-    const tmpl = choices[Math.floor(Math.random() * choices.length)];
-    const filled = buildMultiSlotFill(tmpl, deck);
+    /* Round-robin through shuffled templates by step index. */
+    const tmpl = shuffledTmpls[steps.length % shuffledTmpls.length];
+    const exclude = new Set([...recentWordsSet, ...lessonWords]);
+    const filled = buildMultiSlotFill(tmpl, deck, exclude);
     if(!filled) continue;
-    lastTmplId = tmpl.id;
+    /* Diagnostic: a slot pick fell back if its chosen word was in the exclude set. */
+    for(const k of Object.keys(tmpl.slots)){
+      totalPicks++;
+      if(exclude.has(filled.words[k].id)) fallbackPicks++;
+    }
     steps.push({ type:'build', sentence_jp: filled.jp, sentence_en: filled.en });
     for(const w of Object.values(filled.words)){
+      lessonWords.add(w.id);
       const id = buildGenWordId(w);
       if(!usedRefs.has(id)) usedRefs.set(id, { id, jp: w.jp, en: w.en, r: w.romaji });
     }
+  }
+  /* v6.12.7 — record what we used so the next lesson avoids it. */
+  const usedTmplIds = new Set();
+  for(let i = 0; i < Math.min(steps.length, shuffledTmpls.length); i++){
+    usedTmplIds.add(shuffledTmpls[i].id);
+  }
+  for(const tid of usedTmplIds) buildRecentPush('templates', tid, BUILD_RECENT_TEMPLATES_CAP);
+  for(const wid of lessonWords) buildRecentPush('words', wid, BUILD_RECENT_WORDS_CAP);
+  if(totalPicks > 0 && fallbackPicks / totalPicks >= 0.3){
+    log('build_hard_low_variety', {fallbackPicks, totalPicks, lessonId});
   }
   if(steps.length === 0) throw new Error('no multi-slot templates could be filled — drill more nouns across food/places/family in Vocab Blitz');
   // v6.11 — append a QA capstone using one of the words used in the lesson.
