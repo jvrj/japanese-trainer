@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.3';
+const APP_VERSION = '6.12.4';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5873,13 +5873,8 @@ function buildGenerateLesson(mode){
   const pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
   if(pool.length < 2) throw new Error('need at least 2 templates in pool');
 
-  /* v6.12.2 — recency-aware template selection. Skip recently-used templates
-     unless the filtered pool would shrink below 4 (keep generation robust). */
   const recent = buildRecentGet();
   const recentTemplates = new Set(recent.templates || []);
-  let primaryPool = pool.filter(t => !recentTemplates.has(t.id));
-  if(primaryPool.length < 4) primaryPool = pool;
-  const primary = primaryPool[Math.floor(Math.random() * primaryPool.length)];
   const sequence = buildGetSequence();
   const introducedIds = new Set();
   sequence.forEach(e => (e.introduced || []).forEach(id => introducedIds.add(id)));
@@ -5907,6 +5902,37 @@ function buildGenerateLesson(mode){
       (!s.slotExclude || !s.slotExclude.includes(w.en))
     );
   };
+
+  /* v6.12.4 — pre-filter primary templates to viable ones (those that have
+     at least one valid secondary partner with ≥3 eligible introduced words).
+     Stops the algorithm from picking a primary that dooms the pairing step
+     and surfacing "no compatible secondary" toasts when the real fix is to
+     just pick a different primary. */
+  const viablePrimaries = pool.filter(p =>
+    pool.some(s =>
+      s.id !== p.id &&
+      s.slotKey === p.slotKey &&
+      s.slotThemes.some(th => p.slotThemes.includes(th)) &&
+      eligibleForPair(p, s).length >= 3
+    )
+  );
+  if(viablePrimaries.length === 0){
+    const themeCounts = {};
+    deck.filter(w =>
+      w.pos === 'n' && !hasKatakana(w.jp) &&
+      !masteredSet.has(w.id) && !suspendedSet.has(w.id) && vocabIsIntroduced(w)
+    ).forEach(w => { themeCounts[w.theme] = (themeCounts[w.theme] || 0) + 1; });
+    const have = Object.entries(themeCounts)
+      .sort((a,b) => b[1]-a[1])
+      .map(([t,n]) => `${t}:${n}`).join(', ') || 'none';
+    throw new Error(`no template pair has 3+ introduced words (you have ${have || 'none'}) — drill more in the same theme via Vocab Blitz`);
+  }
+
+  /* v6.12.2 — recency-aware template selection. Skip recently-used templates
+     unless the filtered pool would shrink below 4 (keep generation robust). */
+  let primaryPool = viablePrimaries.filter(t => !recentTemplates.has(t.id));
+  if(primaryPool.length < 4) primaryPool = viablePrimaries;
+  const primary = primaryPool[Math.floor(Math.random() * primaryPool.length)];
 
   const sCands = pool.filter(t =>
     t.id !== primary.id &&
@@ -6057,6 +6083,36 @@ function buildGenerateLesson(mode){
 
 function buildGenerateHardLesson(){
   const deck = state.words || [];
+  /* v6.12.4 — only consider templates whose every slot has ≥1 introduced word
+     in the user's Vocab Blitz history. Keeps Hard mode from rolling templates
+     that have no chance of filling (e.g., time/family/places combos when the
+     user has only drilled food). */
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const slotPool = (cfg) => deck.filter(w =>
+    w.pos === 'n' &&
+    (cfg.allowKatakana || !hasKatakana(w.jp)) &&
+    w.jp && w.en && w.romaji &&
+    !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+    vocabIsIntroduced(w) &&
+    (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
+    (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
+    (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
+  );
+  const viable = BUILD_HARD_TEMPLATES.filter(t => {
+    const keys = Object.keys(t.slots);
+    if(!keys.every(k => slotPool(t.slots[k]).length >= 1)) return false;
+    /* distinctFrom requires the source slot to have ≥2 distinct words. */
+    return keys.every(k => {
+      const cfg = t.slots[k];
+      if(!cfg.distinctFrom) return true;
+      return slotPool(t.slots[cfg.distinctFrom]).length >= 2;
+    });
+  });
+  if(viable.length === 0){
+    throw new Error("no hard templates fit your introduced vocab — drill 'yesterday'/'today' (time), a family member, or a place via Vocab Blitz, or try simple/complex mode");
+  }
+
   const lessonId = 'Gh' + (buildGetSequence().length + 1);
   const steps = [];
   const usedRefs = new Map();
@@ -6064,8 +6120,9 @@ function buildGenerateHardLesson(){
   let tries = 0;
   while(steps.length < 7 && tries < 60){
     tries++;
-    const pool = BUILD_HARD_TEMPLATES.filter(t => t.id !== lastTmplId);
-    const tmpl = pool[Math.floor(Math.random() * pool.length)];
+    const tPool = viable.filter(t => t.id !== lastTmplId);
+    const choices = tPool.length > 0 ? tPool : viable;
+    const tmpl = choices[Math.floor(Math.random() * choices.length)];
     const filled = buildMultiSlotFill(tmpl, deck);
     if(!filled) continue;
     lastTmplId = tmpl.id;
@@ -6075,7 +6132,7 @@ function buildGenerateHardLesson(){
       if(!usedRefs.has(id)) usedRefs.set(id, { id, jp: w.jp, en: w.en, r: w.romaji });
     }
   }
-  if(steps.length === 0) throw new Error('no multi-slot templates could be filled — enable N5 pack in Settings');
+  if(steps.length === 0) throw new Error('no multi-slot templates could be filled — drill more nouns across food/places/family in Vocab Blitz');
   // v6.11 — append a QA capstone using one of the words used in the lesson.
   const usedList = Array.from(usedRefs.values());
   let qaStep = null;
