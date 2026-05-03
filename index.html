@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.8';
+const APP_VERSION = '6.12.9';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2098,6 +2098,36 @@ function enHomographSiblings(word){
   });
 }
 
+/* v6.12.9 — when a wrong Vocab Blitz answer happens to be a real word in
+   the deck, surface what it actually means. "you typed X — that's actually
+   [JP/EN of X]". Strict equality on normalized forms only — no fuzzy match
+   here, otherwise we'd misattribute typos to unrelated words. */
+function blitzFindMatchingWord(input, currentWord, direction){
+  if(!input) return null;
+  const trimmed = String(input).trim();
+  if(!trimmed) return null;
+  const deck = state.words || [];
+  if(direction === 'jp-en'){
+    const uiN = normEN(trimmed);
+    if(!uiN) return null;
+    for(const w of deck){
+      if(!w || !w.en) continue;
+      if(currentWord && w.id === currentWord.id) continue;
+      const alts = enAlternatives(w.en);
+      if(alts.includes(uiN)) return w;
+    }
+  } else {
+    const uiN = normJP(trimmed);
+    if(!uiN) return null;
+    for(const w of deck){
+      if(!w || !w.jp) continue;
+      if(currentWord && w.id === currentWord.id) continue;
+      if(normJP(w.jp) === uiN) return w;
+    }
+  }
+  return null;
+}
+
 function checkAnswer(userInput, word, direction){
   const ui = (userInput||'').trim();
   if(!ui) return {correct:false, reason:'empty'};
@@ -3076,6 +3106,18 @@ function renderBlitz(){
        </div>`
     : `<div class="muted" style="font-size:12px;margin-bottom:4px">Type <b>${esc(answer)}</b> to continue:</div>
        <input id="blitzConfirm" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="retype the correct answer" oninput="blitzTypeToContinue()" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzTypeToContinue();}">`;
+  /* v6.12.9 — if the user's wrong answer matches another deck word, show what
+     they actually typed. Teaches the mistake instead of just rejecting it. */
+  const wrongMatch = (!correct && b.input) ? blitzFindMatchingWord(b.input, w, cur) : null;
+  let matchHint = '';
+  if(wrongMatch){
+    const inputShown = String(b.input).trim();
+    if(cur === 'jp-en'){
+      matchHint = `<div style="font-size:13px;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:3px solid var(--blue)"><span class="muted">"${esc(inputShown)}" is actually:</span> <b class="jp">${esc(wrongMatch.jp)}</b>${wrongMatch.romaji ? ` <span class="muted">${esc(wrongMatch.romaji)}</span>` : ''}</div>`;
+    } else {
+      matchHint = `<div style="font-size:13px;margin-top:6px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;border-left:3px solid var(--blue)"><span class="muted">"${esc(inputShown)}" is actually:</span> <b>${esc(wrongMatch.en)}</b></div>`;
+    }
+  }
   return head + `<div class="card" style="border:2px solid ${accent}">
     <div style="color:${accent};font-weight:600;font-size:14px;text-align:center;margin-bottom:6px">${verdict}</div>
     ${streakAfter}
@@ -3083,6 +3125,7 @@ function renderBlitz(){
     <div style="font-size:28px;text-align:center;padding:4px 0 10px">${esc(prompt)}</div>
     <div class="divider"></div>
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
+    ${matchHint}
     <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
     <div class="spacer"></div>
     ${continueCtl}
