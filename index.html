@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.13.0';
+const APP_VERSION = '6.14.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1442,8 +1442,8 @@ const DEFAULT_SETTINGS = {
   includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
-  buildLingerSec:5,           // v5.9.1 — Build Mode: seconds to linger after JP plays before advancing to next step. Matches buildThinkSec so post-EN and post-JP pauses feel identical (was 2.5)
-  buildIntroduceLingerSec:5,  // v5.9 — Build Mode: extra-long linger after a new word is introduced — listening, no recall
+  buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
+  buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
   buildTtsRate:0.6,           // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
   buildAiQa:false             // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
 };
@@ -1728,6 +1728,9 @@ function load(){
     if(state.settings.buildLingerSec === 1.5) state.settings.buildLingerSec = 2.5;
     // v5.9.1 — JP linger now matches EN think (5s) so post-phrase pauses feel symmetric.
     if(state.settings.buildLingerSec === 2.5) state.settings.buildLingerSec = 5;
+    // v6.14 — autopilot pacing: bump 5s linger → 8s, 5s introduce → 10s for users on previous defaults.
+    if(state.settings.buildLingerSec === 5) state.settings.buildLingerSec = 8;
+    if(state.settings.buildIntroduceLingerSec === 5) state.settings.buildIntroduceLingerSec = 10;
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -5376,9 +5379,9 @@ function renderVariationBlitz(){
 /* =========================================================================
    BUILD MODE — Paul Noble-style audio-led sentence construction
    Templates drive sentences, deck provides slot-fillers. Trust-based:
-   produce out loud, reveal the answer, tap Next. Structure-driven —
-   no scoring, no writeback to jp4_stats. Only writes jp4_build_sequence
-   so callbacks draw from prior cold words.
+   produce out loud, reveal the answer, tap Next. v6.14 — lesson
+   completion credits SM-2 'good' for every word the lesson used, so
+   Build Mode advances mastery alongside Vocab Blitz.
    ========================================================================= */
 
 const BUILD_STARTER_LESSON = {
@@ -5433,8 +5436,12 @@ const BUILD_STARTER_LESSON = {
   ]
 };
 
+/* v6.14 — Simple = single grammatical idea, present tense only (polite or plain).
+   No past, no continuous, no compound verb forms. Past/conjugated/compound
+   templates moved to BUILD_COMPLEX_TEMPLATES so the simple→complex ladder
+   is a real grammatical step-up, not just a different sentence. */
 const BUILD_TEMPLATES = [
-  /* food / objects */
+  /* food / objects — present */
   { id:'want',     slotKey:'N', pattern:'{N}が ほしい',               en:'I want {N}',                slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
   { id:'please',   slotKey:'N', pattern:'{N}を ください',             en:'{N}, please',               slotThemes:['food','objects'], slotExclude:['food','drink','vegetable','fruit','cooking/cuisine','breakfast','lunch','dinner'] },
   { id:'like',     slotKey:'N', pattern:'{N}が すき',                 en:'I like {N}',                slotThemes:['food'], slotExclude:['water','sugar','salt','food','drink'] },
@@ -5447,83 +5454,41 @@ const BUILD_TEMPLATES = [
   { id:'is_tasty', slotKey:'N', pattern:'{N}は おいしい',              en:'The {N} is delicious',      slotThemes:['food'] },
   { id:'give_me',  slotKey:'N', pattern:'{N}を おねがいします',         en:'{N}, please (polite)',     slotThemes:['food','objects'] },
 
-  /* v6.12 — places (17 nouns: school, station, park, hospital, etc.) */
+  /* places — present + polite past (ます/ました are introductory polite forms) */
   { id:'go_to',       slotKey:'N', pattern:'{N}に いきます',          en:'I go to the {N}',           slotThemes:['places'] },
   { id:'went_to',     slotKey:'N', pattern:'{N}に いきました',        en:'I went to the {N}',         slotThemes:['places'] },
   { id:'where_place', slotKey:'N', pattern:'{N}は どこ ですか',       en:'Where is the {N}?',         slotThemes:['places'] },
   { id:'near_place',  slotKey:'N', pattern:'{N}は ちかい',            en:'The {N} is nearby',         slotThemes:['places'] },
 
-  /* v6.12 — family / people (22 + 11 nouns: father, mother, friend, etc.) */
+  /* family / people — present */
   { id:'have_person',     slotKey:'N', pattern:'{N}が います',         en:'I have a {N} / {N} is here', slotThemes:['family','people'] },
   { id:'genki_person',    slotKey:'N', pattern:'{N}は げんき です',     en:'{N} is well',                slotThemes:['family','people'] },
   { id:'busy_person',     slotKey:'N', pattern:'{N}は いそがしい',     en:'{N} is busy',                slotThemes:['family','people'] },
   { id:'where_person',    slotKey:'N', pattern:'{N}は どこ ですか',     en:'Where is {N}?',              slotThemes:['family','people'] },
+  { id:'family_home',     slotKey:'N', pattern:'{N}は うちに います',   en:'{N} is at home',             slotThemes:['family','people'] },
+  { id:'family_kind',     slotKey:'N', pattern:'{N}は やさしい',        en:'{N} is kind',                slotThemes:['family','people'] },
 
-  /* v6.12 — body (13 nouns: head, eye, hand, etc.) */
+  /* body — present */
   { id:'body_hurts', slotKey:'N', pattern:'{N}が いたい',              en:'My {N} hurts',              slotThemes:['body'] },
   { id:'body_big',   slotKey:'N', pattern:'{N}は おおきい',            en:'My {N} is big',             slotThemes:['body'] },
 
-  /* v6.12 — animals (7 nouns: dog, cat, bird, etc.) */
+  /* animals — present */
   { id:'animal_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['animals'] },
   { id:'animal_cute',  slotKey:'N', pattern:'{N}は かわいい',          en:'{N} is cute',               slotThemes:['animals'] },
   { id:'animal_have',  slotKey:'N', pattern:'{N}が います',            en:'I have a {N}',              slotThemes:['animals'] },
 
-  /* v6.12 — home (14 nouns: room, kitchen, window, key, etc.) */
+  /* home — present */
   { id:'home_have',    slotKey:'N', pattern:'{N}が あります',          en:'There is a {N}',            slotThemes:['home'] },
   { id:'home_where',   slotKey:'N', pattern:'{N}は どこ ですか',       en:'Where is the {N}?',         slotThemes:['home'] },
-  { id:'home_dirty',   slotKey:'N', pattern:'{N}は きれい です',       en:'The {N} is clean',          slotThemes:['home'] },
+  { id:'home_clean',   slotKey:'N', pattern:'{N}は きれい です',       en:'The {N} is clean',          slotThemes:['home'] },
 
-  /* v6.12 — clothing (7 nouns: shoes, hat, watch, umbrella, etc.) */
+  /* clothing — present */
   { id:'wear_thing',   slotKey:'N', pattern:'{N}が ほしい',            en:'I want a {N}',              slotThemes:['clothing'] },
   { id:'have_thing',   slotKey:'N', pattern:'{N}が あります',          en:'I have a {N}',              slotThemes:['clothing'] },
 
-  /* v6.12 — school subjects / objects (11 nouns: teacher, student, study, etc.) */
+  /* school — present */
   { id:'school_hard',  slotKey:'N', pattern:'{N}は むずかしい',        en:'{N} is difficult',          slotThemes:['school'] },
-  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] },
-
-  /* v6.13 — verb form variations: plain past (た), plain past negative (なかった),
-     te-form (て), continuous (ている), tried (てみた). Breaks the ます/ました
-     dominance Julius called out. */
-  { id:'ate_plain',    slotKey:'N', pattern:'{N}を たべた',            en:'I ate {N}',                 slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
-  { id:'didnt_eat',    slotKey:'N', pattern:'{N}を たべなかった',      en:"I didn't eat {N}",          slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
-  { id:'eating_now',   slotKey:'N', pattern:'{N}を たべている',        en:'I am eating {N}',           slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
-  { id:'tried_eat',    slotKey:'N', pattern:'{N}を たべてみた',        en:'I tried {N}',               slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
-  { id:'drank_plain',  slotKey:'N', pattern:'{N}を のんだ',            en:'I drank {N}',               slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
-  { id:'drinking_now', slotKey:'N', pattern:'{N}を のんでいる',        en:'I am drinking {N}',         slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
-  { id:'didnt_drink',  slotKey:'N', pattern:'{N}を のまなかった',      en:"I didn't drink {N}",        slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
-
-  /* places — plain past, te-form */
-  { id:'went_plain',   slotKey:'N', pattern:'{N}に いった',            en:'I went to {N}',             slotThemes:['places'] },
-  { id:'didnt_go',     slotKey:'N', pattern:'{N}に いかなかった',      en:"I didn't go to {N}",        slotThemes:['places'] },
-  { id:'going_now',    slotKey:'N', pattern:'{N}に いっている',        en:'I am going to {N}',         slotThemes:['places'] },
-
-  /* i-adjective past forms — かった (was X), くなかった (wasn't X) */
-  { id:'tasty_was',    slotKey:'N', pattern:'{N}は おいしかった',      en:'The {N} was delicious',     slotThemes:['food'] },
-  { id:'tasty_wasnt',  slotKey:'N', pattern:'{N}は おいしくなかった',  en:"The {N} wasn't delicious",  slotThemes:['food'] },
-  { id:'cute_was',     slotKey:'N', pattern:'{N}は かわいかった',      en:'{N} was cute',              slotThemes:['animals'] },
-  { id:'cute_wasnt',   slotKey:'N', pattern:'{N}は かわいくなかった',  en:"{N} wasn't cute",           slotThemes:['animals'] },
-  { id:'hurt_was',     slotKey:'N', pattern:'{N}が いたかった',        en:'My {N} hurt',               slotThemes:['body'] },
-  { id:'hurt_wasnt',   slotKey:'N', pattern:'{N}が いたくなかった',    en:"My {N} didn't hurt",        slotThemes:['body'] },
-  { id:'school_was_hard',slotKey:'N',pattern:'{N}は むずかしかった',   en:'{N} was difficult',         slotThemes:['school'] },
-
-  /* v6.13 — cross-theme verb usage. Breaks the food-tunnel by combining
-     general verbs (buy, see, wear, forget, lost, found) with broader noun
-     pools (clothing, objects, home, animals, places). User: 'feels tunnel
-     visioned on those set type of words... ima semai desu'. */
-  { id:'bought_thing',   slotKey:'N', pattern:'{N}を かった',           en:'I bought {N}',              slotThemes:['food','clothing','objects'] },
-  { id:'didnt_buy',      slotKey:'N', pattern:'{N}を かわなかった',     en:"I didn't buy {N}",          slotThemes:['food','clothing','objects'] },
-  { id:'want_to_buy',    slotKey:'N', pattern:'{N}を かいたい',         en:'I want to buy {N}',         slotThemes:['food','clothing','objects'] },
-  { id:'saw_thing',      slotKey:'N', pattern:'{N}を みた',             en:'I saw {N}',                 slotThemes:['animals','objects','home','places'] },
-  { id:'didnt_see',      slotKey:'N', pattern:'{N}を みなかった',       en:"I didn't see {N}",          slotThemes:['animals','objects','home','places'] },
-  { id:'looking_at',     slotKey:'N', pattern:'{N}を みている',         en:'I am looking at {N}',       slotThemes:['animals','objects','home'] },
-  { id:'wore_thing',     slotKey:'N', pattern:'{N}を きた',             en:'I wore {N}',                slotThemes:['clothing'] },
-  { id:'forgot_thing',   slotKey:'N', pattern:'{N}を わすれた',         en:'I forgot {N}',              slotThemes:['food','clothing','objects','home','school'] },
-  { id:'lost_thing',     slotKey:'N', pattern:'{N}を なくした',         en:'I lost {N}',                slotThemes:['clothing','objects','home'] },
-  { id:'found_thing',    slotKey:'N', pattern:'{N}を みつけた',         en:'I found {N}',               slotThemes:['clothing','objects','home','animals'] },
-  /* family/people in different states */
-  { id:'family_home',    slotKey:'N', pattern:'{N}は うちに います',    en:'{N} is at home',            slotThemes:['family','people'] },
-  { id:'family_busy_was',slotKey:'N', pattern:'{N}は いそがしかった',   en:'{N} was busy',              slotThemes:['family','people'] },
-  { id:'family_kind',    slotKey:'N', pattern:'{N}は やさしい',         en:'{N} is kind',               slotThemes:['family','people'] }
+  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -5532,31 +5497,74 @@ const BUILD_DRINKABLES = ['water','tea','milk','drink'];
 // Shared by complex `want_to_eat` / `ate_yesterday` and the hard-template food filters.
 const HARD_EAT_EXCLUDES = ['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'];
 
+/* v6.14 — Complex = past forms, compound verb forms (たい, ことがある, てみた),
+   conjugated adjectives (かった), continuous (ている), frequency adverbs,
+   time markers. Receives the verb-form variations stripped from Simple in
+   v6.14 + adds frequency adverb coverage so the conceptual step from
+   Simple→Complex is real grammar progression. */
 const BUILD_COMPLEX_TEMPLATES = [
-  { id:'want_to_eat',     slotKey:'N', pattern:'{N}を たべたい',              en:'I want to eat {N}',       slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'want_to_drink',   slotKey:'N', pattern:'{N}を のみたい',              en:'I want to drink {N}',     slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'ate_yesterday',   slotKey:'N', pattern:'きのう {N}を たべました',      en:'I ate {N} yesterday',     slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'drank_yesterday', slotKey:'N', pattern:'きのう {N}を のみました',      en:'I drank {N} yesterday',   slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',   slotThemes:['food'] },
-  { id:'really_like',     slotKey:'N', pattern:'{N}が だいすき です',           en:'I really like {N}',      slotThemes:['food'] },
-  { id:'every_day',       slotKey:'N', pattern:'まいにち {N}を のみます',       en:'I drink {N} every day',  slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",  slotThemes:['food'] },
+  /* food / drinks — past plain + continuous + tried */
+  { id:'ate_plain',       slotKey:'N', pattern:'{N}を たべた',                 en:'I ate {N}',                    slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'didnt_eat',       slotKey:'N', pattern:'{N}を たべなかった',           en:"I didn't eat {N}",             slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'eating_now',      slotKey:'N', pattern:'{N}を たべている',             en:'I am eating {N}',              slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'tried_eat',       slotKey:'N', pattern:'{N}を たべてみた',             en:'I tried {N}',                  slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'drank_plain',     slotKey:'N', pattern:'{N}を のんだ',                 en:'I drank {N}',                  slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'didnt_drink',     slotKey:'N', pattern:'{N}を のまなかった',           en:"I didn't drink {N}",           slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'drinking_now',    slotKey:'N', pattern:'{N}を のんでいる',             en:'I am drinking {N}',            slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'tried_drink',     slotKey:'N', pattern:'{N}を のんでみた',             en:'I tried drinking {N}',         slotThemes:['food'], slotWords: BUILD_DRINKABLES },
 
-  /* v6.13 — complex with verb form variations: plain past, past negative,
-     experience (たことがある), again (また), tried (てみた), wasn't (くなかった). */
-  { id:'ate_yest_plain',  slotKey:'N', pattern:'きのう {N}を たべた',           en:'I ate {N} yesterday',          slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'didnt_eat_yest',  slotKey:'N', pattern:'きのう {N}を たべなかった',     en:"I didn't eat {N} yesterday",   slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'will_eat_tom',    slotKey:'N', pattern:'あした {N}を たべる',           en:"I'll eat {N} tomorrow",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'tried_drink',     slotKey:'N', pattern:'{N}を のんでみた',              en:'I tried drinking {N}',         slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'eat_again',       slotKey:'N', pattern:'また {N}を たべたい',           en:'I want to eat {N} again',      slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'never_eaten',     slotKey:'N', pattern:'{N}を たべたことがない',        en:"I've never eaten {N}",         slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'eaten_before',    slotKey:'N', pattern:'{N}を たべたことがある',        en:"I've eaten {N} before",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
-  { id:'wasnt_tasty',     slotKey:'N', pattern:'{N}は あまり おいしくなかった', en:"The {N} wasn't very tasty",    slotThemes:['food'] },
-  /* cross-theme complex */
-  { id:'bought_yest',     slotKey:'N', pattern:'きのう {N}を かった',           en:'I bought {N} yesterday',       slotThemes:['food','clothing','objects'] },
-  { id:'will_buy',        slotKey:'N', pattern:'あした {N}を かう',             en:"I'll buy {N} tomorrow",        slotThemes:['food','clothing','objects'] },
-  { id:'never_been_to',   slotKey:'N', pattern:'{N}に いったことがない',        en:"I've never been to {N}",       slotThemes:['places'] },
-  { id:'been_to_before',  slotKey:'N', pattern:'{N}に いったことがある',        en:"I've been to {N} before",      slotThemes:['places'] }
+  /* food — want to / experience / past polite + time */
+  { id:'want_to_eat',     slotKey:'N', pattern:'{N}を たべたい',               en:'I want to eat {N}',            slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'want_to_drink',   slotKey:'N', pattern:'{N}を のみたい',               en:'I want to drink {N}',          slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'eat_again',       slotKey:'N', pattern:'また {N}を たべたい',           en:'I want to eat {N} again',     slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'never_eaten',     slotKey:'N', pattern:'{N}を たべたことがない',        en:"I've never eaten {N}",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'eaten_before',    slotKey:'N', pattern:'{N}を たべたことがある',        en:"I've eaten {N} before",       slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'ate_yesterday',   slotKey:'N', pattern:'きのう {N}を たべました',       en:'I ate {N} yesterday',         slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'drank_yesterday', slotKey:'N', pattern:'きのう {N}を のみました',       en:'I drank {N} yesterday',       slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'will_eat_tom',    slotKey:'N', pattern:'あした {N}を たべる',           en:"I'll eat {N} tomorrow",       slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'really_like',     slotKey:'N', pattern:'{N}が だいすき です',           en:'I really like {N}',           slotThemes:['food'] },
+  { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",       slotThemes:['food'] },
+
+  /* food — frequency adverbs (NEW v6.14) */
+  { id:'every_day_drink', slotKey:'N', pattern:'まいにち {N}を のみます',       en:'I drink {N} every day',       slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'often_eat',       slotKey:'N', pattern:'よく {N}を たべる',             en:'I often eat {N}',             slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'rarely_eat',      slotKey:'N', pattern:'あまり {N}を たべない',         en:"I don't often eat {N}",       slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'sometimes_eat',   slotKey:'N', pattern:'たまに {N}を たべる',           en:'I sometimes eat {N}',         slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'always_drink',    slotKey:'N', pattern:'いつも {N}を のむ',             en:'I always drink {N}',          slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+
+  /* places — past plain, continuous, frequency, experience */
+  { id:'went_plain',      slotKey:'N', pattern:'{N}に いった',                 en:'I went to {N}',                slotThemes:['places'] },
+  { id:'didnt_go',        slotKey:'N', pattern:'{N}に いかなかった',           en:"I didn't go to {N}",           slotThemes:['places'] },
+  { id:'going_now',       slotKey:'N', pattern:'{N}に いっている',             en:'I am going to {N}',            slotThemes:['places'] },
+  { id:'often_go',        slotKey:'N', pattern:'よく {N}に いく',              en:'I often go to {N}',            slotThemes:['places'] },
+  { id:'sometimes_go',    slotKey:'N', pattern:'たまに {N}に いく',            en:'I sometimes go to {N}',        slotThemes:['places'] },
+  { id:'never_been_to',   slotKey:'N', pattern:'{N}に いったことがない',        en:"I've never been to {N}",      slotThemes:['places'] },
+  { id:'been_to_before',  slotKey:'N', pattern:'{N}に いったことがある',        en:"I've been to {N} before",     slotThemes:['places'] },
+
+  /* general verbs — past plain, want-to, continuous (cross-theme) */
+  { id:'bought_thing',    slotKey:'N', pattern:'{N}を かった',                 en:'I bought {N}',                 slotThemes:['food','clothing','objects'] },
+  { id:'didnt_buy',       slotKey:'N', pattern:'{N}を かわなかった',           en:"I didn't buy {N}",             slotThemes:['food','clothing','objects'] },
+  { id:'want_to_buy',     slotKey:'N', pattern:'{N}を かいたい',               en:'I want to buy {N}',            slotThemes:['food','clothing','objects'] },
+  { id:'bought_yest',     slotKey:'N', pattern:'きのう {N}を かった',           en:'I bought {N} yesterday',      slotThemes:['food','clothing','objects'] },
+  { id:'will_buy',        slotKey:'N', pattern:'あした {N}を かう',             en:"I'll buy {N} tomorrow",       slotThemes:['food','clothing','objects'] },
+  { id:'saw_thing',       slotKey:'N', pattern:'{N}を みた',                   en:'I saw {N}',                    slotThemes:['animals','objects','home','places'] },
+  { id:'didnt_see',       slotKey:'N', pattern:'{N}を みなかった',             en:"I didn't see {N}",             slotThemes:['animals','objects','home','places'] },
+  { id:'looking_at',      slotKey:'N', pattern:'{N}を みている',               en:'I am looking at {N}',          slotThemes:['animals','objects','home'] },
+  { id:'wore_thing',      slotKey:'N', pattern:'{N}を きた',                   en:'I wore {N}',                   slotThemes:['clothing'] },
+  { id:'forgot_thing',    slotKey:'N', pattern:'{N}を わすれた',               en:'I forgot {N}',                 slotThemes:['food','clothing','objects','home','school'] },
+  { id:'lost_thing',      slotKey:'N', pattern:'{N}を なくした',               en:'I lost {N}',                   slotThemes:['clothing','objects','home'] },
+  { id:'found_thing',     slotKey:'N', pattern:'{N}を みつけた',               en:'I found {N}',                  slotThemes:['clothing','objects','home','animals'] },
+
+  /* i-adjective past forms */
+  { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',        slotThemes:['food'] },
+  { id:'wasnt_tasty',     slotKey:'N', pattern:'{N}は あまり おいしくなかった', en:"The {N} wasn't very tasty",   slotThemes:['food'] },
+  { id:'tasty_wasnt',     slotKey:'N', pattern:'{N}は おいしくなかった',       en:"The {N} wasn't delicious",     slotThemes:['food'] },
+  { id:'cute_was',        slotKey:'N', pattern:'{N}は かわいかった',           en:'{N} was cute',                 slotThemes:['animals'] },
+  { id:'cute_wasnt',      slotKey:'N', pattern:'{N}は かわいくなかった',       en:"{N} wasn't cute",              slotThemes:['animals'] },
+  { id:'hurt_was',        slotKey:'N', pattern:'{N}が いたかった',             en:'My {N} hurt',                  slotThemes:['body'] },
+  { id:'hurt_wasnt',      slotKey:'N', pattern:'{N}が いたくなかった',         en:"My {N} didn't hurt",           slotThemes:['body'] },
+  { id:'school_was_hard', slotKey:'N', pattern:'{N}は むずかしかった',         en:'{N} was difficult',            slotThemes:['school'] },
+  { id:'family_busy_was', slotKey:'N', pattern:'{N}は いそがしかった',         en:'{N} was busy',                 slotThemes:['family','people'] }
 ];
 const HARD_PLACE_EXCLUDES = ['road/way','country'];
 const HARD_LIKE_EXCLUDES = ['water','sugar','salt','food','drink'];
@@ -5665,7 +5673,84 @@ const BUILD_HARD_TEMPLATES = [
     slots:{
       F:{ slotThemes:['family'] },
       N:{ slotThemes:['food'], slotExclude: HARD_LIKE_EXCLUDES }
+    }},
+  /* v6.14 — longer chained templates so Hard sentences feel meaningfully
+     longer than Complex (te-form chains, time + person + activity). */
+  { id:'time_with_ate',
+    pattern:'{T} {F}と {N}を たべました',
+    en:'{T} I ate {N} with {F}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','last week','this week'] },
+      F:{ slotThemes:['family'] },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'went_and_bought',
+    pattern:'{P}に いって、{N}を かった',
+    en:'I went to {P} and bought {N}',
+    slots:{
+      P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
+      N:{ slotThemes:['food','clothing','objects'] }
+    }},
+  { id:'went_with_to_place',
+    pattern:'{T} {F}と {P}に いって、{N}を たべた',
+    en:'{T} I went to {P} with {F} and ate {N}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','last week'] },
+      F:{ slotThemes:['family'] },
+      P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'family_wants',
+    pattern:'{F}は {T} {N}を かいたい',
+    en:'{F} wants to buy {N} {T}',
+    slots:{
+      F:{ slotThemes:['family'] },
+      T:{ slotThemes:['time'], slotWords:['today','tomorrow','this week'] },
+      N:{ slotThemes:['food','clothing','objects'] }
     }}
+];
+
+/* v6.14 — Social = functional conversational grammar. Permission, invitation,
+   suggestion, opinion-asking, preference, compliments. Slots fill from the
+   user's deck vocab so every conversational pattern reinforces words they're
+   already learning. Skips greetings/sumimasen/arigatou intentionally — these
+   are basics the user already knows. Single-slot like Simple/Complex so the
+   same buildGenerateLesson pipeline handles them. */
+const BUILD_SOCIAL_TEMPLATES = [
+  /* permission — ても いい ですか */
+  { id:'soc_can_eat',     slotKey:'N', pattern:'{N}を たべても いい ですか',  en:'Can I eat {N}?',                slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_can_drink',   slotKey:'N', pattern:'{N}を のんでも いい ですか',  en:'Can I drink {N}?',              slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'soc_can_buy',     slotKey:'N', pattern:'{N}を かっても いい ですか',  en:'Can I buy {N}?',                slotThemes:['food','clothing','objects'] },
+  { id:'soc_can_use',     slotKey:'N', pattern:'{N}を つかっても いい ですか', en:'Can I use {N}?',               slotThemes:['objects','home'] },
+  { id:'soc_can_see',     slotKey:'N', pattern:'{N}を みても いい ですか',    en:'Can I see {N}?',                slotThemes:['objects','home','animals'] },
+
+  /* invitation — ませんか / ましょう */
+  { id:'soc_lets_eat',    slotKey:'N', pattern:'{N}を たべましょう',           en:"Let's eat {N}",                slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_lets_drink',  slotKey:'N', pattern:'{N}を のみましょう',           en:"Let's drink {N}",              slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'soc_lets_go',     slotKey:'N', pattern:'{N}に いきましょう',           en:"Let's go to {N}",              slotThemes:['places'] },
+  { id:'soc_invite_go',   slotKey:'N', pattern:'{N}に いきませんか',           en:'Want to go to {N}?',           slotThemes:['places'] },
+  { id:'soc_invite_eat',  slotKey:'N', pattern:'{N}を たべませんか',           en:'Want to eat {N}?',             slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_invite_buy',  slotKey:'N', pattern:'{N}を かいませんか',           en:'Want to buy {N}?',             slotThemes:['food','clothing','objects'] },
+
+  /* opinion / asking */
+  { id:'soc_what_think',  slotKey:'N', pattern:'{N}は どう 思いますか',        en:'What do you think about {N}?', slotThemes:['food','places','school','objects'] },
+  { id:'soc_how_is',      slotKey:'N', pattern:'{N}は どう ですか',            en:'How is {N}?',                  slotThemes:['food','places','school','people','family'] },
+  { id:'soc_do_you_like', slotKey:'N', pattern:'{N}が すき ですか',            en:'Do you like {N}?',             slotThemes:['food','animals','school'] },
+  { id:'soc_do_you_have', slotKey:'N', pattern:'{N}が ありますか',             en:'Do you have {N}?',             slotThemes:['food','objects','clothing','home'] },
+  { id:'soc_have_been',   slotKey:'N', pattern:'{N}に いったことが ありますか', en:'Have you been to {N}?',       slotThemes:['places'] },
+  { id:'soc_have_eaten',  slotKey:'N', pattern:'{N}を たべたことが ありますか', en:'Have you eaten {N}?',         slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+
+  /* compliment / softening with ね */
+  { id:'soc_jouzu',       slotKey:'N', pattern:'{N}は じょうず ですね',        en:"You're good at {N}",           slotThemes:['school'] },
+  { id:'soc_oishi_ne',    slotKey:'N', pattern:'この {N}は おいしい ですね',   en:'This {N} is delicious!',       slotThemes:['food'] },
+  { id:'soc_kawaii_ne',   slotKey:'N', pattern:'この {N}は かわいい ですね',   en:'This {N} is cute!',            slotThemes:['animals','clothing'] },
+  { id:'soc_ii_ne',       slotKey:'N', pattern:'{N}は いい ですね',            en:'{N} is nice!',                 slotThemes:['places','objects','clothing','home'] },
+  { id:'soc_kirei_ne',    slotKey:'N', pattern:'{N}は きれい ですね',          en:'{N} is beautiful!',            slotThemes:['places','home','clothing'] },
+
+  /* preference / preference questions */
+  { id:'soc_prefer',      slotKey:'N', pattern:'{N}の ほうが いい',            en:'I prefer {N}',                 slotThemes:['food','places','clothing','objects'] },
+  { id:'soc_taste_check', slotKey:'N', pattern:'{N}は どんな あじ ですか',     en:'What does {N} taste like?',    slotThemes:['food'], slotExclude:['water','sugar','salt'] },
+  { id:'soc_recommend',   slotKey:'N', pattern:'{N}は おすすめ ですか',        en:'Do you recommend {N}?',        slotThemes:['food','places'] }
 ];
 
 // v6.11 — Variation step. One English intent, multiple Japanese framings.
@@ -6092,7 +6177,10 @@ function buildGenerateQaStep(deck, preferredWord){
 
 function buildGenerateLesson(mode){
   mode = mode || 'simple';
-  let pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
+  let pool;
+  if(mode === 'complex') pool = BUILD_COMPLEX_TEMPLATES;
+  else if(mode === 'social') pool = BUILD_SOCIAL_TEMPLATES;
+  else pool = BUILD_TEMPLATES;
   if(pool.length < 2) throw new Error('need at least 2 templates in pool');
 
   /* v6.13 — chain mode: restrict pool to templates whose slotThemes include
@@ -6265,16 +6353,24 @@ function buildGenerateLesson(mode){
   /* v6.12.12 — fallback chain so cb1/cb2 are never undefined. Prior code
      crashed with "Cannot read properties of undefined (reading 'jp')" when
      eligible was small enough that all viable words went to newWords and
-     none were left for callbacks. */
+     none were left for callbacks.
+     v6.14 — Tier 2 must respect slot constraints. Earlier version pulled
+     any introduced noun, which let words like 'michi' (places) get slotted
+     into 'たべる' templates → "I eat the road". Now requires the word to
+     fit BOTH primary and secondary slot constraints (themes/slotWords/
+     slotExclude) so cb1↔cb2 assignment can never produce silly sentences. */
   if(callbacks.length < 2){
     const cbIds = new Set(callbacks.map(buildGenWordId));
-    /* Tier 2: any other introduced noun in the user's drilled deck (not
-       constrained to the primary/secondary theme intersection). */
+    const fitsTmpl = (w, t) =>
+      (!t.slotThemes || t.slotThemes.includes(w.theme)) &&
+      (!t.slotWords || t.slotWords.includes(w.en)) &&
+      (!t.slotExclude || !t.slotExclude.includes(w.en));
     const wider = deck.filter(w =>
       w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
       !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
       vocabIsIntroduced(w) &&
-      !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w))
+      !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w)) &&
+      fitsTmpl(w, primary) && fitsTmpl(w, secondary)
     );
     callbacks = callbacks.concat(buildPickRandom(wider, 2 - callbacks.length));
   }
@@ -6292,7 +6388,7 @@ function buildGenerateLesson(mode){
 
   const [w1, w2, w3] = newWords;
   const [cb1, cb2] = callbacks;
-  const lessonId = (mode === 'complex' ? 'Gc' : 'Gs') + (sequence.length + 1);
+  const lessonId = (mode === 'complex' ? 'Gc' : mode === 'social' ? 'Gx' : 'Gs') + (sequence.length + 1);
   const toRef = w => ({ id: buildGenWordId(w), jp: w.jp, en: w.en, r: w.romaji });
 
   const p1 = buildFillTemplate(primary, w1), p2 = buildFillTemplate(primary, w2), p3 = buildFillTemplate(primary, w3);
@@ -6358,8 +6454,8 @@ function buildGenerateLesson(mode){
 
   return {
     id: lessonId,
-    title: `${mode === 'complex' ? 'Complex' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
-    duration_mins: mode === 'complex' ? 10 : 8,
+    title: `${mode === 'complex' ? 'Complex' : mode === 'social' ? 'Social' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
+    duration_mins: mode === 'complex' ? 10 : mode === 'social' ? 9 : 8,
     new_words: newWords.map(toRef),
     carryover_words: callbacks.map(toRef),
     cycles: [
@@ -6373,6 +6469,8 @@ function buildGenerateLesson(mode){
       mode,
       introduced_ids: newWords.map(buildGenWordId),
       callback_ids: callbacks.map(buildGenWordId),
+      /* v6.14 — real deck IDs for SM-2 credit on completion. */
+      real_word_ids: [...newWords, ...callbacks].map(w => w.id).filter(Boolean),
       primary_template: primary.pattern,
       secondary_template: secondary.pattern
     }
@@ -6498,7 +6596,9 @@ function buildGenerateHardLesson(){
     _meta: {
       mode: 'hard',
       introduced_ids: [],
-      callback_ids: Array.from(usedRefs.keys())
+      callback_ids: Array.from(usedRefs.keys()),
+      /* v6.14 — real deck IDs for SM-2 credit on completion. */
+      real_word_ids: Array.from(lessonWords)
     }
   };
 }
@@ -7127,8 +7227,8 @@ function _buildScheduleLinger(){
   const step = b.steps[b.stepIdx];
   // New-word introduce steps get extra time — listening, no recall, more to absorb.
   const sec = (step && step.type === 'introduce')
-    ? (state.settings.buildIntroduceLingerSec ?? 5)
-    : (state.settings.buildLingerSec ?? 5);
+    ? (state.settings.buildIntroduceLingerSec ?? 10)
+    : (state.settings.buildLingerSec ?? 8);
   /* v6.5 — adaptive: known words shrink linger; introduce stays full. */
   const lingerMs = Math.max(0, sec) * _buildPaceFactor(step) * 1000;
   _buildSetPhase('linger', lingerMs);
@@ -7198,15 +7298,31 @@ function buildOnComplete(){
       words,
       date: new Date().toISOString()
     });
-    /* v6.13 — advance Daily Chain. Step 1 (simple) -> 2 (complex) -> 3 (hard) -> done. */
-    const chain = buildChainGet();
-    if(chain && chain.step != null){
-      chain.step++;
-      if(chain.step > 3){
-        buildChainClear();
-        showToast(`Daily Chain complete — drilled ${(chain.wordIds || []).length} words across all 3 modes ✓`, {tone:'info', duration:5000});
-      } else {
-        buildChainSet(chain);
+    /* v6.14 — credit SM-2 'good' for each word the lesson exposed. Build
+       Mode is passive listening, so this is a soft nudge — but it makes
+       Build Mode actually advance mastery instead of being orthogonal to
+       the SRS schedule. Interval cap (SM_MAX_MIN) prevents runaway growth. */
+    try{
+      const realIds = l._meta.real_word_ids || [];
+      for(const wid of realIds){
+        if(!wid) continue;
+        const st = smStatFor(wid);
+        smGrade(st, 'good');
+      }
+      if(realIds.length) save();
+    }catch(e){ log('build_sm2_credit_err', {err:String(e)}); }
+    /* v6.13 — advance Daily Chain. Step 1 (simple) -> 2 (complex) -> 3 (hard) -> done.
+       v6.14 — Social lessons sit on a separate axis, never advance chain. */
+    if(l._meta.mode !== 'social'){
+      const chain = buildChainGet();
+      if(chain && chain.step != null){
+        chain.step++;
+        if(chain.step > 3){
+          buildChainClear();
+          showToast(`Daily Chain complete — drilled ${(chain.wordIds || []).length} words across all 3 modes ✓`, {tone:'info', duration:5000});
+        } else {
+          buildChainSet(chain);
+        }
       }
     }
   }
@@ -7366,19 +7482,19 @@ function renderBuildModeStart(){
     ${chainPanel}
     ${recentLessonsPanel}
     <div class="card">
-      <h3>🎲 Simple — one-clause</h3>
+      <h3>🎲 Simple — present tense</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        want · please · like · dislike · this-is · how-much · one-please · have · where · delicious<br>
-        <span style="color:var(--green)">v6.11:</span> + 1 <b>variation</b> step (same EN, 2–3 JP framings) + 1 <b>Q&amp;A</b> step
+        want · like · dislike · have · where · delicious · go-to · is-busy<br>
+        Single grammatical idea per sentence — pure present tense.
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('simple')">🎲 Roll simple lesson</button>
     </div>
 
     <div class="card">
-      <h3>🎲🎲 Complex — multi-clause</h3>
+      <h3>🎲🎲 Complex — verb forms + time</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        want-to-eat · ate-yesterday · was-delicious · tired/want · every-day · really-like<br>
-        <span style="color:var(--green)">v6.11:</span> + 1 <b>variation</b> + 1 <b>Q&amp;A</b> step
+        ate · didn't · eating · tried · want-to · have-eaten · yesterday · often · sometimes<br>
+        Real grammar step-up: past, continuous, compound, frequency adverbs.
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('complex')">🎲🎲 Roll complex lesson</button>
     </div>
@@ -7386,10 +7502,18 @@ function renderBuildModeStart(){
     <div class="card">
       <h3>🎲🎲🎲 Hard — multi-slot</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
-        time + place + person slots · every sentence has 2–3 variables · no substitute scaffolding · cold production<br>
-        <span style="color:var(--green)">v6.11:</span> + <b>Q&amp;A</b> capstone
+        time + place + person + activity slots · te-form chains · 4-5 word sentences · cold production
       </div>
       <button class="btn btn-primary" style="width:100%" onclick="startBuildModeGenerated('hard')">🎲🎲🎲 Roll hard lesson</button>
+    </div>
+
+    <div class="card" style="border-color:var(--purple,#a78bfa)">
+      <h3 style="color:var(--purple,#a78bfa)">💬 Social — conversational grammar</h3>
+      <div class="muted" style="font-size:13px;margin:4px 0 10px">
+        Can I~? · Let's~ · Want to~? · How is~? · Do you like~? · prefer · recommend · taste<br>
+        Functional patterns for real conversation — slots fill from your deck.
+      </div>
+      <button class="btn btn-primary" style="width:100%;background:var(--purple,#a78bfa)" onclick="startBuildModeGenerated('social')">💬 Roll social lesson</button>
     </div>
 
     <div class="card">
@@ -7400,7 +7524,7 @@ function renderBuildModeStart(){
 
     <div class="card">
       <div class="muted" style="font-size:12px;line-height:1.5">
-        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. Structure-driven — no scoring, nothing written back to your SRS stats. ${esc(seqStatus)}
+        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. <span style="color:var(--green)">v6.14:</span> completing a lesson now credits SM-2 'good' for every word it used, so Build Mode advances mastery alongside Vocab Blitz. ${esc(seqStatus)}
       </div>
       ${seqLen > 0 ? `
       <div style="margin-top:10px;text-align:center">
@@ -7647,8 +7771,8 @@ function renderBuildModeComplete(){
       <h2 style="margin:0 0 8px 0">Lesson complete</h2>
       <div class="muted" style="font-size:14px;margin-bottom:20px">
         ${l._meta?.mode === 'hard'
-          ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words. Nothing written to your SRS stats.`
-          : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks. Nothing written to your SRS stats.`}
+          ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words. <span style="color:var(--green)">SRS credit applied.</span>`
+          : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks. <span style="color:var(--green)">SRS credit applied.</span>`}
       </div>
       ${chainBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
@@ -8291,10 +8415,10 @@ function renderSettings(){
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??5).toFixed(1)}s · pause after JP audio before next step</div></div>
-        <input type="range" min="0.5" max="8" step="0.25" value="${s.buildLingerSec??5}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">New-word linger</div><div class="word-en">${(s.buildIntroduceLingerSec??5).toFixed(1)}s · extra time after a brand-new word is introduced</div></div>
-        <input type="range" min="1" max="10" step="0.5" value="${s.buildIntroduceLingerSec??5}" oninput="setBuildIntroduceLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??8).toFixed(1)}s · pause after JP audio before next step</div></div>
+        <input type="range" min="0.5" max="12" step="0.25" value="${s.buildLingerSec??8}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">New-word linger</div><div class="word-en">${(s.buildIntroduceLingerSec??10).toFixed(1)}s · extra time after a brand-new word is introduced</div></div>
+        <input type="range" min="1" max="15" step="0.5" value="${s.buildIntroduceLingerSec??10}" oninput="setBuildIntroduceLingerSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">JP speed (Build Mode)</div><div class="word-en">${(s.buildTtsRate??0.6).toFixed(2)}× · slower than Vocab Blitz so you can mimic</div></div>
         <input type="range" min="0.4" max="1" step="0.05" value="${s.buildTtsRate??0.6}" oninput="setBuildTtsRate(this.value)" style="width:160px"></label>
     </div>
