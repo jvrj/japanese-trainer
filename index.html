@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.13';
+const APP_VERSION = '6.12.14';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -7005,11 +7005,16 @@ function buildOnComplete(){
   const l = state.buildMode?.lesson;
   if(l?._meta && !l._completed){
     l._completed = true;
+    /* v6.12.14 — also store {id,jp,en} for each word so the Recent Lessons
+       panel can render readable lists without back-resolving via buildGenWordId. */
+    const words = [...(l.new_words || []), ...(l.carryover_words || [])]
+      .map(r => ({id: r.id, jp: r.jp, en: r.en, role: (l.new_words || []).some(n => n.id === r.id) ? 'new' : 'callback'}));
     buildPushSequence({
       id: l.id, mode: l._meta.mode,
       templates: [l._meta.primary_template, l._meta.secondary_template],
       introduced: l._meta.introduced_ids,
       callbacks: l._meta.callback_ids,
+      words,
       date: new Date().toISOString()
     });
   }
@@ -7102,15 +7107,42 @@ function renderBuildMode(){
 }
 
 function renderBuildModeStart(){
-  const seqLen = buildGetSequence().length;
+  const sequence = buildGetSequence();
+  const seqLen = sequence.length;
   const seqStatus = seqLen === 0
     ? 'First roll — callbacks filled with fresh deck picks.'
     : `${seqLen} prior generation${seqLen === 1 ? '' : 's'} — cold callbacks drawn from coldest.`;
   const hasFood = (state.words || []).some(w => w.pos==='n' && w.theme==='food' && !hasKatakana(w.jp));
   const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> no hiragana food nouns in your deck. Enable the N5 pack in Settings, or dice rolls will fail.</div></div>` : '';
 
+  /* v6.12.14 — surface lesson history so the user can see what the app
+     remembers. New lesson generation already biases callbacks toward words
+     introduced in prior lessons (when they fit the lesson's theme), but
+     that mechanism was invisible. */
+  const recentLessons = sequence.slice(-5).reverse();
+  const recentLessonsPanel = recentLessons.length === 0 ? '' : `
+    <div class="card">
+      <h3 style="margin:0 0 6px">📚 Recent lessons (${seqLen} total)</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">The app remembers every completed Build Mode lesson. Cycle 3 of new lessons preferentially recalls these words when they fit the lesson's theme. Vocab Blitz also brings them back via SRS.</div>
+      ${recentLessons.map(e => {
+        const dt = new Date(e.date || Date.now());
+        const dateLabel = dt.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' · ' + dt.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
+        const newWordsList = ((e.words || []).filter(w => w.role === 'new').map(w => `<b>${esc(w.en)}</b>`).join(', '))
+          || (e.introduced || []).map(id => esc(String(id).replace(/^w_/,''))).join(', ')
+          || '—';
+        const cbWordsList = ((e.words || []).filter(w => w.role === 'callback').map(w => esc(w.en)).join(', '));
+        return `<div style="border-left:3px solid var(--accent);padding:6px 10px;margin:6px 0;background:rgba(255,255,255,0.02);border-radius:4px">
+          <div style="font-size:12px"><span class="muted">${esc(dateLabel)} · ${esc(e.mode || 'simple')}</span></div>
+          <div style="font-size:13px;margin-top:2px"><span class="muted" style="font-size:11px">new:</span> ${newWordsList}</div>
+          ${cbWordsList ? `<div style="font-size:12px;margin-top:1px;color:var(--muted)"><span style="font-size:11px">callbacks:</span> ${cbWordsList}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
   return `
     ${warnDeck}
+    ${recentLessonsPanel}
     <div class="card">
       <h3>🎲 Simple — one-clause</h3>
       <div class="muted" style="font-size:13px;margin:4px 0 10px">
