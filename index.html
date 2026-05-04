@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.12';
+const APP_VERSION = '6.12.13';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6024,32 +6024,39 @@ function buildGenerateLesson(mode){
   if(eligible.length < 3) throw new Error('not enough deck nouns for ' + commonThemes.join(','));
 
   /* v6.12 — prefer focused words (★) for new-word slots when possible.
-     v6.12.2 — also prefer most-recently-learned vocab (newest firstCorrect / lastSeen first)
-     and de-prefer words used in the last few Build Mode lessons. */
+     v6.12.2 — prefer most-recently-learned vocab; de-prefer words used in
+     the last few Build Mode lessons.
+     v6.12.13 — primary signal is now SM-2 due-soonest. The user wants
+     Build Mode to surface "what I need to master" — by definition that's
+     words coming due (or overdue) in Vocab Blitz. Recently-learned tends
+     to be due soon anyway, so this preserves that bias while explicitly
+     prioritizing reinforcement targets. */
   const focusSet = new Set(state.settings.focusWords || []);
   const recentWords = new Set(recent.words || []);
-  const wordRecencyTs = w => {
+  const wordDueTs = w => {
     const st = state.stats[w.id];
-    if(!st) return 0;
-    return st.firstCorrect || st.lastSeen || (st.attempts && st.attempts.length ? st.attempts[st.attempts.length - 1].ts : 0) || 0;
+    if(!st) return Number.MAX_SAFE_INTEGER;
+    if(st.smNext != null) return st.smNext;
+    return Number.MAX_SAFE_INTEGER;
   };
-  const sortByRecentlyLearned = (a, b) => {
-    /* Recently-used in Build Mode goes LAST. */
+  const sortByPriority = (a, b) => {
+    /* Recently-used in Build Mode goes LAST (avoid same-word repetition). */
     const ar = recentWords.has(a.id) ? 1 : 0;
     const br = recentWords.has(b.id) ? 1 : 0;
     if(ar !== br) return ar - br;
-    /* Then most-recently-learned in Vocab Blitz goes FIRST. */
-    return wordRecencyTs(b) - wordRecencyTs(a);
+    /* Then due-soonest in SM-2 goes FIRST — these are the words the user
+       actively needs to master. */
+    return wordDueTs(a) - wordDueTs(b);
   };
-  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w))).sort(sortByRecentlyLearned);
+  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w))).sort(sortByPriority);
   const focusedUnintro = unintroduced.filter(w => focusSet.has(w.id));
-  let newWords = focusedUnintro.slice(0, 3);  /* take top focused, in recency order — no randomness */
+  let newWords = focusedUnintro.slice(0, 3);  /* take top focused, in priority order */
   if(newWords.length < 3){
     const rest = unintroduced.filter(w => !newWords.includes(w));
     newWords = newWords.concat(rest.slice(0, 3 - newWords.length));
   }
   if(newWords.length < 3){
-    const extra = eligible.filter(w => !newWords.includes(w)).sort(sortByRecentlyLearned);
+    const extra = eligible.filter(w => !newWords.includes(w)).sort(sortByPriority);
     newWords = newWords.concat(extra.slice(0, 3 - newWords.length));
   }
 
