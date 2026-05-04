@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.1';
+const APP_VERSION = '6.14.2';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5750,7 +5750,29 @@ const BUILD_SOCIAL_TEMPLATES = [
   /* preference / preference questions */
   { id:'soc_prefer',      slotKey:'N', pattern:'{N}の ほうが いい',            en:'I prefer {N}',                 slotThemes:['food','places','clothing','objects'] },
   { id:'soc_taste_check', slotKey:'N', pattern:'{N}は どんな あじ ですか',     en:'What does {N} taste like?',    slotThemes:['food'], slotExclude:['water','sugar','salt'] },
-  { id:'soc_recommend',   slotKey:'N', pattern:'{N}は おすすめ ですか',        en:'Do you recommend {N}?',        slotThemes:['food','places'] }
+  { id:'soc_recommend',   slotKey:'N', pattern:'{N}は おすすめ ですか',        en:'Do you recommend {N}?',        slotThemes:['food','places'] },
+
+  /* v6.14.2 — social flavor: sentence-final particles (ね, よ, な, んです, よね),
+     softeners (じつは, ちょっと, もし よかったら), interjections (わ〜, えっ),
+     shared-experience phrasing. Less textbook-stiff, more conversational. */
+  { id:'soc_how_about',     slotKey:'N', pattern:'{N}、どう？',                       en:"{N}, how about it?",          slotThemes:['food','places'] },
+  { id:'soc_lets_together', slotKey:'N', pattern:'いっしょに {N}を たべましょう',     en:"Let's eat {N} together!",     slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_actually_love', slotKey:'N', pattern:'じつは {N}が だいすき なんです',    en:'Honestly, I love {N}',         slotThemes:['food','animals'] },
+  { id:'soc_want_na',       slotKey:'N', pattern:'{N}が ほしい な',                   en:'Hmm, I kinda want {N}',        slotThemes:['food','clothing','objects'] },
+  { id:'soc_rec_q',         slotKey:'N', pattern:'おすすめの {N}は？',                en:'Got any {N} you recommend?',   slotThemes:['food','places'] },
+  { id:'soc_ok_check',      slotKey:'N', pattern:'{N}、だいじょうぶ？',                en:'Is your {N} OK?',              slotThemes:['body','family','people'] },
+  { id:'soc_me_too',        slotKey:'N', pattern:'わたしも {N}が すき！',              en:'Me too — I like {N}!',         slotThemes:['food','animals','school'] },
+  { id:'soc_surprise',      slotKey:'N', pattern:'えっ、{N}？ほんとう？',             en:'Wait, {N}? Really?',           slotThemes:['food','places','people'] },
+  { id:'soc_if_okay',       slotKey:'N', pattern:'もし よかったら、{N}に いきませんか', en:"If you're up for it, want to go to {N}?", slotThemes:['places'] },
+  { id:'soc_what_is',       slotKey:'N', pattern:'{N}って なん ですか？',              en:"What's {N}?",                  slotThemes:['food','objects','school'] },
+  { id:'soc_wow',           slotKey:'N', pattern:'わ〜、{N}！すてき ですね！',         en:'Wow, {N}! Lovely!',            slotThemes:['places','clothing','home'] },
+  { id:'soc_recently',      slotKey:'N', pattern:'さいきん、{N}に いきました？',       en:'Been to {N} recently?',        slotThemes:['places'] },
+  { id:'soc_lend',          slotKey:'N', pattern:'ちょっと {N}を かしてください',      en:'Could you lend me {N}?',       slotThemes:['objects','home'] },
+  { id:'soc_agree_ne',      slotKey:'N', pattern:'そうですね、{N}は いい ですね',      en:'Right, {N} is nice',           slotThemes:['places','school','food'] },
+  { id:'soc_yokunai',       slotKey:'N', pattern:'{N}、あまり よくない かも',          en:"{N} might not be that great", slotThemes:['food','places','school'] },
+  { id:'soc_share_yo',      slotKey:'N', pattern:'{N}、おいしい よ！',                 en:'{N} is good, trust me!',       slotThemes:['food'] },
+  { id:'soc_yappari',       slotKey:'N', pattern:'やっぱり {N}が すき',                en:'Yeah, I really do like {N}',   slotThemes:['food','animals','school'] },
+  { id:'soc_shitteru',      slotKey:'N', pattern:'{N}って しってますか？',             en:'Do you know {N}?',             slotThemes:['places','people','school'] }
 ];
 
 // v6.11 — Variation step. One English intent, multiple Japanese framings.
