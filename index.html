@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.4';
+const APP_VERSION = '6.14.5';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2482,6 +2482,27 @@ function toTa(jp){
 
 function toTeiru(jp){ return toTe(jp) + 'いる'; }
 
+/* v6.14.5 — conversational form composers built on toTe/toTa/toNai. */
+function toTemoii(jp){ return toTe(jp) + 'も いい'; }
+function toChatta(jp){
+  const te = toTe(jp);
+  if(te.endsWith('て')) return te.slice(0,-1) + 'ちゃった';
+  if(te.endsWith('で')) return te.slice(0,-1) + 'じゃった';
+  return te + 'ちゃった';
+}
+function toNakya(jp){
+  const nai = toNai(jp);
+  if(nai.endsWith('ない')) return nai.slice(0,-2) + 'なきゃ';
+  return nai + 'きゃ';
+}
+function toTaHougaii(jp){ return toTa(jp) + 'ほうが いい'; }
+function toTaKotogaaru(jp){ return toTa(jp) + 'ことがある'; }
+function toNakatta(jp){
+  const nai = toNai(jp);
+  if(nai.endsWith('ない')) return nai.slice(0,-2) + 'なかった';
+  return nai + 'かった';
+}
+
 function verbGroupInfo(jp){
   const cls = classifyVerb(jp);
   if(cls === 'v-u') return {group:1, label:'Group 1 · u-verb (godan)'};
@@ -2622,7 +2643,35 @@ const FORMS = [
   {id:'nai',     name:'ない',     hint:'Plain negative',        conj:toNai,
     rule:'ru-verbs: drop る, add ない (たべる→たべない). u-verbs: change u-row to a-row, add ない (のむ→のまない). う ending → わ+ない (かう→かわない). する→しない, くる→こない.',
     en:w=>baseVerbAlts(w).map(b=>"don't "+b).join(' / '),
-    accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"doesn't "+b])}
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'not '+b,"doesn't "+b])},
+
+  /* v6.14.5 — conversational forms users actually hear in real Japanese.
+     Built on top of te/ta/nai composers so irregulars (する/くる/いく)
+     inherit correct conjugation automatically. */
+  {id:'temoii',     name:'ても いい',       hint:'May / can do (permission)',         conj:toTemoii,
+    rule:'te-form + も いい. たべる→たべて→たべても いい. Often paired with ですか for "may I…?". The pattern Julius hears as "kattemo ii".',
+    en:w=>baseVerbAlts(w).map(b=>'may '+b+' / can '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['may '+b,'can '+b,'may i '+b,'can i '+b,'is it ok to '+b,'allowed to '+b,"it's ok to "+b])},
+  {id:'chatta',     name:'ちゃった',         hint:'Ended up / oops did',               conj:toChatta,
+    rule:'Contraction of te-form + しまった. て→ちゃった (たべて→たべちゃった). で→じゃった (のんで→のんじゃった). Conveys completion or regret.',
+    en:w=>baseVerbAlts(w).map(b=>'ended up '+enPast(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return[p,'ended up '+p,p+' it','accidentally '+p,'i '+p+' (oops)','went and '+p+' it'];})},
+  {id:'nakya',      name:'なきゃ',           hint:'Gotta / have to (casual)',          conj:toNakya,
+    rule:'Plain negative stem (drop ない) + なきゃ. たべない→たべなきゃ; のまない→のまなきゃ. Short for ~なければならない.',
+    en:w=>baseVerbAlts(w).map(b=>'gotta '+b+' / have to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['gotta '+b,'have to '+b,'must '+b,'i have to '+b,'i gotta '+b,'need to '+b])},
+  {id:'tahougaii',  name:'たほうが いい',     hint:'Should do (recommendation)',        conj:toTaHougaii,
+    rule:'Plain past + ほうが いい. たべる→たべた→たべたほうが いい. "It would be better to ___".',
+    en:w=>baseVerbAlts(w).map(b=>'should '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['should '+b,'you should '+b,'better to '+b,'better '+b,'ought to '+b,"it's better to "+b])},
+  {id:'takotogaaru',name:'たことが ある',     hint:'Have done (experience)',            conj:toTaKotogaaru,
+    rule:'Plain past + ことが ある. たべる→たべた→たべたことが ある. "Have ___ before". Negative: ~たことがない (never).',
+    en:w=>baseVerbAlts(w).map(b=>'have '+enPast(b)+' before').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return['have '+p,'have '+p+' before','i have '+p,'ever '+p,p+' before','have ever '+p];})},
+  {id:'nakatta',    name:'なかった',         hint:'Plain past negative',               conj:toNakatta,
+    rule:'Plain negative stem (drop ない) + なかった. たべない→たべなかった; のまない→のまなかった. Casual past negative.',
+    en:w=>baseVerbAlts(w).map(b=>"didn't "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["didn't "+b,'did not '+b,'didnt '+b,'have not '+b,"haven't "+b])}
 ];
 
 /* v4.28: gate removed — all verbs available for form drilling immediately.
