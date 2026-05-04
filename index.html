@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.11';
+const APP_VERSION = '6.12.12';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6080,6 +6080,33 @@ function buildGenerateLesson(mode){
       2 - callbacks.length
     );
     callbacks = callbacks.concat(extra);
+  }
+  /* v6.12.12 — fallback chain so cb1/cb2 are never undefined. Prior code
+     crashed with "Cannot read properties of undefined (reading 'jp')" when
+     eligible was small enough that all viable words went to newWords and
+     none were left for callbacks. */
+  if(callbacks.length < 2){
+    const cbIds = new Set(callbacks.map(buildGenWordId));
+    /* Tier 2: any other introduced noun in the user's drilled deck (not
+       constrained to the primary/secondary theme intersection). */
+    const wider = deck.filter(w =>
+      w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
+      !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+      vocabIsIntroduced(w) &&
+      !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w))
+    );
+    callbacks = callbacks.concat(buildPickRandom(wider, 2 - callbacks.length));
+  }
+  if(callbacks.length < 2){
+    /* Tier 3: reuse newWords (with cycle-3 callback framing). At least the
+       lesson generates instead of crashing; in tiny-deck scenarios this is
+       still pedagogically sound — it's another pass over the same words. */
+    const cbIds = new Set(callbacks.map(buildGenWordId));
+    for(const nw of newWords){
+      if(callbacks.length >= 2) break;
+      const id = buildGenWordId(nw);
+      if(!cbIds.has(id)){ callbacks.push(nw); cbIds.add(id); }
+    }
   }
 
   const [w1, w2, w3] = newWords;
