@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.12.14';
+const APP_VERSION = '6.13.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5479,7 +5479,51 @@ const BUILD_TEMPLATES = [
 
   /* v6.12 — school subjects / objects (11 nouns: teacher, student, study, etc.) */
   { id:'school_hard',  slotKey:'N', pattern:'{N}は むずかしい',        en:'{N} is difficult',          slotThemes:['school'] },
-  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] }
+  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] },
+
+  /* v6.13 — verb form variations: plain past (た), plain past negative (なかった),
+     te-form (て), continuous (ている), tried (てみた). Breaks the ます/ました
+     dominance Julius called out. */
+  { id:'ate_plain',    slotKey:'N', pattern:'{N}を たべた',            en:'I ate {N}',                 slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
+  { id:'didnt_eat',    slotKey:'N', pattern:'{N}を たべなかった',      en:"I didn't eat {N}",          slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
+  { id:'eating_now',   slotKey:'N', pattern:'{N}を たべている',        en:'I am eating {N}',           slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
+  { id:'tried_eat',    slotKey:'N', pattern:'{N}を たべてみた',        en:'I tried {N}',               slotThemes:['food'], slotExclude:['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'] },
+  { id:'drank_plain',  slotKey:'N', pattern:'{N}を のんだ',            en:'I drank {N}',               slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
+  { id:'drinking_now', slotKey:'N', pattern:'{N}を のんでいる',        en:'I am drinking {N}',         slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
+  { id:'didnt_drink',  slotKey:'N', pattern:'{N}を のまなかった',      en:"I didn't drink {N}",        slotThemes:['food'], slotWords:['water','tea','milk','drink'] },
+
+  /* places — plain past, te-form */
+  { id:'went_plain',   slotKey:'N', pattern:'{N}に いった',            en:'I went to {N}',             slotThemes:['places'] },
+  { id:'didnt_go',     slotKey:'N', pattern:'{N}に いかなかった',      en:"I didn't go to {N}",        slotThemes:['places'] },
+  { id:'going_now',    slotKey:'N', pattern:'{N}に いっている',        en:'I am going to {N}',         slotThemes:['places'] },
+
+  /* i-adjective past forms — かった (was X), くなかった (wasn't X) */
+  { id:'tasty_was',    slotKey:'N', pattern:'{N}は おいしかった',      en:'The {N} was delicious',     slotThemes:['food'] },
+  { id:'tasty_wasnt',  slotKey:'N', pattern:'{N}は おいしくなかった',  en:"The {N} wasn't delicious",  slotThemes:['food'] },
+  { id:'cute_was',     slotKey:'N', pattern:'{N}は かわいかった',      en:'{N} was cute',              slotThemes:['animals'] },
+  { id:'cute_wasnt',   slotKey:'N', pattern:'{N}は かわいくなかった',  en:"{N} wasn't cute",           slotThemes:['animals'] },
+  { id:'hurt_was',     slotKey:'N', pattern:'{N}が いたかった',        en:'My {N} hurt',               slotThemes:['body'] },
+  { id:'hurt_wasnt',   slotKey:'N', pattern:'{N}が いたくなかった',    en:"My {N} didn't hurt",        slotThemes:['body'] },
+  { id:'school_was_hard',slotKey:'N',pattern:'{N}は むずかしかった',   en:'{N} was difficult',         slotThemes:['school'] },
+
+  /* v6.13 — cross-theme verb usage. Breaks the food-tunnel by combining
+     general verbs (buy, see, wear, forget, lost, found) with broader noun
+     pools (clothing, objects, home, animals, places). User: 'feels tunnel
+     visioned on those set type of words... ima semai desu'. */
+  { id:'bought_thing',   slotKey:'N', pattern:'{N}を かった',           en:'I bought {N}',              slotThemes:['food','clothing','objects'] },
+  { id:'didnt_buy',      slotKey:'N', pattern:'{N}を かわなかった',     en:"I didn't buy {N}",          slotThemes:['food','clothing','objects'] },
+  { id:'want_to_buy',    slotKey:'N', pattern:'{N}を かいたい',         en:'I want to buy {N}',         slotThemes:['food','clothing','objects'] },
+  { id:'saw_thing',      slotKey:'N', pattern:'{N}を みた',             en:'I saw {N}',                 slotThemes:['animals','objects','home','places'] },
+  { id:'didnt_see',      slotKey:'N', pattern:'{N}を みなかった',       en:"I didn't see {N}",          slotThemes:['animals','objects','home','places'] },
+  { id:'looking_at',     slotKey:'N', pattern:'{N}を みている',         en:'I am looking at {N}',       slotThemes:['animals','objects','home'] },
+  { id:'wore_thing',     slotKey:'N', pattern:'{N}を きた',             en:'I wore {N}',                slotThemes:['clothing'] },
+  { id:'forgot_thing',   slotKey:'N', pattern:'{N}を わすれた',         en:'I forgot {N}',              slotThemes:['food','clothing','objects','home','school'] },
+  { id:'lost_thing',     slotKey:'N', pattern:'{N}を なくした',         en:'I lost {N}',                slotThemes:['clothing','objects','home'] },
+  { id:'found_thing',    slotKey:'N', pattern:'{N}を みつけた',         en:'I found {N}',               slotThemes:['clothing','objects','home','animals'] },
+  /* family/people in different states */
+  { id:'family_home',    slotKey:'N', pattern:'{N}は うちに います',    en:'{N} is at home',            slotThemes:['family','people'] },
+  { id:'family_busy_was',slotKey:'N', pattern:'{N}は いそがしかった',   en:'{N} was busy',              slotThemes:['family','people'] },
+  { id:'family_kind',    slotKey:'N', pattern:'{N}は やさしい',         en:'{N} is kind',               slotThemes:['family','people'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -5496,7 +5540,23 @@ const BUILD_COMPLEX_TEMPLATES = [
   { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',   slotThemes:['food'] },
   { id:'really_like',     slotKey:'N', pattern:'{N}が だいすき です',           en:'I really like {N}',      slotThemes:['food'] },
   { id:'every_day',       slotKey:'N', pattern:'まいにち {N}を のみます',       en:'I drink {N} every day',  slotThemes:['food'], slotWords: BUILD_DRINKABLES },
-  { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",  slotThemes:['food'] }
+  { id:'tired_want',      slotKey:'N', pattern:'つかれた。{N}が ほしい',        en:"I'm tired. I want {N}",  slotThemes:['food'] },
+
+  /* v6.13 — complex with verb form variations: plain past, past negative,
+     experience (たことがある), again (また), tried (てみた), wasn't (くなかった). */
+  { id:'ate_yest_plain',  slotKey:'N', pattern:'きのう {N}を たべた',           en:'I ate {N} yesterday',          slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'didnt_eat_yest',  slotKey:'N', pattern:'きのう {N}を たべなかった',     en:"I didn't eat {N} yesterday",   slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'will_eat_tom',    slotKey:'N', pattern:'あした {N}を たべる',           en:"I'll eat {N} tomorrow",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'tried_drink',     slotKey:'N', pattern:'{N}を のんでみた',              en:'I tried drinking {N}',         slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'eat_again',       slotKey:'N', pattern:'また {N}を たべたい',           en:'I want to eat {N} again',      slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'never_eaten',     slotKey:'N', pattern:'{N}を たべたことがない',        en:"I've never eaten {N}",         slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'eaten_before',    slotKey:'N', pattern:'{N}を たべたことがある',        en:"I've eaten {N} before",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'wasnt_tasty',     slotKey:'N', pattern:'{N}は あまり おいしくなかった', en:"The {N} wasn't very tasty",    slotThemes:['food'] },
+  /* cross-theme complex */
+  { id:'bought_yest',     slotKey:'N', pattern:'きのう {N}を かった',           en:'I bought {N} yesterday',       slotThemes:['food','clothing','objects'] },
+  { id:'will_buy',        slotKey:'N', pattern:'あした {N}を かう',             en:"I'll buy {N} tomorrow",        slotThemes:['food','clothing','objects'] },
+  { id:'never_been_to',   slotKey:'N', pattern:'{N}に いったことがない',        en:"I've never been to {N}",       slotThemes:['places'] },
+  { id:'been_to_before',  slotKey:'N', pattern:'{N}に いったことがある',        en:"I've been to {N} before",      slotThemes:['places'] }
 ];
 const HARD_PLACE_EXCLUDES = ['road/way','country'];
 const HARD_LIKE_EXCLUDES = ['water','sugar','salt','food','drink'];
@@ -5568,6 +5628,36 @@ const BUILD_HARD_TEMPLATES = [
     slots:{
       P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
       N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  /* v6.13 — multi-slot with plain past + te-form (chained clauses) */
+  { id:'time_ate_plain',
+    pattern:'{T} {N}を たべた',
+    en:'I ate {N} {T}',
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','day before yesterday','last week'] },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'didnt_go_with',
+    pattern:'{T} {F}と {P}に いかなかった',
+    en:"{T} I didn't go to {P} with {F}",
+    slots:{
+      T:{ slotThemes:['time'], slotWords:['yesterday','today','last week'] },
+      F:{ slotThemes:['family'] },
+      P:{ slotThemes:['places'], slotExclude: HARD_PLACE_EXCLUDES }
+    }},
+  { id:'went_te_ate_plain',
+    pattern:'{P}に いって、{N}を たべた',
+    en:'Went to {P} and ate {N}',
+    slots:{
+      P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
+      N:{ slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
+    }},
+  { id:'bought_at_place',
+    pattern:'{P}で {N}を かった',
+    en:'I bought {N} at {P}',
+    slots:{
+      P:{ slotThemes:['places','home'], slotWords: HARD_PLACE_EAT_ALLOW, allowKatakana:true },
+      N:{ slotThemes:['food','clothing','objects'] }
     }},
   { id:'family_likes',
     pattern:'{F}は {N}が すき',
@@ -5770,8 +5860,8 @@ const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
    generator was picking the same templates and same words session after
    session because nothing remembered "we just used this." */
 const BUILD_LS_RECENT = 'jp4_build_recent';
-const BUILD_RECENT_TEMPLATES_CAP = 6;
-const BUILD_RECENT_WORDS_CAP = 30;
+const BUILD_RECENT_TEMPLATES_CAP = 10;
+const BUILD_RECENT_WORDS_CAP = 60;
 function buildRecentGet(){
   try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || []}; }
   catch(e){ return {templates:[], words:[]}; }
@@ -5791,14 +5881,14 @@ function buildFillTemplate(tmpl, word){
   const re = new RegExp('\\{' + slotKey + '\\}', 'g');
   return { jp: tmpl.pattern.replace(re, word.jp), en: tmpl.en.replace(re, word.en) };
 }
-function buildMultiSlotFill(tmpl, deck, excludeWordIds){
+function buildMultiSlotFill(tmpl, deck, excludeWordIds, preferredWordIds){
   /* v6.12.1 — only use words encountered in Vocab Blitz. Mirror Library exclusions.
      v6.12.7 — accept excludeWordIds Set so callers can dedup across slots/lessons.
-     Falls back to the full pool if exclusion would empty it (so we never fail
-     a slot just because every option was recently used). */
+     v6.13 — accept preferredWordIds Set so chain mode can favor chain words. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   const exclude = excludeWordIds || new Set();
+  const preferred = preferredWordIds || null;
   const maxTries = tmpl.validate ? 30 : 1;
   for(let attempt = 0; attempt < maxTries; attempt++){
     const keys = Object.keys(tmpl.slots);
@@ -5819,6 +5909,12 @@ function buildMultiSlotFill(tmpl, deck, excludeWordIds){
       );
       let pool = fullPool.filter(w => !exclude.has(w.id));
       if(pool.length === 0) pool = fullPool;
+      /* v6.13 — chain bias. Promote preferred words to the top of the pool;
+         only use them if they fit the slot constraints. */
+      if(preferred && preferred.size > 0){
+        const promoted = pool.filter(w => preferred.has(w.id));
+        if(promoted.length > 0) pool = promoted;
+      }
       if(cfg.distinctFrom && chosen[cfg.distinctFrom]){
         pool = pool.filter(w => w.jp !== chosen[cfg.distinctFrom].jp);
       }
@@ -5842,6 +5938,58 @@ function buildGetSequence(){ try{ return JSON.parse(localStorage.getItem(BUILD_L
 function buildPushSequence(e){ const s = buildGetSequence(); s.push(e); try{ localStorage.setItem(BUILD_LS_SEQUENCE, JSON.stringify(s)); }catch(_){} }
 function buildClearSequence(){ try{ localStorage.removeItem(BUILD_LS_SEQUENCE); }catch(_){} }
 window.buildClearSequence = buildClearSequence;
+
+/* v6.13 — Daily Chain. Three-lesson sequence (simple → complex → hard) using
+   the same 3 words across lessons, so the user encounters each word in many
+   forms within a single session. State persists in localStorage so a chain
+   survives a navigation away from Build Mode. */
+const BUILD_LS_CHAIN = 'jp4_build_chain';
+function buildChainGet(){ try{ return JSON.parse(localStorage.getItem(BUILD_LS_CHAIN) || 'null'); }catch(e){ return null; } }
+function buildChainSet(c){ try{ localStorage.setItem(BUILD_LS_CHAIN, JSON.stringify(c)); }catch(_){} }
+function buildChainClear(){ try{ localStorage.removeItem(BUILD_LS_CHAIN); }catch(_){} }
+window.buildChainClear = buildChainClear;
+function buildChainPickWords(){
+  const deck = state.words || [];
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const candidates = deck.filter(w =>
+    w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
+    !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+    vocabIsIntroduced(w)
+  );
+  if(candidates.length < 3) return null;
+  const dueScore = w => {
+    const st = state.stats[w.id];
+    if(!st || st.smNext == null) return Number.MAX_SAFE_INTEGER;
+    return st.smNext;
+  };
+  /* Pick 3 SRS-due-soonest from a single theme so all 3 lessons can use them. */
+  const themeBuckets = {};
+  candidates.forEach(w => {
+    if(!themeBuckets[w.theme]) themeBuckets[w.theme] = [];
+    themeBuckets[w.theme].push(w);
+  });
+  /* Choose theme with ≥3 candidates, prefer themes with most due-soon. */
+  const themesByDue = Object.entries(themeBuckets)
+    .filter(([,arr]) => arr.length >= 3)
+    .map(([t, arr]) => {
+      arr.sort((a, b) => dueScore(a) - dueScore(b));
+      return { theme: t, arr, dueTs: dueScore(arr[0]) };
+    })
+    .sort((a, b) => a.dueTs - b.dueTs);
+  if(themesByDue.length === 0) return null;
+  return themesByDue[0].arr.slice(0, 3);
+}
+function startBuildChain(){
+  const words = buildChainPickWords();
+  if(!words){
+    showToast("Drill at least 3 nouns in the same theme via Vocab Blitz to start a chain.", {tone:'warn', duration:5500});
+    return;
+  }
+  buildChainSet({ step: 1, wordIds: words.map(w => w.id), theme: words[0].theme, started: Date.now() });
+  startBuildModeGenerated('simple');
+}
+window.startBuildChain = startBuildChain;
 function buildPickRandom(arr, n){
   const pool = arr.slice(); const out = [];
   while(out.length < n && pool.length){
@@ -5944,8 +6092,17 @@ function buildGenerateQaStep(deck, preferredWord){
 
 function buildGenerateLesson(mode){
   mode = mode || 'simple';
-  const pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
+  let pool = mode === 'complex' ? BUILD_COMPLEX_TEMPLATES : BUILD_TEMPLATES;
   if(pool.length < 2) throw new Error('need at least 2 templates in pool');
+
+  /* v6.13 — chain mode: restrict pool to templates whose slotThemes include
+     the chain's anchor theme so the selected chain words actually fit. */
+  const chain = buildChainGet();
+  const chainActive = !!(chain && chain.theme && chain.wordIds && chain.wordIds.length === 3);
+  if(chainActive){
+    const themed = pool.filter(t => (t.slotThemes || []).includes(chain.theme));
+    if(themed.length >= 2) pool = themed;
+  }
 
   const recent = buildRecentGet();
   const recentTemplates = new Set(recent.templates || []);
@@ -6048,16 +6205,33 @@ function buildGenerateLesson(mode){
        actively needs to master. */
     return wordDueTs(a) - wordDueTs(b);
   };
-  const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w))).sort(sortByPriority);
-  const focusedUnintro = unintroduced.filter(w => focusSet.has(w.id));
-  let newWords = focusedUnintro.slice(0, 3);  /* take top focused, in priority order */
-  if(newWords.length < 3){
-    const rest = unintroduced.filter(w => !newWords.includes(w));
-    newWords = newWords.concat(rest.slice(0, 3 - newWords.length));
-  }
-  if(newWords.length < 3){
-    const extra = eligible.filter(w => !newWords.includes(w)).sort(sortByPriority);
-    newWords = newWords.concat(extra.slice(0, 3 - newWords.length));
+  /* v6.13 — chain mode: hardwire newWords to the chain's 3 words when they
+     fit eligible. The whole point of the chain is "same words across modes". */
+  let newWords;
+  if(chainActive){
+    const chainWords = chain.wordIds.map(id => eligible.find(w => w.id === id)).filter(Boolean);
+    if(chainWords.length === 3){
+      newWords = chainWords;
+    } else {
+      /* Some chain words don't fit current pair (rare, but possible). Fill from
+         eligible by priority. The user still gets the chain feel because at
+         least some chain words are present. */
+      const have = new Set(chainWords.map(w => w.id));
+      const extra = eligible.filter(w => !have.has(w.id)).sort(sortByPriority);
+      newWords = chainWords.concat(extra.slice(0, 3 - chainWords.length));
+    }
+  } else {
+    const unintroduced = eligible.filter(w => !introducedIds.has(buildGenWordId(w))).sort(sortByPriority);
+    const focusedUnintro = unintroduced.filter(w => focusSet.has(w.id));
+    newWords = focusedUnintro.slice(0, 3);  /* take top focused, in priority order */
+    if(newWords.length < 3){
+      const rest = unintroduced.filter(w => !newWords.includes(w));
+      newWords = newWords.concat(rest.slice(0, 3 - newWords.length));
+    }
+    if(newWords.length < 3){
+      const extra = eligible.filter(w => !newWords.includes(w)).sort(sortByPriority);
+      newWords = newWords.concat(extra.slice(0, 3 - newWords.length));
+    }
   }
 
   const newIdSet = new Set(newWords.map(buildGenWordId));
@@ -6238,15 +6412,22 @@ function buildGenerateHardLesson(){
   }
 
   /* v6.12.7 — round-robin viable templates with cross-session recency dedup.
-     Skip templates used in the last few lessons; fall back to full viable
-     pool if filtered too thin. Then shuffle and round-robin so a single
-     lesson uses each template at most ⌈7/N⌉ times — much better than the
-     old random-with-no-back-to-back approach when N is small. */
+     v6.13 — chain mode: prefer templates whose slots can host the chain words. */
   const recent = buildRecentGet();
   const recentTemplatesSet = new Set(recent.templates || []);
   const recentWordsSet = new Set(recent.words || []);
-  let preferredTmpls = viable.filter(t => !recentTemplatesSet.has(t.id));
-  if(preferredTmpls.length < 2) preferredTmpls = viable;
+  const chain = buildChainGet();
+  const chainActive = !!(chain && chain.wordIds && chain.wordIds.length === 3);
+  const chainSet = chainActive ? new Set(chain.wordIds) : null;
+  let chainViable = viable;
+  if(chainActive){
+    chainViable = viable.filter(t =>
+      Object.values(t.slots).some(cfg => slotPool(cfg).some(w => chainSet.has(w.id)))
+    );
+    if(chainViable.length === 0) chainViable = viable;
+  }
+  let preferredTmpls = chainViable.filter(t => !recentTemplatesSet.has(t.id));
+  if(preferredTmpls.length < 2) preferredTmpls = chainViable;
   const shuffledTmpls = shuffleFY(preferredTmpls.slice());
 
   const lessonId = 'Gh' + (buildGetSequence().length + 1);
@@ -6262,7 +6443,7 @@ function buildGenerateHardLesson(){
     /* Round-robin through shuffled templates by step index. */
     const tmpl = shuffledTmpls[steps.length % shuffledTmpls.length];
     const exclude = new Set([...recentWordsSet, ...lessonWords]);
-    const filled = buildMultiSlotFill(tmpl, deck, exclude);
+    const filled = buildMultiSlotFill(tmpl, deck, exclude, chainSet);
     if(!filled) continue;
     /* Diagnostic: a slot pick fell back if its chosen word was in the exclude set. */
     for(const k of Object.keys(tmpl.slots)){
@@ -7017,9 +7198,29 @@ function buildOnComplete(){
       words,
       date: new Date().toISOString()
     });
+    /* v6.13 — advance Daily Chain. Step 1 (simple) -> 2 (complex) -> 3 (hard) -> done. */
+    const chain = buildChainGet();
+    if(chain && chain.step != null){
+      chain.step++;
+      if(chain.step > 3){
+        buildChainClear();
+        showToast(`Daily Chain complete — drilled ${(chain.wordIds || []).length} words across all 3 modes ✓`, {tone:'info', duration:5000});
+      } else {
+        buildChainSet(chain);
+      }
+    }
   }
   _wakeLockRelease();
 }
+/* v6.13 — fired from the lesson-summary "Continue chain" button. Generates
+   the next mode in the chain using the same chain words. */
+function buildChainContinue(){
+  const chain = buildChainGet();
+  if(!chain || chain.step == null || chain.step > 3) return;
+  const mode = chain.step === 2 ? 'complex' : 'hard';
+  startBuildModeGenerated(mode);
+}
+window.buildChainContinue = buildChainContinue;
 
 function buildExit(){
   _buildClearTimer();
@@ -7140,8 +7341,29 @@ function renderBuildModeStart(){
     </div>
   `;
 
+  /* v6.13 — Daily Chain. 3-lesson sequence (simple -> complex -> hard) using
+     the same 3 SRS-due words. Lets the user encounter each word in many
+     forms within one session. */
+  const activeChain = buildChainGet();
+  const chainPanel = activeChain && activeChain.step <= 3 ? `
+    <div class="card" style="border-color:var(--blue);background:rgba(80,180,255,0.06)">
+      <h3 style="margin:0 0 4px;color:var(--blue)">🔗 Chain in progress — step ${activeChain.step}/3</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Theme: <b>${esc(activeChain.theme || '')}</b> · ${(activeChain.wordIds || []).length} words locked across modes</div>
+      <button class="btn btn-blue" style="width:100%" onclick="buildChainContinue()">▶ Continue — ${activeChain.step === 1 ? 'Simple' : (activeChain.step === 2 ? 'Complex' : 'Hard')}</button>
+      <div style="height:6px"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:11px" onclick="if(confirm('Abandon active chain?')){buildChainClear();render();}">Abandon chain</button>
+    </div>
+  ` : `
+    <div class="card" style="border-color:var(--blue);background:rgba(80,180,255,0.04)">
+      <h3 style="margin:0 0 4px;color:var(--blue)">🔗 Daily Chain</h3>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">3 lessons in sequence (Simple → Complex → Hard) using the same 3 SRS-due words. Drill them through every form: ます · ました · た · なかった · て · かった · くなかった. By the end you've heard each word in 6+ contexts.</div>
+      <button class="btn btn-blue" style="width:100%" onclick="startBuildChain()">▶ Start Daily Chain</button>
+    </div>
+  `;
+
   return `
     ${warnDeck}
+    ${chainPanel}
     ${recentLessonsPanel}
     <div class="card">
       <h3>🎲 Simple — one-clause</h3>
@@ -7412,6 +7634,13 @@ function _buildRenderCallback(step){
 
 function renderBuildModeComplete(){
   const l = state.buildMode.lesson;
+  /* v6.13 — Daily Chain. buildOnComplete already advanced chain.step to the
+     next mode. Surface a "continue chain" CTA so the user flows from simple
+     -> complex -> hard with the same words. */
+  const chain = buildChainGet();
+  const chainBtn = (chain && chain.step != null && chain.step <= 3)
+    ? `<button class="btn btn-blue" style="width:100%;margin-bottom:8px" onclick="buildChainContinue()">▶ Continue chain — ${chain.step === 2 ? 'Complex' : 'Hard'} (step ${chain.step}/3)</button>`
+    : '';
   return `
     <div class="card" style="text-align:center;padding:30px 20px">
       <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
@@ -7421,6 +7650,7 @@ function renderBuildModeComplete(){
           ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words. Nothing written to your SRS stats.`
           : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks. Nothing written to your SRS stats.`}
       </div>
+      ${chainBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
       <div style="height:8px"></div>
       <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
