@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.3';
+const APP_VERSION = '6.14.4';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5497,6 +5497,13 @@ const BUILD_DRINKABLES = ['water','tea','milk','drink'];
 // Shared by complex `want_to_eat` / `ate_yesterday` and the hard-template food filters.
 const HARD_EAT_EXCLUDES = ['water','tea','coffee','milk','juice','beer','wine','drink','alcohol/sake','sugar','salt','food','cooking/cuisine'];
 
+/* v6.14.4 — home theme mixes rooms/fixtures with portable items. These
+   excludes filter out things you can't reasonably buy/lose/forget.
+   IMMOBILE = rooms, fixtures, utilities (can't buy in everyday speech).
+   NOT_LOSEABLE = adds furniture/devices (can't lose/forget at home). */
+const HOME_IMMOBILE_EXCLUDES = ['house/home','home/my place','room','kitchen','toilet','bath','garden','door','window','electricity/light','shower','air conditioner'];
+const HOME_NOT_LOSEABLE_EXCLUDES = [...HOME_IMMOBILE_EXCLUDES, 'chair','desk','table','bed','sofa','TV','radio'];
+
 /* v6.14 — Complex = past forms, compound verb forms (たい, ことがある, てみた),
    conjugated adjectives (かった), continuous (ている), frequency adverbs,
    time markers. Receives the verb-form variations stripped from Simple in
@@ -5542,18 +5549,18 @@ const BUILD_COMPLEX_TEMPLATES = [
   { id:'been_to_before',  slotKey:'N', pattern:'{N}に いったことがある',        en:"I've been to {N} before",     slotThemes:['places'] },
 
   /* general verbs — past plain, want-to, continuous (cross-theme) */
-  { id:'bought_thing',    slotKey:'N', pattern:'{N}を かった',                 en:'I bought {N}',                 slotThemes:['food','clothing','objects'] },
-  { id:'didnt_buy',       slotKey:'N', pattern:'{N}を かわなかった',           en:"I didn't buy {N}",             slotThemes:['food','clothing','objects'] },
-  { id:'want_to_buy',     slotKey:'N', pattern:'{N}を かいたい',               en:'I want to buy {N}',            slotThemes:['food','clothing','objects'] },
-  { id:'bought_yest',     slotKey:'N', pattern:'きのう {N}を かった',           en:'I bought {N} yesterday',      slotThemes:['food','clothing','objects'] },
-  { id:'will_buy',        slotKey:'N', pattern:'あした {N}を かう',             en:"I'll buy {N} tomorrow",       slotThemes:['food','clothing','objects'] },
+  { id:'bought_thing',    slotKey:'N', pattern:'{N}を かった',                 en:'I bought {N}',                 slotThemes:['food','clothing','objects','home'], slotExclude: HOME_IMMOBILE_EXCLUDES },
+  { id:'didnt_buy',       slotKey:'N', pattern:'{N}を かわなかった',           en:"I didn't buy {N}",             slotThemes:['food','clothing','objects','home'], slotExclude: HOME_IMMOBILE_EXCLUDES },
+  { id:'want_to_buy',     slotKey:'N', pattern:'{N}を かいたい',               en:'I want to buy {N}',            slotThemes:['food','clothing','objects','home'], slotExclude: HOME_IMMOBILE_EXCLUDES },
+  { id:'bought_yest',     slotKey:'N', pattern:'きのう {N}を かった',           en:'I bought {N} yesterday',      slotThemes:['food','clothing','objects','home'], slotExclude: HOME_IMMOBILE_EXCLUDES },
+  { id:'will_buy',        slotKey:'N', pattern:'あした {N}を かう',             en:"I'll buy {N} tomorrow",       slotThemes:['food','clothing','objects','home'], slotExclude: HOME_IMMOBILE_EXCLUDES },
   { id:'saw_thing',       slotKey:'N', pattern:'{N}を みた',                   en:'I saw {N}',                    slotThemes:['animals','objects','home','places'] },
   { id:'didnt_see',       slotKey:'N', pattern:'{N}を みなかった',             en:"I didn't see {N}",             slotThemes:['animals','objects','home','places'] },
   { id:'looking_at',      slotKey:'N', pattern:'{N}を みている',               en:'I am looking at {N}',          slotThemes:['animals','objects','home'] },
   { id:'wore_thing',      slotKey:'N', pattern:'{N}を きた',                   en:'I wore {N}',                   slotThemes:['clothing'] },
-  { id:'forgot_thing',    slotKey:'N', pattern:'{N}を わすれた',               en:'I forgot {N}',                 slotThemes:['food','clothing','objects','home','school'] },
-  { id:'lost_thing',      slotKey:'N', pattern:'{N}を なくした',               en:'I lost {N}',                   slotThemes:['clothing','objects','home'] },
-  { id:'found_thing',     slotKey:'N', pattern:'{N}を みつけた',               en:'I found {N}',                  slotThemes:['clothing','objects','home','animals'] },
+  { id:'forgot_thing',    slotKey:'N', pattern:'{N}を わすれた',               en:'I forgot {N}',                 slotThemes:['food','clothing','objects','home','school'], slotExclude: HOME_NOT_LOSEABLE_EXCLUDES },
+  { id:'lost_thing',      slotKey:'N', pattern:'{N}を なくした',               en:'I lost {N}',                   slotThemes:['clothing','objects','home'], slotExclude: HOME_NOT_LOSEABLE_EXCLUDES },
+  { id:'found_thing',     slotKey:'N', pattern:'{N}を みつけた',               en:'I found {N}',                  slotThemes:['clothing','objects','home','animals'], slotExclude: HOME_NOT_LOSEABLE_EXCLUDES },
 
   /* i-adjective past forms */
   { id:'was_delicious',   slotKey:'N', pattern:'{N}は おいしかった',           en:'The {N} was delicious',        slotThemes:['food'] },
