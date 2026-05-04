@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.0';
+const APP_VERSION = '6.14.1';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6608,7 +6608,11 @@ function buildMakeSession(lesson){
   for(const c of lesson.cycles){
     c.steps.forEach((s,i) => steps.push({...s, _cycleId: c.id, _cycleName: c.name, _cycleStepIdx: i}));
   }
-  return { lesson, steps, stepIdx: 0, revealed: false, done: false };
+  /* v6.14 — _missed: Set of real deck word IDs the user tapped 'missed' on
+     during the lesson. On completion these get smGrade('again') instead of
+     'good', honoring autopilot default while letting the user mark misses
+     when they have a free hand. */
+  return { lesson, steps, stepIdx: 0, revealed: false, done: false, _missed: new Set() };
 }
 
 function startBuildMode(){
@@ -7298,18 +7302,29 @@ function buildOnComplete(){
       words,
       date: new Date().toISOString()
     });
-    /* v6.14 — credit SM-2 'good' for each word the lesson exposed. Build
-       Mode is passive listening, so this is a soft nudge — but it makes
-       Build Mode actually advance mastery instead of being orthogonal to
-       the SRS schedule. Interval cap (SM_MAX_MIN) prevents runaway growth. */
+    /* v6.14 — credit SM-2 for each word the lesson exposed. Default is
+       'good' on the timer (hands-free / driving-friendly). If the user
+       tapped "Missed it" on a step, that word gets 'again' instead, so
+       Build Mode produces honest SRS data when the user has a free hand
+       and graceful good-faith credit when they don't. */
     try{
       const realIds = l._meta.real_word_ids || [];
+      const missed = state.buildMode?._missed || new Set();
+      let missedCount = 0;
       for(const wid of realIds){
         if(!wid) continue;
         const st = smStatFor(wid);
-        smGrade(st, 'good');
+        if(missed.has(wid)){
+          smGrade(st, 'again');
+          missedCount++;
+        } else {
+          smGrade(st, 'good');
+        }
       }
       if(realIds.length) save();
+      if(missedCount > 0){
+        showToast(`${missedCount} word${missedCount === 1 ? '' : 's'} marked missed — will resurface in Vocab Blitz soon.`, {tone:'info', duration:3500});
+      }
     }catch(e){ log('build_sm2_credit_err', {err:String(e)}); }
     /* v6.13 — advance Daily Chain. Step 1 (simple) -> 2 (complex) -> 3 (hard) -> done.
        v6.14 — Social lessons sit on a separate axis, never advance chain. */
@@ -7337,6 +7352,31 @@ function buildChainContinue(){
   startBuildModeGenerated(mode);
 }
 window.buildChainContinue = buildChainContinue;
+
+/* v6.14 — Self-grade. Default is 'good' on timer (autopilot, hands-free).
+   Tapping "Missed it" toggles the current step's word in b._missed; on
+   completion those words get smGrade('again') instead of 'good'. The
+   timer still advances on its own — no input is required for the default. */
+function _buildCurrentStepWordId(){
+  const b = state.buildMode;
+  if(!b) return null;
+  const step = b.steps[b.stepIdx];
+  if(!step) return null;
+  const stepLikeWord = {...step, word_id: step.word_id || step.swap_word_id};
+  if(!stepLikeWord.word_id) return null;
+  return _buildStateWordIdForStep(stepLikeWord);
+}
+function buildToggleMissed(){
+  const b = state.buildMode;
+  if(!b) return;
+  if(!b._missed) b._missed = new Set();
+  const wid = _buildCurrentStepWordId();
+  if(!wid) return;
+  if(b._missed.has(wid)) b._missed.delete(wid);
+  else b._missed.add(wid);
+  render();
+}
+window.buildToggleMissed = buildToggleMissed;
 
 function buildExit(){
   _buildClearTimer();
@@ -7524,7 +7564,7 @@ function renderBuildModeStart(){
 
     <div class="card">
       <div class="muted" style="font-size:12px;line-height:1.5">
-        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. <span style="color:var(--green)">v6.14:</span> completing a lesson now credits SM-2 'good' for every word it used, so Build Mode advances mastery alongside Vocab Blitz. ${esc(seqStatus)}
+        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. <span style="color:var(--green)">v6.14:</span> completing a lesson credits SM-2 'good' for every word it used. Driving? Just listen — autopilot does the grading. Hand free? Tap <b>✗ Missed it</b> after Reveal to mark a word for re-drill. ${esc(seqStatus)}
       </div>
       ${seqLen > 0 ? `
       <div style="margin-top:10px;text-align:center">
@@ -7582,6 +7622,18 @@ function renderBuildModeStep(){
         : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`
       }
     </div>
+
+    ${(() => {
+      /* v6.14 — Self-grade button. Only when this step has a resolvable
+         deck word AND the answer has been revealed (you can't grade what
+         you haven't seen yet). Optional — autopilot default is 'good'. */
+      const wid = _buildCurrentStepWordId();
+      if(!wid || !b.revealed) return '';
+      const missed = b._missed && b._missed.has(wid);
+      return `<div style="text-align:center;margin-top:6px">
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;${missed ? 'color:var(--red);border-color:var(--red)' : 'color:var(--muted)'}" onclick="buildToggleMissed()">${missed ? '✗ marked missed (will reset SRS)' : '✗ Missed it (optional)'}</button>
+      </div>`;
+    })()}
 
     <div style="text-align:center;margin-top:10px">
       <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px" onclick="buildExit()">Exit lesson</button>
@@ -7770,9 +7822,16 @@ function renderBuildModeComplete(){
       <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
       <h2 style="margin:0 0 8px 0">Lesson complete</h2>
       <div class="muted" style="font-size:14px;margin-bottom:20px">
-        ${l._meta?.mode === 'hard'
-          ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words. <span style="color:var(--green)">SRS credit applied.</span>`
-          : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks. <span style="color:var(--green)">SRS credit applied.</span>`}
+        ${(() => {
+          const missedCount = (state.buildMode?._missed?.size) || 0;
+          const summaryHead = l._meta?.mode === 'hard'
+            ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words.`
+            : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks.`;
+          const srsTail = missedCount > 0
+            ? ` <span style="color:var(--green)">SRS:</span> ${(l._meta?.real_word_ids?.length || 0) - missedCount} good · <span style="color:var(--red)">${missedCount} again</span>`
+            : ` <span style="color:var(--green)">SRS credit applied (all 'good').</span>`;
+          return summaryHead + srsTail;
+        })()}
       </div>
       ${chainBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
