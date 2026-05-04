@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.2';
+const APP_VERSION = '6.14.3';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5772,7 +5772,62 @@ const BUILD_SOCIAL_TEMPLATES = [
   { id:'soc_yokunai',       slotKey:'N', pattern:'{N}、あまり よくない かも',          en:"{N} might not be that great", slotThemes:['food','places','school'] },
   { id:'soc_share_yo',      slotKey:'N', pattern:'{N}、おいしい よ！',                 en:'{N} is good, trust me!',       slotThemes:['food'] },
   { id:'soc_yappari',       slotKey:'N', pattern:'やっぱり {N}が すき',                en:'Yeah, I really do like {N}',   slotThemes:['food','animals','school'] },
-  { id:'soc_shitteru',      slotKey:'N', pattern:'{N}って しってますか？',             en:'Do you know {N}?',             slotThemes:['places','people','school'] }
+  { id:'soc_shitteru',      slotKey:'N', pattern:'{N}って しってますか？',             en:'Do you know {N}?',             slotThemes:['places','people','school'] },
+
+  /* v6.14.3 — more natural everyday patterns. User: "kattemo ii is good
+     because it's actual words people use and i want MORE of those". Adds
+     ~ても いい family, ~ちゃった (oh I did it), ~なきゃ (gotta),
+     ~たほうがいい (you should), めっちゃ/すごく (super), ~でしょ?/んじゃない?
+     (right?/isn't it?), ちょうだい (gimme), ~こと ある? (ever?), ~から/~けど,
+     ~かも (maybe), ~みたい (seems like), そろそろ (about time). */
+  /* ~ても いい extensions */
+  { id:'soc_can_enter',     slotKey:'N', pattern:'{N}に はいっても いい ですか',       en:'May I enter {N}?',             slotThemes:['places','home'] },
+  { id:'soc_can_touch',     slotKey:'N', pattern:'{N}を さわっても いい ですか',       en:'May I touch {N}?',             slotThemes:['animals','objects','home'] },
+  { id:'soc_can_borrow',    slotKey:'N', pattern:'{N}を かりても いい ですか',         en:'May I borrow {N}?',            slotThemes:['objects','home','clothing'] },
+
+  /* ~ちゃった (oh I did it / ended up doing) */
+  { id:'soc_ate_up',        slotKey:'N', pattern:'{N}を たべちゃった',                 en:'I ended up eating {N}',        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_drank_up',      slotKey:'N', pattern:'{N}を のんじゃった',                 en:'I ended up drinking {N}',      slotThemes:['food'], slotWords: BUILD_DRINKABLES },
+  { id:'soc_forgot_oh',     slotKey:'N', pattern:'{N}を わすれちゃった',               en:'Oh no, I forgot {N}',          slotThemes:['food','clothing','objects','home','school'] },
+
+  /* ~なきゃ (gotta) */
+  { id:'soc_must_go',       slotKey:'N', pattern:'{N}に いかなきゃ',                   en:'Gotta go to {N}',              slotThemes:['places'] },
+  { id:'soc_must_buy',      slotKey:'N', pattern:'{N}を かわなきゃ',                   en:'Gotta buy {N}',                slotThemes:['food','clothing','objects'] },
+  { id:'soc_must_eat',      slotKey:'N', pattern:'{N}を たべなきゃ',                   en:'Gotta eat {N}',                slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+
+  /* ~たほうが いい (you should) */
+  { id:'soc_should_eat',    slotKey:'N', pattern:'{N}を たべたほうが いい',            en:'You should eat {N}',           slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_should_go',     slotKey:'N', pattern:'{N}に いったほうが いい',            en:'You should go to {N}',         slotThemes:['places'] },
+  { id:'soc_should_buy',    slotKey:'N', pattern:'{N}を かったほうが いい',            en:'You should buy {N}',           slotThemes:['food','clothing','objects'] },
+
+  /* intensifiers (めっちゃ, すごく, けっこう) */
+  { id:'soc_super_tasty',   slotKey:'N', pattern:'この {N}、めっちゃ おいしい！',      en:'This {N} is super tasty!',     slotThemes:['food'] },
+  { id:'soc_really_like',   slotKey:'N', pattern:'{N}が すごく すき',                  en:'I really like {N}',            slotThemes:['food','animals','school'] },
+  { id:'soc_pretty_good',   slotKey:'N', pattern:'{N}は けっこう いい',                en:'{N} is pretty nice',           slotThemes:['places','school','clothing'] },
+
+  /* ~でしょ? / ~んじゃない? (right? / isn't it?) */
+  { id:'soc_right_q',       slotKey:'N', pattern:'{N}、おいしい でしょ？',             en:'{N} is tasty, right?',         slotThemes:['food'] },
+  { id:'soc_isnt_good',     slotKey:'N', pattern:'{N}、いい んじゃない？',             en:"{N} is nice, isn't it?",       slotThemes:['places','clothing','school','objects'] },
+  { id:'soc_isnt_cute',     slotKey:'N', pattern:'{N}、かわいい んじゃない？',         en:"{N} is cute, isn't it?",       slotThemes:['animals','clothing'] },
+
+  /* ~たくない / ちょうだい */
+  { id:'soc_dont_wanna_eat',slotKey:'N', pattern:'{N}を たべたくない',                 en:"I don't wanna eat {N}",        slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_gimme',         slotKey:'N', pattern:'{N}、ちょうだい',                     en:'Gimme {N}',                    slotThemes:['food','objects'] },
+
+  /* ~こと ある? (ever?) */
+  { id:'soc_ever_eaten',    slotKey:'N', pattern:'{N}、たべたこと ある？',             en:'Ever tried {N}?',              slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES },
+  { id:'soc_ever_been',     slotKey:'N', pattern:'{N}に いったこと ある？',            en:'Ever been to {N}?',            slotThemes:['places'] },
+
+  /* ~から (because) / ~けど (but) */
+  { id:'soc_because_like',  slotKey:'N', pattern:'{N}が すき だから',                  en:'Because I like {N}',           slotThemes:['food','animals','school'] },
+  { id:'soc_tasty_but',     slotKey:'N', pattern:'{N}は おいしい けど、たかい',        en:'{N} is tasty but expensive',   slotThemes:['food'] },
+
+  /* ~かも (maybe) / ~みたい (seems) */
+  { id:'soc_maybe_good',    slotKey:'N', pattern:'{N}は いい かも',                    en:'{N} might be good',            slotThemes:['places','school','clothing','food'] },
+  { id:'soc_seems_tasty',   slotKey:'N', pattern:'{N}は おいしい みたい',              en:'{N} seems tasty',              slotThemes:['food'] },
+
+  /* そろそろ (about time to) */
+  { id:'soc_about_time',    slotKey:'N', pattern:'そろそろ {N}を たべましょう',        en:"It's about time we ate {N}",   slotThemes:['food'], slotExclude: HARD_EAT_EXCLUDES }
 ];
 
 // v6.11 — Variation step. One English intent, multiple Japanese framings.
@@ -7498,24 +7553,45 @@ function renderBuildModeStart(){
      remembers. New lesson generation already biases callbacks toward words
      introduced in prior lessons (when they fit the lesson's theme), but
      that mechanism was invisible. */
-  const recentLessons = sequence.slice(-5).reverse();
+  /* v6.14.3 — show ALL lessons (was capped at 5). User reported loss of
+     yesterday's lessons; the data was always persisted, just not displayed.
+     Scrollable container caps render height. Each word is tappable to mark
+     it mastered, which removes it from future Build Mode draws. This is
+     the "got it, stop showing me" lever the user asked for. */
+  const recentLessons = sequence.slice().reverse();
+  const dwIndex = {};
+  (state.words || []).forEach(dw => { dwIndex[dw.jp + '|' + dw.en] = dw; });
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const renderRecentWord = (w, bold) => {
+    const dw = dwIndex[w.jp + '|' + w.en];
+    const did = dw ? dw.id : null;
+    const isMastered = did && masteredSet.has(did);
+    const inner = bold ? `<b>${esc(w.en)}</b>` : esc(w.en);
+    if(isMastered){
+      return `<span style="text-decoration:line-through;color:var(--green);opacity:0.75" title="Mastered — won't appear in future lessons">${inner} ✓</span>`;
+    }
+    if(!did){ return `<span>${inner}</span>`; }
+    return `<span onclick="libraryMasterToggle('${esc(did)}')" style="cursor:pointer;border-bottom:1px dotted var(--muted)" title="Tap to mark mastered (removes from future Build Mode lessons)">${inner}</span>`;
+  };
   const recentLessonsPanel = recentLessons.length === 0 ? '' : `
     <div class="card">
       <h3 style="margin:0 0 6px">📚 Recent lessons (${seqLen} total)</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">The app remembers every completed Build Mode lesson. Cycle 3 of new lessons preferentially recalls these words when they fit the lesson's theme. Vocab Blitz also brings them back via SRS.</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">All Build Mode lessons are saved. <b>Tap any word</b> to mark it ✓ mastered — it'll be skipped in future Build Mode draws (and Vocab Blitz). Use this to keep the active stack manageable as you progress.</div>
+      <div style="max-height:500px;overflow-y:auto;padding-right:4px">
       ${recentLessons.map(e => {
         const dt = new Date(e.date || Date.now());
         const dateLabel = dt.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' · ' + dt.toLocaleTimeString(undefined, {hour:'numeric', minute:'2-digit'});
-        const newWordsList = ((e.words || []).filter(w => w.role === 'new').map(w => `<b>${esc(w.en)}</b>`).join(', '))
+        const newWordsList = ((e.words || []).filter(w => w.role === 'new').map(w => renderRecentWord(w, true)).join(', '))
           || (e.introduced || []).map(id => esc(String(id).replace(/^w_/,''))).join(', ')
           || '—';
-        const cbWordsList = ((e.words || []).filter(w => w.role === 'callback').map(w => esc(w.en)).join(', '));
+        const cbWordsList = ((e.words || []).filter(w => w.role === 'callback').map(w => renderRecentWord(w, false)).join(', '));
         return `<div style="border-left:3px solid var(--accent);padding:6px 10px;margin:6px 0;background:rgba(255,255,255,0.02);border-radius:4px">
           <div style="font-size:12px"><span class="muted">${esc(dateLabel)} · ${esc(e.mode || 'simple')}</span></div>
           <div style="font-size:13px;margin-top:2px"><span class="muted" style="font-size:11px">new:</span> ${newWordsList}</div>
           ${cbWordsList ? `<div style="font-size:12px;margin-top:1px;color:var(--muted)"><span style="font-size:11px">callbacks:</span> ${cbWordsList}</div>` : ''}
         </div>`;
       }).join('')}
+      </div>
     </div>
   `;
 
