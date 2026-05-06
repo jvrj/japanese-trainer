@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.16.0';
+const APP_VERSION = '6.17.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4819,6 +4819,31 @@ const PHRASE_POOL = [
   {id:'p_gotta_go',    cat:'self',     jp:'いかなきゃ',                  en:'I gotta go (casual)'},
   {id:'p_didnt_go',    cat:'self',     jp:'いきませんでした',            en:"I didn't go (polite past)"},
 
+  /* v6.17 — longer multi-clause conversational chunks. Vocab spread is
+     intentionally non-overlapping so each phrase teaches something new.
+     `chunks` field powers the introduce + recognition phases (only present
+     on long phrases — short entries skip recognition). */
+  {id:'p_late_apology', cat:'timing', jp:'もうしわけありませんが すこし おくれて しまいます', en:"sorry, I'll end up a bit late",
+   chunks:[['もうしわけありませんが','sorry, but…'],['すこし','a little'],['おくれて しまいます','will end up late']]},
+  {id:'p_next_train', cat:'asking', jp:'つぎの でんしゃは なんじに きますか', en:'what time does the next train come?',
+   chunks:[['つぎの でんしゃは','the next train'],['なんじに','at what time'],['きますか','comes?']]},
+  {id:'p_dinner_invite', cat:'social', jp:'あした じかんが あったら いっしょに ばんごはんを たべませんか', en:'if you have time tomorrow, want to grab dinner together?',
+   chunks:[['あした','tomorrow'],['じかんが あったら','if you have time'],['いっしょに','together'],['ばんごはんを','dinner (obj)'],['たべませんか','want to eat? (invitation)']]},
+  {id:'p_sleep_early', cat:'self', jp:'きょうは とても つかれたので はやめに ねるつもりです', en:"I'm wiped today, so I plan to sleep early",
+   chunks:[['きょうは','today'],['とても つかれたので','because I\'m very tired'],['はやめに','early-ish'],['ねるつもりです','I plan to sleep']]},
+  {id:'p_quick_q', cat:'request', jp:'ちょっと しつもんが あるんですが いま いいですか', en:'I have a quick question — is now okay?',
+   chunks:[['ちょっと','a quick'],['しつもんが あるんですが','I have a question, and…'],['いま','now'],['いいですか','is it okay?']]},
+  {id:'p_explain_slow', cat:'request', jp:'もういちど ゆっくり せつめいして いただけませんか', en:'could you explain it slowly once more?',
+   chunks:[['もういちど','once more'],['ゆっくり','slowly'],['せつめいして','explaining (te-form)'],['いただけませんか','could you… (humble)?']]},
+  {id:'p_where_buy', cat:'asking', jp:'これと おなじものを どこで かえるか おしえて ください', en:'please tell me where I can buy one like this',
+   chunks:[['これと おなじもの','something the same as this'],['を','(obj)'],['どこで','where'],['かえるか','whether (one) can buy'],['おしえて ください','please tell me']]},
+  {id:'p_no_dislikes', cat:'eating', jp:'たべものに きらいな ものは とくに ありません', en:"there's no food I particularly dislike",
+   chunks:[['たべものに','about food'],['きらいな ものは','things I dislike'],['とくに','particularly'],['ありません','there are none']]},
+  {id:'p_weekend_plan', cat:'self', jp:'しゅうまつは かぞくと どこかへ でかける つもりです', en:'on the weekend I plan to go out somewhere with my family',
+   chunks:[['しゅうまつは','on the weekend'],['かぞくと','with my family'],['どこかへ','somewhere'],['でかける つもりです','plan to go out']]},
+  {id:'p_japan_trip', cat:'self', jp:'らいねんの なつに にほんへ りょこうに いきたいと おもっています', en:"I'm thinking I want to travel to Japan next summer",
+   chunks:[['らいねんの なつに','next summer'],['にほんへ','to Japan'],['りょこうに','on a trip'],['いきたいと','want to go (volitional + quote)'],['おもっています','I am thinking']]},
+
   /* Self & status */
   {id:'p_studying',   cat:'self', jp:'にほんごを べんきょうしています',  en:"I'm studying Japanese"},
   {id:'p_a_little',   cat:'self', jp:'すこし わかります',                en:'I understand a little'},
@@ -4854,7 +4879,7 @@ const PHRASE_CATEGORIES = [
 function phraseStatFor(id){
   if(!state.phraseStats) state.phraseStats = {};
   if(!state.phraseStats[id]){
-    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0, introduced:false};
+    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0, introduced:false, recognized:false};
   }
   return state.phraseStats[id];
 }
@@ -4876,6 +4901,36 @@ function phraseMarkIntroduced(id){
   render();
 }
 window.phraseMarkIntroduced = phraseMarkIntroduced;
+
+/* v6.17 — recognition phase. Only phrases with a `chunks` breakdown go
+   through it (the long ones we can't reasonably ask you to type cold).
+   First post-introduce exposure is JP→EN tap-to-reveal: see the phrase,
+   try to recall its meaning, tap to confirm, then move into EN→JP type-in.
+   Short phrases skip recognition entirely (they're already recognition-easy). */
+function phraseNeedsRecognition(item){
+  return Array.isArray(item.chunks) && item.chunks.length > 0;
+}
+function phraseIsRecognized(item){
+  if(!phraseNeedsRecognition(item)) return true;
+  const st = state.phraseStats && state.phraseStats[item.id];
+  if(!st) return false;
+  return !!st.recognized;
+}
+function phraseMarkRecognized(id){
+  const st = phraseStatFor(id);
+  st.recognized = true;
+  st.lastSeen = now();
+  if(state.phraseBlitz) state.phraseBlitz.recognitionRevealed = false;
+  save();
+  render();
+}
+window.phraseMarkRecognized = phraseMarkRecognized;
+function phraseBlitzRevealMeaning(){
+  if(!state.phraseBlitz) return;
+  state.phraseBlitz.recognitionRevealed = true;
+  render();
+}
+window.phraseBlitzRevealMeaning = phraseBlitzRevealMeaning;
 
 function phraseDueForMaintenance(id){
   const st = state.phraseStats && state.phraseStats[id];
@@ -5021,6 +5076,7 @@ function phraseBlitzSkip(){
   state.phraseBlitz.submitted = false;
   state.phraseBlitz.input = '';
   state.phraseBlitz.autoCorrect = null;
+  state.phraseBlitz.recognitionRevealed = false;
   state.phraseBlitz.idx++;
   if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
     state.phraseBlitz.active = false;
@@ -5037,6 +5093,7 @@ function phraseBlitzAdvance(){
   state.phraseBlitz.submitted = false;
   state.phraseBlitz.input = '';
   state.phraseBlitz.autoCorrect = null;
+  state.phraseBlitz.recognitionRevealed = false;
   if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
     state.phraseBlitz.active = false;
     state.phraseBlitz.complete = true;
@@ -5151,7 +5208,19 @@ function renderPhraseBlitz(){
     </div>
   </div>`;
 
-  /* v6.6 — introduce phase: never-seen phrases get one exposure before test rotation. */
+  /* v6.17 — chunk breakdown for long phrases. Renders a small piece→meaning
+     table so you see the moving parts before being asked to produce them. */
+  const chunksHtml = Array.isArray(item.chunks) && item.chunks.length
+    ? `<div style="margin-top:10px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;line-height:1.6">
+        ${item.chunks.map(c => `<div style="display:flex;gap:10px;align-items:baseline">
+          <span class="jp" style="flex:0 0 auto;font-weight:600">${esc(c[0])}</span>
+          <span class="muted" style="flex:1;text-align:right">${esc(c[1])}</span>
+        </div>`).join('')}
+      </div>`
+    : '';
+
+  /* v6.6 — introduce phase: never-seen phrases get one exposure before test rotation.
+     v6.17 — long phrases also surface their `chunks` breakdown here. */
   if(!pb.submitted && !phraseIsIntroduced(item)){
     const romaji = kanaToRomaji(item.jp);
     /* autoplay JP once when the introduce card first mounts for this item */
@@ -5164,6 +5233,7 @@ function renderPhraseBlitz(){
       <div style="font-size:20px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(item.en)}</div>
       <div class="jp" style="font-size:28px;text-align:center;font-weight:700;line-height:1.4;padding:6px 8px">${esc(item.jp)}</div>
       <div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>
+      ${chunksHtml}
       <div class="spacer"></div>
       <div class="audio-row">
         <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen again</button>
@@ -5171,6 +5241,34 @@ function renderPhraseBlitz(){
       <div class="spacer"></div>
       <div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Read it, hear it, say it aloud. Tap when ready to drill.</div>
       <button class="btn btn-primary" style="width:100%" onclick="phraseMarkIntroduced('${jsEsc(item.id)}')">Got it — drill me</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="phraseBlitzSkip()">Skip this phrase</button>
+    </div>`;
+  }
+
+  /* v6.17 — recognition phase: JP shown, tap to reveal the English meaning,
+     then advance into the EN→JP type-in drill. Only fires on first encounter
+     of long phrases (those with `chunks`). Cools the difficulty curve so
+     you're not asked to produce a 9-segment sentence cold. */
+  if(!pb.submitted && !phraseIsRecognized(item)){
+    const romaji = kanaToRomaji(item.jp);
+    const revealed = !!pb.recognitionRevealed;
+    if(pb._lastRecogAutoplay !== item.id){
+      pb._lastRecogAutoplay = item.id;
+      setTimeout(() => { try{ speakJP(item.jp); }catch(e){} }, 300);
+    }
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Do you remember?</div>
+      <div class="jp" style="font-size:28px;text-align:center;font-weight:700;line-height:1.4;padding:10px 8px">${esc(item.jp)}</div>
+      <div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>
+      <div class="spacer"></div>
+      <div class="audio-row">
+        <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen</button>
+      </div>
+      <div class="spacer"></div>
+      ${revealed
+        ? `<div style="font-size:20px;text-align:center;color:var(--text);line-height:1.4;padding:8px 6px">${esc(item.en)}</div>${chunksHtml}<div class="spacer"></div><button class="btn btn-primary" style="width:100%" onclick="phraseMarkRecognized('${jsEsc(item.id)}')">I've got it — drill me</button>`
+        : `<div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Try to recall the meaning. Tap to check.</div><button class="btn btn-primary" style="width:100%" onclick="phraseBlitzRevealMeaning()">Show meaning</button>`}
       <div class="spacer"></div>
       <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="phraseBlitzSkip()">Skip this phrase</button>
     </div>`;
