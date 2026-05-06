@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.17.1';
+const APP_VERSION = '6.18.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4824,49 +4824,114 @@ const PHRASE_POOL = [
      `chunks` field powers the introduce + recognition phases (only present
      on long phrases — short entries skip recognition). */
   {id:'p_late_apology', cat:'timing', jp:'もうしわけありませんが すこし おくれて しまいます', en:"sorry, I'll end up a bit late",
-   chunks:[['もうしわけありませんが','sorry, but…'],['すこし','a little'],['おくれて しまいます','will end up late']]},
+   chunks:[['もうしわけありませんが','sorry, but…','set phrase: very formal apology'],['すこし','a little'],['おくれて しまいます','will end up late','おくれる (be late) + しまう (regret/end-up aux)']]},
   {id:'p_next_train', cat:'asking', jp:'つぎの でんしゃは なんじに きますか', en:'what time does the next train come?',
-   chunks:[['つぎの でんしゃは','the next train'],['なんじに','at what time'],['きますか','comes?']]},
+   chunks:[['つぎの でんしゃは','the next train'],['なんじに','at what time'],['きますか','comes?','from くる (come), polite present interrogative']]},
   {id:'p_dinner_invite', cat:'social', jp:'あした じかんが あったら いっしょに ばんごはんを たべませんか', en:'if you have time tomorrow, want to grab dinner together?',
-   chunks:[['あした','tomorrow'],['じかんが あったら','if you have time'],['いっしょに','together'],['ばんごはんを','dinner (obj)'],['たべませんか','want to eat? (invitation)']]},
+   chunks:[['あした','tomorrow'],['じかんが あったら','if you have time','ある + ~たら conditional ("if there is")'],['いっしょに','together'],['ばんごはんを','dinner (obj)'],['たべませんか','want to eat? (invitation)','たべる + ~ませんか = invitation form']]},
   {id:'p_sleep_early', cat:'self', jp:'きょうは とても つかれたので はやめに ねるつもりです', en:"I'm wiped today, so I plan to sleep early",
-   chunks:[['きょうは','today'],['とても つかれたので','because I\'m very tired'],['はやめに','early-ish'],['ねるつもりです','I plan to sleep']]},
+   chunks:[['きょうは','today'],['とても つかれたので','because I\'m very tired','つかれる (get tired) past + ~ので causal'],['はやめに','early-ish'],['ねるつもりです','I plan to sleep','ねる (sleep) + ~つもり intention']]},
   {id:'p_quick_q', cat:'request', jp:'ちょっと しつもんが あるんですが いま いいですか', en:'I have a quick question — is now okay?',
-   chunks:[['ちょっと','a quick'],['しつもんが あるんですが','I have a question, and…'],['いま','now'],['いいですか','is it okay?']]},
+   chunks:[['ちょっと','a quick'],['しつもんが あるんですが','I have a question, and…','ある + ~んですが rationale/preface'],['いま','now'],['いいですか','is it okay?','いい (good/okay) + ですか']]},
   {id:'p_explain_slow', cat:'request', jp:'もういちど ゆっくり せつめいして いただけませんか', en:'could you explain it slowly once more?',
-   chunks:[['もういちど','once more'],['ゆっくり','slowly'],['せつめいして','explaining (te-form)'],['いただけませんか','could you… (humble)?']]},
+   chunks:[['もういちど','once more'],['ゆっくり','slowly'],['せつめいして','explaining (te-form)','せつめいする (explain) → te-form'],['いただけませんか','could you… (humble)?','いただく (humble receive) + potential negative interrogative']]},
   {id:'p_where_buy', cat:'asking', jp:'これと おなじものを どこで かえるか おしえて ください', en:'please tell me where I can buy one like this',
-   chunks:[['これと おなじもの','something the same as this'],['を','(obj)'],['どこで','where'],['かえるか','whether (one) can buy'],['おしえて ください','please tell me']]},
+   chunks:[['これと おなじもの','something the same as this'],['を','(obj)'],['どこで','where'],['かえるか','whether (one) can buy','かう (buy) → potential かえる + か embedded question'],['おしえて ください','please tell me','おしえる (teach/tell) + ~て ください request']]},
   {id:'p_no_dislikes', cat:'eating', jp:'たべものに きらいな ものは とくに ありません', en:"there's no food I particularly dislike",
-   chunks:[['たべものに','about food'],['きらいな ものは','things I dislike'],['とくに','particularly'],['ありません','there are none']]},
+   chunks:[['たべものに','about food'],['きらいな ものは','things I dislike','きらい (dislike, na-adj) + もの (thing)'],['とくに','particularly'],['ありません','there are none','ある (exist for inanimates) polite negative']]},
   {id:'p_weekend_plan', cat:'self', jp:'しゅうまつは かぞくと どこかへ でかける つもりです', en:'on the weekend I plan to go out somewhere with my family',
-   chunks:[['しゅうまつは','on the weekend'],['かぞくと','with my family'],['どこかへ','somewhere'],['でかける つもりです','plan to go out']]},
+   chunks:[['しゅうまつは','on the weekend'],['かぞくと','with my family'],['どこかへ','somewhere','どこか (somewhere) + へ direction'],['でかける つもりです','plan to go out','でかける (go out) + ~つもり intention']]},
   {id:'p_japan_trip', cat:'self', jp:'らいねんの なつに にほんへ りょこうに いきたいと おもっています', en:"I'm thinking I want to travel to Japan next summer",
-   chunks:[['らいねんの なつに','next summer'],['にほんへ','to Japan'],['りょこうに','on a trip'],['いきたいと','want to go (volitional + quote)'],['おもっています','I am thinking']]},
+   chunks:[['らいねんの なつに','next summer'],['にほんへ','to Japan'],['りょこうに','on a trip'],['いきたいと','want to go (volitional + quote)','いく (go) → ~たい want-form + と quote'],['おもっています','I am thinking','おもう (think) + ~ている continuous']]},
 
   /* v6.17.1 — second batch of long phrases. Vocab kept disjoint from the
      first batch where possible: weather, work-late, Wi-Fi, getting lost,
      restaurant recs, allergies, illness, meeting reunions, scheduling. */
   {id:'p_nice_weather', cat:'social', jp:'きょうは いい てんきですね さんぽに いきませんか', en:"nice weather today — want to go for a walk?",
-   chunks:[['きょうは','today'],['いい てんきですね','is nice weather, isn\'t it'],['さんぽに','for a walk'],['いきませんか','shall we go? (invitation)']]},
+   chunks:[['きょうは','today'],['いい てんきですね','is nice weather, isn\'t it','です + ね = agreement/confirmation'],['さんぽに','for a walk'],['いきませんか','shall we go? (invitation)','いく (go) + ~ませんか invitation form']]},
   {id:'p_late_excuse', cat:'timing', jp:'おそく なって すみません しごとが ながびきました', en:"sorry I'm late — work ran long",
-   chunks:[['おそく なって','for being late'],['すみません','sorry'],['しごとが','work (subj)'],['ながびきました','ran long']]},
+   chunks:[['おそく なって','for being late','おそい (late, i-adj) → adv おそく + なる (become) → te-form'],['すみません','sorry'],['しごとが','work (subj)'],['ながびきました','ran long','from ながびく (drag on / run long), polite past']]},
   {id:'p_wifi_pass', cat:'request', jp:'すみません Wi-Fiの パスワードを おしえて もらえますか', en:'excuse me, could you tell me the Wi-Fi password?',
-   chunks:[['すみません','excuse me'],['Wi-Fiの パスワードを','the Wi-Fi password (obj)'],['おしえて もらえますか','could you tell me?']]},
+   chunks:[['すみません','excuse me'],['Wi-Fiの パスワードを','the Wi-Fi password (obj)'],['おしえて もらえますか','could you tell me?','おしえる (tell) + もらう (receive favor) → potential interrogative']]},
   {id:'p_lost', cat:'request', jp:'みちに まよって しまいました たすけて ください', en:"I've gotten lost — please help me",
-   chunks:[['みちに','on the road'],['まよって しまいました','ended up getting lost'],['たすけて ください','please help']]},
+   chunks:[['みちに','on the road'],['まよって しまいました','ended up getting lost','まよう (get lost) → te-form + しまう (regret/end-up), polite past'],['たすけて ください','please help','たすける (help) + ~て ください request']]},
   {id:'p_recommend', cat:'eating', jp:'おすすめは なんですか はじめてなので わかりません', en:"what do you recommend? it's my first time so I don't know",
-   chunks:[['おすすめは','recommendation (topic)'],['なんですか','what is?'],['はじめてなので','because it\'s my first time'],['わかりません','I don\'t know']]},
+   chunks:[['おすすめは','recommendation (topic)'],['なんですか','what is?'],['はじめてなので','because it\'s my first time','はじめて (first time) + な + ので causal'],['わかりません','I don\'t know','わかる (understand) polite negative']]},
   {id:'p_allergy', cat:'eating', jp:'アレルギーが あるので たまごを ぬいて もらえますか', en:'I have an allergy — could you leave out the egg?',
-   chunks:[['アレルギーが あるので','because I have an allergy'],['たまごを','egg (obj)'],['ぬいて もらえますか','could you leave out?']]},
+   chunks:[['アレルギーが あるので','because I have an allergy','ある (exist) + ~ので causal'],['たまごを','egg (obj)'],['ぬいて もらえますか','could you leave out?','ぬく (leave out / pull out) + もらう favor → potential interrogative']]},
   {id:'p_headache', cat:'self', jp:'あたまが いたくて あまり ねむれませんでした', en:"my head hurt and I couldn't sleep well",
-   chunks:[['あたまが いたくて','head hurts (te-form linker)'],['あまり','not very (with negative)'],['ねむれませんでした','was unable to sleep']]},
+   chunks:[['あたまが いたくて','head hurts (te-form linker)','いたい (painful, i-adj) → te-form いたくて links clauses'],['あまり','not very (with negative)'],['ねむれませんでした','was unable to sleep','ねむる (sleep) → potential ねむれる, polite past negative']]},
   {id:'p_caught_cold', cat:'self', jp:'かぜを ひいたみたいなので はやく かえります', en:'I think I caught a cold, so I\'ll head home early',
-   chunks:[['かぜを ひいたみたいなので','because it seems I caught a cold'],['はやく','quickly / early'],['かえります','I\'ll go home']]},
+   chunks:[['かぜを ひいたみたいなので','because it seems I caught a cold','set: かぜを ひく (catch a cold) past + ~みたい (seems) + な + ので causal'],['はやく','quickly / early','はやい (early/fast, i-adj) → adv はやく'],['かえります','I\'ll go home','from かえる (return home), polite present']]},
   {id:'p_long_time_glad', cat:'social', jp:'ひさしぶりに あえて ほんとうに うれしいです', en:"I'm really happy to see you after such a long time",
-   chunks:[['ひさしぶりに','after a long time'],['あえて','being able to meet (te-form)'],['ほんとうに','really'],['うれしいです','I am happy']]},
+   chunks:[['ひさしぶりに','after a long time'],['あえて','being able to meet (te-form)','あう (meet) → potential あえる → te-form あえて'],['ほんとうに','really'],['うれしいです','I am happy','うれしい (happy, i-adj) + です']]},
   {id:'p_meeting_time', cat:'asking', jp:'らいしゅうの かいぎは なんじから はじまりますか', en:"what time does next week's meeting start?",
-   chunks:[['らいしゅうの かいぎは','next week\'s meeting (topic)'],['なんじから','from what time'],['はじまりますか','does it start?']]},
+   chunks:[['らいしゅうの かいぎは','next week\'s meeting (topic)'],['なんじから','from what time'],['はじまりますか','does it start?','from はじまる (begin, intransitive), polite present interrogative']]},
+
+  /* v6.18 — bridge phrases. Each isolates ONE new construction that appears
+     cold in the v6.17/v6.17.1 long phrases (たら, ので, んですが, つもり, みたい,
+     て-しまう, て-いただく, て-もらう, たいと-おもう, ませんか, te-linker, potential,
+     formal apology, plus a couple of misc forms). 2-3 chunks each so the
+     pattern is the only new thing on the card. Bridges live in their natural
+     categories — they intermix with regular phrases, no separate cat. */
+  {id:'p_b_rain_then', cat:'timing', jp:'あめが ふったら かえります', en:"if it rains, I'll go home",
+   chunks:[['あめが ふったら','if it rains','ふる (fall, of rain) + ~たら conditional'],['かえります','I will go home','from かえる (return home)']]},
+  {id:'p_b_finish_then', cat:'timing', jp:'しごとが おわったら でんわします', en:'when work ends, I will call',
+   chunks:[['しごとが おわったら','when work ends','おわる (end) + ~たら conditional'],['でんわします','I will call','でんわ (phone) + する (do)']]},
+  {id:'p_b_tired_so', cat:'self', jp:'つかれたので ねます', en:"I'm tired, so I'll sleep",
+   chunks:[['つかれたので','because I am tired','つかれる past + ~ので causal'],['ねます','I will sleep','from ねる (sleep)']]},
+  {id:'p_b_busy_so', cat:'self', jp:'いそがしいので あとで', en:"I'm busy, so later",
+   chunks:[['いそがしいので','because I am busy','いそがしい (busy, i-adj) + ので causal'],['あとで','later']]},
+  {id:'p_b_first_so', cat:'asking', jp:'はじめてなので わかりません', en:"it's my first time, so I don't know",
+   chunks:[['はじめてなので','because it is my first time','はじめて + な + ので causal'],['わかりません',"I don't know",'わかる polite negative']]},
+  {id:'p_b_question_nd', cat:'request', jp:'しつもんが あるんですが', en:'(the thing is) I have a question',
+   chunks:[['しつもんが','question (subj)'],['あるんですが','I have, and...','ある + ~んですが rationale/preface']]},
+  {id:'p_b_lost_nd', cat:'self', jp:'みちが わからないんです', en:"the thing is, I don't know the way",
+   chunks:[['みちが','road (subj)'],['わからないんです',"I don't know (the thing is)",'わかる plain negative + ~んです rationale']]},
+  {id:'p_b_will_sleep', cat:'self', jp:'はやく ねるつもりです', en:'I plan to sleep early',
+   chunks:[['はやく','early','from はやい (early)'],['ねるつもりです','plan to sleep','ねる + ~つもり intention']]},
+  {id:'p_b_will_study', cat:'self', jp:'あした べんきょうする つもりです', en:'tomorrow I plan to study',
+   chunks:[['あした','tomorrow'],['べんきょうする つもりです','plan to study','べんきょうする (study) + ~つもり intention']]},
+  {id:'p_b_will_rain', cat:'reaction', jp:'あめが ふるみたいです', en:'it looks like it will rain',
+   chunks:[['あめが','rain (subj)'],['ふるみたいです','seems it will fall','ふる + ~みたい (seems) + です']]},
+  {id:'p_b_seem_tired', cat:'reaction', jp:'かれは つかれたみたい', en:'he seems tired',
+   chunks:[['かれは','he (topic)'],['つかれたみたい','seems tired','つかれる past + ~みたい (seems)']]},
+  {id:'p_b_forgot_oops', cat:'self', jp:'わすれて しまいました', en:'I (regrettably) forgot',
+   chunks:[['わすれて しまいました','ended up forgetting','わすれる + しまう (regret/end-up), polite past']]},
+  {id:'p_b_ate_all', cat:'eating', jp:'ぜんぶ たべて しまいました', en:'I ate it all (oops)',
+   chunks:[['ぜんぶ','everything / all'],['たべて しまいました','ended up eating it all','たべる + しまう (regret/end-up), polite past']]},
+  {id:'p_b_say_again_humble', cat:'request', jp:'もういちど いって いただけませんか', en:'could you please say it again?',
+   chunks:[['もういちど','once more'],['いって','saying','from いう (say) → te-form (note: distinct from いく → いって "go and...")'],['いただけませんか','could I have you...?','いただく (humble receive) potential negative interrogative']]},
+  {id:'p_b_help_humble', cat:'request', jp:'てつだって いただけませんか', en:'could you please help me?',
+   chunks:[['てつだって','helping','from てつだう (help) → te-form'],['いただけませんか','could I have you...?','いただく (humble receive) potential negative interrogative']]},
+  {id:'p_b_tell_me_get', cat:'request', jp:'おしえて もらえますか', en:'could you tell me?',
+   chunks:[['おしえて','telling','from おしえる (tell) → te-form'],['もらえますか','can I receive (the favor)?','もらう (receive favor) potential interrogative']]},
+  {id:'p_b_open_get', cat:'request', jp:'あけて もらえますか', en:'could you open it?',
+   chunks:[['あけて','opening','from あける (open) → te-form'],['もらえますか','can I receive (the favor)?','もらう potential interrogative']]},
+  {id:'p_b_want_go_think', cat:'self', jp:'にほんに いきたいと おもっています', en:"I'm thinking I want to go to Japan",
+   chunks:[['にほんに','to Japan'],['いきたいと','want to go (and quote)','いく + ~たい want + と quote'],['おもっています','I am thinking','おもう (think) + ~ている continuous']]},
+  {id:'p_b_want_eat_think', cat:'eating', jp:'すしを たべたいと おもっています', en:"I'm thinking I want to eat sushi",
+   chunks:[['すしを','sushi (obj)'],['たべたいと','want to eat (and quote)','たべる + ~たい want + と quote'],['おもっています','I am thinking','おもう + ~ている continuous']]},
+  {id:'p_b_eat_inv', cat:'social', jp:'いっしょに たべませんか', en:"won't you eat with me?",
+   chunks:[['いっしょに','together'],['たべませんか',"won't you eat?",'たべる + ~ませんか invitation form']]},
+  {id:'p_b_walk_inv', cat:'social', jp:'さんぽに いきませんか', en:"won't you go for a walk?",
+   chunks:[['さんぽに','for a walk'],['いきませんか',"shall we go?",'いく + ~ませんか invitation form']]},
+  {id:'p_b_hurts_link', cat:'self', jp:'あたまが いたくて つらい', en:"my head hurts and it's rough",
+   chunks:[['あたまが いたくて','head hurts (and...)','いたい i-adj → te-form いたくて links clauses'],['つらい','is rough / tough','i-adj']]},
+  {id:'p_b_glad_meet', cat:'social', jp:'あえて うれしい', en:'happy to meet (you)',
+   chunks:[['あえて','being able to meet','あう → potential あえる → te-form'],['うれしい','happy','i-adj']]},
+  {id:'p_b_cant_sleep', cat:'self', jp:'あまり ねむれませんでした', en:"I couldn't sleep well",
+   chunks:[['あまり','not very (with neg)'],['ねむれませんでした','was unable to sleep','ねむる (sleep) → potential ねむれる, polite past negative']]},
+  {id:'p_b_can_speak', cat:'self', jp:'にほんごが はなせます', en:'I can speak Japanese',
+   chunks:[['にほんごが','Japanese (subj — particle が with potential)'],['はなせます','can speak','はなす (speak) → potential はなせる, polite']]},
+  {id:'p_b_apology', cat:'social', jp:'もうしわけありません', en:"I'm very sorry (formal)",
+   chunks:[['もうしわけありません',"I'm very sorry",'set phrase: very formal apology']]},
+  {id:'p_b_apology_late', cat:'timing', jp:'もうしわけありませんが おくれます', en:"sorry, but I'll be late",
+   chunks:[['もうしわけありませんが','sorry, but...','set phrase: very formal apology + が contrast'],['おくれます','I will be late','from おくれる (be late)']]},
+  {id:'p_b_busy_long', cat:'self', jp:'しごとが ながびきました', en:'work ran long',
+   chunks:[['しごとが','work (subj)'],['ながびきました','ran long','from ながびく (drag on / run long), polite past']]},
+  {id:'p_b_what_time_start', cat:'asking', jp:'なんじから はじまりますか', en:'what time does it start?',
+   chunks:[['なんじから','from what time'],['はじまりますか','does it start?','from はじまる (begin, intransitive), polite present interrogative']]},
 
   /* Self & status */
   {id:'p_studying',   cat:'self', jp:'にほんごを べんきょうしています',  en:"I'm studying Japanese"},
@@ -5234,11 +5299,17 @@ function renderPhraseBlitz(){
 
   /* v6.17 — chunk breakdown for long phrases. Renders a small piece→meaning
      table so you see the moving parts before being asked to produce them. */
+  /* v6.18 — chunks may be [jp, en] or [jp, en, root]. The optional 3rd
+     element exposes the dictionary form / conjugation path so a learner
+     who heard `ねむれませんでした` can recognize the underlying ねむる. */
   const chunksHtml = Array.isArray(item.chunks) && item.chunks.length
     ? `<div style="margin-top:10px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;line-height:1.6">
-        ${item.chunks.map(c => `<div style="display:flex;gap:10px;align-items:baseline">
-          <span class="jp" style="flex:0 0 auto;font-weight:600">${esc(c[0])}</span>
-          <span class="muted" style="flex:1;text-align:right">${esc(c[1])}</span>
+        ${item.chunks.map(c => `<div style="margin-bottom:4px">
+          <div style="display:flex;gap:10px;align-items:baseline">
+            <span class="jp" style="flex:0 0 auto;font-weight:600">${esc(c[0])}</span>
+            <span class="muted" style="flex:1;text-align:right">${esc(c[1])}</span>
+          </div>
+          ${c[2] ? `<div class="muted" style="font-size:11px;font-style:italic;opacity:0.75;padding-left:6px;margin-top:2px">↳ ${esc(c[2])}</div>` : ''}
         </div>`).join('')}
       </div>`
     : '';
