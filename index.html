@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.17.0';
+const APP_VERSION = '6.17.1';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4843,6 +4843,30 @@ const PHRASE_POOL = [
    chunks:[['しゅうまつは','on the weekend'],['かぞくと','with my family'],['どこかへ','somewhere'],['でかける つもりです','plan to go out']]},
   {id:'p_japan_trip', cat:'self', jp:'らいねんの なつに にほんへ りょこうに いきたいと おもっています', en:"I'm thinking I want to travel to Japan next summer",
    chunks:[['らいねんの なつに','next summer'],['にほんへ','to Japan'],['りょこうに','on a trip'],['いきたいと','want to go (volitional + quote)'],['おもっています','I am thinking']]},
+
+  /* v6.17.1 — second batch of long phrases. Vocab kept disjoint from the
+     first batch where possible: weather, work-late, Wi-Fi, getting lost,
+     restaurant recs, allergies, illness, meeting reunions, scheduling. */
+  {id:'p_nice_weather', cat:'social', jp:'きょうは いい てんきですね さんぽに いきませんか', en:"nice weather today — want to go for a walk?",
+   chunks:[['きょうは','today'],['いい てんきですね','is nice weather, isn\'t it'],['さんぽに','for a walk'],['いきませんか','shall we go? (invitation)']]},
+  {id:'p_late_excuse', cat:'timing', jp:'おそく なって すみません しごとが ながびきました', en:"sorry I'm late — work ran long",
+   chunks:[['おそく なって','for being late'],['すみません','sorry'],['しごとが','work (subj)'],['ながびきました','ran long']]},
+  {id:'p_wifi_pass', cat:'request', jp:'すみません Wi-Fiの パスワードを おしえて もらえますか', en:'excuse me, could you tell me the Wi-Fi password?',
+   chunks:[['すみません','excuse me'],['Wi-Fiの パスワードを','the Wi-Fi password (obj)'],['おしえて もらえますか','could you tell me?']]},
+  {id:'p_lost', cat:'request', jp:'みちに まよって しまいました たすけて ください', en:"I've gotten lost — please help me",
+   chunks:[['みちに','on the road'],['まよって しまいました','ended up getting lost'],['たすけて ください','please help']]},
+  {id:'p_recommend', cat:'eating', jp:'おすすめは なんですか はじめてなので わかりません', en:"what do you recommend? it's my first time so I don't know",
+   chunks:[['おすすめは','recommendation (topic)'],['なんですか','what is?'],['はじめてなので','because it\'s my first time'],['わかりません','I don\'t know']]},
+  {id:'p_allergy', cat:'eating', jp:'アレルギーが あるので たまごを ぬいて もらえますか', en:'I have an allergy — could you leave out the egg?',
+   chunks:[['アレルギーが あるので','because I have an allergy'],['たまごを','egg (obj)'],['ぬいて もらえますか','could you leave out?']]},
+  {id:'p_headache', cat:'self', jp:'あたまが いたくて あまり ねむれませんでした', en:"my head hurt and I couldn't sleep well",
+   chunks:[['あたまが いたくて','head hurts (te-form linker)'],['あまり','not very (with negative)'],['ねむれませんでした','was unable to sleep']]},
+  {id:'p_caught_cold', cat:'self', jp:'かぜを ひいたみたいなので はやく かえります', en:'I think I caught a cold, so I\'ll head home early',
+   chunks:[['かぜを ひいたみたいなので','because it seems I caught a cold'],['はやく','quickly / early'],['かえります','I\'ll go home']]},
+  {id:'p_long_time_glad', cat:'social', jp:'ひさしぶりに あえて ほんとうに うれしいです', en:"I'm really happy to see you after such a long time",
+   chunks:[['ひさしぶりに','after a long time'],['あえて','being able to meet (te-form)'],['ほんとうに','really'],['うれしいです','I am happy']]},
+  {id:'p_meeting_time', cat:'asking', jp:'らいしゅうの かいぎは なんじから はじまりますか', en:"what time does next week's meeting start?",
+   chunks:[['らいしゅうの かいぎは','next week\'s meeting (topic)'],['なんじから','from what time'],['はじまりますか','does it start?']]},
 
   /* Self & status */
   {id:'p_studying',   cat:'self', jp:'にほんごを べんきょうしています',  en:"I'm studying Japanese"},
