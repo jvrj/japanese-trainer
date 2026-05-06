@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.15.0';
+const APP_VERSION = '6.16.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1445,7 +1445,12 @@ const DEFAULT_SETTINGS = {
   buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
   buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
   buildTtsRate:0.6,           // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
-  buildAiQa:false             // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
+  buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
+  /* v6.16 — Modules: themed progression with linear unlock. */
+  modulesEnabled:true,        // master switch — flip off in Settings to access all words at once
+  unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
+  currentModuleId:null,       // user's current focus module — Vocab Blitz/Build pull from here + earlier modules
+  unlockBypassed:[]           // module ids the user manually unlocked via "Unlock anyway"
 };
 
 let state = {
@@ -1746,6 +1751,9 @@ function load(){
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
     state.words = [...packed, ...userWords];
+    /* v6.16 — backfill module unlocks from existing mastery so returning users
+       don't lose progress when modules ship. */
+    if(typeof modulesUnlockBackfill === 'function') modulesUnlockBackfill();
   }catch(e){ log('load_err',{err:String(e)}); }
 }
 
@@ -1954,7 +1962,12 @@ function getDrillableWords(){
   const active = getActiveWords();
   const suspended = new Set(state.settings.suspendedWords || []);
   const mastered = new Set(state.settings.masteredWords || []);
-  return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id));
+  const moduleIds = activeModuleWordIdSet();
+  return active.filter(w =>
+    !suspended.has(w.id) &&
+    !mastered.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id))
+  );
 }
 
 /* Library status for a word — single source of truth for badges + filters. */
@@ -2674,10 +2687,175 @@ const FORMS = [
     accept:w=>baseVerbAlts(w).flatMap(b=>["didn't "+b,'did not '+b,'didnt '+b,'have not '+b,"haven't "+b])}
 ];
 
+/* =========================================================================
+   MODULES (v6.16) — themed progression with linear unlock.
+   Each word maps to one module by theme. Verbs always belong to Module 1
+   so users can drill conjugations from day 1 (otherwise they'd be locked
+   out of any verb form practice until the relevant theme module unlocks).
+   User must reach MODULE_UNLOCK_PCT mastery in their current module to
+   unlock the next. modulesUnlockBackfill() runs at load to credit any
+   progress users had before modules existed.
+   ========================================================================= */
+
+const MODULES = [
+  { num:1, id:'m1', name:'Greetings & Verbs',     emoji:'👋', themes:['greetings'],                          includeAllVerbs:true },
+  { num:2, id:'m2', name:'Food & Numbers',        emoji:'🍱', themes:['food','numbers'] },
+  { num:3, id:'m3', name:'Family & People',       emoji:'👨‍👩‍👧', themes:['family','people'] },
+  { num:4, id:'m4', name:'Time & Travel',         emoji:'⏰', themes:['time','travel'] },
+  { num:5, id:'m5', name:'Home & Places',         emoji:'🏠', themes:['home','places'] },
+  { num:6, id:'m6', name:'Body & Nature',         emoji:'🌿', themes:['body','weather','nature','animals'] },
+  { num:7, id:'m7', name:'Colors & Clothing',     emoji:'🎨', themes:['colors','clothing'] },
+  { num:8, id:'m8', name:'Work, School & Tech',   emoji:'💼', themes:['work','school','tech'] },
+  { num:9, id:'m9', name:'Feelings & Daily',     emoji:'💭', themes:['feelings','daily','grammar'], catchAll:true }
+];
+const MODULE_UNLOCK_PCT = 80;
+const MODULE_MIN_TO_UNLOCK = 5;  /* don't auto-unlock when current module has fewer than 5 words (avoids unlock-everything-instantly on tiny decks) */
+
+function moduleForWord(w){
+  if(!w) return MODULES[MODULES.length - 1];
+  if(w.pos === 'v'){
+    const m1 = MODULES.find(m => m.includeAllVerbs);
+    if(m1) return m1;
+  }
+  for(const m of MODULES){
+    if(m.themes && m.themes.includes(w.theme)) return m;
+  }
+  return MODULES.find(m => m.catchAll) || MODULES[MODULES.length - 1];
+}
+
+function moduleById(id){ return MODULES.find(m => m.id === id) || null; }
+
+function moduleWords(moduleId){
+  return getActiveWords().filter(w => moduleForWord(w).id === moduleId);
+}
+
+function moduleProgress(moduleId){
+  const words = moduleWords(moduleId);
+  if(words.length === 0) return { pct:0, masteredCount:0, total:0, words:[] };
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  let credited = 0;
+  for(const w of words){
+    if(masteredSet.has(w.id)){ credited++; continue; }
+    const st = state.stats[w.id];
+    if(st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN){ credited++; }
+  }
+  return { pct: Math.round(100 * credited / words.length), masteredCount: credited, total: words.length, words };
+}
+
+function moduleIsUnlocked(moduleId){
+  const s = state.settings;
+  if(!s.modulesEnabled) return true;
+  if(moduleId === MODULES[0].id) return true;
+  const unlocked = s.unlockedModules || [];
+  const bypassed = s.unlockBypassed || [];
+  return unlocked.includes(moduleId) || bypassed.includes(moduleId);
+}
+
+function moduleIsCurrent(moduleId){
+  return (state.settings.currentModuleId || MODULES[0].id) === moduleId;
+}
+
+/* Returns Set of word IDs in the user's current module + every unlocked
+   module. Returns null if modules are disabled — selectors treat null as
+   "no filter" so the whole deck is fair game. */
+function activeModuleWordIdSet(){
+  const s = state.settings;
+  if(!s.modulesEnabled) return null;
+  const ids = new Set();
+  for(const m of MODULES){
+    if(moduleIsUnlocked(m.id)){
+      for(const w of moduleWords(m.id)) ids.add(w.id);
+    }
+  }
+  return ids;
+}
+
+function modulesUnlockBackfill(){
+  const s = state.settings;
+  if(!s.modulesEnabled) return;
+  s.unlockedModules = s.unlockedModules || [];
+  if(!s.unlockedModules.includes(MODULES[0].id)) s.unlockedModules.unshift(MODULES[0].id);
+  for(let i = 0; i < MODULES.length - 1; i++){
+    const cur = MODULES[i];
+    const next = MODULES[i+1];
+    const prog = moduleProgress(cur.id);
+    if(prog.total >= MODULE_MIN_TO_UNLOCK && prog.pct >= MODULE_UNLOCK_PCT){
+      if(!s.unlockedModules.includes(next.id)) s.unlockedModules.push(next.id);
+    } else {
+      break;  /* halt at first non-mastered module — no skipping */
+    }
+  }
+  if(!s.currentModuleId) s.currentModuleId = MODULES[0].id;
+}
+
+/* Called after a word graduates / is mastered. Toasts on transition. */
+function modulesMaybeUnlockNext(){
+  const s = state.settings;
+  if(!s.modulesEnabled) return;
+  const curId = s.currentModuleId || MODULES[0].id;
+  const idx = MODULES.findIndex(m => m.id === curId);
+  if(idx < 0 || idx >= MODULES.length - 1) return;
+  const cur = MODULES[idx];
+  const next = MODULES[idx + 1];
+  const prog = moduleProgress(cur.id);
+  if(prog.pct >= MODULE_UNLOCK_PCT && !(s.unlockedModules || []).includes(next.id)){
+    s.unlockedModules = s.unlockedModules || [];
+    s.unlockedModules.push(next.id);
+    save();
+    if(typeof showToast === 'function'){
+      showToast(`🎉 Module ${next.num} unlocked: ${next.emoji} ${next.name}`, {tone:'info', duration:5000});
+    }
+  }
+}
+
+function setCurrentModule(moduleId){
+  const m = moduleById(moduleId);
+  if(!m) return;
+  if(!moduleIsUnlocked(moduleId)){
+    if(typeof showToast === 'function'){
+      showToast(`${m.emoji} ${m.name} is locked. Reach ${MODULE_UNLOCK_PCT}% on the previous module or tap "Unlock anyway".`, {tone:'warn', duration:4500});
+    }
+    return;
+  }
+  state.settings.currentModuleId = moduleId;
+  save();
+  render();
+}
+window.setCurrentModule = setCurrentModule;
+
+function unlockModuleAnyway(moduleId){
+  const m = moduleById(moduleId);
+  if(!m) return;
+  if(!confirm(`Unlock ${m.emoji} ${m.name} now? You'll skip past the ${MODULE_UNLOCK_PCT}% gating threshold for the previous module.`)) return;
+  state.settings.unlockBypassed = state.settings.unlockBypassed || [];
+  if(!state.settings.unlockBypassed.includes(moduleId)) state.settings.unlockBypassed.push(moduleId);
+  state.settings.unlockedModules = state.settings.unlockedModules || [];
+  if(!state.settings.unlockedModules.includes(moduleId)) state.settings.unlockedModules.push(moduleId);
+  save();
+  render();
+}
+window.unlockModuleAnyway = unlockModuleAnyway;
+
+function toggleModulesEnabled(){
+  state.settings.modulesEnabled = !state.settings.modulesEnabled;
+  save();
+  render();
+}
+window.toggleModulesEnabled = toggleModulesEnabled;
+
 /* v4.28: gate removed — all verbs available for form drilling immediately.
-   Julius uses this app alone and doesn't need the "earn your way in" flow. */
+   Julius uses this app alone and doesn't need the "earn your way in" flow.
+   v6.16 — also honor mastered/suspended/module gating. */
 function formEligibleVerbs(){
-  return getActiveWords().filter(w => w.pos === 'v');
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
+  return getActiveWords().filter(w =>
+    w.pos === 'v' &&
+    !masteredSet.has(w.id) &&
+    !suspendedSet.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id))
+  );
 }
 
 function formDueCount(formId){
@@ -3418,6 +3596,35 @@ function formDrillEnd(){
 }
 window.formDrillEnd = formDrillEnd;
 
+/* v6.16 — ★ Master from inside a Form Drill. Flags the verb mastered and
+   advances to the next card. */
+function formDrillMasterCurrent(){
+  const w = formDrillCurrent();
+  if(!w) return;
+  const s = state.settings;
+  if(!(s.masteredWords || []).includes(w.id)){
+    s.focusWords = (s.focusWords || []).filter(x => x !== w.id);
+    s.suspendedWords = (s.suspendedWords || []).filter(x => x !== w.id);
+    s.masteredWords = s.masteredWords || [];
+    s.masteredWords.push(w.id);
+    save();
+    if(typeof showToast === 'function') showToast(`★ Mastered ${w.jp} (${w.en}) — won't appear in Form Drills`, {tone:'info', duration:3500});
+    modulesMaybeUnlockNext();
+  }
+  if(state.formDrill){
+    state.formDrill.idx++;
+    state.formDrill.submitted = false;
+    state.formDrill.input = '';
+    state.formDrill.autoCorrect = null;
+    if(state.formDrill.idx >= state.formDrill.queue.length){
+      state.formDrill.active = false;
+      state.formDrill.complete = true;
+    }
+  }
+  render();
+}
+window.formDrillMasterCurrent = formDrillMasterCurrent;
+
 function renderFormDrill(){
   const d = state.formDrill;
   if(!d){
@@ -3511,6 +3718,9 @@ function renderFormDrill(){
     </div>
     <div class="spacer"></div>
     <div class="muted" style="font-size:11px;text-align:center">Shortcut: 1 = Again · 2 = Good · 3 = Easy</div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="formDrillMasterCurrent()" title="Master this verb — won't appear in any drill again">★ Master this verb (skip card)</button>
+    </div>
   </div>`;
 }
 
@@ -4595,6 +4805,19 @@ const PHRASE_POOL = [
   {id:'p_you_ok',     cat:'reaction', jp:'だいじょうぶですか',          en:'are you okay?'},
   {id:'p_how_was',    cat:'reaction', jp:'どうでしたか',                en:'how was it?'},
   {id:'p_no_problem', cat:'reaction', jp:'もんだい ありません',         en:'no problem'},
+  /* v6.16 — high-recognition / low-production conversational chunks Julius
+     flagged as "I know it but can't translate it on demand". Drilled EN→JP
+     in Phrase Blitz forces the production direction. */
+  {id:'p_thats_enough',cat:'reaction', jp:'もういいです',                en:"that's enough / I'm good"},
+  {id:'p_nice_one',    cat:'reaction', jp:'いいですね',                  en:'sounds nice / cool'},
+  {id:'p_is_that_so',  cat:'reaction', jp:'そうですか',                  en:'is that so? / really?'},
+  {id:'p_i_see',       cat:'reaction', jp:'なるほど',                    en:'I see / makes sense'},
+  {id:'p_too_bad',     cat:'reaction', jp:'ざんねんですね',              en:"that's a shame"},
+  {id:'p_thats_wrong', cat:'reaction', jp:'ちがいます',                  en:"that's wrong / no"},
+  {id:'p_dont_mind',   cat:'reaction', jp:'かまいません',                en:"I don't mind / it's fine"},
+  {id:'p_maybe',       cat:'reaction', jp:'たぶん',                      en:'maybe / probably'},
+  {id:'p_gotta_go',    cat:'self',     jp:'いかなきゃ',                  en:'I gotta go (casual)'},
+  {id:'p_didnt_go',    cat:'self',     jp:'いきませんでした',            en:"I didn't go (polite past)"},
 
   /* Self & status */
   {id:'p_studying',   cat:'self', jp:'にほんごを べんきょうしています',  en:"I'm studying Japanese"},
@@ -6131,6 +6354,7 @@ function buildMultiSlotFill(tmpl, deck, excludeWordIds, preferredWordIds){
      v6.13 — accept preferredWordIds Set so chain mode can favor chain words. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
   const exclude = excludeWordIds || new Set();
   const preferred = preferredWordIds || null;
   const maxTries = tmpl.validate ? 30 : 1;
@@ -6146,6 +6370,7 @@ function buildMultiSlotFill(tmpl, deck, excludeWordIds, preferredWordIds){
         w.jp && w.en && w.romaji &&
         !masteredSet.has(w.id) &&
         !suspendedSet.has(w.id) &&
+        (!moduleIds || moduleIds.has(w.id)) &&
         vocabIsIntroduced(w) &&
         (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
         (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
@@ -6196,9 +6421,11 @@ function buildChainPickWords(){
   const deck = state.words || [];
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
   const candidates = deck.filter(w =>
     w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id)) &&
     vocabIsIntroduced(w)
   );
   if(candidates.length < 3) return null;
@@ -6248,15 +6475,18 @@ function buildPickRandom(arr, n){
 // shared so we can pick a random group + word together.
 function buildPoolForCfg(deck, cfg){
   /* v6.12 — exclude mastered + suspended.
-     v6.12.1 — also exclude words the user hasn't encountered in Vocab Blitz. */
+     v6.12.1 — also exclude words the user hasn't encountered in Vocab Blitz.
+     v6.16 — also constrain to current/unlocked modules. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
   return deck.filter(w =>
     w.pos === 'n' &&
     !hasKatakana(w.jp) &&
     w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) &&
     !suspendedSet.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id)) &&
     vocabIsIntroduced(w) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
@@ -6361,9 +6591,11 @@ function buildGenerateLesson(mode){
   /* v6.12 — Build Mode honors Library status: skip mastered + suspended words.
      Focus is applied later as a preference, not a filter.
      v6.12.1 — also skip words the user has never encountered in Vocab Blitz.
-     Build Mode is a reinforcement layer, not a place to learn cold vocab. */
+     Build Mode is a reinforcement layer, not a place to learn cold vocab.
+     v6.16 — also constrain to current/unlocked modules. */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
   const eligibleForPair = (p, s) => {
     const common = p.slotThemes.filter(t => s.slotThemes.includes(t));
     return deck.filter(w =>
@@ -6373,6 +6605,7 @@ function buildGenerateLesson(mode){
       w.jp && w.en && w.romaji &&
       !masteredSet.has(w.id) &&
       !suspendedSet.has(w.id) &&
+      (!moduleIds || moduleIds.has(w.id)) &&
       vocabIsIntroduced(w) &&
       (!p.slotWords || p.slotWords.includes(w.en)) &&
       (!s.slotWords || s.slotWords.includes(w.en)) &&
@@ -6398,7 +6631,8 @@ function buildGenerateLesson(mode){
     const themeCounts = {};
     deck.filter(w =>
       w.pos === 'n' && !hasKatakana(w.jp) &&
-      !masteredSet.has(w.id) && !suspendedSet.has(w.id) && vocabIsIntroduced(w)
+      !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+      (!moduleIds || moduleIds.has(w.id)) && vocabIsIntroduced(w)
     ).forEach(w => { themeCounts[w.theme] = (themeCounts[w.theme] || 0) + 1; });
     const have = Object.entries(themeCounts)
       .sort((a,b) => b[1]-a[1])
@@ -6527,6 +6761,7 @@ function buildGenerateLesson(mode){
     const wider = deck.filter(w =>
       w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
       !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+      (!moduleIds || moduleIds.has(w.id)) &&
       vocabIsIntroduced(w) &&
       !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w)) &&
       fitsTmpl(w, primary) && fitsTmpl(w, secondary)
@@ -6644,11 +6879,13 @@ function buildGenerateHardLesson(){
      user has only drilled food). */
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
   const slotPool = (cfg) => deck.filter(w =>
     w.pos === 'n' &&
     (cfg.allowKatakana || !hasKatakana(w.jp)) &&
     w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id)) &&
     vocabIsIntroduced(w) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
@@ -7607,6 +7844,38 @@ function buildToggleMissed(){
 }
 window.buildToggleMissed = buildToggleMissed;
 
+/* v6.16 — ★ Master from Build Mode. Resolves the current step's lesson word
+   back to the deck word (Build uses synthesized w_<romaji> ids), flags the
+   deck word mastered, and toasts. The next selector call won't pick it. */
+function buildMasterCurrentWord(){
+  const wid = _buildCurrentStepWordId();
+  if(!wid){
+    if(typeof showToast === 'function') showToast("No deck word here to master.", {tone:'warn', duration:3000});
+    return;
+  }
+  const lessonWord = buildWordById(wid);
+  if(!lessonWord) return;
+  const w = (state.words || []).find(d => d.jp === lessonWord.jp && d.en === lessonWord.en);
+  if(!w){
+    if(typeof showToast === 'function') showToast("Couldn't find that word in your deck.", {tone:'warn', duration:3000});
+    return;
+  }
+  const s = state.settings;
+  if((s.masteredWords || []).includes(w.id)){
+    if(typeof showToast === 'function') showToast(`Already mastered: ${w.jp}`, {tone:'info', duration:2500});
+    return;
+  }
+  s.focusWords = (s.focusWords || []).filter(x => x !== w.id);
+  s.suspendedWords = (s.suspendedWords || []).filter(x => x !== w.id);
+  s.masteredWords = s.masteredWords || [];
+  s.masteredWords.push(w.id);
+  save();
+  if(typeof showToast === 'function') showToast(`★ Mastered ${w.jp} (${w.en}) — won't appear again`, {tone:'info', duration:3500});
+  modulesMaybeUnlockNext();
+  render();
+}
+window.buildMasterCurrentWord = buildMasterCurrentWord;
+
 function buildExit(){
   _buildClearTimer();
   try{ window.speechSynthesis?.cancel(); }catch(e){}
@@ -7876,12 +8145,15 @@ function renderBuildModeStep(){
     ${(() => {
       /* v6.14 — Self-grade button. Only when this step has a resolvable
          deck word AND the answer has been revealed (you can't grade what
-         you haven't seen yet). Optional — autopilot default is 'good'. */
+         you haven't seen yet). Optional — autopilot default is 'good'.
+         v6.16 — paired with ★ Master so the user can retire a word from
+         inside the lesson, not just from Vocab Blitz. */
       const wid = _buildCurrentStepWordId();
       if(!wid || !b.revealed) return '';
       const missed = b._missed && b._missed.has(wid);
-      return `<div style="text-align:center;margin-top:6px">
+      return `<div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;${missed ? 'color:var(--red);border-color:var(--red)' : 'color:var(--muted)'}" onclick="buildToggleMissed()">${missed ? '✗ marked missed (will reset SRS)' : '✗ Missed it (optional)'}</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="buildMasterCurrentWord()" title="Mastered — never see this word again">★ Master this word</button>
       </div>`;
     })()}
 
@@ -8112,7 +8384,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -8181,6 +8453,33 @@ function renderHome(){
         ${MASTERY.map(m => `<span><i class="mastery-strip-seg ${m}"></i>${m} ${masteryBuckets[m]}</span>`).join('')}
       </div>
     </div>
+
+    ${(() => {
+      /* v6.16 — Modules summary card. Shows current module progress + next
+         locked module preview. Tap to open the full modules screen. */
+      if(!state.settings.modulesEnabled) return '';
+      const curId = state.settings.currentModuleId || MODULES[0].id;
+      const cur = moduleById(curId) || MODULES[0];
+      const prog = moduleProgress(cur.id);
+      const idx = MODULES.findIndex(m => m.id === cur.id);
+      const next = idx >= 0 && idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
+      const nextUnlocked = next ? moduleIsUnlocked(next.id) : true;
+      const nextLine = !next
+        ? `<div class="muted" style="font-size:12px;margin-top:6px">Final module — you've made it to the end of the curated path.</div>`
+        : nextUnlocked
+          ? `<div class="muted" style="font-size:12px;margin-top:6px">Next: ${next.emoji} <b>${esc(next.name)}</b> — already unlocked.</div>`
+          : `<div class="muted" style="font-size:12px;margin-top:6px">🔒 Next: ${next.emoji} ${esc(next.name)} — unlocks at ${MODULE_UNLOCK_PCT}% (${prog.masteredCount}/${Math.ceil(prog.total * MODULE_UNLOCK_PCT/100)} so far)</div>`;
+      return `<div class="card">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+          <h3 style="margin:0">Module ${cur.num} · ${cur.emoji} ${esc(cur.name)}</h3>
+          <span class="muted" style="font-size:12px">${prog.pct}% · ${prog.masteredCount}/${prog.total}</span>
+        </div>
+        <div class="mastery-strip" style="margin-top:8px;height:8px;background:var(--card)"><div style="height:100%;width:${prog.pct}%;background:var(--green);border-radius:4px"></div></div>
+        ${nextLine}
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" style="width:100%" onclick="nav('modules')">📚 All modules</button>
+      </div>`;
+    })()}
 
     ${(() => {
       const bc = blitzCounts();
@@ -8291,6 +8590,59 @@ function renderHome(){
       </div>
     </div>
   `;
+}
+
+/* ---------- MODULES (v6.16) ----------
+   Browse all modules. Unlocked ones are tappable to set as current.
+   Locked ones show a preview, the unlock threshold, and an "Unlock anyway"
+   bypass so the user is never trapped if they want to skip ahead. */
+
+function renderModules(){
+  const enabled = state.settings.modulesEnabled;
+  const cards = MODULES.map(m => {
+    const prog = moduleProgress(m.id);
+    const unlocked = moduleIsUnlocked(m.id);
+    const current = moduleIsCurrent(m.id);
+    const themeList = m.themes ? m.themes.join(' · ') : '—';
+    const verbNote = m.includeAllVerbs ? ' · all verbs' : '';
+    const bar = `<div class="mastery-strip" style="margin-top:8px;height:8px;background:var(--card)"><div style="height:100%;width:${prog.pct}%;background:${prog.pct >= MODULE_UNLOCK_PCT ? 'var(--blue)' : 'var(--green)'};border-radius:4px"></div></div>`;
+    const meta = `<div class="muted" style="font-size:12px;margin-top:4px">${esc(themeList)}${esc(verbNote)} · ${prog.total} words</div>`;
+    let footer;
+    if(!enabled){
+      footer = `<div class="muted" style="font-size:12px;margin-top:8px">Modules are off — every word is currently drillable.</div>`;
+    } else if(current){
+      footer = `<div style="margin-top:8px;padding:8px 10px;background:rgba(34,197,94,0.12);border-radius:6px;font-size:13px;color:var(--green)">● Current — Vocab Blitz, Build Mode and Form Drills pull from here + earlier modules.</div>`;
+    } else if(unlocked){
+      footer = `<div class="spacer"></div><button class="btn btn-primary" style="width:100%" onclick="setCurrentModule('${m.id}')">Set as current</button>`;
+    } else {
+      footer = `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:13px;color:var(--muted)">🔒 Locked — finish previous module to ${MODULE_UNLOCK_PCT}% mastery to unlock.</div>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="unlockModuleAnyway('${m.id}')">Unlock anyway</button>`;
+    }
+    return `<div class="card" style="${current ? 'border:2px solid var(--green)' : (unlocked ? '' : 'opacity:0.7')}">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+        <h3 style="margin:0">${m.emoji} Module ${m.num} — ${esc(m.name)}</h3>
+        <span class="muted" style="font-size:12px">${prog.pct}% · ${prog.masteredCount}/${prog.total}</span>
+      </div>
+      ${bar}
+      ${meta}
+      ${footer}
+    </div>`;
+  }).join('');
+
+  const toggle = `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <h3 style="margin:0 0 4px 0">Modules ${enabled ? 'on' : 'off'}</h3>
+        <div class="muted" style="font-size:12.5px">${enabled
+          ? `Drilling pulls only from your current module + already-unlocked modules. Reach ${MODULE_UNLOCK_PCT}% mastery (★-mastered or SM-2 mature) to unlock the next.`
+          : `Modules are disabled — every active word is fair game everywhere.`}</div>
+      </div>
+      <button class="btn ${enabled ? 'btn-secondary' : 'btn-primary'}" style="white-space:nowrap" onclick="toggleModulesEnabled()">${enabled ? 'Turn off' : 'Turn on'}</button>
+    </div>
+  </div>`;
+
+  return toggle + cards;
 }
 
 /* ---------- LIBRARY (v6.10) ----------
