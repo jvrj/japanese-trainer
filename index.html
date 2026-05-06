@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.14.5';
+const APP_VERSION = '6.15.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3267,20 +3267,42 @@ function renderForms(){
     <div class="muted" style="font-size:13px;margin:4px 0 10px">Recall drill across all forms. JP form shown → type the English meaning. Same rhythm as Vocab Blitz.</div>
     <button class="btn btn-primary" style="width:100%" onclick="startFormBlitz()">▶ Start mixed form blitz</button>
   </div>`;
+  /* v6.15 — pick a deck verb to use as the worked example. Prefer a regular
+     ichidan/godan with a short dictionary form so the example reads cleanly. */
+  const exampleVerb = verbs.find(v => v.jp === 'たべる') || verbs.find(v => v.jp === 'のむ') || verbs[0];
   const cards = FORMS.map(f => {
     const counts = formDueCount(f.id);
     const ready = counts.total > 0;
     const label = counts.due > 0
       ? `${counts.due} due · ${counts.unseen} new`
       : (counts.unseen > 0 ? `${counts.unseen} new · 0 due` : 'all scheduled');
+    let exJp = '', exEn = '';
+    if(exampleVerb){
+      try { exJp = f.conj(exampleVerb.jp); } catch(e){ exJp = exampleVerb.jp; }
+      try { exEn = (typeof f.en === 'function' ? f.en(exampleVerb) : '') || stripTo(exampleVerb.en); } catch(e){ exEn = stripTo(exampleVerb.en); }
+    }
+    const exampleBlock = exJp ? `
+      <div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:13px">
+        <div class="muted" style="font-size:11px;margin-bottom:2px">e.g. ${esc(exampleVerb.jp)} →</div>
+        <div><b>${esc(exJp)}</b> · <span class="muted">${esc(exEn)}</span></div>
+      </div>` : '';
     return `<div class="card" style="padding:12px">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
         <h3 style="margin:0">${esc(f.name)}</h3>
         <span class="muted" style="font-size:12px">${esc(label)}</span>
       </div>
-      <div class="muted" style="font-size:13px;margin:4px 0 10px">${esc(f.hint)}</div>
+      <div class="muted" style="font-size:13px;margin:4px 0 8px">${esc(f.hint)}</div>
+      <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted)">ⓘ How this works</summary>
+        <div style="font-size:13px;line-height:1.5;margin-top:6px;padding:0 2px">${esc(f.rule || '')}</div>
+        ${exampleBlock}
+      </details>
       <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startFormDrill('${f.id}')">
-        ${ready ? '▶ Drill this form' : 'No eligible verbs yet'}
+        ${ready ? '▶ Drill this form (typed)' : 'No eligible verbs yet'}
+      </button>
+      <div style="height:6px"></div>
+      <button class="btn btn-blue" style="width:100%" ${ready?'':'disabled'} onclick="startBuildModeFormSpam('${f.id}')">
+        🎲 Spam in Build Mode (audio, out loud)
       </button>
     </div>`;
   }).join('');
@@ -3438,6 +3460,10 @@ function renderFormDrill(){
       <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
       <span class="muted" style="font-size:12px">${esc(f.name)} · ${esc(curInterval)} · ease ${ease}</span>
     </div>
+    ${f.rule ? `<details style="margin-top:6px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--muted)">📖 Rule for ${esc(f.name)}</summary>
+      <div style="font-size:13px;line-height:1.5;margin-top:6px;padding:0 2px">${esc(f.rule)}</div>
+    </details>` : ''}
   </div>`;
 
   if(!d.submitted){
@@ -6801,6 +6827,76 @@ function startBuildModeGenerated(mode){
 }
 window.startBuildModeGenerated = startBuildModeGenerated;
 
+/* v6.15 — Form Spam: a Build-Mode-shaped lesson dedicated to a single
+   FORMS pattern (e.g. ても いい). Picks ~8 verbs from the deck, prioritising
+   per-(verb×form) SM-2 due-soonest, and emits one `build` step per verb so
+   the user gets audio-led EN→JP production reps across that pattern only.
+   Pure exposure/practice — Form Drill remains the typing+SM-2 graded path. */
+function buildGenerateFormSpamLesson(formId, opts){
+  const f = FORMS.find(x => x.id === formId);
+  if(!f) throw new Error('Unknown grammar pattern: ' + formId);
+  const verbs = formEligibleVerbs();
+  if(verbs.length < 1) throw new Error('No verbs in your deck — enable the N5 pack in Settings.');
+  const want = (opts && opts.count) || 8;
+  const n = Math.min(want, verbs.length);
+
+  const scored = verbs.map(w => {
+    const fst = state.formStats?.[w.id]?.[formId];
+    const due = (fst && fst.smNext != null) ? fst.smNext : 0;
+    return { w, due };
+  });
+  scored.sort((a, b) => a.due - b.due);
+  const top = scored.slice(0, Math.max(n * 2, n + 4)).map(x => x.w);
+  const pool = shuffleFY(top.slice()).slice(0, n);
+
+  const safeConj = jp => { try { return f.conj(jp); } catch(e){ return jp; } };
+  const safeEn = w => {
+    try {
+      if(typeof f.en === 'function'){
+        const v = f.en(w);
+        if(v && typeof v === 'string') return v;
+      }
+    } catch(e){}
+    return stripTo(w.en);
+  };
+
+  const steps = pool.map(w => ({
+    type: 'build',
+    sentence_jp: safeConj(w.jp),
+    sentence_en: safeEn(w)
+  }));
+
+  return {
+    id: 'Gf_' + formId + '_' + Date.now().toString(36),
+    title: `Form Spam — ${f.name} (${f.hint})`,
+    duration_mins: Math.max(3, Math.round(n * 0.6)),
+    new_words: pool.map(w => ({ id: w.id, jp: w.jp, en: w.en, r: w.romaji })),
+    carryover_words: [],
+    cycles: [
+      { id: 'spam', name: `${f.name} · ${f.hint}`, steps }
+    ],
+    _meta: {
+      mode: 'formSpam',
+      formId,
+      formName: f.name,
+      formRule: f.rule,
+      real_word_ids: pool.map(w => w.id)
+    }
+  };
+}
+
+function startBuildModeFormSpam(formId){
+  try {
+    const lesson = buildGenerateFormSpamLesson(formId);
+    state.buildMode = buildMakeSession(lesson);
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){
+    showToast("Can't start Form Spam — " + e.message, {tone:'warn', duration:5000});
+  }
+}
+window.startBuildModeFormSpam = startBuildModeFormSpam;
+
 function buildWordById(id){
   const b = state.buildMode;
   if(!b?.lesson) return null;
@@ -8160,9 +8256,9 @@ function renderHome(){
             ? `${fc.verbs} verbs · 10 forms each — pick one verb, ace it across all conjugations.`
             : `${fc.verbs} verbs · ${fc.drilled} forms drilled · ${fc.due} due now`);
       return `<div class="card">
-        <h3>Verb forms</h3>
-        <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">🈁 Drill conjugations</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">ます · ました · て · た · ない · たい · ている. Independent SRS per (verb × form). ${esc(sub)}</div>
+        <h3>Grammar — pick a pattern</h3>
+        <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">📖 Pick a pattern</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">ます · ました · て · た · ない · たい · ている · ても いい · たほうが いい · なかった · ちゃった · なきゃ · たことが ある. Each one has a rule, an example, and two ways to drill: typed (SRS) or audio-led Build Mode spam. ${esc(sub)}</div>
       </div>`;
     })()}
 
