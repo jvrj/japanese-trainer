@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.18.0';
+const APP_VERSION = '6.19.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4968,7 +4968,7 @@ const PHRASE_CATEGORIES = [
 function phraseStatFor(id){
   if(!state.phraseStats) state.phraseStats = {};
   if(!state.phraseStats[id]){
-    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0, introduced:false, recognized:false};
+    state.phraseStats[id] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0, introduced:false, recognized:false, lastBuildupAt:null};
   }
   return state.phraseStats[id];
 }
@@ -4991,11 +4991,44 @@ function phraseMarkIntroduced(id){
 }
 window.phraseMarkIntroduced = phraseMarkIntroduced;
 
+/* v6.19 — build-up mode. Replaces the v6.17 tap-to-reveal recognition for
+   chunked phrases: we walk the chunks one-by-one (teach), then drop into the
+   regular type-in test (test). Build-up itself records no streak credit;
+   it only flips `introduced` and `recognized` so the regular flow takes over.
+   Triggers on first sight, plus a stale-poor refresh: 14+ days since lastSeen
+   AND streak===0 (last attempt was wrong). A 30-day soft cap on
+   `lastBuildupAt` prevents a re-trigger loop on persistently-hard phrases. */
+const PHRASE_STALE_DAYS = 14;
+const PHRASE_BUILDUP_COOLDOWN_DAYS = 30;
+function phraseStalePoor(item){
+  const st = state.phraseStats && state.phraseStats[item.id];
+  if(!st) return false;
+  if(st.retired) return false;
+  if(!st.lastSeen) return false;
+  const days = (now() - st.lastSeen) / (1000*60*60*24);
+  return days > PHRASE_STALE_DAYS && (st.streak || 0) === 0;
+}
+function phraseRecentBuildup(item){
+  const st = state.phraseStats && state.phraseStats[item.id];
+  if(!st || !st.lastBuildupAt) return false;
+  const days = (now() - st.lastBuildupAt) / (1000*60*60*24);
+  return days < PHRASE_BUILDUP_COOLDOWN_DAYS;
+}
+function phraseNeedsBuildup(item){
+  if(!phraseIsIntroduced(item)) return true;
+  if(phraseStalePoor(item) && !phraseRecentBuildup(item)) return true;
+  return false;
+}
+
 /* v6.17 — recognition phase. Only phrases with a `chunks` breakdown go
    through it (the long ones we can't reasonably ask you to type cold).
    First post-introduce exposure is JP→EN tap-to-reveal: see the phrase,
    try to recall its meaning, tap to confirm, then move into EN→JP type-in.
-   Short phrases skip recognition entirely (they're already recognition-easy). */
+   Short phrases skip recognition entirely (they're already recognition-easy).
+   v6.19 — build-up mode now handles long-phrase first-exposure for chunked
+   items and supersedes recognition by setting both flags. The recognition
+   branch still exists as a safety net for any item that was recognized=false
+   in legacy stats. */
 function phraseNeedsRecognition(item){
   return Array.isArray(item.chunks) && item.chunks.length > 0;
 }
@@ -5020,6 +5053,35 @@ function phraseBlitzRevealMeaning(){
   render();
 }
 window.phraseBlitzRevealMeaning = phraseBlitzRevealMeaning;
+
+/* v6.19 — build-up step controllers. Advance walks chunks one by one
+   without flipping any stats. Complete sets introduced+recognized+lastBuildupAt
+   on the phrase, clears the build-up state, and re-renders so the type-in
+   branch takes over for this same item in the same card. */
+function phraseBuildupAdvance(){
+  if(!state.phraseBlitz || !state.phraseBlitz.buildup) return;
+  const bu = state.phraseBlitz.buildup;
+  if(bu.stepIdx < bu.totalSteps - 1){
+    bu.stepIdx++;
+    render();
+  }
+}
+window.phraseBuildupAdvance = phraseBuildupAdvance;
+function phraseBuildupComplete(id){
+  const st = phraseStatFor(id);
+  st.introduced = true;
+  st.recognized = true;
+  st.lastSeen = now();
+  st.lastBuildupAt = now();
+  if(state.phraseBlitz){
+    state.phraseBlitz.buildup = null;
+    state.phraseBlitz.recognitionRevealed = false;
+  }
+  save();
+  render();
+  setTimeout(() => $('#phraseBlitzInput')?.focus(), 30);
+}
+window.phraseBuildupComplete = phraseBuildupComplete;
 
 function phraseDueForMaintenance(id){
   const st = state.phraseStats && state.phraseStats[id];
@@ -5063,7 +5125,16 @@ function buildPhraseBlitzPool(catFilter){
     ...shuffleFY(unseen).slice(0, 6),
     ...weightedShuffle(learning, phraseStruggleWeight)
   ].slice(0, PHRASE_SESSION_TARGET);
-  return shuffleFY(composed);
+  /* v6.19 — at most one build-up phrase per session. Drop the rest;
+     they'll naturally surface in later sessions. */
+  let buildupSeen = 0;
+  const capped = composed.filter(it => {
+    if(!phraseNeedsBuildup(it)) return true;
+    if(buildupSeen >= 1) return false;
+    buildupSeen++;
+    return true;
+  });
+  return shuffleFY(capped);
 }
 
 function phraseCounts(catFilter){
@@ -5089,6 +5160,8 @@ function startPhraseBlitz(catFilter){
   state.phraseBlitz = {
     active:true, complete:false, cat,
     pool, idx:0, submitted:false, input:'', autoCorrect:null,
+    recognitionRevealed:false,
+    buildup:null,
     tally:{correct:0, wrong:0, retired:0, total:pool.length}
   };
   nav('phraseBlitz');
@@ -5166,6 +5239,7 @@ function phraseBlitzSkip(){
   state.phraseBlitz.input = '';
   state.phraseBlitz.autoCorrect = null;
   state.phraseBlitz.recognitionRevealed = false;
+  state.phraseBlitz.buildup = null;
   state.phraseBlitz.idx++;
   if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
     state.phraseBlitz.active = false;
@@ -5183,6 +5257,7 @@ function phraseBlitzAdvance(){
   state.phraseBlitz.input = '';
   state.phraseBlitz.autoCorrect = null;
   state.phraseBlitz.recognitionRevealed = false;
+  state.phraseBlitz.buildup = null;
   if(state.phraseBlitz.idx >= state.phraseBlitz.pool.length){
     state.phraseBlitz.active = false;
     state.phraseBlitz.complete = true;
@@ -5314,8 +5389,69 @@ function renderPhraseBlitz(){
       </div>`
     : '';
 
+  /* v6.19 — build-up: walk chunks one by one, then drop into the type-in test.
+     Replaces both the v6.6 introduce card and the v6.17 recognition phase
+     for chunked phrases. Triggers on first sight or stale-poor refresh.
+     For non-chunk phrases (rare: stale-poor on a short phrase), we collapse
+     to a single intro card and complete in one tap. */
+  if(!pb.submitted && phraseNeedsBuildup(item)){
+    if(!pb.buildup || pb.buildup.itemId !== item.id){
+      const totalSteps = (Array.isArray(item.chunks) && item.chunks.length) ? item.chunks.length : 1;
+      pb.buildup = {itemId: item.id, stepIdx: 0, totalSteps};
+    }
+    const bu = pb.buildup;
+    const romaji = kanaToRomaji(item.jp);
+    if(pb._lastBuildupAutoplay !== item.id){
+      pb._lastBuildupAutoplay = item.id;
+      setTimeout(() => { try{ speakJP(item.jp); }catch(e){} }, 300);
+    }
+    const isReturning = phraseIsIntroduced(item);
+    const headerLabel = isReturning ? 'Refresh — let\'s rebuild it' : 'New phrase — build-up';
+    const lastStep = bu.stepIdx >= bu.totalSteps - 1;
+    const hasChunks = Array.isArray(item.chunks) && item.chunks.length > 0;
+    const chunksRevealHtml = hasChunks
+      ? `<div style="margin-top:10px;padding:8px 10px;border-top:1px solid var(--border);font-size:13px;line-height:1.6">
+          ${item.chunks.map((c, i) => {
+            const dim = i > bu.stepIdx ? 'opacity:0.25;' : '';
+            const highlight = i === bu.stepIdx ? 'background:var(--accent-dim,rgba(255,180,80,0.12));border-radius:6px;padding:4px 6px;' : '';
+            return `<div style="margin-bottom:4px;${dim}${highlight}">
+              <div style="display:flex;gap:10px;align-items:baseline">
+                <span class="jp" style="flex:0 0 auto;font-weight:600">${esc(c[0])}</span>
+                <span class="muted" style="flex:1;text-align:right">${i <= bu.stepIdx ? esc(c[1]) : '…'}</span>
+              </div>
+              ${(i <= bu.stepIdx && c[2]) ? `<div class="muted" style="font-size:11px;font-style:italic;opacity:0.75;padding-left:6px;margin-top:2px">↳ ${esc(c[2])}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`
+      : '';
+    const cta = lastStep
+      ? `<button class="btn btn-primary" style="width:100%" onclick="phraseBuildupComplete('${jsEsc(item.id)}')">Got it — drill me</button>`
+      : `<button class="btn btn-primary" style="width:100%" onclick="phraseBuildupAdvance()">Next →</button>`;
+    const stepLine = hasChunks
+      ? `<div class="muted" style="text-align:center;font-size:11px;margin-top:8px">Chunk ${bu.stepIdx+1} / ${bu.totalSteps}</div>`
+      : '';
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">${esc(headerLabel)}</div>
+      <div style="font-size:20px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(item.en)}</div>
+      <div class="jp" style="font-size:28px;text-align:center;font-weight:700;line-height:1.4;padding:6px 8px">${esc(item.jp)}</div>
+      <div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>
+      ${chunksRevealHtml}
+      <div class="spacer"></div>
+      <div class="audio-row">
+        <button class="audio-btn" onclick="speakJP('${jsEsc(item.jp)}')">🔊 Listen again</button>
+      </div>
+      <div class="spacer"></div>
+      ${cta}
+      ${stepLine}
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="phraseBlitzSkip()">Skip this phrase</button>
+    </div>`;
+  }
+
   /* v6.6 — introduce phase: never-seen phrases get one exposure before test rotation.
-     v6.17 — long phrases also surface their `chunks` breakdown here. */
+     v6.17 — long phrases also surface their `chunks` breakdown here.
+     v6.19 — chunked phrases now use build-up above; this branch only fires
+     for short phrases (no chunks) on first sight. */
   if(!pb.submitted && !phraseIsIntroduced(item)){
     const romaji = kanaToRomaji(item.jp);
     /* autoplay JP once when the introduce card first mounts for this item */
