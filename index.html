@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.27.0';
+const APP_VERSION = '6.28.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8079,6 +8079,11 @@ function buildGenerateLesson(mode){
   if(cycleFormSteps.length){
     cycles.push({ id:'cycle_form', name:`Conjugate — verb forms`, steps: cycleFormSteps });
   }
+  /* v6.28 — phrase cycle: 2 real-life phrases from PHRASE_POOL. */
+  const cyclePhraseSteps = _buildGeneratePhraseSteps(2);
+  if(cyclePhraseSteps.length){
+    cycles.push({ id:'cycle_phrase', name:`Real-life phrases`, steps: cyclePhraseSteps });
+  }
   cycles.push({ id:'cycle_4', name:`Final pass — all 5 words cold`, steps: cycle4Steps });
 
   return {
@@ -8749,6 +8754,7 @@ function _buildWriteApplies(step){
   if(step.type === 'build' || step.type === 'substitute') return true;
   if(step.type === 'callback' && step.sentence_jp) return true;
   if(step.type === 'form_drill') return true;  /* v6.27 — typing fits conjugation drills naturally */
+  if(step.type === 'phrase') return true;       /* v6.28 — phrase step is sentence-shaped, fits write mode */
   return false;
 }
 
@@ -8847,6 +8853,10 @@ function buildAutoplayStep(step){
       if(state.buildMode !== b || b._paused) return;
       _buildSpeakEN(`${step.word_en} — ${step.form_hint || step.form_name}`, false, onEnDone);
     });
+  } else if(step.type === 'phrase'){
+    /* v6.28 — speak the EN gloss as the prompt. Auto-reveal timer carries
+       the user to JP reveal in normal mode. */
+    _buildSpeakEN(step.en, false, onEnDone);
   }
 }
 
@@ -8978,6 +8988,11 @@ function _buildPlayJPForStep(step, onDone){
     if(step.expected_jp) _buildSpeakJP(step.expected_jp, onDone);
     else if(onDone) onDone();
   }
+  else if(step.type === 'phrase'){
+    /* v6.28 — speak the JP phrase on reveal. */
+    if(step.jp) _buildSpeakJP(step.jp, onDone);
+    else if(onDone) onDone();
+  }
   else if(onDone) onDone();
 }
 
@@ -9024,7 +9039,7 @@ function buildWriteSubmit(){
   if(!inp) return;
   const typed = inp.value || '';
   if(!typed.trim()) return;
-  const expected = step.sentence_jp || step.result_jp || step.expected_jp || '';  /* v6.27 — form_drill uses expected_jp */
+  const expected = step.sentence_jp || step.result_jp || step.expected_jp || step.jp || '';  /* v6.28 — phrase uses .jp */
   const correct = normJPLoose(typed) === normJPLoose(expected);
   b._writeAttempt = { input: typed.trim(), correct };
   /* Reveal regardless of correctness so the user sees the right answer. */
@@ -9529,6 +9544,7 @@ function renderBuildModeStep(){
     case 'qa':         body = _buildRenderQa(step); break;
     case 'similar':    body = _buildRenderSimilar(step); break;
     case 'form_drill': body = _buildRenderFormDrill(step); break;
+    case 'phrase':     body = _buildRenderPhrase(step); break;
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
@@ -9608,6 +9624,7 @@ function _buildChipLabel(step){
   if(step.type === 'qa') return step._aiMode ? '🤖 ai chat' : 'q&a';
   if(step.type === 'similar') return 'discriminate';
   if(step.type === 'form_drill') return 'conjugate';
+  if(step.type === 'phrase') return 'phrase';
   return step.type;
 }
 
@@ -9666,6 +9683,22 @@ function _buildPickFormDrillVerbs(deck, count){
   }
   return out;
 }
+/* v6.28 — Build Mode phrase step. Surfaces real-life phrases from
+   PHRASE_POOL inside Build Mode lessons — folds Phrase Blitz's content
+   into the autopilot flow. Random sample for now; future enhancement
+   could bias toward phraseStats due-soonest. */
+function _buildGeneratePhraseSteps(count){
+  if(!Array.isArray(PHRASE_POOL) || PHRASE_POOL.length === 0) return [];
+  const shuffled = PHRASE_POOL.slice().sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count || 2).map(p => ({
+    type: 'phrase',
+    phrase_id: p.id,
+    jp: p.jp,
+    en: p.en,
+    cat: p.cat
+  }));
+}
+
 function _buildGenerateFormDrillSteps(verbs, count){
   if(!verbs || !verbs.length || !Array.isArray(FORMS) || FORMS.length === 0) return [];
   const out = [];
@@ -9729,6 +9762,29 @@ function _buildRenderSimilar(step){
     <div class="muted" style="font-size:12px;text-align:center;margin:4px 0 10px">${esc(target.note || '')}</div>
     ${optBtns}
     ${reveal}
+  `;
+}
+
+/* v6.28 — render a phrase step. Audio-led with EN gloss prompt; reveal
+   shows the JP form. Write mode flips it to a typed input the same way
+   build/substitute do. */
+function _buildRenderPhrase(step){
+  const b = state.buildMode;
+  const banner = `<div class="build-callback-banner" style="background:rgba(160,120,255,0.12);color:var(--purple,#a78bfa)">📞 PHRASE — real-life ${esc(step.cat || '')}</div>`;
+  if(_buildWriteApplies(step) && !b.revealed){
+    return banner + _buildRenderWriteInput(step.en);
+  }
+  if(b.revealed){
+    return banner + `
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Phrase:</div>
+      <div class="build-big-jp">${esc(step.jp)}</div>
+      <div class="build-big-en">${esc(step.en)}</div>
+    `;
+  }
+  return banner + `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Say this phrase in Japanese</div>
+    <div class="build-big-en">${esc(step.en)}</div>
+    <div class="build-placeholder">say it out loud, then tap Reveal</div>
   `;
 }
 
