@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.31.0';
+const APP_VERSION = '6.32.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1670,6 +1670,7 @@ const DEFAULT_SETTINGS = {
   includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
+  formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
   buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
   buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
@@ -3079,15 +3080,45 @@ window.toggleModulesEnabled = toggleModulesEnabled;
 /* v4.28: gate removed — all verbs available for form drilling immediately.
    Julius uses this app alone and doesn't need the "earn your way in" flow.
    v6.16 — also honor mastered/suspended/module gating. */
+/* v6.32 — Verb sections. User feedback: Form Spam serving 50 random verbs
+   is overwhelming because half are unfamiliar. Sections let the user scope
+   each drill to a topic ("only Movement verbs", "only Daily routine") so
+   they face words they've actually encountered or want to focus on.
+   Membership is by exact JP string — every one of the 140 deck verbs is
+   assigned to exactly one section, validated at build. New verbs added to
+   the deck without a section assignment fall through to "all" only. */
+const VERB_SECTIONS = [
+  { id:'all',      name:'All verbs',         emoji:'🔀', members:null },
+  { id:'movement', name:'Movement & travel', emoji:'🚶', members:['いく','くる','かえる','あるく','はしる','のる','おりる','はいる','でる','でかける','ひっこす','つく','とぶ','およぐ','のぼる','わたる','すすむ','もどる','いそぐ','たつ','すわる'] },
+  { id:'routine',  name:'Daily routine',     emoji:'🪥', members:['おきる','ねる','やすむ','たべる','のむ','あらう','きる','ぬぐ','ふく','うたう','あそぶ','さんぽする','りょうりする','せんたくする','そうじする','すごす','うんてんする'] },
+  { id:'comm',     name:'Communication',     emoji:'💬', members:['はなす','いう','きく','よむ','かく','おしえる','ならう','たのむ','でんわする','せつめいする','やくそくする','しょうかいする','つたえる'] },
+  { id:'obj',      name:'Object handling',   emoji:'🤲', members:['もつ','とる','あげる','もらう','かう','うる','かす','かりる','つかう','おくる','うけとる','つくる','はらう','すてる','ひろう','おとす','なくす','さがす','みつける','いれる','だす','つける','けす','まつ','あう','かむ','すう','さわる','つかまえる'] },
+  { id:'mind',     name:'Mind & feeling',    emoji:'🧠', members:['おもう','かんがえる','おぼえる','わすれる','しる','わかる','できる','きめる','えらぶ','しらべる','たのしむ','おどろく','しんぱいする','おこる','わらう','なく','つかれる','みる','みえる','にる','れんしゅうする','けいかくする','かくにんする','たすける','うまれる','いきる','かぞえる','かつ','まける'] },
+  { id:'suru',     name:'Suru-compounds',    emoji:'💼', members:['する','べんきょうする','けっこんする','かいものする','りょこうする','ちゅうもんする'] },
+  { id:'state',    name:'State changes',     emoji:'🔄', members:['なる','かわる','うつる','ふえる','へる','とまる','とめる','なおる','なおす','ふる','やむ','はじまる','はじめる','おわる','あく','あける','しまる','しめる','すむ','ある','いる','ちがう','やる','きまる','はたらく'] }
+];
+function verbSectionById(id){ return VERB_SECTIONS.find(s => s.id === id) || VERB_SECTIONS[0]; }
+function activeVerbSection(){
+  const id = state.settings?.formSection || 'all';
+  return verbSectionById(id);
+}
+
 function formEligibleVerbs(){
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   const moduleIds = activeModuleWordIdSet();
+  /* v6.32 — section filter. When the user has picked a section other than
+     "all", restrict the eligible pool to that section's members. Form Drill
+     (typed), Form Spam, and Build Mode's folded form_drill steps all flow
+     through this function so the filter applies uniformly. */
+  const section = activeVerbSection();
+  const memberSet = section.members ? new Set(section.members) : null;
   return getActiveWords().filter(w =>
     w.pos === 'v' &&
     !masteredSet.has(w.id) &&
     !suspendedSet.has(w.id) &&
-    (!moduleIds || moduleIds.has(w.id))
+    (!moduleIds || moduleIds.has(w.id)) &&
+    (!memberSet || memberSet.has(w.jp))
   );
 }
 
@@ -3717,10 +3748,51 @@ function renderForms(){
       </button>
     </div>`;
   }).join('');
-  return `${blitzCard}<div class="card">
+  /* v6.32 — section chip row. One sticky selection across all forms below;
+     persisted in settings.formSection. Chips that would yield 0 verbs after
+     other filters (mastered/suspended/module) are still shown but disabled. */
+  const activeSec = state.settings?.formSection || 'all';
+  const sectionChips = VERB_SECTIONS.map(sec => {
+    /* Count this section's members that survive the rest of the filters. */
+    const masteredSet = new Set(state.settings.masteredWords || []);
+    const suspendedSet = new Set(state.settings.suspendedWords || []);
+    const moduleIds = activeModuleWordIdSet();
+    const memberSet = sec.members ? new Set(sec.members) : null;
+    const count = getActiveWords().filter(w =>
+      w.pos === 'v' &&
+      !masteredSet.has(w.id) &&
+      !suspendedSet.has(w.id) &&
+      (!moduleIds || moduleIds.has(w.id)) &&
+      (!memberSet || memberSet.has(w.jp))
+    ).length;
+    const isActive = activeSec === sec.id;
+    const disabled = count === 0;
+    const bg = isActive ? 'background:var(--blue);color:#fff;border-color:var(--blue)' : '';
+    const op = disabled ? 'opacity:0.4;cursor:not-allowed' : '';
+    return `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;${bg};${op}"
+      ${disabled ? 'disabled' : `onclick="setFormSection('${sec.id}')"`}>
+      ${esc(sec.emoji)} ${esc(sec.name)} <span class="muted" style="font-size:10px;${isActive?'color:#fff':''}">(${count})</span>
+    </button>`;
+  }).join('');
+  const sectionRow = `<div class="card">
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Drill scope — applies to all forms below + Spam in Build Mode</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${sectionChips}</div>
+  </div>`;
+
+  return `${sectionRow}${blitzCard}<div class="card">
     <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} graduated in Vocab Blitz — available for form drilling. Pick a single form below for focused self-graded practice.</div>
   </div>${cards}`;
 }
+
+/* v6.32 — section setter. Persists choice + re-renders the picker so the
+   chip + verb counts on each form card refresh. */
+function setFormSection(id){
+  if(!verbSectionById(id)) return;
+  state.settings.formSection = id;
+  save();
+  render();
+}
+window.setFormSection = setFormSection;
 
 /* v6.29 — Form Drill recency tracker. The prior queue picked 2/3 due + 1/3
    unseen, but common short-interval verbs (たべる/のむ/いく/みる/...) were
