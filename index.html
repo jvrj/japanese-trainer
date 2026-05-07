@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.33.0';
+const APP_VERSION = '6.33.1';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8621,14 +8621,20 @@ window.startBuildModeFormSpam = startBuildModeFormSpam;
    step types (recall / phrase / callback / variation / similar) already
    render under buildRender, so each generator just emits matching steps. */
 
-/* Vocab Spam — pull ~25 drillable words (honoring active vocab section)
-   and emit recall steps. Lesson new_words drives buildWordById lookup so
-   recall renders correctly with romaji + audio. */
+/* Vocab Spam — pull ~30 words from the active section's full topical pool
+   and emit recall steps. v6.33.1 — relaxed: skips the module-unlock filter
+   so "Food & drink" yields the whole theme even on early modules. Still
+   honors mastered + suspended (don't re-drill what the user has retired).
+   If the section is smaller than 30, the session length matches the pool. */
 function buildGenerateVocabSpamLesson(opts){
-  const want = (opts && opts.count) || 25;
-  const drillable = vocabSectionFilter(getDrillableWords());
-  if(drillable.length < 1) throw new Error('No words to drill — enable the N5 pack or pick a section with words.');
-  const pool = shuffleFY(drillable.slice()).slice(0, Math.min(want, drillable.length));
+  const want = (opts && opts.count) || 30;
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const sectionPool = vocabSectionFilter(getActiveWords()).filter(w =>
+    !masteredSet.has(w.id) && !suspendedSet.has(w.id)
+  );
+  if(sectionPool.length < 1) throw new Error('No words in this section — pick a different scope or enable the N5 pack.');
+  const pool = shuffleFY(sectionPool.slice()).slice(0, Math.min(want, sectionPool.length));
   const sec = activeVocabSection();
   const steps = pool.map(w => ({ type:'recall', word_id: w.id }));
   return {
@@ -8656,7 +8662,7 @@ window.startBuildModeVocabSpam = startBuildModeVocabSpam;
    and emit phrase steps. Mirrors _buildGeneratePhraseSteps but as a single-
    topic spam session. */
 function buildGeneratePhraseSpamLesson(catKey, opts){
-  const want = (opts && opts.count) || 25;
+  const want = (opts && opts.count) || 30;
   if(!Array.isArray(PHRASE_POOL) || PHRASE_POOL.length === 0) throw new Error('No phrases defined.');
   const filtered = (catKey && catKey !== 'all') ? PHRASE_POOL.filter(p => p.cat === catKey) : PHRASE_POOL.slice();
   if(filtered.length < 1) throw new Error('No phrases in that category.');
@@ -8690,7 +8696,7 @@ window.startBuildModePhraseSpam = startBuildModePhraseSpam;
    callback steps with explicit sentence_jp/sentence_en (no word_id —
    _buildRenderCallback supports both shapes). */
 function buildGenerateSentenceSpamLesson(opts){
-  const want = (opts && opts.count) || 25;
+  const want = (opts && opts.count) || 30;
   if(!Array.isArray(SENTENCE_BLITZ_POOL) || SENTENCE_BLITZ_POOL.length === 0) throw new Error('No sentences defined.');
   const pool = shuffleFY(SENTENCE_BLITZ_POOL.slice()).slice(0, Math.min(want, SENTENCE_BLITZ_POOL.length));
   const steps = pool.map(s => ({
@@ -8720,14 +8726,20 @@ function startBuildModeSentenceSpam(){
 }
 window.startBuildModeSentenceSpam = startBuildModeSentenceSpam;
 
-/* Variation Spam — pull ~15 intents from VARIATION_POOL (the same set
+/* Variation Spam — pull ~30 intents from VARIATION_POOL (the same set
    Variation Blitz drills) and emit variation steps. Each step shows the
    English intent and reveals every JP variant — audio-led counterpart to
-   the typed drill. */
+   the typed drill. v6.33.1 — pool is only ~15 intents, so cycle through
+   it (each shuffle independently) until we hit `want`. Repetition is fine
+   for audio exposure; reinforces alternate phrasings. */
 function buildGenerateVariationSpamLesson(opts){
-  const want = (opts && opts.count) || 15;
+  const want = (opts && opts.count) || 30;
   if(!Array.isArray(VARIATION_POOL) || VARIATION_POOL.length === 0) throw new Error('No variations defined.');
-  const pool = shuffleFY(VARIATION_POOL.slice()).slice(0, Math.min(want, VARIATION_POOL.length));
+  const cycled = [];
+  while(cycled.length < want){
+    cycled.push(...shuffleFY(VARIATION_POOL.slice()));
+  }
+  const pool = cycled.slice(0, want);
   const steps = pool.map(d => ({
     type: 'variation',
     english: d.en,
@@ -8757,20 +8769,25 @@ function startBuildModeVariationSpam(){
 window.startBuildModeVariationSpam = startBuildModeVariationSpam;
 
 /* Similar Spam — sample SIMILAR_SETS and emit similar-discrimination steps
-   across multiple sets. Each set contributes 1-2 items so the user works
-   through the breadth of confusable pairs in one session. */
+   across multiple sets. v6.33.1 — bumped to 30 steps; loops over sets in
+   shuffled order, taking every item per set, then re-shuffles and loops
+   again if needed so a small set count still fills a long session. */
 function buildGenerateSimilarSpamLesson(opts){
-  const want = (opts && opts.count) || 20;
+  const want = (opts && opts.count) || 30;
   if(!Array.isArray(SIMILAR_SETS) || SIMILAR_SETS.length === 0) throw new Error('No similar sets defined.');
-  const sets = shuffleFY(SIMILAR_SETS.slice());
   const steps = [];
-  for(const set of sets){
-    if(steps.length >= want) break;
-    const perSet = Math.min(2, set.items?.length || 0);
-    const itemSteps = _buildGenerateSimilarSteps(set, perSet);
-    for(const s of itemSteps){
+  let safety = 0;
+  while(steps.length < want && safety < 8){
+    safety++;
+    const sets = shuffleFY(SIMILAR_SETS.slice());
+    for(const set of sets){
       if(steps.length >= want) break;
-      steps.push(s);
+      const perSet = set.items?.length || 0;
+      const itemSteps = _buildGenerateSimilarSteps(set, perSet);
+      for(const s of itemSteps){
+        if(steps.length >= want) break;
+        steps.push(s);
+      }
     }
   }
   if(steps.length < 1) throw new Error('Similar sets are empty — none could be drilled.');
