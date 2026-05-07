@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.19.0';
+const APP_VERSION = '6.20.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1080,160 +1080,163 @@ const N5_PACK = [
 /* v6.7 — multi-blank shape: each drill has blanks:[{answer, accept?, explain}].
    JP keeps `___` placeholders, sequential by blank index. Each (drillIdx,
    blankIdx) is an independent pool item with its own retire streak. */
+/* v6.20 — each blank tagged {particle, use} so drills can be filtered by
+   particle, by use bucket, or all-particles. Tags are additive; do NOT
+   reorder this array — particleStats keys are by drillIdx. */
 const PARTICLE_DRILLS = [
   {jp:"わたし ___ がくせい です。", en:"I am a student.",
-   blanks:[{answer:"は", explain:"は marks the topic of the sentence."}]},
+   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic of the sentence."}]},
   {jp:"ほん ___ よみます。", en:"I read a book.",
-   blanks:[{answer:"を", explain:"を marks the direct object."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object."}]},
   {jp:"がっこう ___ いきます。", en:"I go to school.",
-   blanks:[{answer:"に", accept:["に","へ"], explain:"に marks destination/direction. へ also works."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に marks destination/direction. へ also works."}]},
   {jp:"バス ___ いきます。", en:"I go by bus.",
-   blanks:[{answer:"で", explain:"で marks the means/method."}]},
+   blanks:[{answer:"で",particle:"で",use:"means", explain:"で marks the means/method."}]},
   {jp:"レストラン ___ たべます。", en:"I eat at the restaurant.",
-   blanks:[{answer:"で", explain:"で marks where an action happens."}]},
+   blanks:[{answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."}]},
   {jp:"ともだち ___ あいます。", en:"I meet a friend.",
-   blanks:[{answer:"に", accept:["に","と"], explain:"に marks the target of 会う. と ('with') also works."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"に marks the target of 会う. と ('with') also works."}]},
   {jp:"ともだち ___ いきます。", en:"I go with a friend.",
-   blanks:[{answer:"と", explain:"と = 'with' for companions."}]},
+   blanks:[{answer:"と",particle:"と",use:"with", explain:"と = 'with' for companions."}]},
   {jp:"これ ___ ほん です。", en:"This is a book.",
-   blanks:[{answer:"は", explain:"は marks the topic: 'as for this...'."}]},
+   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic: 'as for this...'."}]},
   {jp:"ねこ ___ すき です。", en:"I like cats.",
-   blanks:[{answer:"が", explain:"が marks the object of emotion verbs like すき, きらい, ほしい."}]},
+   blanks:[{answer:"が",particle:"が",use:"stative_obj", explain:"が marks the object of emotion verbs like すき, きらい, ほしい."}]},
   {jp:"コーヒー ___ おちゃ を のみます。", en:"I drink coffee and tea.",
-   blanks:[{answer:"と", explain:"と connects two concrete nouns ('and')."}]},
+   blanks:[{answer:"と",particle:"と",use:"and", explain:"と connects two concrete nouns ('and')."}]},
   {jp:"きょう ___ あつい です。", en:"Today is hot.",
-   blanks:[{answer:"は", explain:"は marks the topic even when it's a time."}]},
+   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic even when it's a time."}]},
   {jp:"わたし ___ いきます。", en:"I also go.",
-   blanks:[{answer:"も", explain:"も = 'also/too', replaces は/が."}]},
+   blanks:[{answer:"も",particle:"も",use:"also", explain:"も = 'also/too', replaces は/が."}]},
   {jp:"えき ___ いきます。", en:"I go toward the station.",
-   blanks:[{answer:"へ", accept:["へ","に"], explain:"へ = 'toward', like に but emphasises direction."}]},
+   blanks:[{answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ = 'toward', like に but emphasises direction."}]},
   {jp:"あさ ___ ばん まで はたらきます。", en:"I work from morning until evening.",
-   blanks:[{answer:"から", explain:"から = 'from'. Pairs with まで ('until')."}]},
+   blanks:[{answer:"から",particle:"から",use:"from", explain:"から = 'from'. Pairs with まで ('until')."}]},
   {jp:"ほん ___ ある。", en:"There is a book.",
-   blanks:[{answer:"が", explain:"が marks the subject of ある/いる (existence)."}]},
+   blanks:[{answer:"が",particle:"が",use:"existence", explain:"が marks the subject of ある/いる (existence)."}]},
   {jp:"それ ___ なん ですか。", en:"What is that?",
-   blanks:[{answer:"は", explain:"は marks 'that' as topic in a question."}]},
+   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks 'that' as topic in a question."}]},
   {jp:"パン ___ たべません。", en:"I don't eat bread.",
-   blanks:[{answer:"を", explain:"を still marks the object in negative."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を still marks the object in negative."}]},
   {jp:"くるま ___ のります。", en:"I get in a car.",
-   blanks:[{answer:"に", explain:"のる takes に for the thing you ride."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", explain:"のる takes に for the thing you ride."}]},
   {jp:"いぬ ___ ねこ が すき です。", en:"I like dogs and cats.",
-   blanks:[{answer:"と", explain:"と connects nouns exhaustively."}]},
+   blanks:[{answer:"と",particle:"と",use:"and", explain:"と connects nouns exhaustively."}]},
   {jp:"うち ___ かえります。", en:"I return home.",
-   blanks:[{answer:"に", accept:["に","へ"], explain:"に = destination. へ also works."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に = destination. へ also works."}]},
   {jp:"さかな ___ たべます か。", en:"Do you eat fish?",
-   blanks:[{answer:"を", explain:"を marks the object even in questions."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the object even in questions."}]},
   {jp:"おちゃ ___ おねがいします。", en:"Tea, please.",
-   blanks:[{answer:"を", explain:"Can be omitted in very casual speech, but を is standard."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"Can be omitted in very casual speech, but を is standard."}]},
   {jp:"いしゃ ___ なりたい。", en:"I want to become a doctor.",
-   blanks:[{answer:"に", explain:"に marks the target state for なる ('become')."}]},
+   blanks:[{answer:"に",particle:"に",use:"becoming", explain:"に marks the target state for なる ('become')."}]},
   {jp:"はし ___ わたります。", en:"I cross the bridge.",
-   blanks:[{answer:"を", explain:"Movement verbs like わたる, あるく take を for the path."}]},
+   blanks:[{answer:"を",particle:"を",use:"path", explain:"Movement verbs like わたる, あるく take を for the path."}]},
   {jp:"せんせい ___ はなします。", en:"I talk with the teacher.",
-   blanks:[{answer:"と", accept:["と","に"], explain:"と = 'with' for interactions. に also works for the target of speech."}]},
+   blanks:[{answer:"と",particle:"と",use:"with", accept:["と","に"], explain:"と = 'with' for interactions. に also works for the target of speech."}]},
 
   /* v6.7 expansion — multi-blank sentences force per-blank thinking */
   {jp:"わたし ___ コーヒー ___ のみます。", en:"I drink coffee.",
    blanks:[
-     {answer:"は", explain:"は marks the topic ('as for me')."},
-     {answer:"を", explain:"を marks the direct object."}
+     {answer:"は",particle:"は",use:"topic", explain:"は marks the topic ('as for me')."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object."}
    ]},
   {jp:"ともだち ___ えいが ___ みました。", en:"I watched a movie with my friend.",
    blanks:[
-     {answer:"と", explain:"と = 'with' for companions."},
-     {answer:"を", explain:"を marks the direct object even in past tense."}
+     {answer:"と",particle:"と",use:"with", explain:"と = 'with' for companions."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object even in past tense."}
    ]},
   {jp:"かいしゃ ___ いきます。", en:"I go to the company.",
-   blanks:[{answer:"に", accept:["に","へ"], explain:"に / へ both mark destination."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ both mark destination."}]},
   {jp:"げつようび ___ かようび ___ やすみ です。", en:"Monday and Tuesday are days off.",
    blanks:[
-     {answer:"と", explain:"と connects nouns exhaustively ('A and B')."},
-     {answer:"は", explain:"は marks the whole 'Mon and Tue' compound as topic."}
+     {answer:"と",particle:"と",use:"and", explain:"と connects nouns exhaustively ('A and B')."},
+     {answer:"は",particle:"は",use:"topic", explain:"は marks the whole 'Mon and Tue' compound as topic."}
    ]},
   {jp:"やまださん ___ メール ___ おくりました。", en:"I sent Yamada an email.",
    blanks:[
-     {answer:"に", explain:"に marks the recipient — the target the email was sent to."},
-     {answer:"を", explain:"を marks the email itself as the direct object."}
+     {answer:"に",particle:"に",use:"target", explain:"に marks the recipient — the target the email was sent to."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the email itself as the direct object."}
    ]},
   {jp:"としょかん ___ ほん ___ よみました。", en:"I read a book at the library.",
    blanks:[
-     {answer:"で", explain:"で marks where an action happens."},
-     {answer:"を", explain:"を marks the book as the thing being read."}
+     {answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the book as the thing being read."}
    ]},
   {jp:"でんしゃ ___ かいしゃ ___ いきます。", en:"I go to work by train.",
    blanks:[
-     {answer:"で", explain:"で marks the means of transport."},
-     {answer:"に", accept:["に","へ"], explain:"に / へ marks the destination."}
+     {answer:"で",particle:"で",use:"means", explain:"で marks the means of transport."},
+     {answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ marks the destination."}
    ]},
   {jp:"とうきょう ___ おおさか ___ いきます。", en:"I go from Tokyo to Osaka.",
    blanks:[
-     {answer:"から", explain:"から = 'from' — origin point."},
-     {answer:"へ", accept:["へ","に","まで"], explain:"へ / に for destination; まで for 'all the way to'."}
+     {answer:"から",particle:"から",use:"from", explain:"から = 'from' — origin point."},
+     {answer:"へ",particle:"へ",use:"direction", accept:["へ","に","まで"], explain:"へ / に for destination; まで for 'all the way to'."}
    ]},
   {jp:"なに ___ たべますか。", en:"What will you eat?",
-   blanks:[{answer:"を", explain:"を still marks the (unknown) object in a question."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を still marks the (unknown) object in a question."}]},
   {jp:"どこ ___ いきますか。", en:"Where are you going?",
-   blanks:[{answer:"へ", accept:["へ","に"], explain:"へ / に both mark destination, even with question words."}]},
+   blanks:[{answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ / に both mark destination, even with question words."}]},
   {jp:"なんじ ___ おきますか。", en:"What time do you wake up?",
-   blanks:[{answer:"に", explain:"に marks specific times (clock times, days)."}]},
+   blanks:[{answer:"に",particle:"に",use:"time", explain:"に marks specific times (clock times, days)."}]},
   {jp:"たなかさん ___ あいました。", en:"I met Tanaka.",
-   blanks:[{answer:"に", accept:["に","と"], explain:"あう usually takes に for the person met. と = 'met with'."}]},
+   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"あう usually takes に for the person met. と = 'met with'."}]},
   {jp:"ペン ___ なまえ ___ かきます。", en:"I write the name with a pen.",
    blanks:[
-     {answer:"で", explain:"で marks the instrument/tool used."},
-     {answer:"を", explain:"を marks the name as what's being written."}
+     {answer:"で",particle:"で",use:"means", explain:"で marks the instrument/tool used."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the name as what's being written."}
    ]},
   {jp:"へや ___ さむい です。", en:"The room is cold.",
-   blanks:[{answer:"は", explain:"は marks the topic — what we're saying something about."}]},
+   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic — what we're saying something about."}]},
   {jp:"これ ___ だれ ___ ですか。", en:"Whose is this?",
    blanks:[
-     {answer:"は", explain:"は makes 'this' the topic."},
-     {answer:"の", explain:"の marks possession when the noun is implied — 'whose (thing)'."}
+     {answer:"は",particle:"は",use:"topic", explain:"は makes 'this' the topic."},
+     {answer:"の",particle:"の",use:"possessive", explain:"の marks possession when the noun is implied — 'whose (thing)'."}
    ]},
   {jp:"テレビ ___ みません。", en:"I don't watch TV.",
-   blanks:[{answer:"を", explain:"を marks the object even in negative sentences."}]},
+   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the object even in negative sentences."}]},
   {jp:"しゅうまつ ___ うみ ___ いきます。", en:"On weekends I go to the sea.",
    blanks:[
-     {answer:"は", accept:["は","に"], explain:"は contrasts ('as for weekends'); に marks the time."},
-     {answer:"へ", accept:["へ","に"], explain:"へ / に both mark destination."}
+     {answer:"は",particle:"は",use:"contrast", accept:["は","に"], explain:"は contrasts ('as for weekends'); に marks the time."},
+     {answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ / に both mark destination."}
    ]},
   {jp:"パン ___ チーズ ___ あります。", en:"There's bread and cheese.",
    blanks:[
-     {answer:"と", explain:"と = 'and' between concrete nouns."},
-     {answer:"が", explain:"が marks the subject of ある/いる (existence)."}
+     {answer:"と",particle:"と",use:"and", explain:"と = 'and' between concrete nouns."},
+     {answer:"が",particle:"が",use:"existence", explain:"が marks the subject of ある/いる (existence)."}
    ]},
   {jp:"しちじ ___ うち ___ かえります。", en:"I return home at 7.",
    blanks:[
-     {answer:"に", explain:"に marks the specific time (7 o'clock)."},
-     {answer:"に", accept:["に","へ"], explain:"に / へ for destination — back home."}
+     {answer:"に",particle:"に",use:"time", explain:"に marks the specific time (7 o'clock)."},
+     {answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ for destination — back home."}
    ]},
   {jp:"うち ___ ねこ ___ います。", en:"There's a cat at home.",
    blanks:[
-     {answer:"に", explain:"に marks the location of existence (with ある/いる)."},
-     {answer:"が", explain:"が marks the subject of いる — what exists."}
+     {answer:"に",particle:"に",use:"target", explain:"に marks the location of existence (with ある/いる)."},
+     {answer:"が",particle:"が",use:"existence", explain:"が marks the subject of いる — what exists."}
    ]},
   {jp:"やまださん ___ アメリカ ___ きました。", en:"Yamada came from America.",
    blanks:[
-     {answer:"は", explain:"は marks Yamada as the topic."},
-     {answer:"から", explain:"から = 'from' — origin point of motion."}
+     {answer:"は",particle:"は",use:"topic", explain:"は marks Yamada as the topic."},
+     {answer:"から",particle:"から",use:"from", explain:"から = 'from' — origin point of motion."}
    ]},
   {jp:"すし ___ てんぷら ___ たべました。", en:"I ate sushi and tempura.",
    blanks:[
-     {answer:"と", explain:"と connects two specific nouns ('and')."},
-     {answer:"を", explain:"を marks the food eaten as the direct object."}
+     {answer:"と",particle:"と",use:"and", explain:"と connects two specific nouns ('and')."},
+     {answer:"を",particle:"を",use:"dobj", explain:"を marks the food eaten as the direct object."}
    ]},
   {jp:"パーティー ___ ともだち ___ あいました。", en:"I met a friend at the party.",
    blanks:[
-     {answer:"で", explain:"で marks where an action happens."},
-     {answer:"に", accept:["に","と"], explain:"に marks the person met (or と for 'with')."}
+     {answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."},
+     {answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"に marks the person met (or と for 'with')."}
    ]},
   {jp:"ゆうがた ___ うち ___ べんきょうします。", en:"I study at home in the evening.",
    blanks:[
-     {answer:"に", explain:"に marks the time of an action."},
-     {answer:"で", explain:"で marks where the action happens."}
+     {answer:"に",particle:"に",use:"time", explain:"に marks the time of an action."},
+     {answer:"で",particle:"で",use:"location", explain:"で marks where the action happens."}
    ]},
   {jp:"みち ___ あるきます。", en:"I walk along the street.",
-   blanks:[{answer:"を", explain:"を marks the path traversed by motion verbs (walk, cross, fly)."}]}
+   blanks:[{answer:"を",particle:"を",use:"path", explain:"を marks the path traversed by motion verbs (walk, cross, fly)."}]}
 ];
 
 /* =========================================================================
@@ -9186,6 +9189,30 @@ const PARTICLE_RETIRE_STREAK = 2;
 const PARTICLE_SESSION_TARGET = 16;
 const PARTICLE_OPTIONS = ['は','が','を','に','で','へ','と','も','の','から','まで','や'];
 
+/* v6.20 — teacher's "3 uses per particle" framework. Each row is one cell of
+   the breakdown grid. Display order = particle order, then use order within
+   particle. Cells with zero tagged drills are intentionally omitted. */
+const PARTICLE_USES = [
+  {particle:'は', use:'topic',       label:'Topic'},
+  {particle:'は', use:'contrast',    label:'Contrast'},
+  {particle:'が', use:'stative_obj', label:'Stative object (好き / ほしい)'},
+  {particle:'が', use:'existence',   label:'Existence (ある / いる)'},
+  {particle:'を', use:'dobj',        label:'Direct object'},
+  {particle:'を', use:'path',        label:'Path traversed'},
+  {particle:'に', use:'time',        label:'Time point'},
+  {particle:'に', use:'target',      label:'Destination / target'},
+  {particle:'に', use:'becoming',    label:'Becoming (なる)'},
+  {particle:'で', use:'location',    label:'Location of action'},
+  {particle:'で', use:'means',       label:'Means / instrument'},
+  {particle:'へ', use:'direction',   label:'Direction'},
+  {particle:'と', use:'with',        label:'With (companion)'},
+  {particle:'と', use:'and',         label:'And (concrete nouns)'},
+  {particle:'も', use:'also',        label:'Also / too'},
+  {particle:'の', use:'possessive',  label:'Possessive'},
+  {particle:'から', use:'from',      label:'From (origin)'}
+];
+const PARTICLE_ORDER = ['は','が','を','に','で','へ','と','も','の','から','まで'];
+
 function particleBlanks(d){
   if(d.blanks) return d.blanks;
   /* Defensive fallback for any legacy single-blank shape that slips through. */
@@ -9241,30 +9268,45 @@ function particleStatPeek(drillIdx, blankIdx){
   return state.particleStats?.[drillIdx]?.[blankIdx] || null;
 }
 
-function buildParticlePool(){
+/* v6.20 — scope = {} for all-particles, {particle} for one particle's uses,
+   {particle, use} for a single bucket. Empty scope preserves v6.19 behavior. */
+function blankMatchesScope(blank, scope){
+  if(!scope || (!scope.particle && !scope.use)) return true;
+  if(scope.particle && blank.particle !== scope.particle) return false;
+  if(scope.use && blank.use !== scope.use) return false;
+  return true;
+}
+
+function buildParticlePoolScoped(scope){
   const pairs = [];
   for(let di = 0; di < PARTICLE_DRILLS.length; di++){
     const blanks = particleBlanks(PARTICLE_DRILLS[di]);
     for(let bi = 0; bi < blanks.length; bi++){
+      if(!blankMatchesScope(blanks[bi], scope)) continue;
       const st = particleStatPeek(di, bi);
       if(!st || !st.retired) pairs.push({drillIdx:di, blankIdx:bi});
     }
   }
   if(!pairs.length){
-    /* All retired — sample everything for review. */
+    /* All retired in scope — sample everything in scope for review. */
     for(let di = 0; di < PARTICLE_DRILLS.length; di++){
       const blanks = particleBlanks(PARTICLE_DRILLS[di]);
-      for(let bi = 0; bi < blanks.length; bi++) pairs.push({drillIdx:di, blankIdx:bi});
+      for(let bi = 0; bi < blanks.length; bi++){
+        if(blankMatchesScope(blanks[bi], scope)) pairs.push({drillIdx:di, blankIdx:bi});
+      }
     }
   }
   return shuffleFY(pairs).slice(0, PARTICLE_SESSION_TARGET);
 }
 
-function particleCounts(){
+function buildParticlePool(){ return buildParticlePoolScoped({}); }
+
+function particleCountsScoped(scope){
   let total = 0, retired = 0;
   for(let di = 0; di < PARTICLE_DRILLS.length; di++){
     const blanks = particleBlanks(PARTICLE_DRILLS[di]);
     for(let bi = 0; bi < blanks.length; bi++){
+      if(!blankMatchesScope(blanks[bi], scope)) continue;
       total++;
       if(particleStatPeek(di, bi)?.retired) retired++;
     }
@@ -9272,15 +9314,124 @@ function particleCounts(){
   return {total, retired};
 }
 
-function ensureParticleSession(){
+function particleCounts(){ return particleCountsScoped({}); }
+
+function ensureParticleSession(scope){
   if(!state.particleSession || !state.particleSession.pool?.length){
-    state.particleSession = {pool: buildParticlePool(), idx: 0, answer: null};
+    state.particleSession = {pool: buildParticlePoolScoped(scope || {}), idx: 0, answer: null, scope: scope || {}, active: true};
   }
 }
 
+function startParticleScope(scope){
+  state.particleSession = {pool: buildParticlePoolScoped(scope || {}), idx: 0, answer: null, scope: scope || {}, active: true};
+  if(!state.particleSession.pool.length){
+    showToast('No drills in this scope.', 'success');
+    state.particleSession = null;
+    render();
+    return;
+  }
+  save();
+  render();
+}
+window.startParticleScope = startParticleScope;
+
+function exitParticleSession(){
+  state.particleSession = null;
+  render();
+}
+window.exitParticleSession = exitParticleSession;
+
+function scopeLabel(scope){
+  if(!scope) return 'All particles';
+  if(scope.particle && scope.use){
+    const row = PARTICLE_USES.find(r => r.particle === scope.particle && r.use === scope.use);
+    return `${scope.particle} · ${row ? row.label : scope.use}`;
+  }
+  if(scope.particle) return `${scope.particle} · all uses`;
+  return 'All particles';
+}
+
+function renderParticlesIndex(){
+  const totals = particleCountsScoped({});
+  const ui = state._particlesUi = state._particlesUi || {expanded:null};
+  const expanded = ui.expanded;
+
+  const allBtn = `<button class="btn btn-primary" style="width:100%" onclick="startParticleScope({})">▶ Drill all particles · ${totals.retired}/${totals.total} retired</button>`;
+
+  const cards = PARTICLE_ORDER.map(p => {
+    const uses = PARTICLE_USES.filter(r => r.particle === p);
+    if(!uses.length) return '';
+    const pCounts = particleCountsScoped({particle:p});
+    const isOpen = expanded === p;
+    const useRows = isOpen ? uses.map(r => {
+      const c = particleCountsScoped({particle:r.particle, use:r.use});
+      const remaining = c.total - c.retired;
+      return `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <button class="btn btn-secondary" style="flex:1;font-size:13px;padding:8px 10px;text-align:left" onclick="startParticleScope({particle:'${jsEsc(r.particle)}',use:'${jsEsc(r.use)}'})">
+          <span style="display:inline-block;min-width:34px;font-weight:700">${esc(r.particle)}</span>
+          <span style="opacity:0.85">${esc(r.label)}</span>
+        </button>
+        <span class="muted" style="font-size:12px;min-width:60px;text-align:right">${c.retired}/${c.total}${remaining===0?' ✓':''}</span>
+      </div>`;
+    }).join('') : '';
+    const drillAllBtn = isOpen
+      ? `<button class="btn btn-orange" style="width:100%;margin-top:10px;font-size:13px;padding:9px" onclick="startParticleScope({particle:'${jsEsc(p)}'})">Drill all uses of ${esc(p)}</button>`
+      : '';
+    return `<div class="card" style="padding:12px">
+      <div onclick="particlesToggleExpand('${jsEsc(p)}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span class="jp" style="font-size:22px;font-weight:700">${esc(p)}</span>
+          <span class="muted" style="font-size:12px">${uses.length} use${uses.length>1?'s':''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="muted" style="font-size:12px">${pCounts.retired}/${pCounts.total} retired</span>
+          <span class="collapsible-arrow" style="transform:${isOpen?'rotate(90deg)':'none'};transition:transform 0.2s">›</span>
+        </div>
+      </div>
+      ${isOpen ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${useRows}${drillAllBtn}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <h2 style="margin-top:0">Particles</h2>
+      <div class="muted" style="font-size:13px;line-height:1.5">
+        Three uses per particle, the way your teacher taught it. Tap a particle to see its uses, then drill one use, all uses, or every particle.
+      </div>
+      <div class="spacer"></div>
+      ${allBtn}
+    </div>
+    ${cards}
+    <div class="card">
+      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
+    </div>
+  `;
+}
+
+function particlesToggleExpand(p){
+  const ui = state._particlesUi = state._particlesUi || {expanded:null};
+  ui.expanded = (ui.expanded === p) ? null : p;
+  render();
+}
+window.particlesToggleExpand = particlesToggleExpand;
+
 function renderParticles(){
-  ensureParticleSession();
+  /* v6.20 — index view when no session is active; drill view when one is. */
+  if(!state.particleSession || !state.particleSession.active) return renderParticlesIndex();
+
   const sess = state.particleSession;
+  if(sess.idx >= sess.pool.length){
+    /* Pool exhausted — bounce back to the index with a friendly note. */
+    return `<div class="card">
+      <h2 style="margin-top:0">Drill complete</h2>
+      <div class="muted" style="font-size:13px">${esc(scopeLabel(sess.scope))} — ${sess.pool.length} drills done.</div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startParticleScope(${JSON.stringify(sess.scope||{})})">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="exitParticleSession()">Back to particles</button>
+    </div>`;
+  }
+
   const cur = sess.pool[sess.idx];
   const d = PARTICLE_DRILLS[cur.drillIdx];
   const blanks = particleBlanks(d);
@@ -9288,15 +9439,17 @@ function renderParticles(){
   const accept = particleAccept(blank);
   const ans = sess.answer;
   const isCorrect = ans && accept.includes(ans);
-  const counts = particleCounts();
   const stPeek = particleStatPeek(cur.drillIdx, cur.blankIdx);
   const streak = stPeek?.streak || 0;
   const blankLabel = blanks.length > 1 ? `Blank ${cur.blankIdx+1} of ${blanks.length}` : 'Fill in the blank';
 
   return `
     <div class="card">
-      <h3>Particle drills · ${sess.idx+1} / ${sess.pool.length}</h3>
-      <div class="muted" style="font-size:13px">${counts.retired} / ${counts.total} retired · streak ${streak} / ${PARTICLE_RETIRE_STREAK}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h3 style="margin:0">Particle drills · ${sess.idx+1} / ${sess.pool.length}</h3>
+        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="exitParticleSession()">↩ Back</button>
+      </div>
+      <div class="muted" style="font-size:13px;margin-top:4px">${esc(scopeLabel(sess.scope))} · streak ${streak} / ${PARTICLE_RETIRE_STREAK}</div>
     </div>
     <div class="drill-card">
       <div class="drill-cat">${esc(blankLabel)}${accept.length>1?' · multiple acceptable':''}</div>
@@ -9309,7 +9462,7 @@ function renderParticles(){
     ${ans ? `<div class="feedback-card ${isCorrect?'correct':'wrong'}">
       <div class="feedback-head">${isCorrect?'✓ Correct':'✗ Wrong — accepted: '+accept.map(esc).join(' / ')}</div>
       <div class="feedback-body" style="line-height:1.7">${particleJPRevealed(d, cur.blankIdx, ans, isCorrect)}</div>
-      <div class="feedback-smart">${esc(blank.explain)}</div>
+      ${!isCorrect ? `<div class="feedback-smart">${esc(blank.explain)}</div>` : ''}
     </div>
     <div class="audio-row">
       <button class="audio-btn" onclick="speakJP('${jsEsc(particleJPFilled(d))}')">🔊 Listen (full sentence)</button>
@@ -9349,14 +9502,13 @@ function answerParticle(p){
 }
 
 function nextParticle(){
-  ensureParticleSession();
+  if(!state.particleSession) return;
   const sess = state.particleSession;
   sess.answer = null;
   sess.idx++;
-  if(sess.idx >= sess.pool.length){
-    /* Session done — reshuffle a fresh pool (skips retired pairs automatically). */
-    state.particleSession = {pool: buildParticlePool(), idx: 0, answer: null};
-  }
+  /* v6.20 — when scope pool is exhausted, leave idx >= pool.length so the
+     renderer shows the completion card; user picks "Drill again" or "Back". */
+  save();
   render();
 }
 window.answerParticle = answerParticle;
