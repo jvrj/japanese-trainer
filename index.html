@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.24.0';
+const APP_VERSION = '6.25.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1629,6 +1629,7 @@ const DEFAULT_SETTINGS = {
   formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
   includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
+  buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
   buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
   buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
@@ -8717,6 +8718,19 @@ function _buildSetPhase(phase, durMs){
 }
 
 function _buildAutoOn(){ return state.settings.buildAutoAdvance !== false; }
+/* v6.25 — Write Mode. When on AND the current step type is build/substitute
+   or sentence-flavored callback, suppress EN TTS + don't auto-reveal —
+   instead the renderer shows an input box and we wait for buildWriteSubmit().
+   Word-flavored callbacks (single-word recall) and introduce/recall steps
+   stay audio-led even in write mode because they're vocabulary cards, not
+   sentences worth typing. */
+function _buildWriteOn(){ return !!state.settings.buildWriteMode; }
+function _buildWriteApplies(step){
+  if(!step || !_buildWriteOn()) return false;
+  if(step.type === 'build' || step.type === 'substitute') return true;
+  if(step.type === 'callback' && step.sentence_jp) return true;
+  return false;
+}
 
 /* v6.5 — adaptive pacing. Known words shrink think+linger so easy reviews
    don't drag. Brand-new exposures (introduce steps, sentence-only steps)
@@ -8744,6 +8758,16 @@ function buildAutoplayStep(step){
   if(!b) return;
   _buildClearTimer();
   const auto = _buildAutoOn() && !b._paused;
+
+  /* v6.25 — Write Mode short-circuits autoplay for sentence-typing steps:
+     no EN TTS (silent prompt), no auto-reveal timer. The renderer shows an
+     input box; buildWriteSubmit() drives the reveal + advance. Focus the
+     input shortly after render so the user can start typing immediately. */
+  if(_buildWriteApplies(step)){
+    _buildSetPhase('prompt', 0);
+    setTimeout(() => { try{ document.getElementById('buildWriteInput')?.focus(); }catch(e){} }, 80);
+    return;
+  }
 
   const onEnDone = () => {
     if(!auto) return;
@@ -8814,6 +8838,7 @@ function buildAutoNext(){
     b.done = true;
   } else {
     b.revealed = false;
+    b._writeAttempt = null;  /* v6.25 */
     b.stepIdx++;
   }
   render();
@@ -8935,10 +8960,41 @@ function buildRevealStep(){
 }
 window.buildRevealStep = buildRevealStep;
 
+/* v6.25 — Write Mode submit. Compares the typed input to the step's expected
+   JP using normJPLoose (forgiving to は/わ, を/お, へ/え particle traps and
+   long-vowel ambiguity, also auto-converts romaji → kana). On correct: mark
+   ✓, reveal the JP, speak it, and let auto-advance carry the user forward.
+   On wrong: mark ✗, reveal anyway so they see the right answer — no
+   "try again" loop because Build Mode is meant to flow forward. */
+function buildWriteSubmit(){
+  const b = state.buildMode;
+  if(!b) return;
+  const step = b.steps[b.stepIdx];
+  if(!step || !_buildWriteApplies(step)) return;
+  const inp = document.getElementById('buildWriteInput');
+  if(!inp) return;
+  const typed = inp.value || '';
+  if(!typed.trim()) return;
+  const expected = step.sentence_jp || step.result_jp || '';
+  const correct = normJPLoose(typed) === normJPLoose(expected);
+  b._writeAttempt = { input: typed.trim(), correct };
+  /* Reveal regardless of correctness so the user sees the right answer. */
+  _buildClearTimer();
+  b.revealed = true;
+  render();
+  setTimeout(() => {
+    _buildPlayJPForStep(step, () => {
+      if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
+    });
+  }, 150);
+}
+window.buildWriteSubmit = buildWriteSubmit;
+
 function buildNextStep(){
   const b = state.buildMode;
   _buildClearTimer();
   b.revealed = false;
+  b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
@@ -8952,6 +9008,7 @@ function buildPrevStep(){
   const b = state.buildMode;
   _buildClearTimer();
   b.revealed = false;
+  b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx > 0) b.stepIdx--;
   render();
@@ -8963,6 +9020,7 @@ function buildRestart(){
   _buildClearTimer();
   b._paused = false;
   b.stepIdx = 0; b.revealed = false; b.done = false;
+  b._writeAttempt = null;  /* v6.25 */
   if(b.lesson) b.lesson._completed = false;
   render();
 }
@@ -9424,7 +9482,9 @@ function renderBuildModeStep(){
       <button class="btn btn-secondary" onclick="buildReplayAudio()">🔊 Replay</button>
       ${b.revealed || step.type === 'introduce'
         ? `<button class="btn btn-primary" onclick="buildNextStep()">${b.stepIdx === total - 1 ? 'Finish ✓' : 'Next ›'}</button>`
-        : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`
+        : (_buildWriteApplies(step)
+            ? `<button class="btn btn-ghost" style="font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
+            : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`)
       }
     </div>
 
@@ -9550,8 +9610,34 @@ function _buildRenderRecall(step){
   `;
 }
 
+/* v6.25 — Write Mode UI helpers. The input + submit + last-attempt feedback
+   block, shared across build/substitute/callback renderers. Auto-focuses
+   when the autoplayStep fires (see #buildWriteInput focus shortly after). */
+function _buildRenderWriteInput(promptEn){
+  const b = state.buildMode;
+  const last = b._writeAttempt;
+  const feedback = last
+    ? (last.correct
+        ? `<div style="text-align:center;font-size:13px;color:var(--green);margin-top:4px">✓ ${esc(last.input)}</div>`
+        : `<div style="text-align:center;font-size:13px;color:var(--red);margin-top:4px">✗ you typed: <b>${esc(last.input)}</b></div>`)
+    : '';
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Type the Japanese</div>
+    <div class="build-big-en">${esc(promptEn)}</div>
+    <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;align-items:center">
+      <input id="buildWriteInput" class="input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+             style="flex:1;max-width:340px;font-size:18px"
+             placeholder="hiragana or romaji"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();buildWriteSubmit();}" />
+      <button class="btn btn-primary" style="padding:8px 14px" onclick="buildWriteSubmit()">Check</button>
+    </div>
+    ${feedback}
+  `;
+}
+
 function _buildRenderBuild(step){
   const b = state.buildMode;
+  if(_buildWriteApplies(step) && !b.revealed) return _buildRenderWriteInput(step.sentence_en);
   if(b.revealed){
     return `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
@@ -9569,6 +9655,12 @@ function _buildRenderBuild(step){
 function _buildRenderSubstitute(step){
   const b = state.buildMode;
   const w = buildWordById(step.swap_word_id);
+  if(_buildWriteApplies(step) && !b.revealed){
+    return `
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Same pattern — swap in: <b>${esc(w?.jp || '?')}</b> (${esc(w?.en || '?')})</div>
+      ${_buildRenderWriteInput(step.result_en)}
+    `;
+  }
   if(b.revealed){
     return `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
@@ -9601,6 +9693,9 @@ function _buildRenderCallback(step){
       <div class="build-big-en">${esc(w.en)}</div>
       <div class="build-placeholder">pull from memory, then tap Reveal</div>
     `;
+  }
+  if(_buildWriteApplies(step) && !b.revealed){
+    return banner + _buildRenderWriteInput(step.sentence_en);
   }
   if(b.revealed){
     return banner + `
@@ -10582,6 +10677,8 @@ function renderSettings(){
       <div class="muted" style="font-size:12px;margin-bottom:8px"><b>v6.5:</b> think + linger auto-shrink for words you've mastered (apprentice → 0.7×, guru/master/burned → 0.5×). New-word introduce steps stay at full pace.</div>
       <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually like before.</div></div>
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Write mode</div><div class="word-en">v6.25 · type the JP for build/substitute/callback steps. Hiragana or romaji both fine. Speech is muted on prompt; auto-advance still applies on correct.</div></div>
+        <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??8).toFixed(1)}s · pause after JP audio before next step</div></div>
