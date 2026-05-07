@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.32.0';
+const APP_VERSION = '6.33.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1671,6 +1671,7 @@ const DEFAULT_SETTINGS = {
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
+  vocabSection:'all',         // v6.33 — Vocab Blitz: scope to a topical noun/vocab section (time/food/body/family/...) or 'all'
   buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
   buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
   buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
@@ -3103,6 +3104,43 @@ function activeVerbSection(){
   return verbSectionById(id);
 }
 
+/* v6.33 — Vocab Blitz topical sections. Same model as VERB_SECTIONS, but
+   scoped to themes instead of explicit JP arrays — the deck's own `theme`
+   field already curates membership (~50 time nouns, ~58 food, etc.) so
+   theme-list filtering tracks new words automatically. Each section's
+   `themes` is a list of theme keys; words whose theme matches any entry
+   are eligible. "all" passes everything through. */
+const VOCAB_SECTIONS = [
+  { id:'all',      name:'All vocab',          emoji:'🔀', themes:null },
+  { id:'time',     name:'Time',               emoji:'⏰', themes:['time'] },
+  { id:'food',     name:'Food & drink',       emoji:'🍱', themes:['food'] },
+  { id:'body',     name:'Body parts',         emoji:'🫀', themes:['body'] },
+  { id:'family',   name:'Family & people',    emoji:'👨‍👩‍👧', themes:['family','people'] },
+  { id:'home',     name:'Home & objects',     emoji:'🏠', themes:['home','objects'] },
+  { id:'places',   name:'Places',             emoji:'🏪', themes:['places'] },
+  { id:'travel',   name:'Travel',             emoji:'🚆', themes:['travel'] },
+  { id:'nature',   name:'Nature & animals',   emoji:'🌳', themes:['nature','animals','weather'] },
+  { id:'clothing', name:'Clothing & colors',  emoji:'👕', themes:['clothing','colors'] },
+  { id:'school',   name:'School & work',      emoji:'📚', themes:['school','work','tech'] },
+  { id:'numbers',  name:'Numbers',            emoji:'🔢', themes:['numbers'] },
+  { id:'greetings',name:'Greetings & daily',  emoji:'👋', themes:['greetings','daily','feelings'] }
+];
+function vocabSectionById(id){ return VOCAB_SECTIONS.find(s => s.id === id) || VOCAB_SECTIONS[0]; }
+function activeVocabSection(){
+  const id = state.settings?.vocabSection || 'all';
+  return vocabSectionById(id);
+}
+/* Apply the active section as a filter on a word list. "all" returns the list
+   unchanged; otherwise restricts to words whose `theme` is in the section's
+   themes list. Used by buildBlitzPool + blitzCounts so home + session both
+   reflect the current scope. */
+function vocabSectionFilter(words){
+  const sec = activeVocabSection();
+  if(!sec.themes) return words;
+  const set = new Set(sec.themes);
+  return words.filter(w => set.has(w.theme));
+}
+
 function formEligibleVerbs(){
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
@@ -3160,7 +3198,9 @@ function formCounts(){
    ========================================================================= */
 
 function blitzCounts(){
-  const active = getActiveWords();
+  /* v6.33 — counts respect the active vocab section so the home subtitle
+     reflects only what the next session will draw from. */
+  const active = vocabSectionFilter(getActiveWords());
   const t = now();
   let due = 0, overdue = 0, unseen = 0;
   for(const w of active){
@@ -3183,8 +3223,9 @@ function buildBlitzPool(opts){
   const targetLearn = opts.targetLearn ?? (state.settings.blitzPoolLearning ?? 8);
   const targetMature = opts.targetMature ?? (state.settings.blitzPoolMature ?? 4);
   const exclude = opts.excludeIds || new Set();
-  /* v6.10 — drillable (excludes Suspended + Mastered) instead of active. */
-  const drillable = getDrillableWords().filter(w => !exclude.has(w.id));
+  /* v6.10 — drillable (excludes Suspended + Mastered) instead of active.
+     v6.33 — also restrict to active vocab section (theme group) when set. */
+  const drillable = vocabSectionFilter(getDrillableWords()).filter(w => !exclude.has(w.id));
   const t = now();
   const unseen = [], youngDue = [], youngNotDue = [], matureDue = [], focused = [];
   const focusSet = new Set(state.settings.focusWords || []);
@@ -3793,6 +3834,16 @@ function setFormSection(id){
   render();
 }
 window.setFormSection = setFormSection;
+
+/* v6.33 — vocab section setter. Persists choice + re-renders home so the
+   chip row + due/new counts on the Vocab Blitz card refresh. */
+function setVocabSection(id){
+  if(!vocabSectionById(id)) return;
+  state.settings.vocabSection = id;
+  save();
+  render();
+}
+window.setVocabSection = setVocabSection;
 
 /* v6.29 — Form Drill recency tracker. The prior queue picked 2/3 due + 1/3
    unseen, but common short-interval verbs (たべる/のむ/いく/みる/...) were
@@ -5655,6 +5706,8 @@ function renderPhrases(){
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startPhraseBlitz('all')">▶ Drill all categories</button>
+      <div style="height:6px"></div>
+      <button class="btn btn-blue" style="width:100%" onclick="startBuildModePhraseSpam('all')">🎲 Spam in Build Mode (audio, out loud)</button>
     </div>
   `;
 
@@ -5675,6 +5728,8 @@ function renderPhrases(){
           <span class="muted" style="font-size:12px">${cc.retired} / ${cc.total} mastered</span>
         </div>
         <button class="btn btn-orange" style="width:100%;font-size:14px;padding:10px" onclick="startPhraseBlitz('${c.key}')">Drill ${esc(c.label.toLowerCase())}</button>
+        <div style="height:4px"></div>
+        <button class="btn btn-blue" style="width:100%;font-size:13px;padding:8px" onclick="startBuildModePhraseSpam('${c.key}')">🎲 Spam ${esc(c.label.toLowerCase())} in Build Mode</button>
         <div class="collapsible" id="phr_${c.key}" style="margin-top:8px">
           <div class="collapsible-head" onclick="document.getElementById('phr_${c.key}').classList.toggle('open')">
             <span class="muted" style="font-size:13px">Browse phrases</span>
@@ -6241,6 +6296,8 @@ function renderVariations(){
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startVariationBlitz()">▶ Drill variations</button>
+      <div style="height:6px"></div>
+      <button class="btn btn-blue" style="width:100%" onclick="startBuildModeVariationSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
     </div>
     <div class="card">
       <h3 style="margin-top:0">Browse all intents</h3>
@@ -6759,6 +6816,8 @@ function renderSimilar(){
         </div>
         <div class="spacer"></div>
         <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">▶ Start similar drill</button>
+        <div style="height:6px"></div>
+        <button class="btn btn-blue" style="width:100%" onclick="startBuildModeSimilarSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
       </div>
       <div class="card">
         <h3 style="margin-top:0">Browse all sets</h3>
@@ -8555,6 +8614,186 @@ function startBuildModeFormSpam(formId){
   }
 }
 window.startBuildModeFormSpam = startBuildModeFormSpam;
+
+/* v6.33 — Spam variants for the rest of the drill screens. Same Build-Mode-
+   shaped lesson rhythm as Form Spam (audio-led, single cycle, no SRS write-
+   back), each scoped to its drill mode's content pool. The corresponding
+   step types (recall / phrase / callback / variation / similar) already
+   render under buildRender, so each generator just emits matching steps. */
+
+/* Vocab Spam — pull ~25 drillable words (honoring active vocab section)
+   and emit recall steps. Lesson new_words drives buildWordById lookup so
+   recall renders correctly with romaji + audio. */
+function buildGenerateVocabSpamLesson(opts){
+  const want = (opts && opts.count) || 25;
+  const drillable = vocabSectionFilter(getDrillableWords());
+  if(drillable.length < 1) throw new Error('No words to drill — enable the N5 pack or pick a section with words.');
+  const pool = shuffleFY(drillable.slice()).slice(0, Math.min(want, drillable.length));
+  const sec = activeVocabSection();
+  const steps = pool.map(w => ({ type:'recall', word_id: w.id }));
+  return {
+    id: 'Gv_' + Date.now().toString(36),
+    title: `Vocab Spam — ${sec.name}`,
+    duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
+    new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji })),
+    carryover_words: [],
+    cycles: [{ id:'spam', name:`Vocab · ${sec.name}`, steps }],
+    _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id) }
+  };
+}
+function startBuildModeVocabSpam(){
+  try {
+    const lesson = buildGenerateVocabSpamLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'home';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){ showToast("Can't start Vocab Spam — " + e.message, {tone:'warn', duration:5000}); }
+}
+window.startBuildModeVocabSpam = startBuildModeVocabSpam;
+
+/* Phrase Spam — pull ~25 phrases (filterable by category) from PHRASE_POOL
+   and emit phrase steps. Mirrors _buildGeneratePhraseSteps but as a single-
+   topic spam session. */
+function buildGeneratePhraseSpamLesson(catKey, opts){
+  const want = (opts && opts.count) || 25;
+  if(!Array.isArray(PHRASE_POOL) || PHRASE_POOL.length === 0) throw new Error('No phrases defined.');
+  const filtered = (catKey && catKey !== 'all') ? PHRASE_POOL.filter(p => p.cat === catKey) : PHRASE_POOL.slice();
+  if(filtered.length < 1) throw new Error('No phrases in that category.');
+  const pool = shuffleFY(filtered).slice(0, Math.min(want, filtered.length));
+  const catLabel = (catKey && catKey !== 'all')
+    ? (PHRASE_CATEGORIES.find(c => c.key === catKey)?.label || catKey)
+    : 'All categories';
+  const steps = pool.map(p => ({ type:'phrase', phrase_id: p.id, jp: p.jp, en: p.en, cat: p.cat }));
+  return {
+    id: 'Gp_' + Date.now().toString(36),
+    title: `Phrase Spam — ${catLabel}`,
+    duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
+    new_words: [],
+    carryover_words: [],
+    cycles: [{ id:'spam', name:`Phrases · ${catLabel}`, steps }],
+    _meta: { mode:'phraseSpam', cat: catKey || 'all' }
+  };
+}
+function startBuildModePhraseSpam(catKey){
+  try {
+    const lesson = buildGeneratePhraseSpamLesson(catKey);
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'phrases';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){ showToast("Can't start Phrase Spam — " + e.message, {tone:'warn', duration:5000}); }
+}
+window.startBuildModePhraseSpam = startBuildModePhraseSpam;
+
+/* Sentence Spam — pull ~25 sentences from SENTENCE_BLITZ_POOL and emit
+   callback steps with explicit sentence_jp/sentence_en (no word_id —
+   _buildRenderCallback supports both shapes). */
+function buildGenerateSentenceSpamLesson(opts){
+  const want = (opts && opts.count) || 25;
+  if(!Array.isArray(SENTENCE_BLITZ_POOL) || SENTENCE_BLITZ_POOL.length === 0) throw new Error('No sentences defined.');
+  const pool = shuffleFY(SENTENCE_BLITZ_POOL.slice()).slice(0, Math.min(want, SENTENCE_BLITZ_POOL.length));
+  const steps = pool.map(s => ({
+    type:'callback',
+    sentence_jp: s.jp,
+    sentence_en: s.en,
+    note: 'sentence drill'
+  }));
+  return {
+    id: 'Gs_' + Date.now().toString(36),
+    title: 'Sentence Spam',
+    duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
+    new_words: [],
+    carryover_words: [],
+    cycles: [{ id:'spam', name:'Sentences', steps }],
+    _meta: { mode:'sentenceSpam' }
+  };
+}
+function startBuildModeSentenceSpam(){
+  try {
+    const lesson = buildGenerateSentenceSpamLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'sentenceBlitz';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){ showToast("Can't start Sentence Spam — " + e.message, {tone:'warn', duration:5000}); }
+}
+window.startBuildModeSentenceSpam = startBuildModeSentenceSpam;
+
+/* Variation Spam — pull ~15 intents from VARIATION_POOL (the same set
+   Variation Blitz drills) and emit variation steps. Each step shows the
+   English intent and reveals every JP variant — audio-led counterpart to
+   the typed drill. */
+function buildGenerateVariationSpamLesson(opts){
+  const want = (opts && opts.count) || 15;
+  if(!Array.isArray(VARIATION_POOL) || VARIATION_POOL.length === 0) throw new Error('No variations defined.');
+  const pool = shuffleFY(VARIATION_POOL.slice()).slice(0, Math.min(want, VARIATION_POOL.length));
+  const steps = pool.map(d => ({
+    type: 'variation',
+    english: d.en,
+    ways: (d.variants || []).map(v => ({ jp: v.jp })),
+    word_id: null,
+    group_id: d.id
+  }));
+  return {
+    id: 'Gx_' + Date.now().toString(36),
+    title: 'Variation Spam',
+    duration_mins: Math.max(3, Math.round(steps.length * 0.5)),
+    new_words: [],
+    carryover_words: [],
+    cycles: [{ id:'spam', name:'Variations', steps }],
+    _meta: { mode:'variationSpam' }
+  };
+}
+function startBuildModeVariationSpam(){
+  try {
+    const lesson = buildGenerateVariationSpamLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'variations';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){ showToast("Can't start Variation Spam — " + e.message, {tone:'warn', duration:5000}); }
+}
+window.startBuildModeVariationSpam = startBuildModeVariationSpam;
+
+/* Similar Spam — sample SIMILAR_SETS and emit similar-discrimination steps
+   across multiple sets. Each set contributes 1-2 items so the user works
+   through the breadth of confusable pairs in one session. */
+function buildGenerateSimilarSpamLesson(opts){
+  const want = (opts && opts.count) || 20;
+  if(!Array.isArray(SIMILAR_SETS) || SIMILAR_SETS.length === 0) throw new Error('No similar sets defined.');
+  const sets = shuffleFY(SIMILAR_SETS.slice());
+  const steps = [];
+  for(const set of sets){
+    if(steps.length >= want) break;
+    const perSet = Math.min(2, set.items?.length || 0);
+    const itemSteps = _buildGenerateSimilarSteps(set, perSet);
+    for(const s of itemSteps){
+      if(steps.length >= want) break;
+      steps.push(s);
+    }
+  }
+  if(steps.length < 1) throw new Error('Similar sets are empty — none could be drilled.');
+  return {
+    id: 'Gm_' + Date.now().toString(36),
+    title: 'Similar Spam',
+    duration_mins: Math.max(3, Math.round(steps.length * 0.4)),
+    new_words: [],
+    carryover_words: [],
+    cycles: [{ id:'spam', name:'Similar', steps }],
+    _meta: { mode:'similarSpam' }
+  };
+}
+function startBuildModeSimilarSpam(){
+  try {
+    const lesson = buildGenerateSimilarSpamLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'similar';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){ showToast("Can't start Similar Spam — " + e.message, {tone:'warn', duration:5000}); }
+}
+window.startBuildModeSimilarSpam = startBuildModeSimilarSpam;
 
 function buildWordById(id){
   const b = state.buildMode;
@@ -10442,10 +10681,39 @@ function renderHome(){
       const libSub = focusCount || suspCount || mastCount
         ? `${focusCount} ⭐ · ${suspCount} suspended · ${mastCount} mastered`
         : 'Browse, focus, suspend, or master individual words';
+      /* v6.33 — vocab section chip row. Mirrors renderForms' verb-section
+         strip: persist in settings.vocabSection, count survivors per section
+         after suspended/mastered/module/section filters, disable empty sections. */
+      const activeVoc = state.settings?.vocabSection || 'all';
+      const masteredSet = new Set(state.settings.masteredWords || []);
+      const suspendedSet = new Set(state.settings.suspendedWords || []);
+      const moduleIds = activeModuleWordIdSet();
+      const allActive = getActiveWords();
+      const vocabChips = VOCAB_SECTIONS.map(sec => {
+        const themeSet = sec.themes ? new Set(sec.themes) : null;
+        const count = allActive.filter(w =>
+          !suspendedSet.has(w.id) &&
+          !masteredSet.has(w.id) &&
+          (!moduleIds || moduleIds.has(w.id)) &&
+          (!themeSet || themeSet.has(w.theme))
+        ).length;
+        const isActive = activeVoc === sec.id;
+        const isDis = count === 0 && sec.id !== 'all';
+        const bg = isActive ? 'background:var(--blue);color:#fff;border-color:var(--blue)' : '';
+        const op = isDis ? 'opacity:0.4;cursor:not-allowed' : '';
+        return `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;${bg};${op}"
+          ${isDis ? 'disabled' : `onclick="setVocabSection('${sec.id}')"`}>
+          ${esc(sec.emoji)} ${esc(sec.name)} <span class="muted" style="font-size:10px;${isActive?'color:#fff':''}">(${count})</span>
+        </button>`;
+      }).join('');
       return `<div class="card">
         <h3>Start</h3>
+        <div class="muted" style="font-size:12px;margin:0 0 6px">Drill scope</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${vocabChips}</div>
         <button class="btn btn-primary" style="font-size:17px;padding:18px;width:100%" ${disabled} onclick="startBlitz()">⚡ Vocab Blitz</button>
         <div class="muted" style="font-size:12px;margin-top:6px">${esc(sub)}</div>
+        <div style="height:6px"></div>
+        <button class="btn btn-blue" style="width:100%" ${disabled} onclick="startBuildModeVocabSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
         <div class="spacer"></div>
         <button class="btn btn-secondary" style="width:100%" onclick="nav('library')">📚 Library</button>
         <div class="muted" style="font-size:12px;margin-top:6px">${esc(libSub)}</div>
@@ -10469,6 +10737,8 @@ function renderHome(){
         <h3>Sentence Blitz</h3>
         <button class="btn btn-orange" style="width:100%" onclick="startSentenceBlitz()">📖 Read &amp; type</button>
         <div class="muted" style="font-size:12px;margin-top:6px">Read JP, type it back, reveal English. Retire on 5-streak. Strugglers surface more often. ${esc(sub)}</div>
+        <div style="height:6px"></div>
+        <button class="btn btn-blue" style="width:100%" onclick="startBuildModeSentenceSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
       </div>`;
     })()}
 
@@ -10479,6 +10749,8 @@ function renderHome(){
         <h3>Phrases</h3>
         <button class="btn btn-orange" style="width:100%" onclick="nav('phrases')">💬 Practical phrases</button>
         <div class="muted" style="font-size:12px;margin-top:6px">Pre-fab chunks for real situations — "I'll be there in 30 min", "say it again please". Read EN, produce JP. ${esc(sub)}</div>
+        <div style="height:6px"></div>
+        <button class="btn btn-blue" style="width:100%" onclick="startBuildModePhraseSpam('all')">🎲 Spam in Build Mode (audio, out loud)</button>
       </div>`;
     })()}
 
