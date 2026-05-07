@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.23.0';
+const APP_VERSION = '6.24.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1130,7 +1130,131 @@ const N5_PACK = [
   {jp:"きょうかい",romaji:"kyoukai",en:"church",pos:"n",theme:"places",register:"neutral",jlpt:5},
   {jp:"おてら",romaji:"otera",en:"temple",pos:"n",theme:"places",register:"neutral",jlpt:5},
   {jp:"じんじゃ",romaji:"jinja",en:"shrine",pos:"n",theme:"places",register:"neutral",jlpt:5},
-  {jp:"ばしょ",romaji:"basho",en:"place/location",pos:"n",theme:"places",register:"neutral",jlpt:5}
+  {jp:"ばしょ",romaji:"basho",en:"place/location",pos:"n",theme:"places",register:"neutral",jlpt:5},
+
+  /* v6.24 — deck expansion (+95 nouns). User reported only ~10 words rotating
+     in Build Mode lessons. Root cause: small themes (objects:16, clothing:10,
+     animals:7, body:21, weather:9, nature:10, school:15, people:11) bottleneck
+     the eligible-words pool after pos:'n' + introduced + theme-match filtering.
+     Bringing every theme to 20+ entries roughly doubles per-theme rotation
+     breadth. All hiragana-only entries — katakana variants are deliberately
+     skipped so they don't fail the hasKatakana filter in Build Mode. */
+
+  /* objects (+20 → ~36) */
+  {jp:"かばん",romaji:"kaban",en:"bag",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"かさ",romaji:"kasa",en:"umbrella",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"にもつ",romaji:"nimotsu",en:"luggage",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ふくろ",romaji:"fukuro",en:"sack",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"がっき",romaji:"gakki",en:"musical instrument",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"かみ",romaji:"kami",en:"paper",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"じしょ",romaji:"jisho",en:"dictionary",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ちず",romaji:"chizu",en:"map",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"きっぷ",romaji:"kippu",en:"ticket",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"きかい",romaji:"kikai",en:"machine",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"どうぐ",romaji:"dougu",en:"tool",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"おもちゃ",romaji:"omocha",en:"toy",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"かびん",romaji:"kabin",en:"vase",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"かがみ",romaji:"kagami",en:"mirror",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ほうき",romaji:"houki",en:"broom",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"のりもの",romaji:"norimono",en:"vehicle",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ふでばこ",romaji:"fudebako",en:"pencil case",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ふうとう",romaji:"fuutou",en:"envelope",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"きって",romaji:"kitte",en:"postage stamp",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"でんち",romaji:"denchi",en:"battery",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+
+  /* clothing (+8 → 18) */
+  {jp:"ようふく",romaji:"youfuku",en:"Western clothes",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"きもの",romaji:"kimono",en:"kimono",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"うわぎ",romaji:"uwagi",en:"jacket",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"したぎ",romaji:"shitagi",en:"underwear",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"てぶくろ",romaji:"tebukuro",en:"gloves",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"ゆかた",romaji:"yukata",en:"summer kimono",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"ぞうり",romaji:"zouri",en:"sandals",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+  {jp:"ながぐつ",romaji:"nagagutsu",en:"rain boots",pos:"n",theme:"clothing",register:"neutral",jlpt:5},
+
+  /* body (+10 → 31) */
+  {jp:"は",romaji:"ha",en:"tooth",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"した",romaji:"shita",en:"tongue",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ほほ",romaji:"hoho",en:"cheek",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"つめ",romaji:"tsume",en:"nail",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ひじ",romaji:"hiji",en:"elbow",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ち",romaji:"chi",en:"blood",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"なみだ",romaji:"namida",en:"tear",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"あせ",romaji:"ase",en:"sweat",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"むね",romaji:"mune",en:"chest",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"あしくび",romaji:"ashikubi",en:"ankle",pos:"n",theme:"body",register:"neutral",jlpt:5},
+
+  /* animals (+12 → 19) */
+  {jp:"ぞう",romaji:"zou",en:"elephant",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"きりん",romaji:"kirin",en:"giraffe",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"へび",romaji:"hebi",en:"snake",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"かめ",romaji:"kame",en:"turtle",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"かえる",romaji:"kaeru",en:"frog",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"くま",romaji:"kuma",en:"bear",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"さる",romaji:"saru",en:"monkey",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"ねずみ",romaji:"nezumi",en:"mouse",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"うさぎ",romaji:"usagi",en:"rabbit",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"しか",romaji:"shika",en:"deer",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"きつね",romaji:"kitsune",en:"fox",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+  {jp:"むし",romaji:"mushi",en:"insect",pos:"n",theme:"animals",register:"neutral",jlpt:5},
+
+  /* school (+8 → 23) */
+  {jp:"きょうしつ",romaji:"kyoushitsu",en:"classroom",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"こくばん",romaji:"kokuban",en:"blackboard",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"きょうかしょ",romaji:"kyoukasho",en:"textbook",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"すうがく",romaji:"suugaku",en:"math",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"りか",romaji:"rika",en:"science",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"びじゅつ",romaji:"bijutsu",en:"art",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"ぶんぽう",romaji:"bunpou",en:"grammar",pos:"n",theme:"school",register:"neutral",jlpt:5},
+  {jp:"たんご",romaji:"tango",en:"vocabulary word",pos:"n",theme:"school",register:"neutral",jlpt:5},
+
+  /* weather (+8 → 17) */
+  {jp:"きせつ",romaji:"kisetsu",en:"season",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"たいふう",romaji:"taifuu",en:"typhoon",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"かみなり",romaji:"kaminari",en:"thunder",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"きり",romaji:"kiri",en:"fog",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"にじ",romaji:"niji",en:"rainbow",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"あらし",romaji:"arashi",en:"storm",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"ゆうやけ",romaji:"yuuyake",en:"sunset glow",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+  {jp:"ひざし",romaji:"hizashi",en:"sunshine",pos:"n",theme:"weather",register:"neutral",jlpt:5},
+
+  /* nature (+10 → 20) */
+  {jp:"もり",romaji:"mori",en:"forest",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"いけ",romaji:"ike",en:"pond",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"たき",romaji:"taki",en:"waterfall",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"たに",romaji:"tani",en:"valley",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"なみ",romaji:"nami",en:"wave",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"すな",romaji:"suna",en:"sand",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"つち",romaji:"tsuchi",en:"soil",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"くさ",romaji:"kusa",en:"grass",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"はっぱ",romaji:"happa",en:"leaf",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+  {jp:"えだ",romaji:"eda",en:"branch",pos:"n",theme:"nature",register:"neutral",jlpt:5},
+
+  /* people (+5 → 16) */
+  {jp:"おきゃく",romaji:"okyaku",en:"customer/guest",pos:"n",theme:"people",register:"neutral",jlpt:5},
+  {jp:"どうりょう",romaji:"douryou",en:"colleague",pos:"n",theme:"people",register:"neutral",jlpt:5},
+  {jp:"おとな",romaji:"otona",en:"adult",pos:"n",theme:"people",register:"neutral",jlpt:5},
+  {jp:"あかちゃん",romaji:"akachan",en:"baby",pos:"n",theme:"people",register:"neutral",jlpt:5},
+  {jp:"わかもの",romaji:"wakamono",en:"young person",pos:"n",theme:"people",register:"neutral",jlpt:5},
+
+  /* food (+16 → 57) — fruit, veggies, staples gap */
+  {jp:"もも",romaji:"momo",en:"peach",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"ぶどう",romaji:"budou",en:"grape",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"いちご",romaji:"ichigo",en:"strawberry",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"すいか",romaji:"suika",en:"watermelon",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"なし",romaji:"nashi",en:"pear",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"きのこ",romaji:"kinoko",en:"mushroom",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"たまねぎ",romaji:"tamanegi",en:"onion",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"にんじん",romaji:"ninjin",en:"carrot",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"きゅうり",romaji:"kyuuri",en:"cucumber",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"なす",romaji:"nasu",en:"eggplant",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"だいこん",romaji:"daikon",en:"daikon radish",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"とうふ",romaji:"toufu",en:"tofu",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"うどん",romaji:"udon",en:"udon",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"そば",romaji:"soba",en:"soba",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"てんぷら",romaji:"tenpura",en:"tempura",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"みそ",romaji:"miso",en:"miso",pos:"n",theme:"food",register:"neutral",jlpt:5},
+  {jp:"しょうゆ",romaji:"shouyu",en:"soy sauce",pos:"n",theme:"food",register:"neutral",jlpt:5}
 ];
 
 /* ===================== SENTENCE TEMPLATES ===================== */
@@ -3575,13 +3699,13 @@ function buildFormQueue(formId, maxN){
 function startFormDrill(formId){
   const f = FORMS.find(x => x.id === formId);
   if(!f){ alert('Unknown form'); return; }
-  /* v6.22 — queue 15→50. The 15 cap was the "10–15 questions and it stops"
-     felt limit. Form Drill stops when the queue runs out, so the cap
-     translated directly to session length. With ~65 verbs eligible per
-     form (v4.28 removed the gate) a 50-deep queue gives us 3–4× the prior
-     session and naturally short-circuits if the user has fewer than 50
-     verbs ready (buildFormQueue caps at what's available). */
-  const q = buildFormQueue(formId, 50);
+  /* v6.22 — queue 15→50. v6.24 — 50→150 because user reported Form Drill
+     "hasn't changed" (sessions still felt short). Form Drill stops when the
+     queue runs out, so the cap translates directly to session length. With
+     ~65+ verbs eligible per form, a 150-deep queue lets the drill run as
+     long as the user has verbs ready and naturally short-circuits to
+     whatever is available below 150. */
+  const q = buildFormQueue(formId, 150);
   if(!q.length){
     alert(`No verbs ready for ${f.name} drill right now. All scheduled for later.`);
     return;
@@ -6753,7 +6877,18 @@ const BUILD_TEMPLATES = [
   { id:'is_dirty',      verb:'きたない', slotKey:'N', pattern:'{N}は きたない',        en:'{N} is dirty',              slotThemes:['clothing','home','body'] },
   { id:'is_pretty',     verb:'きれい',   slotKey:'N', pattern:'{N}は きれい です',     en:'{N} is pretty/clean',       slotThemes:['family','people','places','clothing'] },
   { id:'is_convenient', verb:'べんり',   slotKey:'N', pattern:'{N}は べんり です',     en:'{N} is convenient',         slotThemes:['objects','places'] },
-  { id:'is_famous',     verb:'ゆうめい', slotKey:'N', pattern:'{N}は ゆうめい です',   en:'{N} is famous',             slotThemes:['places','people','family','food'] }
+  { id:'is_famous',     verb:'ゆうめい', slotKey:'N', pattern:'{N}は ゆうめい です',   en:'{N} is famous',             slotThemes:['places','people','family','food'] },
+
+  /* v6.24 — time-theme templates. The 'time' theme has 50 nouns (months,
+     days of week, minutes/hours suffixes) but no SIMPLE template used it
+     before this batch — Build Mode never surfaced them. These templates
+     give months/days/today/yesterday a way into rotation. */
+  { id:'today_is',      verb:'です',     slotKey:'N', pattern:'きょうは {N} です',     en:'Today is {N}',              slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','January','February','March','April','May','June','July','August','September','October','November','December'] },
+  { id:'tomorrow_is',   verb:'です',     slotKey:'N', pattern:'あしたは {N} です',     en:'Tomorrow is {N}',           slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] },
+  { id:'time_when',     verb:'いきます', slotKey:'N', pattern:'{N}に いきます',         en:'I go on {N}',               slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] },
+  { id:'time_busy',     verb:'いそがしい', slotKey:'N', pattern:'{N}は いそがしい',     en:'{N} is busy',                slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','this week','last week','today'] },
+  { id:'time_off',      verb:'やすみ',   slotKey:'N', pattern:'{N}は やすみ です',     en:'{N} is a day off',          slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','today','tomorrow'] },
+  { id:'time_like',     verb:'すき',     slotKey:'N', pattern:'{N}が すき',             en:'I like {N}',                slotThemes:['time'], slotWords:['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -7900,10 +8035,28 @@ function buildGenerateLesson(mode){
     ? `Warm-up — ${w1.en}, ${w2.en}, ${w3.en}`
     : `Introduce — ${w1.en}, ${w2.en}, ${w3.en}`;
 
+  /* v6.24 — cycle 4: cold final pass over all 5 lesson words (3 new + 2 cb).
+     Each word gets one cold-recall step in whichever frame the user has
+     seen it LEAST in cycle 2/3. Adds ~5 steps per lesson; doubles down on
+     the user's "I need more time per lesson" ask without restructuring
+     the cycle1-3 contract. */
+  const cycle4Steps = [
+    { type:'callback', word_id: buildGenWordId(w1), note:'final pass' },
+    { type:'build',    sentence_jp: s1.jp, sentence_en: s1.en },
+    { type:'callback', word_id: buildGenWordId(w2), note:'final pass' },
+    { type:'build',    sentence_jp: s2.jp, sentence_en: s2.en },
+    { type:'callback', word_id: buildGenWordId(w3), note:'final pass' },
+    { type:'build',    sentence_jp: p3.jp, sentence_en: p3.en },
+    { type:'callback', word_id: buildGenWordId(cb1), note:'final pass — earlier word' },
+    { type:'build',    sentence_jp: pCb1.jp, sentence_en: pCb1.en },
+    { type:'callback', word_id: buildGenWordId(cb2), note:'final pass — earlier word' },
+    { type:'build',    sentence_jp: sCb2.jp, sentence_en: sCb2.en }
+  ];
+
   return {
     id: lessonId,
     title: `${mode === 'complex' ? 'Complex' : mode === 'social' ? 'Social' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
-    duration_mins: mode === 'complex' ? 10 : mode === 'social' ? 9 : 8,
+    duration_mins: mode === 'complex' ? 13 : mode === 'social' ? 12 : 11,
     new_words: newWords.map(toRef),
     carryover_words: callbacks.map(toRef),
     cycles: [
@@ -7911,7 +8064,9 @@ function buildGenerateLesson(mode){
       { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`,
         steps: cycle2Steps },
       { id:'cycle_3', name:`Callbacks — mix frames`,
-        steps: cycle3Steps }
+        steps: cycle3Steps },
+      { id:'cycle_4', name:`Final pass — all 5 words cold`,
+        steps: cycle4Steps }
     ],
     _meta: {
       mode,
