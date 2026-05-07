@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.29.0';
+const APP_VERSION = '6.30.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8406,17 +8406,31 @@ function buildGenerateFormSpamLesson(formId, opts){
   if(!f) throw new Error('Unknown grammar pattern: ' + formId);
   const verbs = formEligibleVerbs();
   if(verbs.length < 1) throw new Error('No verbs in your deck — enable the N5 pack in Settings.');
-  const want = (opts && opts.count) || 8;
+  /* v6.30 — bumped default 8 → 25 because users complained "Pick a pattern →
+     Spam in Build Mode" sessions ended too quickly AND repeated the same
+     verbs. With 140 eligible verbs in the deck, an 8-verb session is just
+     5.7% of the pool — almost guaranteed repetition across sessions. */
+  const want = (opts && opts.count) || 25;
   const n = Math.min(want, verbs.length);
 
-  const scored = verbs.map(w => {
-    const fst = state.formStats?.[w.id]?.[formId];
-    const due = (fst && fst.smNext != null) ? fst.smNext : 0;
-    return { w, due };
-  });
-  scored.sort((a, b) => a.due - b.due);
-  const top = scored.slice(0, Math.max(n * 2, n + 4)).map(x => x.w);
-  const pool = shuffleFY(top.slice()).slice(0, n);
+  /* v6.30 — Form Spam verb selection. Prior code sorted verbs by smNext
+     ascending and took the top n*2, biasing to the SAME most-due verbs
+     every session. Now we split by formRecentSet (verb-form pairs drilled
+     in the last ~80 events across Form Drill + Build Mode + Form Spam):
+       freshUnseen = no formStats entry AND not in recent log
+       freshSeen   = has formStats AND not in recent log
+       stale       = in recent log
+     Pool fills from fresh wells first; stale only backfills if needed. */
+  const recent = formRecentSet(formId);
+  const freshUnseen = [], freshSeen = [], stale = [];
+  for(const w of verbs){
+    const isRecent = recent.has(w.id);
+    if(isRecent){ stale.push(w); continue; }
+    if(!state.formStats?.[w.id]?.[formId]) freshUnseen.push(w);
+    else freshSeen.push(w);
+  }
+  const ordered = [...shuffleFY(freshUnseen), ...shuffleFY(freshSeen), ...shuffleFY(stale)];
+  const pool = ordered.slice(0, n);
 
   const safeConj = jp => { try { return f.conj(jp); } catch(e){ return jp; } };
   const safeEn = w => {
@@ -9263,13 +9277,22 @@ function buildOnComplete(){
     }catch(e){ log('build_sm2_credit_err', {err:String(e)}); }
     /* v6.29 — record any form_drill steps the lesson contained as recently
        served, so standalone Form Drills don't surface the same verb-form
-       pair right after Build Mode just drilled it. */
+       pair right after Build Mode just drilled it.
+       v6.30 — also record Form Spam verbs (mode === 'formSpam'). Form Spam
+       steps are type:'build', not 'form_drill', so the loop above doesn't
+       catch them — but every word in real_word_ids was drilled with
+       _meta.formId, so we push those pairs explicitly. */
     try{
       for(const c of (l.cycles || [])){
         for(const s of (c.steps || [])){
           if(s.type === 'form_drill' && s.word_id && s.form_id){
             formRecentPush(s.word_id, s.form_id);
           }
+        }
+      }
+      if(l._meta.mode === 'formSpam' && l._meta.formId){
+        for(const wid of (l._meta.real_word_ids || [])){
+          if(wid) formRecentPush(wid, l._meta.formId);
         }
       }
     }catch(e){ log('build_form_recent_err', {err:String(e)}); }
