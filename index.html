@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.21.0';
+const APP_VERSION = '6.22.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1479,7 +1479,8 @@ const LS = {
   sentenceStats:'jp4_sentence_stats',
   phraseStats:'jp4_phrase_stats',
   particleStats:'jp4_particle_stats',
-  variationStats:'jp4_variation_stats'
+  variationStats:'jp4_variation_stats',
+  similarStats:'jp4_similar_stats'
 };
 
 const DEFAULT_SETTINGS = {
@@ -1541,6 +1542,8 @@ let state = {
   particleSession:null, // active Particle session — v6.7
   variationStats:{},    // drill id -> variantIdx -> same shape — v6.8
   variationBlitz:null,  // active Variation Blitz session — v6.8
+  similarStats:{},      // setId -> itemIdx -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount} — v6.22
+  similar:null,         // active Similar drill session — v6.22
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null,
@@ -1784,6 +1787,7 @@ function save(){
     localStorage.setItem(LS.phraseStats, JSON.stringify(state.phraseStats || {}));
     localStorage.setItem(LS.particleStats, JSON.stringify(state.particleStats || {}));
     localStorage.setItem(LS.variationStats, JSON.stringify(state.variationStats || {}));
+    localStorage.setItem(LS.similarStats, JSON.stringify(state.similarStats || {}));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -1810,6 +1814,7 @@ function load(){
     state.phraseStats = JSON.parse(localStorage.getItem(LS.phraseStats)||'{}');
     state.particleStats = JSON.parse(localStorage.getItem(LS.particleStats)||'{}');
     state.variationStats = JSON.parse(localStorage.getItem(LS.variationStats)||'{}');
+    state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -3570,7 +3575,13 @@ function buildFormQueue(formId, maxN){
 function startFormDrill(formId){
   const f = FORMS.find(x => x.id === formId);
   if(!f){ alert('Unknown form'); return; }
-  const q = buildFormQueue(formId, 15);
+  /* v6.22 — queue 15→50. The 15 cap was the "10–15 questions and it stops"
+     felt limit. Form Drill stops when the queue runs out, so the cap
+     translated directly to session length. With ~65 verbs eligible per
+     form (v4.28 removed the gate) a 50-deep queue gives us 3–4× the prior
+     session and naturally short-circuits if the user has fewer than 50
+     verbs ready (buildFormQueue caps at what's available). */
+  const q = buildFormQueue(formId, 50);
   if(!q.length){
     alert(`No verbs ready for ${f.name} drill right now. All scheduled for later.`);
     return;
@@ -6067,6 +6078,400 @@ function renderVariationBlitz(){
 }
 
 /* =========================================================================
+   SIMILAR (v6.22) — multiple-choice discrimination over near-synonym sets.
+   No API: each set has 2-4 confusable JP words with concise glosses + nuance
+   notes. A round shows ONE item's English gloss; user picks the matching JP
+   from the set. Reveal shows all items so the user learns the contrast every
+   round. Per-(setId, itemIdx) streak-to-retire (3 in a row), independent of
+   vocab SRS. Addresses the deferred Julius #5 ask from PLAN_v6.12 — built
+   the no-API 3-way version, not the API-walled rationale generator.
+   ========================================================================= */
+
+const SIMILAR_SETS = [
+  {
+    id:'see',
+    title:'See / watch / visible',
+    items:[
+      { jp:'みる',     en:'to watch / look at',          note:'volitional — you choose to look at it (TV, a movie)' },
+      { jp:'みえる',   en:'to be visible / can see',     note:'something appears in your view, no effort (the mountain is visible)' },
+      { jp:'みつかる', en:'to be found / discovered',    note:'intransitive — the thing is found (my keys turned up)' }
+    ]
+  },
+  {
+    id:'hear',
+    title:'Hear / listen / audible',
+    items:[
+      { jp:'きく',     en:'to listen / ask',             note:'volitional — you tune in (music) or you ask a question' },
+      { jp:'きこえる', en:'to be audible / can hear',    note:'sound reaches your ear, no effort (I hear voices)' }
+    ]
+  },
+  {
+    id:'know',
+    title:'Know / understand',
+    items:[
+      { jp:'しっている', en:'to know (a fact, a person)', note:'state of having information — uses ている form, NOT bare しる in present' },
+      { jp:'わかる',     en:'to understand / get it',     note:'comprehension clicks. Used for languages, explanations, situations.' }
+    ]
+  },
+  {
+    id:'a-little',
+    title:'A little / probably / very',
+    items:[
+      { jp:'ちょっと', en:'a moment / a bit (casual)',   note:'conversational. "wait a moment" = ちょっと まって' },
+      { jp:'すこし',   en:'a little / a few (formal-ish)', note:'slightly more formal than ちょっと, often quantitative ("I drank a little")' },
+      { jp:'たぶん',   en:'probably / maybe',            note:'expresses likelihood — NOT a quantity. "probably it will rain"' }
+    ]
+  },
+  {
+    id:'have',
+    title:'Have / there is — animate vs object',
+    items:[
+      { jp:'あります', en:'to have / there is (object)',  note:'for inanimate things — books, money, time, a meeting' },
+      { jp:'います',   en:'to have / there is (animate)', note:'for people and animals — a brother, a cat, a child' }
+    ]
+  },
+  {
+    id:'like',
+    title:'Like / love / dislike',
+    items:[
+      { jp:'すき',     en:'like',                        note:'general liking — "I like sushi"' },
+      { jp:'だいすき', en:'love / really like',          note:'strong like — "I love it!" Less heavy than English "love" for people' },
+      { jp:'きらい',   en:'dislike',                     note:'genuinely dislike — stronger than "not liking", a rejection' }
+    ]
+  },
+  {
+    id:'hot',
+    title:'Hot — weather / object / liquid',
+    items:[
+      { jp:'あつい (暑い)', en:'hot (weather / room)',    note:'used for ambient temperature — outside, inside a room' },
+      { jp:'あつい (熱い)', en:'hot (object / drink)',    note:'used for things you touch or drink — coffee, soup, a stove' }
+    ]
+  },
+  {
+    id:'fast-early',
+    title:'Fast vs early — same word, two readings',
+    items:[
+      { jp:'はやい (速い)', en:'fast / quick (speed)',    note:'speed — a fast car, runs fast' },
+      { jp:'はやい (早い)', en:'early (time)',            note:'early in time — wake up early, you came early' }
+    ]
+  },
+  {
+    id:'home',
+    title:'House vs home',
+    items:[
+      { jp:'いえ', en:'house (the building)',             note:'physical structure — "the house has 3 rooms"' },
+      { jp:'うち', en:'home / my place',                  note:'where I live — "I am at home", "come over to my place"' }
+    ]
+  },
+  {
+    id:'tired',
+    title:'Tired / sleepy / free time',
+    items:[
+      { jp:'つかれた',   en:"I'm tired (worn out)",       note:'physical/mental exhaustion — common end-of-day phrase' },
+      { jp:'ねむい',     en:"I'm sleepy (want to sleep)", note:'craving sleep specifically — heavy eyelids' },
+      { jp:'ひま',       en:"I'm free / bored",           note:'state of having nothing to do — also "are you free?"' }
+    ]
+  },
+  {
+    id:'good-skilled',
+    title:'Good / skilled / liked',
+    items:[
+      { jp:'いい',     en:'good / nice',                 note:'general "good" — can mean fine, OK, or genuinely nice' },
+      { jp:'じょうず', en:'skilled at (others)',         note:"praising someone else's ability — \"your Japanese is good\"" },
+      { jp:'とくい',   en:'good at (self / strong suit)', note:'your strong suit — used for yourself or describing strengths' }
+    ]
+  }
+];
+
+const SIMILAR_RETIRE_STREAK = 3;
+const SIMILAR_SESSION_TARGET = 12;
+const SIMILAR_MAINTENANCE_DAYS = 7;
+
+function similarSetById(id){ return SIMILAR_SETS.find(s => s.id === id) || null; }
+
+function similarStatFor(setId, itemIdx){
+  if(!state.similarStats) state.similarStats = {};
+  if(!state.similarStats[setId]) state.similarStats[setId] = {};
+  if(!state.similarStats[setId][itemIdx]){
+    state.similarStats[setId][itemIdx] = {streak:0, retired:false, retiredAt:null, lastSeen:null, correctCount:0, wrongCount:0};
+  }
+  return state.similarStats[setId][itemIdx];
+}
+
+function similarStatPeek(setId, itemIdx){
+  return state.similarStats?.[setId]?.[itemIdx] || null;
+}
+
+function similarItemDueForMaintenance(setId, itemIdx){
+  const st = similarStatPeek(setId, itemIdx);
+  if(!st || !st.retired) return false;
+  const days = (now() - (st.retiredAt || 0)) / (1000*60*60*24);
+  return days >= SIMILAR_MAINTENANCE_DAYS;
+}
+
+function similarCounts(){
+  let totalItems = 0, retired = 0, learning = 0, unseen = 0, setsDone = 0;
+  for(const set of SIMILAR_SETS){
+    let setRet = 0;
+    for(let i = 0; i < set.items.length; i++){
+      totalItems++;
+      const st = similarStatPeek(set.id, i);
+      if(!st){ unseen++; continue; }
+      if(st.retired){ retired++; setRet++; }
+      else learning++;
+    }
+    if(setRet === set.items.length) setsDone++;
+  }
+  return {totalSets: SIMILAR_SETS.length, setsDone, totalItems, retired, learning, unseen};
+}
+
+function buildSimilarPool(){
+  /* Build a session pool of (setId, itemIdx) targets. Prioritise unseen +
+     learning + maintenance-due. Within that, weight struggling items more
+     heavily so wrong-answers resurface. */
+  const candidates = [];
+  for(const set of SIMILAR_SETS){
+    for(let i = 0; i < set.items.length; i++){
+      const st = similarStatPeek(set.id, i);
+      if(!st){ candidates.push({setId:set.id, itemIdx:i, weight:2.0}); continue; }
+      if(st.retired){
+        if(similarItemDueForMaintenance(set.id, i)){
+          candidates.push({setId:set.id, itemIdx:i, weight:1.0});
+        }
+        continue;
+      }
+      const w = 1 + (st.wrongCount || 0) * 0.5;
+      candidates.push({setId:set.id, itemIdx:i, weight:w});
+    }
+  }
+  if(!candidates.length){
+    /* Everything retired and not yet due — let the user practise anyway. */
+    for(const set of SIMILAR_SETS){
+      for(let i = 0; i < set.items.length; i++){
+        candidates.push({setId:set.id, itemIdx:i, weight:1.0});
+      }
+    }
+  }
+  /* Weighted shuffle: expand by weight, shuffle, dedup, take target.
+     shuffleFY returns a new array (non-mutating), so capture the result. */
+  const expanded = [];
+  for(const c of candidates){
+    const reps = Math.max(1, Math.round(c.weight * 2));
+    for(let r = 0; r < reps; r++) expanded.push(c);
+  }
+  const shuffled = shuffleFY(expanded);
+  const seen = new Set();
+  const out = [];
+  for(const c of shuffled){
+    const key = c.setId + '|' + c.itemIdx;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+    if(out.length >= SIMILAR_SESSION_TARGET) break;
+  }
+  return out;
+}
+
+function startSimilar(){
+  if(!state.similarStats) state.similarStats = {};
+  const pool = buildSimilarPool();
+  if(!pool.length){
+    showToast('Nothing to drill — no similar sets defined.', {tone:'warn'});
+    return;
+  }
+  state.similar = {
+    active:true, complete:false,
+    pool,
+    idx:0,
+    submitted:false,
+    chosenIdx:null,
+    correct:null,
+    tally:{correct:0, wrong:0, retired:0, total:pool.length}
+  };
+  clearNextTimer();
+  nav('similar');
+}
+window.startSimilar = startSimilar;
+
+function similarCurrent(){
+  const s = state.similar;
+  if(!s || !s.active) return null;
+  return s.pool[s.idx] || null;
+}
+
+function similarSubmit(chosenIdx){
+  const s = state.similar;
+  if(!s || s.submitted) return;
+  const cur = similarCurrent();
+  if(!cur) return;
+  const correct = chosenIdx === cur.itemIdx;
+  s.chosenIdx = chosenIdx;
+  s.correct = correct;
+  s.submitted = true;
+  const st = similarStatFor(cur.setId, cur.itemIdx);
+  st.lastSeen = now();
+  if(correct){
+    st.correctCount = (st.correctCount || 0) + 1;
+    st.streak = (st.streak || 0) + 1;
+    s.tally.correct++;
+    if(!st.retired && st.streak >= SIMILAR_RETIRE_STREAK){
+      st.retired = true;
+      st.retiredAt = now();
+      s.tally.retired++;
+    }
+  } else {
+    st.wrongCount = (st.wrongCount || 0) + 1;
+    st.streak = 0;
+    if(st.retired){ st.retired = false; st.retiredAt = null; }
+    s.tally.wrong++;
+  }
+  updateStreak(correct);
+  save();
+  render();
+  setTimeout(() => $('#similarContinue')?.focus(), 30);
+}
+window.similarSubmit = similarSubmit;
+
+function similarAdvance(){
+  const s = state.similar;
+  if(!s) return;
+  s.idx++;
+  s.submitted = false;
+  s.chosenIdx = null;
+  s.correct = null;
+  if(s.idx >= s.pool.length){
+    s.active = false;
+    s.complete = true;
+  }
+  render();
+}
+window.similarAdvance = similarAdvance;
+
+function similarEnd(){
+  state.similar = null;
+  nav('home');
+}
+window.similarEnd = similarEnd;
+
+function renderSimilar(){
+  const s = state.similar;
+  const counts = similarCounts();
+  if(!s){
+    /* Landing screen — overview + start */
+    const browse = SIMILAR_SETS.map(set => {
+      let ret = 0;
+      for(let i = 0; i < set.items.length; i++){
+        if(similarStatPeek(set.id, i)?.retired) ret++;
+      }
+      const fully = ret === set.items.length;
+      const dot = fully ? '✓' : (ret ? `${ret}/${set.items.length}` : '○');
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <div style="font-size:14px;font-weight:600">${esc(set.title)}</div>
+          <span class="muted" style="font-size:11px;white-space:nowrap">${dot}</span>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:2px">${set.items.map(it => esc(it.jp)).join(' · ')}</div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="card">
+        <h2 style="margin-top:0">🔍 Similar words</h2>
+        <div class="muted" style="font-size:13px;line-height:1.5">
+          Confusable JP words paired with concise nuance notes. Each round shows one English gloss — pick the matching Japanese. Reveal shows the whole set so the contrast lands every round. 3-in-a-row retires an item; misses resurface it.
+        </div>
+        <div class="stats-row" style="margin-top:12px">
+          <div class="stat-box"><div class="stat-num">${counts.setsDone}</div><div class="stat-label">Sets done</div></div>
+          <div class="stat-box"><div class="stat-num">${counts.retired}</div><div class="stat-label">Items retired</div></div>
+          <div class="stat-box"><div class="stat-num">${counts.totalItems}</div><div class="stat-label">Total items</div></div>
+          <div class="stat-box"><div class="stat-num">${counts.totalSets}</div><div class="stat-label">Sets</div></div>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">▶ Start similar drill</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Browse all sets</h3>
+        ${browse}
+      </div>
+      <div class="card">
+        <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
+      </div>
+    `;
+  }
+  if(s.complete){
+    const t = s.tally;
+    const attempts = t.correct + t.wrong;
+    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
+    return `<div class="card">
+      <h2 style="margin-top:0">Similar drill complete</h2>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
+        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">Drill again</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="similarEnd()">Back home</button>
+    </div>`;
+  }
+  const cur = similarCurrent();
+  if(!cur) return `<div class="card"><div class="muted">No item.</div></div>`;
+  const set = similarSetById(cur.setId);
+  if(!set) return `<div class="card"><div class="muted">Unknown set.</div></div>`;
+  const target = set.items[cur.itemIdx];
+  const total = s.pool.length;
+  const pos = s.idx + 1;
+  const head = `<div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span class="muted" style="font-size:13px">Item ${pos} / ${total} · ${esc(set.title)}</span>
+    </div>
+  </div>`;
+
+  if(!s.submitted){
+    /* Order options identically every round (set-defined order) so the user
+       builds spatial memory of where each option sits — this aids the
+       contrast learning. */
+    const opts = set.items.map((it, i) => `
+      <button class="btn btn-secondary" style="width:100%;text-align:left;padding:14px;font-size:18px;margin-bottom:8px" onclick="similarSubmit(${i})">
+        <span class="jp" style="font-weight:600">${esc(it.jp)}</span>
+      </button>
+    `).join('');
+    return head + `<div class="card">
+      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Which Japanese means…</div>
+      <div style="font-size:22px;text-align:center;font-weight:600;line-height:1.4;padding:16px 8px;color:var(--text)">${esc(target.en)}</div>
+      <div class="spacer"></div>
+      ${opts}
+    </div>`;
+  }
+  /* Reveal — show all options with their notes; highlight correct + chosen */
+  const reveal = set.items.map((it, i) => {
+    const isCorrect = i === cur.itemIdx;
+    const isChosen = i === s.chosenIdx;
+    let border = 'var(--border)', bg = 'rgba(255,255,255,0.02)';
+    if(isCorrect){ border = 'var(--green)'; bg = 'rgba(80,200,120,0.08)'; }
+    if(isChosen && !isCorrect){ border = 'var(--red)'; bg = 'rgba(220,80,80,0.08)'; }
+    const tag = isCorrect ? ' <span style="color:var(--green);font-size:12px">✓ correct</span>' : (isChosen ? ' <span style="color:var(--red);font-size:12px">✗ your pick</span>' : '');
+    return `<div style="border-left:3px solid ${border};background:${bg};padding:10px 12px;margin:8px 0;border-radius:4px">
+      <div class="jp" style="font-size:18px;font-weight:600">${esc(it.jp)}${tag}</div>
+      <div class="muted" style="font-size:12px;margin-top:2px"><b>${esc(it.en)}</b></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">${esc(it.note)}</div>
+      <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(it.jp)}')">🔊</button></div>
+    </div>`;
+  }).join('');
+  const verdict = s.correct
+    ? `<div style="text-align:center;color:var(--green);font-weight:600;font-size:16px;margin:8px 0">Correct ✓</div>`
+    : `<div style="text-align:center;color:var(--red);font-weight:600;font-size:16px;margin:8px 0">Not quite — see the contrast below</div>`;
+  return head + `<div class="card">
+    ${verdict}
+    ${reveal}
+    <div class="spacer"></div>
+    <button id="similarContinue" class="btn btn-primary" style="width:100%" onclick="similarAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();similarAdvance();}">Continue ↵</button>
+  </div>`;
+}
+window.renderSimilar = renderSimilar;
+
+/* =========================================================================
    BUILD MODE — Paul Noble-style audio-led sentence construction
    Templates drive sentences, deck provides slot-fillers. Trust-based:
    produce out loud, reveal the answer, tap Next. v6.14 — lesson
@@ -6178,7 +6583,36 @@ const BUILD_TEMPLATES = [
 
   /* school — present */
   { id:'school_hard',  slotKey:'N', pattern:'{N}は むずかしい',        en:'{N} is difficult',          slotThemes:['school'] },
-  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] }
+  { id:'school_like',  slotKey:'N', pattern:'{N}が すき',              en:'I like {N}',                slotThemes:['school'] },
+
+  /* v6.22 — verb variety drop. Templates above repeat too few verbs
+     (たべる/のむ/いく/ある/いる/すき). New templates introduce common verbs
+     the user wasn't hearing: みる/きく/よむ/かく/かう/はなす/まつ/つかう/
+     つくる/もつ/わかる/しる, plus new adjectives (たかい/やすい/あつい/さむい/
+     あたらしい/ふるい/たのしい/とおい). Sticks to existing themes so
+     eligibleForPair has real deck words to slot. */
+  { id:'see_thing',     verb:'みる',   slotKey:'N', pattern:'{N}を みます',           en:'I see/watch {N}',          slotThemes:['objects','animals','school'] },
+  { id:'listen_thing',  verb:'きく',   slotKey:'N', pattern:'{N}を ききます',         en:'I listen to {N}',          slotThemes:['school','objects'] },
+  { id:'read_thing',    verb:'よむ',   slotKey:'N', pattern:'{N}を よみます',         en:'I read {N}',               slotThemes:['school','objects'] },
+  { id:'write_thing',   verb:'かく',   slotKey:'N', pattern:'{N}を かきます',         en:'I write {N}',              slotThemes:['school','objects'] },
+  { id:'buy_thing',     verb:'かう',   slotKey:'N', pattern:'{N}を かいます',         en:'I buy {N}',                slotThemes:['food','objects','clothing'] },
+  { id:'wait_person',   verb:'まつ',   slotKey:'N', pattern:'{N}を まちます',         en:'I wait for {N}',           slotThemes:['family','people'] },
+  { id:'meet_person',   verb:'あう',   slotKey:'N', pattern:'{N}に あいます',         en:'I meet {N}',               slotThemes:['family','people'] },
+  { id:'use_thing',     verb:'つかう', slotKey:'N', pattern:'{N}を つかいます',       en:'I use {N}',                slotThemes:['objects','home','clothing'] },
+  { id:'make_thing',    verb:'つくる', slotKey:'N', pattern:'{N}を つくります',       en:'I make {N}',               slotThemes:['food','objects'] },
+  { id:'speak_about',   verb:'はなす', slotKey:'N', pattern:'{N}と はなします',       en:'I talk with {N}',          slotThemes:['family','people'] },
+  { id:'know_thing',    verb:'しる',   slotKey:'N', pattern:'{N}を しっています',     en:'I know {N}',               slotThemes:['family','people','places'] },
+  { id:'hold_thing',    verb:'もつ',   slotKey:'N', pattern:'{N}を もっています',     en:'I have/hold {N}',          slotThemes:['objects','clothing'] },
+
+  /* new adjectives — same noun slot pattern */
+  { id:'is_expensive',  verb:'たかい', slotKey:'N', pattern:'{N}は たかい',           en:'{N} is expensive',         slotThemes:['food','objects','clothing'] },
+  { id:'is_cheap',      verb:'やすい', slotKey:'N', pattern:'{N}は やすい',           en:'{N} is cheap',             slotThemes:['food','objects','clothing'] },
+  { id:'is_hot',        verb:'あつい', slotKey:'N', pattern:'{N}は あつい',           en:'{N} is hot',               slotThemes:['food','weather'] },
+  { id:'is_cold',       verb:'さむい', slotKey:'N', pattern:'{N}は さむい',           en:'{N} is cold',              slotThemes:['weather'] },
+  { id:'is_new',        verb:'あたらしい', slotKey:'N', pattern:'{N}は あたらしい',   en:'{N} is new',               slotThemes:['objects','clothing','home'] },
+  { id:'is_old',        verb:'ふるい', slotKey:'N', pattern:'{N}は ふるい',           en:'{N} is old',               slotThemes:['objects','clothing','home'] },
+  { id:'is_fun',        verb:'たのしい', slotKey:'N', pattern:'{N}は たのしい',       en:'{N} is fun',               slotThemes:['school','places'] },
+  { id:'is_far',        verb:'とおい', slotKey:'N', pattern:'{N}は とおい',           en:'{N} is far',               slotThemes:['places'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -6719,11 +7153,31 @@ const BUILD_LS_SEQUENCE = 'jp4_build_sequence';
    generator was picking the same templates and same words session after
    session because nothing remembered "we just used this." */
 const BUILD_LS_RECENT = 'jp4_build_recent';
-const BUILD_RECENT_TEMPLATES_CAP = 10;
+/* v6.22 — caps raised. Templates 10→30 because we have 169 templates across
+   pools (33 simple + 51 complex + 70 social + 15 hard) and a 10-deep ring
+   was excluding only ~5 prior lessons, letting the same template reappear
+   too soon. Verb tracking added separately because many templates share
+   the same verb (e.g. たべる appears in 8+ complex templates) — so dedup
+   on template-id alone wasn't enough. */
+const BUILD_RECENT_TEMPLATES_CAP = 30;
 const BUILD_RECENT_WORDS_CAP = 60;
+/* v6.22 — verb-recency. Track main verb of each template used recently
+   so we bias selection toward templates with verbs we haven't said in a
+   while. Works with the existing template-recency to break the
+   "same verbs and adjectives over and over" feeling. */
+const BUILD_RECENT_VERBS_CAP = 12;
+/* v6.22 — autopilot session multiplier. When auto-advance is on (default),
+   completing a generated lesson automatically chains into a fresh one
+   (same mode, fresh templates/words) up to this cap. 4 lessons ≈ 50–60
+   steps ≈ 4× the prior single-lesson session. Form Spam, Daily Chain,
+   and the hand-authored Starter never auto-chain. */
+const BUILD_AUTO_CHAIN_CAP = 4;
 function buildRecentGet(){
-  try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || []}; }
-  catch(e){ return {templates:[], words:[]}; }
+  /* v6.22 — added verbs[] alongside templates[]/words[] for verb-recency
+     tracking. Old payloads without verbs degrade gracefully (treated as
+     empty list). */
+  try{ const r = JSON.parse(localStorage.getItem(BUILD_LS_RECENT) || '{}'); return {templates: r.templates || [], words: r.words || [], verbs: r.verbs || []}; }
+  catch(e){ return {templates:[], words:[], verbs:[]}; }
 }
 function buildRecentPush(key, id, cap){
   if(!id) return;
@@ -6734,6 +7188,31 @@ function buildRecentPush(key, id, cap){
   try{ localStorage.setItem(BUILD_LS_RECENT, JSON.stringify(r)); }catch(_){}
 }
 window.buildRecentClear = function(){ try{ localStorage.removeItem(BUILD_LS_RECENT); }catch(_){} };
+
+/* v6.22 — extract a template's "verb fingerprint" for variety dedup. Prefers
+   the explicit `verb` field (set on v6.22 templates), falls back to the
+   pattern's trailing token (e.g. 'たべた' from '{N}を たべた'). Used both
+   within a lesson (avoid pairing primary+secondary that share a verb) and
+   across lessons (recency tracking). Conjugations of the same verb get
+   collapsed via the explicit tag where present; legacy templates fall back
+   to per-conjugation distinctness, which is still better than nothing. */
+function buildTemplateVerb(t){
+  if(!t) return null;
+  if(t.verb) return t.verb;
+  if(!t.pattern) return null;
+  const stripped = t.pattern.replace(/\{[A-Z0-9]+\}/g, '').trim();
+  const tokens = stripped.split(/\s+/).filter(Boolean);
+  if(!tokens.length) return null;
+  const last = tokens[tokens.length - 1];
+  /* Skip low-information predicates (copulas, existential あります/います,
+     bare ですか) — these aren't the source of "same verb" feel and
+     over-matching on them would suppress unrelated templates that share a
+     trailing copula. The complaint is about content verbs (たべる, のむ,
+     いく, etc.), which the leaf-token catches well. */
+  const STOP = new Set(['です','ですか','あります','います','じゃない','でした','じゃなかった']);
+  if(STOP.has(last)) return null;
+  return last;
+}
 
 function buildFillTemplate(tmpl, word){
   const slotKey = tmpl.slotKey || 'N';
@@ -7033,9 +7512,21 @@ function buildGenerateLesson(mode){
   }
 
   /* v6.12.2 — recency-aware template selection. Skip recently-used templates
-     unless the filtered pool would shrink below 4 (keep generation robust). */
+     unless the filtered pool would shrink below 4 (keep generation robust).
+     v6.22 — also bias against recently-used verbs (track the last
+     BUILD_RECENT_VERBS_CAP verb fingerprints across lessons). The user
+     complaint was "same verbs over and over"; template-id recency alone
+     doesn't catch this because many templates share the same verb. */
+  const recentVerbs = new Set((recent.verbs || []).slice(-BUILD_RECENT_VERBS_CAP));
+  const verbFresh = (t) => {
+    const v = buildTemplateVerb(t);
+    return !v || !recentVerbs.has(v);
+  };
   let primaryPool = viablePrimaries.filter(t => !recentTemplates.has(t.id));
   if(primaryPool.length < 4) primaryPool = viablePrimaries;
+  /* Tighten further: prefer fresh-verb templates if enough remain. */
+  const primaryFreshVerb = primaryPool.filter(verbFresh);
+  if(primaryFreshVerb.length >= 3) primaryPool = primaryFreshVerb;
   const primary = primaryPool[Math.floor(Math.random() * primaryPool.length)];
 
   const sCands = pool.filter(t =>
@@ -7045,9 +7536,18 @@ function buildGenerateLesson(mode){
     eligibleForPair(primary, t).length >= 3
   );
   if(sCands.length === 0) throw new Error('no compatible secondary for ' + primary.id);
-  /* v6.12.2 — bias secondary away from recently-used templates too. */
+  /* v6.12.2 — bias secondary away from recently-used templates too.
+     v6.22 — within a single lesson, also prefer a secondary whose verb
+     differs from primary's. Falls back gracefully if no different-verb
+     candidate exists for the chosen theme/slotKey pair. */
+  const primaryVerb = buildTemplateVerb(primary);
   const sFiltered = sCands.filter(t => !recentTemplates.has(t.id));
-  const sPool = sFiltered.length > 0 ? sFiltered : sCands;
+  const sBase = sFiltered.length > 0 ? sFiltered : sCands;
+  const sDifferentVerb = sBase.filter(t => {
+    const v = buildTemplateVerb(t);
+    return !primaryVerb || !v || v !== primaryVerb;
+  });
+  const sPool = sDifferentVerb.length > 0 ? sDifferentVerb : sBase;
   const secondary = sPool[Math.floor(Math.random() * sPool.length)];
   const commonThemes = primary.slotThemes.filter(t => secondary.slotThemes.includes(t));
   const eligible = eligibleForPair(primary, secondary);
@@ -7211,10 +7711,16 @@ function buildGenerateLesson(mode){
                  buildGenerateQaStep(state.words || [], w1);
   if(qaStep) cycle3Steps.push(qaStep);
 
-  /* v6.12.2 — record what we just used so the next lesson avoids it. */
+  /* v6.12.2 — record what we just used so the next lesson avoids it.
+     v6.22 — also record verb fingerprints so the next lesson's selector
+     can avoid re-using the same verbs. */
   buildRecentPush('templates', primary.id, BUILD_RECENT_TEMPLATES_CAP);
   buildRecentPush('templates', secondary.id, BUILD_RECENT_TEMPLATES_CAP);
   for(const w of newWords) buildRecentPush('words', w.id, BUILD_RECENT_WORDS_CAP);
+  const pVerb = buildTemplateVerb(primary);
+  const sVerb = buildTemplateVerb(secondary);
+  if(pVerb) buildRecentPush('verbs', pVerb, BUILD_RECENT_VERBS_CAP);
+  if(sVerb && sVerb !== pVerb) buildRecentPush('verbs', sVerb, BUILD_RECENT_VERBS_CAP);
 
   /* v6.12.6 — cycle 1 honors lifetime Vocab Blitz history. If the user has
      correctly answered a word ≥1 times in Vocab Blitz (or any other mode that
@@ -7391,7 +7897,7 @@ function buildGenerateHardLesson(){
   };
 }
 
-function buildMakeSession(lesson){
+function buildMakeSession(lesson, chainIdx){
   const steps = [];
   for(const c of lesson.cycles){
     c.steps.forEach((s,i) => steps.push({...s, _cycleId: c.id, _cycleName: c.name, _cycleStepIdx: i}));
@@ -7399,8 +7905,12 @@ function buildMakeSession(lesson){
   /* v6.14 — _missed: Set of real deck word IDs the user tapped 'missed' on
      during the lesson. On completion these get smGrade('again') instead of
      'good', honoring autopilot default while letting the user mark misses
-     when they have a free hand. */
-  return { lesson, steps, stepIdx: 0, revealed: false, done: false, _missed: new Set() };
+     when they have a free hand.
+     v6.22 — _chainIdx: which lesson in an autopilot chain this is (1-based).
+     Initial sessions start at 1; auto-chained sessions increment from there
+     up to BUILD_AUTO_CHAIN_CAP. Lets the header show "Lesson 2 of 4 ⛓"
+     and the complete screen know whether we're at the chain end. */
+  return { lesson, steps, stepIdx: 0, revealed: false, done: false, _missed: new Set(), _chainIdx: chainIdx || 1 };
 }
 
 function startBuildMode(){
@@ -8202,6 +8712,55 @@ function buildOnComplete(){
       }
     }
   }
+  /* v6.22 — autopilot session extension. When auto-advance is on and we're
+     in a chainable mode, automatically generate and start the next lesson
+     instead of stopping. Caps at BUILD_AUTO_CHAIN_CAP (4) so the user does
+     eventually get a break. Skips when:
+       - autopilot is off (user is hand-grading, single-lesson is fine)
+       - mode is 'formSpam' or starter (focused/one-off practice)
+       - a Daily Chain step is active (its own continue flow takes over)
+       - we've already hit the cap
+     If lesson generation fails (e.g. eligible pool exhausted), we fall
+     through to the normal complete screen. */
+  const cur = state.buildMode;
+  const mode = l?._meta?.mode;
+  const chainable = mode === 'simple' || mode === 'complex' || mode === 'social' || mode === 'hard';
+  const dailyChainActive = (() => { const c = buildChainGet(); return !!(c && c.step != null && c.step <= 3); })();
+  const cap = state.settings.buildAutoChainCap || BUILD_AUTO_CHAIN_CAP;
+  const curIdx = (cur && cur._chainIdx) || 1;
+  if(cur && _buildAutoOn() && !cur._paused && chainable && !dailyChainActive && curIdx < cap){
+    const nextIdx = curIdx + 1;
+    const origin = cur._origin;
+    /* Mark the session as queued so renderBuildModeComplete shows a
+       transition placeholder instead of the full complete screen — avoids
+       a race where the user taps "Run it again" / "Back" during the 1.5s
+       gap and starts something that then collides with the chain fire. */
+    cur._chainQueued = nextIdx;
+    /* Hold the wake lock — releasing and re-acquiring across an async gap
+       can fail silently on Safari. */
+    setTimeout(() => {
+      if(state.buildMode !== cur) return; /* user navigated away */
+      try{
+        const nextLesson = mode === 'hard' ? buildGenerateHardLesson() : buildGenerateLesson(mode);
+        const sess = buildMakeSession(nextLesson, nextIdx);
+        if(origin) sess._origin = origin;
+        state.buildMode = sess;
+        render();
+        const step = sess.steps[0];
+        if(step) buildAutoplayStep(step);
+      }catch(e){
+        log('build_chain_err', {err:String(e), mode, nextIdx});
+        showToast(`Chain stopped — ${e.message}`, {tone:'info', duration:3500});
+        if(state.buildMode === cur){
+          cur._chainQueued = null;
+          cur.done = true;
+          render();
+        }
+        _wakeLockRelease();
+      }
+    }, 1500);
+    return; /* don't release wake lock — chain continues */
+  }
   _wakeLockRelease();
 }
 /* v6.13 — fired from the lesson-summary "Continue chain" button. Generates
@@ -8523,9 +9082,22 @@ function renderBuildModeStep(){
     <div class="build-phase-label"></div>
   ` : '';
 
+  /* v6.22 — chain pill. Renders only when this session is part of an
+     auto-chained run: autopilot must be on, mode must be chainable, cap > 1,
+     and Daily Chain not active (it has its own continue flow). Single-shot
+     lessons don't get a noisy "1 of 4" label. */
+  const chainCap = state.settings.buildAutoChainCap || BUILD_AUTO_CHAIN_CAP;
+  const chainIdx = b._chainIdx || 1;
+  const mode = b.lesson?._meta?.mode;
+  const dailyActive = (() => { const c = buildChainGet(); return !!(c && c.step != null && c.step <= 3); })();
+  const chainable = (mode === 'simple' || mode === 'complex' || mode === 'social' || mode === 'hard') && _buildAutoOn() && !dailyActive;
+  const chainPill = (chainable && chainCap > 1)
+    ? ` · <span style="color:var(--blue)">⛓ Lesson ${chainIdx} of ${chainCap}</span>`
+    : '';
+
   return `
     <div class="build-progress"><div class="build-progress-fill" style="width:${pct}%"></div></div>
-    <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}</div>
+    <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}${chainPill}</div>
 
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -8735,6 +9307,19 @@ function _buildRenderCallback(step){
 
 function renderBuildModeComplete(){
   const l = state.buildMode.lesson;
+  /* v6.22 — chain-queued placeholder. When buildOnComplete schedules the
+     next chained lesson there's a 1.5s gap before it fires; show a brief
+     "next lesson loading" view so the user doesn't tap into a button race. */
+  const queuedIdx = state.buildMode?._chainQueued;
+  if(queuedIdx){
+    const cap = state.settings.buildAutoChainCap || BUILD_AUTO_CHAIN_CAP;
+    return `<div class="card" style="text-align:center;padding:30px 20px">
+      <div style="font-size:48px;color:var(--green);margin-bottom:8px">✓</div>
+      <h2 style="margin:0 0 6px 0">Lesson ${(state.buildMode._chainIdx || 1)} done</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:14px;color:var(--blue)">⛓ Lesson ${queuedIdx} of ${cap} starting…</div>
+      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="buildExit()">Stop chain</button>
+    </div>`;
+  }
   /* v6.13 — Daily Chain. buildOnComplete already advanced chain.step to the
      next mode. Surface a "continue chain" CTA so the user flows from simple
      -> complex -> hard with the same words. */
@@ -8742,10 +9327,25 @@ function renderBuildModeComplete(){
   const chainBtn = (chain && chain.step != null && chain.step <= 3)
     ? `<button class="btn btn-blue" style="width:100%;margin-bottom:8px" onclick="buildChainContinue()">▶ Continue chain — ${chain.step === 2 ? 'Complex' : 'Hard'} (step ${chain.step}/3)</button>`
     : '';
+  /* v6.22 — autopilot chain summary. If we got here it means autopilot was
+     off, the cap was hit, or generation failed mid-chain. Show how many
+     lessons in the run completed and offer "Keep going →" to extend past
+     the cap manually if the user wants more. */
+  const chainCap = state.settings.buildAutoChainCap || BUILD_AUTO_CHAIN_CAP;
+  const chainIdx = state.buildMode?._chainIdx || 1;
+  const mode = l?._meta?.mode;
+  const modeChainable = mode === 'simple' || mode === 'complex' || mode === 'social' || mode === 'hard';
+  const dailyActive = !!(chain && chain.step != null && chain.step <= 3);
+  const chainSummary = (modeChainable && chainIdx > 1)
+    ? `<div class="muted" style="font-size:12px;margin-bottom:14px;color:var(--blue)">⛓ Autopilot chain: ${chainIdx} of ${chainCap} lesson${chainCap === 1 ? '' : 's'} completed</div>`
+    : '';
+  const keepGoingBtn = (modeChainable && !dailyActive)
+    ? `<button class="btn btn-blue" style="width:100%;margin-bottom:8px" onclick="buildChainKeepGoing()">▶ Keep going — fresh ${esc(mode)} lesson</button>`
+    : '';
   return `
     <div class="card" style="text-align:center;padding:30px 20px">
       <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
-      <h2 style="margin:0 0 8px 0">Lesson complete</h2>
+      <h2 style="margin:0 0 8px 0">${chainIdx > 1 ? 'Chain complete' : 'Lesson complete'}</h2>
       <div class="muted" style="font-size:14px;margin-bottom:20px">
         ${(() => {
           const missedCount = (state.buildMode?._missed?.size) || 0;
@@ -8758,7 +9358,9 @@ function renderBuildModeComplete(){
           return summaryHead + srsTail;
         })()}
       </div>
+      ${chainSummary}
       ${chainBtn}
+      ${keepGoingBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
       <div style="height:8px"></div>
       <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
@@ -8766,11 +9368,39 @@ function renderBuildModeComplete(){
   `;
 }
 
+/* v6.22 — manual chain extender. Same logic as auto-chain (generate fresh
+   lesson same mode, restart autoplay), but ignores the cap so the user can
+   keep going as long as eligible words exist. Reachable from the complete
+   screen; useful when 4 wasn't enough or autopilot is off. */
+function buildChainKeepGoing(){
+  const cur = state.buildMode;
+  if(!cur || !cur.lesson) return;
+  const mode = cur.lesson._meta?.mode;
+  if(!(mode === 'simple' || mode === 'complex' || mode === 'social' || mode === 'hard')) return;
+  const origin = cur._origin;
+  const nextIdx = (cur._chainIdx || 1) + 1;
+  try{
+    const nextLesson = mode === 'hard' ? buildGenerateHardLesson() : buildGenerateLesson(mode);
+    const sess = buildMakeSession(nextLesson, nextIdx);
+    if(origin) sess._origin = origin;
+    state.buildMode = sess;
+    _buildWakeLockSync();
+    render();
+    if(_buildAutoOn()){
+      const step = sess.steps[0];
+      if(step) buildAutoplayStep(step);
+    }
+  }catch(e){
+    showToast(`Can't extend chain — ${e.message}`, {tone:'warn', duration:4500});
+  }
+}
+window.buildChainKeepGoing = buildChainKeepGoing;
+
 /* =========================================================================
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -8787,7 +9417,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   bindScreen();
@@ -8947,6 +9577,21 @@ function renderHome(){
         <h3>Variations</h3>
         <button class="btn btn-orange" style="width:100%" onclick="nav('variations')">🔀 Say it multiple ways</button>
         <div class="muted" style="font-size:12px;margin-top:6px">One English intent, several Japanese ways — casual, polite, softened, alternate phrasing. Type any one variant, the others reveal afterward. ${esc(sub)}</div>
+      </div>`;
+    })()}
+
+    ${(() => {
+      /* v6.22 — Similar words discrimination. Multi-choice over confusable
+         JP word sets (みる/みえる/みつかる, あつい hot-room vs hot-coffee, etc.)
+         No API. Reveal teaches the contrast every round. */
+      const sc = similarCounts();
+      const sub = sc.totalItems === 0
+        ? 'No similar sets defined.'
+        : `${sc.setsDone} / ${sc.totalSets} sets done · ${sc.retired} / ${sc.totalItems} items retired`;
+      return `<div class="card">
+        <h3>Similar words</h3>
+        <button class="btn btn-orange" style="width:100%" onclick="nav('similar')">🔍 Tell them apart</button>
+        <div class="muted" style="font-size:12px;margin-top:6px">Confusable pairs and triples — みる vs みえる, あつい (room) vs あつい (coffee), はやい (fast) vs はやい (early). Multi-choice; reveal shows the nuance for the whole set. ${esc(sub)}</div>
       </div>`;
     })()}
 
@@ -9825,7 +10470,7 @@ function addWord(){
 }
 
 function exportJSON(){
-  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, particleStats:state.particleStats||{}, variationStats:state.variationStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
+  const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, particleStats:state.particleStats||{}, variationStats:state.variationStats||{}, similarStats:state.similarStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href=url; a.download=`japanese-trainer-${today()}.json`; a.click();
@@ -9880,6 +10525,15 @@ function handleImport(ev){
           if(!state.variationStats[did]) state.variationStats[did] = {};
           for(const vi in d.variationStats[did]){
             if(!state.variationStats[did][vi]) state.variationStats[did][vi] = d.variationStats[did][vi];
+          }
+        }
+      }
+      if(d.similarStats){
+        if(!state.similarStats) state.similarStats = {};
+        for(const sid in d.similarStats){
+          if(!state.similarStats[sid]) state.similarStats[sid] = {};
+          for(const ii in d.similarStats[sid]){
+            if(!state.similarStats[sid][ii]) state.similarStats[sid][ii] = d.similarStats[sid][ii];
           }
         }
       }
