@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.30.0';
+const APP_VERSION = '6.31.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8406,11 +8406,12 @@ function buildGenerateFormSpamLesson(formId, opts){
   if(!f) throw new Error('Unknown grammar pattern: ' + formId);
   const verbs = formEligibleVerbs();
   if(verbs.length < 1) throw new Error('No verbs in your deck — enable the N5 pack in Settings.');
-  /* v6.30 — bumped default 8 → 25 because users complained "Pick a pattern →
-     Spam in Build Mode" sessions ended too quickly AND repeated the same
-     verbs. With 140 eligible verbs in the deck, an 8-verb session is just
-     5.7% of the pool — almost guaranteed repetition across sessions. */
-  const want = (opts && opts.count) || 25;
+  /* v6.30 — bumped default 8 → 25. v6.31 — 25 → 50. Form Spam doesn't
+     auto-chain like Simple/Complex/Hard lessons (it's a single-shot per
+     tap), so the per-session count IS the total. With 140 eligible verbs
+     a 50-verb session covers ~36% of the pool, leaving real headroom for
+     a second session that doesn't repeat. */
+  const want = (opts && opts.count) || 50;
   const n = Math.min(want, verbs.length);
 
   /* v6.30 — Form Spam verb selection. Prior code sorted verbs by smNext
