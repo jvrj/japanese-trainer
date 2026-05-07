@@ -26,10 +26,10 @@ html,body{background:var(--bg);color:var(--text);min-height:100dvh}
 body{font-family:'Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-bottom:100px}
 .app{max-width:480px;margin:0 auto;padding:0 14px 120px;min-height:100dvh;position:relative}
 
-/* Header */
-.header{text-align:center;padding:22px 0 14px}
-.header h1{font-size:30px;font-weight:900;letter-spacing:-1.5px;background:linear-gradient(135deg,#fff,#888);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.header .sub{font-size:10px;letter-spacing:3px;color:var(--faint);margin-top:4px;text-transform:uppercase}
+/* Header — compact app title bar (v6.34: shrunk from 56px sword to 22px brand-row) */
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 10px;gap:12px}
+.header h1{font-size:22px;font-weight:900;letter-spacing:-0.5px;color:var(--text);line-height:1}
+.header .sub{font-size:10px;letter-spacing:2.5px;color:var(--faint);text-transform:uppercase;font-weight:700}
 
 /* Cards & layout */
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px}
@@ -278,13 +278,88 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 @keyframes toast-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toast-out{from{opacity:1}to{opacity:0;transform:translateY(-10px)}}
 .build-phase-label{text-align:center;font-size:11px;color:var(--faint);letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px}
+
+/* ============================================================ */
+/* v6.34 — Home redesign: hero card + tile grid                 */
+/* Goal: app-like home, less scroll, single accent (blue),       */
+/* drill modes consolidated into a 3-col grid of compact tiles. */
+/* ============================================================ */
+
+/* Compact stats strip — replaces the 4-box stats-row on home */
+.streak-strip{display:flex;gap:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:0;margin-bottom:14px;overflow:hidden}
+.streak-strip > div{flex:1;text-align:center;padding:12px 4px;position:relative}
+.streak-strip > div + div{border-left:1px solid var(--border)}
+.streak-num{font-size:20px;font-weight:800;color:var(--text);line-height:1.1;display:flex;align-items:center;justify-content:center;gap:4px}
+.streak-num .em{font-size:14px}
+.streak-label{font-size:9px;letter-spacing:1.5px;color:var(--faint);margin-top:4px;text-transform:uppercase}
+
+/* Hero card — primary CTA (Vocab Blitz today) */
+.hero{background:linear-gradient(135deg,#3b82f6 0%,#6366f1 60%,#8b5cf6 100%);border-radius:20px;padding:20px 18px;margin-bottom:14px;color:#fff;box-shadow:0 8px 28px rgba(59,130,246,0.18)}
+.hero-eyebrow{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;opacity:0.78;margin-bottom:6px;font-weight:700}
+.hero-title{font-size:24px;font-weight:800;margin-bottom:4px;line-height:1.15}
+.hero-sub{font-size:13px;opacity:0.88;margin-bottom:14px;line-height:1.4}
+.hero-cta{background:#fff;color:#3b82f6;border:none;border-radius:13px;padding:14px;width:100%;font-weight:800;font-size:15px;cursor:pointer;font-family:inherit;letter-spacing:0.2px;transition:transform .1s}
+.hero-cta:active{transform:scale(0.97)}
+.hero-cta:disabled{opacity:0.45;cursor:not-allowed}
+.hero-secondary{background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.22);border-radius:13px;padding:11px;width:100%;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;margin-top:8px;transition:transform .1s}
+.hero-secondary:active{transform:scale(0.97)}
+.hero-secondary:disabled{opacity:0.45;cursor:not-allowed}
+
+/* Horizontal scrollable scope chip row (vocab section selector) */
+.scope-row{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -14px;padding-left:14px;padding-right:14px}
+.scope-row::-webkit-scrollbar{display:none}
+.scope-chip{flex-shrink:0;padding:7px 12px;border-radius:14px;background:var(--card);border:1px solid var(--border);color:var(--dim);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all .12s}
+.scope-chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.scope-chip:disabled{opacity:0.35;cursor:not-allowed}
+.scope-chip .ct{opacity:0.6;font-size:10px;margin-left:3px}
+.scope-chip.active .ct{opacity:0.85}
+
+/* Section heading inside home (Drills / Practice / Stats) */
+.section-head{font-size:11px;letter-spacing:2.2px;color:var(--dim);text-transform:uppercase;margin:18px 0 10px;padding-left:2px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
+.section-head .link{color:var(--blue);text-transform:none;letter-spacing:0;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;padding:0}
+
+/* Drill tile grid — 3 columns of compact mode tiles */
+.tile-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 8px 12px;text-align:center;cursor:pointer;transition:transform .1s,border-color .12s;font-family:inherit;color:var(--text);position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:96px;justify-content:center}
+.tile:active{transform:scale(0.96)}
+.tile:hover{border-color:var(--dim)}
+.tile-emoji{font-size:26px;line-height:1;margin-bottom:2px}
+.tile-name{font-size:11px;font-weight:700;letter-spacing:0.2px;line-height:1.2}
+.tile-meta{font-size:9px;color:var(--faint);line-height:1.25;min-height:11px;letter-spacing:0.2px}
+.tile-badge{position:absolute;top:6px;right:6px;background:var(--blue);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;letter-spacing:0.4px}
+
+/* Continue strip — appears when an in-progress build mode session exists */
+.continue-strip{background:var(--card);border:1px solid var(--blue);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:transform .1s}
+.continue-strip:active{transform:scale(0.99)}
+.continue-strip .ico{font-size:22px}
+.continue-strip .label{flex:1}
+.continue-strip .label-t{font-size:13px;font-weight:700}
+.continue-strip .label-s{font-size:11px;color:var(--dim);margin-top:1px}
+.continue-strip .arrow{color:var(--blue);font-size:18px;font-weight:700}
+
+/* Module summary — compact replacement for the old card */
+.module-strip{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:transform .1s}
+.module-strip:active{transform:scale(0.99)}
+.module-strip-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:8px}
+.module-strip-title{font-size:13px;font-weight:700}
+.module-strip-pct{font-size:11px;color:var(--dim)}
+.module-strip-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.module-strip-bar > div{height:100%;background:var(--blue);transition:width .3s}
+.module-strip-sub{font-size:11px;color:var(--dim);margin-top:6px}
+
+/* Mastery bar (slim version for home) */
+.mastery-mini{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--border);margin:8px 0 4px}
+.mastery-mini > div{height:100%}
+.mastery-legend-mini{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:10px;color:var(--faint);margin-top:4px}
+.mastery-legend-mini span{display:flex;align-items:center;gap:4px}
+.mastery-legend-mini i{display:inline-block;width:8px;height:8px;border-radius:2px}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="header">
-    <h1 style="font-size:56px;background:none;-webkit-text-fill-color:var(--red);color:var(--red);letter-spacing:0;line-height:1">刀</h1>
-    <div class="sub" id="appVersionLabel">一心 · v6.4</div>
+    <h1>一心</h1>
+    <div class="sub" id="appVersionLabel">v6.4</div>
   </div>
   <main id="main"></main>
 </div>
@@ -309,7 +384,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.33.1';
+const APP_VERSION = '6.34.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -10626,6 +10701,12 @@ function updateNav(){
 }
 
 /* ---------- HOME ---------- */
+/* v6.34 — Home redesign. App-feel: streak strip → hero (Vocab Blitz with
+   horizontal scope chips) → optional continue/module strips → drills tile
+   grid → library entry. Drops the boxy 13-card stack and verbose muted
+   descriptions. Single accent (blue); other colors retired from buttons.
+   Each tile shows a 1-line progress meta so users still see at-a-glance
+   where each mode stands without paragraphs. */
 function renderHome(){
   const active = getActiveWords();
   const masteryBuckets = {new:0,learning:0,apprentice:0,guru:0,master:0,burned:0};
@@ -10634,210 +10715,156 @@ function renderHome(){
   const totalAttempts = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.length||0),0);
   const totalCorrect = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.filter(a=>a.correct).length||0),0);
   const acc = totalAttempts ? Math.round(100*totalCorrect/totalAttempts) : 0;
+  const masteredCount = (masteryBuckets.master || 0) + (masteryBuckets.burned || 0);
 
-  /* Mastery strip segments */
+  /* Slim mastery bar — replaces the full mastery card */
   const total = active.length || 1;
-  const stripSegs = MASTERY.map(m => `<div class="mastery-strip-seg ${m}" style="width:${100*masteryBuckets[m]/total}%"></div>`).join('');
+  const masterySegs = MASTERY.map(m => `<div class="mastery-strip-seg ${m}" style="width:${100*masteryBuckets[m]/total}%"></div>`).join('');
 
-  return `
-    <div class="stats-row">
-      <div class="stat-box"><div class="stat-num">${active.length}</div><div class="stat-label">Deck</div></div>
-      <div class="stat-box"><div class="stat-num">${streak}</div><div class="stat-label">Streak</div></div>
-      <div class="stat-box"><div class="stat-num">${acc}%</div><div class="stat-label">Accuracy</div></div>
-      <div class="stat-box"><div class="stat-num">${totalAttempts}</div><div class="stat-label">Reps</div></div>
+  /* Streak strip — 3 compact cells */
+  const streakStrip = `
+    <div class="streak-strip">
+      <div><div class="streak-num"><span class="em">🔥</span>${streak}</div><div class="streak-label">Streak</div></div>
+      <div><div class="streak-num">${acc}%</div><div class="streak-label">Accuracy</div></div>
+      <div><div class="streak-num">${active.length}</div><div class="streak-label">Deck</div></div>
+    </div>`;
+
+  /* Hero — today's Vocab Blitz with section chips below */
+  const bc = blitzCounts();
+  const targetR = state.settings.blitzReviews || 20;
+  const targetN = state.settings.blitzNew || 10;
+  const reviewsLabel = Math.min(bc.due, targetR);
+  const newsLabel = Math.min(bc.unseen, targetN);
+  const blitzEmpty = bc.due === 0 && bc.unseen === 0;
+  const blitzSub = blitzEmpty
+    ? 'Enable the N5 pack in Settings to start.'
+    : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue`:''}`;
+  const blitzDis = blitzEmpty ? 'disabled' : '';
+
+  /* Vocab section chips — horizontal scroll */
+  const activeVoc = state.settings?.vocabSection || 'all';
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
+  const scopeChips = VOCAB_SECTIONS.map(sec => {
+    const themeSet = sec.themes ? new Set(sec.themes) : null;
+    const count = active.filter(w =>
+      !suspendedSet.has(w.id) &&
+      !masteredSet.has(w.id) &&
+      (!moduleIds || moduleIds.has(w.id)) &&
+      (!themeSet || themeSet.has(w.theme))
+    ).length;
+    const isActive = activeVoc === sec.id;
+    const isDis = count === 0 && sec.id !== 'all';
+    const cls = `scope-chip${isActive ? ' active' : ''}`;
+    return `<button class="${cls}" ${isDis ? 'disabled' : `onclick="setVocabSection('${sec.id}')"`}>
+      ${esc(sec.emoji)} ${esc(sec.name)}<span class="ct">${count}</span>
+    </button>`;
+  }).join('');
+
+  const hero = `
+    <div class="hero">
+      <div class="hero-eyebrow">Today</div>
+      <div class="hero-title">Vocab Blitz</div>
+      <div class="hero-sub">${esc(blitzSub)}</div>
+      <button class="hero-cta" ${blitzDis} onclick="startBlitz()">⚡ Start session</button>
+      <button class="hero-secondary" ${blitzDis} onclick="startBuildModeVocabSpam()">🎲 Spam — audio, out loud</button>
     </div>
+    <div class="scope-row">${scopeChips}</div>`;
 
-    <div class="card">
-      <h3>Mastery — ${active.length} words</h3>
-      <div class="mastery-strip">${stripSegs}</div>
-      <div class="mastery-legend">
+  /* Continue strip — only when an active build mode session is in progress */
+  const continueStrip = (() => {
+    const bm = state.buildMode;
+    if(!bm || !bm.lesson || bm.done) return '';
+    const t = bm.lesson.title || 'Build Mode lesson';
+    const stepsLeft = (bm.steps?.length || 0) - (bm.stepIdx || 0);
+    return `
+      <div class="continue-strip" onclick="nav('buildMode')">
+        <div class="ico">▶</div>
+        <div class="label">
+          <div class="label-t">Resume — ${esc(t)}</div>
+          <div class="label-s">${stepsLeft} step${stepsLeft===1?'':'s'} left</div>
+        </div>
+        <div class="arrow">→</div>
+      </div>`;
+  })();
+
+  /* Module strip — compact replacement for the old card */
+  const moduleStrip = (() => {
+    if(!state.settings.modulesEnabled) return '';
+    const curId = state.settings.currentModuleId || MODULES[0].id;
+    const cur = moduleById(curId) || MODULES[0];
+    const prog = moduleProgress(cur.id);
+    const idx = MODULES.findIndex(m => m.id === cur.id);
+    const next = idx >= 0 && idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
+    const nextLine = !next
+      ? 'Final module — full curriculum unlocked.'
+      : `Next: ${next.emoji} ${esc(next.name)}${moduleIsUnlocked(next.id) ? ' (unlocked)' : ` · ${MODULE_UNLOCK_PCT}% to unlock`}`;
+    return `
+      <div class="module-strip" onclick="nav('modules')">
+        <div class="module-strip-head">
+          <div class="module-strip-title">Module ${cur.num} · ${cur.emoji} ${esc(cur.name)}</div>
+          <div class="module-strip-pct">${prog.pct}% · ${prog.masteredCount}/${prog.total}</div>
+        </div>
+        <div class="module-strip-bar"><div style="width:${prog.pct}%"></div></div>
+        <div class="module-strip-sub">${esc(nextLine)}</div>
+      </div>`;
+  })();
+
+  /* Tile grid — 8 drill modes in a compact 3-col layout */
+  const fc = formCounts();
+  const sc = sentenceBlitzCounts();
+  const pc = phraseCounts();
+  const vc = variationCounts();
+  const simC = similarCounts();
+  const tiles = [
+    { emoji:'📖', name:'Forms',    meta: fc.verbs===0 ? '—' : `${fc.due} due · ${fc.drilled} drilled`, click:`nav('forms')` },
+    { emoji:'💬', name:'Phrases',  meta: `${pc.retired}/${pc.total} mastered`, click:`nav('phrases')` },
+    { emoji:'📜', name:'Sentences', meta: `${sc.retired}/${sc.total} mastered`, click:`startSentenceBlitz()` },
+    { emoji:'🔀', name:'Variations', meta: `${vc.drillsDone}/${vc.totalDrills} done`, click:`nav('variations')` },
+    { emoji:'🔍', name:'Similar',   meta: simC.totalSets===0 ? '—' : `${simC.setsDone}/${simC.totalSets} sets`, click:`nav('similar')` },
+    { emoji:'🔗', name:'Particles', meta: 'taxonomy drill', click:`nav('particles')` },
+    { emoji:'🎲', name:'Build',     meta: 'audio sentences', click:`startBuildMode()` },
+    { emoji:'あ', name:'Kana',      meta: 'hira · kata · mix', click:`startKanaBlitz('all')` }
+  ];
+  const tileGrid = `
+    <div class="tile-grid">
+      ${tiles.map(t => `
+        <button class="tile" onclick="${t.click}">
+          <div class="tile-emoji">${esc(t.emoji)}</div>
+          <div class="tile-name">${esc(t.name)}</div>
+          <div class="tile-meta">${esc(t.meta)}</div>
+        </button>
+      `).join('')}
+    </div>`;
+
+  /* Library section — focus/suspend/mastered counts */
+  const focusCount = (state.settings.focusWords || []).length;
+  const suspCount = (state.settings.suspendedWords || []).length;
+  const mastCount = (state.settings.masteredWords || []).length;
+  const libMeta = (focusCount || suspCount || mastCount)
+    ? `${focusCount} ⭐ · ${suspCount} suspended · ${mastCount} mastered`
+    : `${active.length} words across ${MASTERY.length} stages`;
+
+  const masteryCard = `
+    <div class="card" onclick="nav('library')" style="cursor:pointer">
+      <div class="section-head" style="margin:0 0 8px"><span>Mastery — ${active.length} words</span><span class="link">📚 Library →</span></div>
+      <div class="mastery-mini">${masterySegs}</div>
+      <div class="mastery-legend-mini">
         ${MASTERY.map(m => `<span><i class="mastery-strip-seg ${m}"></i>${m} ${masteryBuckets[m]}</span>`).join('')}
       </div>
-    </div>
+      <div class="muted" style="font-size:11px;margin-top:6px">${esc(libMeta)}</div>
+    </div>`;
 
-    ${(() => {
-      /* v6.16 — Modules summary card. Shows current module progress + next
-         locked module preview. Tap to open the full modules screen. */
-      if(!state.settings.modulesEnabled) return '';
-      const curId = state.settings.currentModuleId || MODULES[0].id;
-      const cur = moduleById(curId) || MODULES[0];
-      const prog = moduleProgress(cur.id);
-      const idx = MODULES.findIndex(m => m.id === cur.id);
-      const next = idx >= 0 && idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
-      const nextUnlocked = next ? moduleIsUnlocked(next.id) : true;
-      const nextLine = !next
-        ? `<div class="muted" style="font-size:12px;margin-top:6px">Final module — you've made it to the end of the curated path.</div>`
-        : nextUnlocked
-          ? `<div class="muted" style="font-size:12px;margin-top:6px">Next: ${next.emoji} <b>${esc(next.name)}</b> — already unlocked.</div>`
-          : `<div class="muted" style="font-size:12px;margin-top:6px">🔒 Next: ${next.emoji} ${esc(next.name)} — unlocks at ${MODULE_UNLOCK_PCT}% (${prog.masteredCount}/${Math.ceil(prog.total * MODULE_UNLOCK_PCT/100)} so far)</div>`;
-      return `<div class="card">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-          <h3 style="margin:0">Module ${cur.num} · ${cur.emoji} ${esc(cur.name)}</h3>
-          <span class="muted" style="font-size:12px">${prog.pct}% · ${prog.masteredCount}/${prog.total}</span>
-        </div>
-        <div class="mastery-strip" style="margin-top:8px;height:8px;background:var(--card)"><div style="height:100%;width:${prog.pct}%;background:var(--green);border-radius:4px"></div></div>
-        ${nextLine}
-        <div class="spacer"></div>
-        <button class="btn btn-secondary" style="width:100%" onclick="nav('modules')">📚 All modules</button>
-      </div>`;
-    })()}
-
-    ${(() => {
-      const bc = blitzCounts();
-      const targetR = state.settings.blitzReviews || 20;
-      const targetN = state.settings.blitzNew || 10;
-      const reviewsLabel = Math.min(bc.due, targetR);
-      const newsLabel = Math.min(bc.unseen, targetN);
-      const sub = bc.due === 0 && bc.unseen === 0
-        ? 'No words yet — enable the N5 pack in Settings.'
-        : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue waiting`:''}`;
-      const disabled = (bc.due === 0 && bc.unseen === 0) ? 'disabled' : '';
-      const focusCount = (state.settings.focusWords || []).length;
-      const suspCount = (state.settings.suspendedWords || []).length;
-      const mastCount = (state.settings.masteredWords || []).length;
-      const libSub = focusCount || suspCount || mastCount
-        ? `${focusCount} ⭐ · ${suspCount} suspended · ${mastCount} mastered`
-        : 'Browse, focus, suspend, or master individual words';
-      /* v6.33 — vocab section chip row. Mirrors renderForms' verb-section
-         strip: persist in settings.vocabSection, count survivors per section
-         after suspended/mastered/module/section filters, disable empty sections. */
-      const activeVoc = state.settings?.vocabSection || 'all';
-      const masteredSet = new Set(state.settings.masteredWords || []);
-      const suspendedSet = new Set(state.settings.suspendedWords || []);
-      const moduleIds = activeModuleWordIdSet();
-      const allActive = getActiveWords();
-      const vocabChips = VOCAB_SECTIONS.map(sec => {
-        const themeSet = sec.themes ? new Set(sec.themes) : null;
-        const count = allActive.filter(w =>
-          !suspendedSet.has(w.id) &&
-          !masteredSet.has(w.id) &&
-          (!moduleIds || moduleIds.has(w.id)) &&
-          (!themeSet || themeSet.has(w.theme))
-        ).length;
-        const isActive = activeVoc === sec.id;
-        const isDis = count === 0 && sec.id !== 'all';
-        const bg = isActive ? 'background:var(--blue);color:#fff;border-color:var(--blue)' : '';
-        const op = isDis ? 'opacity:0.4;cursor:not-allowed' : '';
-        return `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;${bg};${op}"
-          ${isDis ? 'disabled' : `onclick="setVocabSection('${sec.id}')"`}>
-          ${esc(sec.emoji)} ${esc(sec.name)} <span class="muted" style="font-size:10px;${isActive?'color:#fff':''}">(${count})</span>
-        </button>`;
-      }).join('');
-      return `<div class="card">
-        <h3>Start</h3>
-        <div class="muted" style="font-size:12px;margin:0 0 6px">Drill scope</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${vocabChips}</div>
-        <button class="btn btn-primary" style="font-size:17px;padding:18px;width:100%" ${disabled} onclick="startBlitz()">⚡ Vocab Blitz</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">${esc(sub)}</div>
-        <div style="height:6px"></div>
-        <button class="btn btn-blue" style="width:100%" ${disabled} onclick="startBuildModeVocabSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
-        <div class="spacer"></div>
-        <button class="btn btn-secondary" style="width:100%" onclick="nav('library')">📚 Library</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">${esc(libSub)}</div>
-      </div>`;
-    })()}
-
-    <div class="card">
-      <h3>Kana</h3>
-      <div class="btn-row-3">
-        <button class="btn btn-teal" onclick="startKanaBlitz('hiragana')">ひらがな</button>
-        <button class="btn btn-teal" onclick="startKanaBlitz('katakana')">カタカナ</button>
-        <button class="btn btn-teal" onclick="startKanaBlitz('all')">Mixed</button>
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:6px">Character recognition. Retire kana by hitting a 5-streak. Failed twins surface together.</div>
-    </div>
-
-    ${(() => {
-      const sc = sentenceBlitzCounts();
-      const sub = `${sc.retired} / ${sc.total} mastered · ${sc.learning} learning · ${sc.unseen} unseen`;
-      return `<div class="card">
-        <h3>Sentence Blitz</h3>
-        <button class="btn btn-orange" style="width:100%" onclick="startSentenceBlitz()">📖 Read &amp; type</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">Read JP, type it back, reveal English. Retire on 5-streak. Strugglers surface more often. ${esc(sub)}</div>
-        <div style="height:6px"></div>
-        <button class="btn btn-blue" style="width:100%" onclick="startBuildModeSentenceSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
-      </div>`;
-    })()}
-
-    ${(() => {
-      const pc = phraseCounts();
-      const sub = `${pc.retired} / ${pc.total} mastered · ${pc.learning} learning · ${pc.unseen} unseen`;
-      return `<div class="card">
-        <h3>Phrases</h3>
-        <button class="btn btn-orange" style="width:100%" onclick="nav('phrases')">💬 Practical phrases</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">Pre-fab chunks for real situations — "I'll be there in 30 min", "say it again please". Read EN, produce JP. ${esc(sub)}</div>
-        <div style="height:6px"></div>
-        <button class="btn btn-blue" style="width:100%" onclick="startBuildModePhraseSpam('all')">🎲 Spam in Build Mode (audio, out loud)</button>
-      </div>`;
-    })()}
-
-    ${(() => {
-      const vc = variationCounts();
-      const sub = `${vc.drillsDone} / ${vc.totalDrills} intents fully mastered · ${vc.retiredVariants} / ${vc.totalVariants} variants done`;
-      return `<div class="card">
-        <h3>Variations</h3>
-        <button class="btn btn-orange" style="width:100%" onclick="nav('variations')">🔀 Say it multiple ways</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">One English intent, several Japanese ways — casual, polite, softened, alternate phrasing. Type any one variant, the others reveal afterward. ${esc(sub)}</div>
-      </div>`;
-    })()}
-
-    ${(() => {
-      /* v6.22 — Similar words discrimination. Multi-choice over confusable
-         JP word sets (みる/みえる/みつかる, あつい hot-room vs hot-coffee, etc.)
-         No API. Reveal teaches the contrast every round. */
-      const sc = similarCounts();
-      const sub = sc.totalItems === 0
-        ? 'No similar sets defined.'
-        : `${sc.setsDone} / ${sc.totalSets} sets done · ${sc.retired} / ${sc.totalItems} items retired`;
-      return `<div class="card">
-        <h3>Similar words</h3>
-        <button class="btn btn-orange" style="width:100%" onclick="nav('similar')">🔍 Tell them apart</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">Confusable pairs and triples — みる vs みえる, あつい (room) vs あつい (coffee), はやい (fast) vs はやい (early). Multi-choice; reveal shows the nuance for the whole set. ${esc(sub)}</div>
-      </div>`;
-    })()}
-
-    ${(() => {
-      const fc = formCounts();
-      const sub = fc.verbs === 0
-        ? 'No verbs in deck — enable the N5 pack in Settings.'
-        : (fc.drilled === 0
-            ? `${fc.verbs} verbs · 10 forms each — pick one verb, ace it across all conjugations.`
-            : `${fc.verbs} verbs · ${fc.drilled} forms drilled · ${fc.due} due now`);
-      return `<div class="card">
-        <h3>Grammar — pick a pattern</h3>
-        <button class="btn btn-purple" style="width:100%" onclick="nav('forms')">📖 Pick a pattern</button>
-        <div class="muted" style="font-size:12px;margin-top:6px">ます · ました · て · た · ない · たい · ている · ても いい · たほうが いい · なかった · ちゃった · なきゃ · たことが ある. Each one has a rule, an example, and two ways to drill: typed (SRS) or audio-led Build Mode spam. ${esc(sub)}</div>
-      </div>`;
-    })()}
-
-    <div class="card">
-      <h3>Build Mode</h3>
-      <button class="btn btn-blue" style="width:100%" onclick="startBuildMode()">🎲 Build Mode</button>
-      <div class="muted" style="font-size:12px;margin-top:6px">Paul Noble–style sentence construction. Dice-roll lessons from your deck. Trust-based, audio-led.</div>
-    </div>
-
-    <div class="card">
-      <h3>Practice</h3>
-      <button class="btn btn-teal" style="width:100%" onclick="nav('particles')">🔗 Particle drills</button>
-    </div>
-
-    <div class="card">
-      <h3>Settings</h3>
-      <button class="btn btn-secondary" style="width:100%" onclick="nav('settings')">⚙️ Settings & Data</button>
-    </div>
-
-    <div class="collapsible" id="homeTips">
-      <div class="collapsible-head" onclick="document.getElementById('homeTips').classList.toggle('open')">
-        <h3>Tips & shortcuts</h3>
-        <span class="collapsible-arrow">›</span>
-      </div>
-      <div class="collapsible-body muted">
-        • Tap 🔊 on any card to hear the word.<br>
-        • Tap 🎤 to speak the answer (ja-JP).<br>
-        • Tap 💭 anywhere to drop a quick note.<br>
-        • ${voiceSupported() ? '<b style="color:var(--green)">Voice supported</b>.' : '<b style="color:var(--orange)">Voice not supported</b> — use Chrome/Edge/Safari.'}
-      </div>
-    </div>
+  return `
+    ${streakStrip}
+    ${hero}
+    ${continueStrip}
+    ${moduleStrip}
+    <div class="section-head"><span>Drills</span></div>
+    ${tileGrid}
+    <div class="section-head"><span>Library</span></div>
+    ${masteryCard}
   `;
 }
 
