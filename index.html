@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.22.0';
+const APP_VERSION = '6.23.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6180,6 +6180,87 @@ const SIMILAR_SETS = [
       { jp:'じょうず', en:'skilled at (others)',         note:"praising someone else's ability — \"your Japanese is good\"" },
       { jp:'とくい',   en:'good at (self / strong suit)', note:'your strong suit — used for yourself or describing strengths' }
     ]
+  },
+  {
+    id:'come-go-return',
+    title:'Come / go / return — speaker perspective',
+    items:[
+      { jp:'いく',   en:'to go (away from speaker)',     note:'movement away from where I am — "I go to school"' },
+      { jp:'くる',   en:'to come (toward speaker)',      note:'movement toward where I am — "she comes to my house"' },
+      { jp:'かえる', en:'to return / go home',           note:'going back to your base — home, hometown, country' }
+    ]
+  },
+  {
+    id:'wear',
+    title:'Wear — by body region',
+    items:[
+      { jp:'きる',   en:'wear (top / whole body)',       note:'shirts, jackets, dresses — anything for the upper body or full outfit' },
+      { jp:'はく',   en:'wear (lower body / feet)',      note:'pants, skirts, shoes, socks — anything you put on legs or feet' },
+      { jp:'かぶる', en:'wear (head)',                   note:'hats, caps, helmets — anything that goes on the head' },
+      { jp:'する',   en:'wear (accessory)',              note:'glasses, ties, watches, jewelry — small items: ネクタイをする' }
+    ]
+  },
+  {
+    id:'cold',
+    title:'Cold — weather / object — mirrors hot pair',
+    items:[
+      { jp:'さむい (寒い)',   en:'cold (weather / room)', note:'used for ambient temperature — winter day, a chilly room' },
+      { jp:'つめたい (冷たい)', en:'cold (object / drink)', note:'used for things you touch or drink — cold water, cold hands' }
+    ]
+  },
+  {
+    id:'give-receive',
+    title:'Give / receive — direction matters',
+    items:[
+      { jp:'あげる', en:'give (I → others, others → others)', note:'giving outward — never used when someone gives to ME' },
+      { jp:'くれる', en:'give (others → me / my group)',      note:'someone gives to me or my in-group — "she gave me a gift"' },
+      { jp:'もらう', en:'receive (I get from others)',        note:'I am the receiver — "I got this from my friend"' }
+    ]
+  },
+  {
+    id:'open-close',
+    title:'Open / close — transitive vs intransitive',
+    items:[
+      { jp:'あく',   en:'(door) opens — by itself',     note:'intransitive — the door opens; no one is doing it. ドアがあく' },
+      { jp:'あける', en:'open (the door) — I do it',     note:'transitive — someone opens the door. ドアをあける' },
+      { jp:'しまる', en:'(door) closes — by itself',    note:'intransitive — the door closes on its own. ドアがしまる' },
+      { jp:'しめる', en:'close (the door) — I do it',    note:'transitive — someone closes the door. ドアをしめる' }
+    ]
+  },
+  {
+    id:'begin-end',
+    title:'Begin / end — transitive vs intransitive',
+    items:[
+      { jp:'はじまる', en:'(it) begins — by itself',     note:'intransitive — class begins. じゅぎょうがはじまる' },
+      { jp:'はじめる', en:'begin (it) — I start it',      note:'transitive — I start studying. べんきょうをはじめる' },
+      { jp:'おわる',   en:'(it) ends / I finish it',     note:'works both ways — meeting ends, OR I finish my work' }
+    ]
+  },
+  {
+    id:'say-speak',
+    title:'Say / speak / talk',
+    items:[
+      { jp:'いう',    en:'say (a thing / words)',        note:'reporting words — quoting, naming. "she said yes", "what is this called?"' },
+      { jp:'はなす',  en:'speak / talk (with someone)',  note:'conversation — speaking a language, talking to a friend' },
+      { jp:'しゃべる', en:'chat / chatter (casual)',     note:'casual talking — chitchat. Slightly informal vibe' }
+    ]
+  },
+  {
+    id:'think-feel',
+    title:'Think — feel vs deliberate',
+    items:[
+      { jp:'おもう',     en:'think / feel (opinion)',    note:'gut sense, opinion, feeling — "I think it will rain". Used with と' },
+      { jp:'かんがえる', en:'think (deliberate)',         note:'active reasoning — considering, weighing options. "let me think about it"' }
+    ]
+  },
+  {
+    id:'time-when',
+    title:'Time / when / duration',
+    items:[
+      { jp:'とき',    en:'when / the time of',          note:'a moment or occasion — "when I was young", "the time we met"' },
+      { jp:'じかん',  en:'time / duration / hours',     note:'amount of time — "I have time", "3 hours". Also clock time in some uses' },
+      { jp:'いつ',    en:'when? (question)',            note:'interrogative — only used to ask "when?" — "when will you come?"' }
+    ]
   }
 ];
 
@@ -6612,7 +6693,67 @@ const BUILD_TEMPLATES = [
   { id:'is_new',        verb:'あたらしい', slotKey:'N', pattern:'{N}は あたらしい',   en:'{N} is new',               slotThemes:['objects','clothing','home'] },
   { id:'is_old',        verb:'ふるい', slotKey:'N', pattern:'{N}は ふるい',           en:'{N} is old',               slotThemes:['objects','clothing','home'] },
   { id:'is_fun',        verb:'たのしい', slotKey:'N', pattern:'{N}は たのしい',       en:'{N} is fun',               slotThemes:['school','places'] },
-  { id:'is_far',        verb:'とおい', slotKey:'N', pattern:'{N}は とおい',           en:'{N} is far',               slotThemes:['places'] }
+  { id:'is_far',        verb:'とおい', slotKey:'N', pattern:'{N}は とおい',           en:'{N} is far',               slotThemes:['places'] },
+
+  /* v6.23 — second verb-variety drop (+30 templates). User reported still
+     hearing the same verbs and sessions ending too quickly. New verbs:
+     きる/はく/かぶる/ぬぐ (wear family), おしえる/ならう/おぼえる/わすれる
+     (school verbs), おくる/かりる/かす/とる/おく/だす/さがす (object verbs),
+     はいる/でる/のる/おりる/あるく/かえる (motion), あらう/てつだう/よぶ
+     (daily-life), にる/やく (cooking), おもう (think). Plus 6 new
+     adjectives (うれしい/かなしい/おもい/かるい/ながい/みじかい/きたない/
+     べんり/ゆうめい/きれい). */
+
+  /* clothing — wear family (by body region) */
+  { id:'wear_top',      verb:'きる',     slotKey:'N', pattern:'{N}を きます',          en:'I wear {N} (top)',          slotThemes:['clothing'] },
+  { id:'wear_bottom',   verb:'はく',     slotKey:'N', pattern:'{N}を はきます',        en:'I wear {N} (bottom)',       slotThemes:['clothing'] },
+  { id:'wear_head',     verb:'かぶる',   slotKey:'N', pattern:'{N}を かぶります',      en:'I wear {N} (on head)',      slotThemes:['clothing'] },
+  { id:'take_off',      verb:'ぬぐ',     slotKey:'N', pattern:'{N}を ぬぎます',        en:'I take off {N}',            slotThemes:['clothing'] },
+
+  /* school verbs — teach/learn/memorize/forget */
+  { id:'teach_thing',   verb:'おしえる', slotKey:'N', pattern:'{N}を おしえます',      en:'I teach {N}',               slotThemes:['school','objects'] },
+  { id:'learn_thing',   verb:'ならう',   slotKey:'N', pattern:'{N}を ならいます',      en:'I learn {N}',               slotThemes:['school'] },
+  { id:'memorize_thing',verb:'おぼえる', slotKey:'N', pattern:'{N}を おぼえます',      en:'I memorize {N}',            slotThemes:['school','objects'] },
+  { id:'forget_thing',  verb:'わすれる', slotKey:'N', pattern:'{N}を わすれました',    en:'I forgot {N}',              slotThemes:['objects','school','clothing'] },
+
+  /* objects — handling verbs */
+  { id:'send_thing',    verb:'おくる',   slotKey:'N', pattern:'{N}を おくります',      en:'I send {N}',                slotThemes:['objects','food'] },
+  { id:'borrow_thing',  verb:'かりる',   slotKey:'N', pattern:'{N}を かります',        en:'I borrow {N}',              slotThemes:['objects','home'] },
+  { id:'lend_thing',    verb:'かす',     slotKey:'N', pattern:'{N}を かします',        en:'I lend {N}',                slotThemes:['objects'] },
+  { id:'take_thing',    verb:'とる',     slotKey:'N', pattern:'{N}を とります',        en:'I take {N}',                slotThemes:['objects','food'] },
+  { id:'put_thing',     verb:'おく',     slotKey:'N', pattern:'{N}を おきます',        en:'I put {N} down',            slotThemes:['objects','home'] },
+  { id:'put_out_thing', verb:'だす',     slotKey:'N', pattern:'{N}を だします',        en:'I put out {N}',             slotThemes:['objects','home'] },
+  { id:'search_thing',  verb:'さがす',   slotKey:'N', pattern:'{N}を さがしています',  en:"I'm looking for {N}",        slotThemes:['objects','clothing','home'] },
+
+  /* motion — places */
+  { id:'enter_place',   verb:'はいる',   slotKey:'N', pattern:'{N}に はいります',      en:'I enter {N}',               slotThemes:['places','home'] },
+  { id:'leave_place',   verb:'でる',     slotKey:'N', pattern:'{N}を でます',          en:'I leave {N}',               slotThemes:['places','home'] },
+  { id:'ride_place',    verb:'のる',     slotKey:'N', pattern:'{N}に のります',        en:'I ride/board {N}',          slotThemes:['places','objects'] },
+  { id:'get_off_place', verb:'おりる',   slotKey:'N', pattern:'{N}を おります',        en:'I get off {N}',             slotThemes:['places','objects'] },
+  { id:'walk_place',    verb:'あるく',   slotKey:'N', pattern:'{N}まで あるきます',    en:'I walk to {N}',             slotThemes:['places'] },
+  { id:'return_place',  verb:'かえる',   slotKey:'N', pattern:'{N}に かえります',      en:'I return to {N}',           slotThemes:['places','home'] },
+
+  /* daily life — wash/help/call */
+  { id:'wash_thing',    verb:'あらう',   slotKey:'N', pattern:'{N}を あらいます',      en:'I wash {N}',                slotThemes:['clothing','body','home'] },
+  { id:'help_person',   verb:'てつだう', slotKey:'N', pattern:'{N}を てつだいます',    en:'I help {N}',                slotThemes:['family','people'] },
+  { id:'call_person',   verb:'よぶ',     slotKey:'N', pattern:'{N}を よびます',        en:'I call {N}',                slotThemes:['family','people'] },
+  { id:'think_about',   verb:'おもう',   slotKey:'N', pattern:'{N}のことを おもいます', en:'I think about {N}',         slotThemes:['family','people','places'] },
+
+  /* cooking verbs */
+  { id:'grill_food',    verb:'やく',     slotKey:'N', pattern:'{N}を やきます',        en:'I grill/bake {N}',          slotThemes:['food'], slotExclude:['water','tea','milk','juice','beer','wine','drink'] },
+  { id:'simmer_food',   verb:'にる',     slotKey:'N', pattern:'{N}を にます',          en:'I simmer {N}',              slotThemes:['food'], slotExclude:['water','tea','milk','juice','beer','wine','drink'] },
+
+  /* new adjectives */
+  { id:'is_happy',      verb:'うれしい', slotKey:'N', pattern:'{N}は うれしい',        en:'{N} is happy',              slotThemes:['family','people'] },
+  { id:'is_sad',        verb:'かなしい', slotKey:'N', pattern:'{N}は かなしい',        en:'{N} is sad',                slotThemes:['family','people'] },
+  { id:'is_heavy',      verb:'おもい',   slotKey:'N', pattern:'{N}は おもい',          en:'{N} is heavy',              slotThemes:['objects','clothing'] },
+  { id:'is_light',      verb:'かるい',   slotKey:'N', pattern:'{N}は かるい',          en:'{N} is light',              slotThemes:['objects','clothing'] },
+  { id:'is_long',       verb:'ながい',   slotKey:'N', pattern:'{N}は ながい',          en:'{N} is long',               slotThemes:['objects','body','clothing'] },
+  { id:'is_short',      verb:'みじかい', slotKey:'N', pattern:'{N}は みじかい',        en:'{N} is short',              slotThemes:['objects','body','clothing'] },
+  { id:'is_dirty',      verb:'きたない', slotKey:'N', pattern:'{N}は きたない',        en:'{N} is dirty',              slotThemes:['clothing','home','body'] },
+  { id:'is_pretty',     verb:'きれい',   slotKey:'N', pattern:'{N}は きれい です',     en:'{N} is pretty/clean',       slotThemes:['family','people','places','clothing'] },
+  { id:'is_convenient', verb:'べんり',   slotKey:'N', pattern:'{N}は べんり です',     en:'{N} is convenient',         slotThemes:['objects','places'] },
+  { id:'is_famous',     verb:'ゆうめい', slotKey:'N', pattern:'{N}は ゆうめい です',   en:'{N} is famous',             slotThemes:['places','people','family','food'] }
 ];
 
 const BUILD_DRINKABLES = ['water','tea','milk','drink'];
@@ -7168,10 +7309,11 @@ const BUILD_RECENT_WORDS_CAP = 60;
 const BUILD_RECENT_VERBS_CAP = 12;
 /* v6.22 — autopilot session multiplier. When auto-advance is on (default),
    completing a generated lesson automatically chains into a fresh one
-   (same mode, fresh templates/words) up to this cap. 4 lessons ≈ 50–60
-   steps ≈ 4× the prior single-lesson session. Form Spam, Daily Chain,
-   and the hand-authored Starter never auto-chain. */
-const BUILD_AUTO_CHAIN_CAP = 4;
+   (same mode, fresh templates/words) up to this cap. Form Spam, Daily Chain,
+   and the hand-authored Starter never auto-chain.
+   v6.23 — bumped 4→8 because users reported sessions ending too quickly.
+   8 lessons ≈ 130–160 steps ≈ ~12 min runs. */
+const BUILD_AUTO_CHAIN_CAP = 8;
 function buildRecentGet(){
   /* v6.22 — added verbs[] alongside templates[]/words[] for verb-recency
      tracking. Old payloads without verbs degrade gracefully (treated as
@@ -7678,19 +7820,27 @@ function buildGenerateLesson(mode){
   const toRef = w => ({ id: buildGenWordId(w), jp: w.jp, en: w.en, r: w.romaji });
 
   const p1 = buildFillTemplate(primary, w1), p2 = buildFillTemplate(primary, w2), p3 = buildFillTemplate(primary, w3);
-  const s2 = buildFillTemplate(secondary, w2), s3 = buildFillTemplate(secondary, w3);
+  const s1 = buildFillTemplate(secondary, w1), s2 = buildFillTemplate(secondary, w2), s3 = buildFillTemplate(secondary, w3);
   const sCb1 = buildFillTemplate(secondary, cb1);
   const pCb2 = buildFillTemplate(primary, cb2);
+  const sCb2 = buildFillTemplate(secondary, cb2);
 
   const pEn = primary.en.replace(/\{N\}/g,'X');
   const sEn = secondary.en.replace(/\{N\}/g,'X');
 
+  /* v6.23 — cycle 2 extended from 5 → 8 step beats. Users reported lessons
+     ending too quickly; extra rotation reinforces the same 3 words across
+     both frames a 2nd time before the variation step. Ordering keeps
+     P/S/P/S/P alternation so the user keeps hearing the contrast. */
   const cycle2Steps = [
     { type:'build',      sentence_jp: p1.jp, sentence_en: p1.en },
     { type:'substitute', swap_word_id: buildGenWordId(w2), result_jp: p2.jp, result_en: p2.en },
     { type:'build',      sentence_jp: s2.jp, sentence_en: s2.en },
     { type:'substitute', swap_word_id: buildGenWordId(w3), result_jp: s3.jp, result_en: s3.en },
-    { type:'build',      sentence_jp: p3.jp, sentence_en: p3.en }
+    { type:'build',      sentence_jp: p3.jp, sentence_en: p3.en },
+    { type:'substitute', swap_word_id: buildGenWordId(w1), result_jp: p1.jp, result_en: p1.en },
+    { type:'build',      sentence_jp: s1.jp, sentence_en: s1.en },
+    { type:'substitute', swap_word_id: buildGenWordId(w3), result_jp: s3.jp, result_en: s3.en }
   ];
   // v6.11 — append a variation step using one of the new words. Same English intent,
   // multiple Japanese framings. Falls back to a deck pick if no new word fits.
@@ -7699,11 +7849,17 @@ function buildGenerateLesson(mode){
                   buildGenerateVariationStep(state.words || [], w1);
   if(varStep) cycle2Steps.push(varStep);
 
+  const pCb1 = buildFillTemplate(primary, cb1);
+  /* v6.23 — cycle 3 extended from 4 → 6 step beats. Each callback word now
+     gets BOTH frames so cold review still feels like a contrast drill, not
+     a one-shot quiz. */
   const cycle3Steps = [
     { type:'callback',   word_id: buildGenWordId(cb1), note:'cold — from earlier' },
     { type:'build',      sentence_jp: sCb1.jp, sentence_en: sCb1.en },
+    { type:'substitute', swap_word_id: buildGenWordId(cb1), result_jp: pCb1.jp, result_en: pCb1.en },
     { type:'callback',   word_id: buildGenWordId(cb2), note:'cold — from earlier' },
-    { type:'build',      sentence_jp: pCb2.jp, sentence_en: pCb2.en }
+    { type:'build',      sentence_jp: pCb2.jp, sentence_en: pCb2.en },
+    { type:'substitute', swap_word_id: buildGenWordId(cb2), result_jp: sCb2.jp, result_en: sCb2.en }
   ];
   // v6.11 — append a QA step. Uses a callback word so it doubles as a 3rd cold review.
   const qaStep = buildGenerateQaStep(state.words || [], cb1) ||
