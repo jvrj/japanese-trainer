@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.26.0';
+const APP_VERSION = '6.27.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8063,6 +8063,11 @@ function buildGenerateLesson(mode){
   const simSet = _buildPickSimilarSetForLesson(pVerb, sVerb, [...newWords, ...callbacks]);
   const cycleSimSteps = _buildGenerateSimilarSteps(simSet, 2);
 
+  /* v6.27 — form_drill cycle: 2 conjugation steps using introduced deck verbs.
+     Skipped silently when no eligible verbs exist (early users, small decks). */
+  const formVerbs = _buildPickFormDrillVerbs(deck, 2);
+  const cycleFormSteps = _buildGenerateFormDrillSteps(formVerbs, 2);
+
   const cycles = [
     { id:'cycle_1', name: cycle1Name, steps: cycle1Steps },
     { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`, steps: cycle2Steps },
@@ -8070,6 +8075,9 @@ function buildGenerateLesson(mode){
   ];
   if(cycleSimSteps.length){
     cycles.push({ id:'cycle_sim', name:`Discriminate — ${simSet.title}`, steps: cycleSimSteps });
+  }
+  if(cycleFormSteps.length){
+    cycles.push({ id:'cycle_form', name:`Conjugate — verb forms`, steps: cycleFormSteps });
   }
   cycles.push({ id:'cycle_4', name:`Final pass — all 5 words cold`, steps: cycle4Steps });
 
@@ -8740,6 +8748,7 @@ function _buildWriteApplies(step){
   if(!step || !_buildWriteOn()) return false;
   if(step.type === 'build' || step.type === 'substitute') return true;
   if(step.type === 'callback' && step.sentence_jp) return true;
+  if(step.type === 'form_drill') return true;  /* v6.27 — typing fits conjugation drills naturally */
   return false;
 }
 
@@ -8830,6 +8839,14 @@ function buildAutoplayStep(step){
     const set = similarSetById(step.set_id);
     const target = set?.items?.[step.item_idx];
     if(target?.en) _buildSpeakEN(target.en, false);
+  } else if(step.type === 'form_drill'){
+    /* v6.27 — speak the dictionary form + form name as the prompt. Then,
+       in normal mode, fall through to the auto-reveal timer; in write
+       mode the input wait already short-circuited above. */
+    _buildSpeakJP(step.word_jp, () => {
+      if(state.buildMode !== b || b._paused) return;
+      _buildSpeakEN(`${step.word_en} — ${step.form_hint || step.form_name}`, false, onEnDone);
+    });
   }
 }
 
@@ -8956,6 +8973,11 @@ function _buildPlayJPForStep(step, onDone){
     if(target?.jp) _buildSpeakJP(target.jp, onDone);
     else if(onDone) onDone();
   }
+  else if(step.type === 'form_drill'){
+    /* v6.27 — speak the conjugated answer on reveal. */
+    if(step.expected_jp) _buildSpeakJP(step.expected_jp, onDone);
+    else if(onDone) onDone();
+  }
   else if(onDone) onDone();
 }
 
@@ -9002,7 +9024,7 @@ function buildWriteSubmit(){
   if(!inp) return;
   const typed = inp.value || '';
   if(!typed.trim()) return;
-  const expected = step.sentence_jp || step.result_jp || '';
+  const expected = step.sentence_jp || step.result_jp || step.expected_jp || '';  /* v6.27 — form_drill uses expected_jp */
   const correct = normJPLoose(typed) === normJPLoose(expected);
   b._writeAttempt = { input: typed.trim(), correct };
   /* Reveal regardless of correctness so the user sees the right answer. */
@@ -9506,6 +9528,7 @@ function renderBuildModeStep(){
     case 'variation':  body = _buildRenderVariation(step); break;
     case 'qa':         body = _buildRenderQa(step); break;
     case 'similar':    body = _buildRenderSimilar(step); break;
+    case 'form_drill': body = _buildRenderFormDrill(step); break;
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
@@ -9584,6 +9607,7 @@ function _buildChipLabel(step){
   if(step.type === 'variation') return 'ways';
   if(step.type === 'qa') return step._aiMode ? '🤖 ai chat' : 'q&a';
   if(step.type === 'similar') return 'discriminate';
+  if(step.type === 'form_drill') return 'conjugate';
   return step.type;
 }
 
@@ -9615,6 +9639,59 @@ function _buildGenerateSimilarSteps(set, count){
     item_idx: itemIdx,
     options: idxs.slice().sort(() => Math.random() - 0.5)
   }));
+}
+
+/* v6.27 — Build Mode form_drill step. Picks an introduced verb from the
+   deck and generates a conjugation challenge using FORMS. The conjugation
+   answer is baked at lesson generation so no FORMS lookup is needed at
+   render time. Returns [] when no eligible verb exists (small decks). */
+function _buildPickFormDrillVerbs(deck, count){
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const moduleIds = activeModuleWordIdSet();
+  const verbs = (deck || []).filter(w =>
+    w.pos === 'v' && w.jp && !hasKatakana(w.jp) &&
+    !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
+    (!moduleIds || moduleIds.has(w.id)) &&
+    vocabIsIntroduced(w)
+  );
+  if(verbs.length === 0) return [];
+  const out = [];
+  const used = new Set();
+  for(let i = 0; i < (count || 2) && used.size < verbs.length; i++){
+    let v;
+    do { v = verbs[Math.floor(Math.random() * verbs.length)]; } while(used.has(v.id));
+    used.add(v.id);
+    out.push(v);
+  }
+  return out;
+}
+function _buildGenerateFormDrillSteps(verbs, count){
+  if(!verbs || !verbs.length || !Array.isArray(FORMS) || FORMS.length === 0) return [];
+  const out = [];
+  for(const v of verbs.slice(0, count || 2)){
+    /* Bias toward the foundational forms: ます, ました, て, ない. Random
+       across all FORMS would surface obscure ones too often for a folded
+       drill that's only 1-2 questions long. */
+    const PRIMARY_FORMS = ['masu','mashita','te','ta','nai','tai','masen','teiru'];
+    const candidates = FORMS.filter(f => PRIMARY_FORMS.includes(f.id));
+    const pool = candidates.length ? candidates : FORMS;
+    const f = pool[Math.floor(Math.random() * pool.length)];
+    let expected = '';
+    try{ expected = f.conj(v.jp) || ''; }catch(e){ expected = ''; }
+    if(!expected) continue;
+    out.push({
+      type: 'form_drill',
+      word_jp: v.jp,
+      word_en: v.en,
+      word_id: v.id,
+      form_id: f.id,
+      form_name: f.name,
+      form_hint: f.hint,
+      expected_jp: expected
+    });
+  }
+  return out;
 }
 
 /* v6.26 — render the similar-words discrimination card. Pre-tap: shows the
@@ -9652,6 +9729,31 @@ function _buildRenderSimilar(step){
     <div class="muted" style="font-size:12px;text-align:center;margin:4px 0 10px">${esc(target.note || '')}</div>
     ${optBtns}
     ${reveal}
+  `;
+}
+
+/* v6.27 — render the form_drill conjugation step. Pre-reveal: shows the
+   dictionary form + target form name, then "say it out loud" or (in write
+   mode) an input box. Post-reveal: shows the conjugated answer plus EN. */
+function _buildRenderFormDrill(step){
+  const b = state.buildMode;
+  if(_buildWriteApplies(step) && !b.revealed){
+    const promptHeader = `<div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Conjugate <b>${esc(step.word_jp)}</b> (${esc(step.word_en)}) → <span style="color:var(--blue)">${esc(step.form_name)}</span> · ${esc(step.form_hint || '')}</div>`;
+    return promptHeader + _buildRenderWriteInput(`${step.word_en} (${step.form_hint || step.form_name})`);
+  }
+  if(b.revealed){
+    return `
+      <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Conjugated:</div>
+      <div style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:6px">${esc(step.word_jp)} → <span style="color:var(--blue)">${esc(step.form_name)}</span></div>
+      <div class="build-big-jp">${esc(step.expected_jp)}</div>
+      <div class="build-big-en">${esc(step.word_en)} · ${esc(step.form_hint || '')}</div>
+    `;
+  }
+  return `
+    <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Conjugate to <span style="color:var(--blue)">${esc(step.form_name)}</span> · ${esc(step.form_hint || '')}</div>
+    <div class="build-big-jp" style="font-size:36px">${esc(step.word_jp)}</div>
+    <div class="build-big-en">${esc(step.word_en)}</div>
+    <div class="build-placeholder">say the ${esc(step.form_name)} form, then tap Reveal</div>
   `;
 }
 
