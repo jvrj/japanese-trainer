@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.20.0';
+const APP_VERSION = '6.21.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1070,7 +1070,67 @@ const N5_PACK = [
   {jp:"しょうらい",romaji:"shourai",en:"future",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"かいわ",romaji:"kaiwa",en:"conversation",pos:"n",theme:"daily",register:"neutral",jlpt:5},
   {jp:"きょうみ",romaji:"kyoumi",en:"interest",pos:"n",theme:"daily",register:"neutral",jlpt:5},
-  {jp:"きかい",romaji:"kikai",en:"opportunity/chance",pos:"n",theme:"daily",register:"neutral",jlpt:5}
+  {jp:"きかい",romaji:"kikai",en:"opportunity/chance",pos:"n",theme:"daily",register:"neutral",jlpt:5},
+
+  /* ===== v6.21 — tools/objects + body/color/home expansion =====
+     `objects` theme is referenced by 44 build templates but had no words tagged
+     to it; these populate that pool so templates like "I bought {N}" / "I used
+     {N}" pull from realistic everyday tools. Body/color/home expansions extend
+     existing themes without changing schema. */
+
+  /* Tools & everyday objects */
+  {jp:"はし",romaji:"hashi",en:"chopsticks",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"スプーン",romaji:"supuun",en:"spoon",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"フォーク",romaji:"fooku",en:"fork",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ナイフ",romaji:"naifu",en:"knife",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"おさら",romaji:"osara",en:"plate",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"コップ",romaji:"koppu",en:"cup",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"グラス",romaji:"gurasu",en:"glass (drinking)",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"おわん",romaji:"owan",en:"bowl",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"テープ",romaji:"teepu",en:"tape",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"はさみ",romaji:"hasami",en:"scissors",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"けしゴム",romaji:"keshigomu",en:"eraser",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"ノート",romaji:"nooto",en:"notebook",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"さいふ",romaji:"saifu",en:"wallet",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"タオル",romaji:"taoru",en:"towel",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"はぶらし",romaji:"haburashi",en:"toothbrush",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+  {jp:"せっけん",romaji:"sekken",en:"soap",pos:"n",theme:"objects",register:"neutral",jlpt:5},
+
+  /* Body parts (extends existing body theme) */
+  {jp:"うで",romaji:"ude",en:"arm",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"くび",romaji:"kubi",en:"neck",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"かた",romaji:"kata",en:"shoulder",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ゆび",romaji:"yubi",en:"finger",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ひざ",romaji:"hiza",en:"knee",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"こころ",romaji:"kokoro",en:"heart/mind",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"のど",romaji:"nodo",en:"throat",pos:"n",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ほね",romaji:"hone",en:"bone",pos:"n",theme:"body",register:"neutral",jlpt:5},
+
+  /* Colors (extends existing colors theme) */
+  {jp:"ピンク",romaji:"pinku",en:"pink",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"むらさき",romaji:"murasaki",en:"purple",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"オレンジ",romaji:"orenji",en:"orange (color)",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"はいいろ",romaji:"haiiro",en:"gray",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"きいろい",romaji:"kiiroi",en:"yellow (adj)",pos:"i-adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"きん",romaji:"kin",en:"gold",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"ぎん",romaji:"gin",en:"silver",pos:"n",theme:"colors",register:"neutral",jlpt:5},
+
+  /* Home/rooms (extends existing home theme) */
+  {jp:"しんしつ",romaji:"shinshitsu",en:"bedroom",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"リビング",romaji:"ribingu",en:"living room",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"げんかん",romaji:"genkan",en:"entryway",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"ろうか",romaji:"rouka",en:"hallway",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"べランダ",romaji:"beranda",en:"balcony",pos:"n",theme:"home",register:"neutral",jlpt:5},
+  {jp:"おしいれ",romaji:"oshiire",en:"closet",pos:"n",theme:"home",register:"neutral",jlpt:5},
+
+  /* Places (extends existing places theme) */
+  {jp:"はくぶつかん",romaji:"hakubutsukan",en:"museum",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"どうぶつえん",romaji:"doubutsuen",en:"zoo",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"みずうみ",romaji:"mizuumi",en:"lake",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"きょうかい",romaji:"kyoukai",en:"church",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"おてら",romaji:"otera",en:"temple",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"じんじゃ",romaji:"jinja",en:"shrine",pos:"n",theme:"places",register:"neutral",jlpt:5},
+  {jp:"ばしょ",romaji:"basho",en:"place/location",pos:"n",theme:"places",register:"neutral",jlpt:5}
 ];
 
 /* ===================== SENTENCE TEMPLATES ===================== */
@@ -7458,6 +7518,9 @@ function startBuildModeFormSpam(formId){
   try {
     const lesson = buildGenerateFormSpamLesson(formId);
     state.buildMode = buildMakeSession(lesson);
+    /* v6.21 — remember where this lesson was launched from so buildExit
+       can return there instead of dumping the user on Build Mode home. */
+    state.buildMode._origin = 'forms';
     _buildWakeLockSync();
     nav('buildMode');
   } catch(e){
@@ -8211,9 +8274,17 @@ window.buildMasterCurrentWord = buildMasterCurrentWord;
 function buildExit(){
   _buildClearTimer();
   try{ window.speechSynthesis?.cancel(); }catch(e){}
+  /* v6.21 — if the lesson was launched from a specific origin (e.g., the
+     Forms picker for Form Spam), route back there instead of leaving the
+     user on Build Mode home, which forces them to re-navigate to continue. */
+  const origin = state.buildMode && state.buildMode._origin;
   state.buildMode = { lesson:null, steps:[], stepIdx:0, revealed:false, done:false };
   _wakeLockRelease();
-  render();
+  if(origin){
+    nav(origin);
+  } else {
+    render();
+  }
 }
 window.buildExit = buildExit;
 
