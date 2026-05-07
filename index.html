@@ -309,7 +309,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.25.0';
+const APP_VERSION = '6.26.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8054,21 +8054,32 @@ function buildGenerateLesson(mode){
     { type:'build',    sentence_jp: sCb2.jp, sentence_en: sCb2.en }
   ];
 
+  /* v6.26 — Similar-words discrimination cycle, inserted between callbacks
+     (cycle 3) and the final cold pass (cycle 4). Picks a SIMILAR_SET that
+     overlaps with the lesson's verbs/words when possible. Skipped silently
+     if no SIMILAR_SETS or set has too few items. Folds the standalone
+     Similar Words mode into Build Mode lessons so the user doesn't have
+     to leave Build Mode to drill near-synonym discrimination. */
+  const simSet = _buildPickSimilarSetForLesson(pVerb, sVerb, [...newWords, ...callbacks]);
+  const cycleSimSteps = _buildGenerateSimilarSteps(simSet, 2);
+
+  const cycles = [
+    { id:'cycle_1', name: cycle1Name, steps: cycle1Steps },
+    { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`, steps: cycle2Steps },
+    { id:'cycle_3', name:`Callbacks — mix frames`, steps: cycle3Steps }
+  ];
+  if(cycleSimSteps.length){
+    cycles.push({ id:'cycle_sim', name:`Discriminate — ${simSet.title}`, steps: cycleSimSteps });
+  }
+  cycles.push({ id:'cycle_4', name:`Final pass — all 5 words cold`, steps: cycle4Steps });
+
   return {
     id: lessonId,
     title: `${mode === 'complex' ? 'Complex' : mode === 'social' ? 'Social' : 'Simple'} ${lessonId} — ${pEn} / ${sEn}`,
     duration_mins: mode === 'complex' ? 13 : mode === 'social' ? 12 : 11,
     new_words: newWords.map(toRef),
     carryover_words: callbacks.map(toRef),
-    cycles: [
-      { id:'cycle_1', name: cycle1Name, steps: cycle1Steps },
-      { id:'cycle_2', name:`Mix frames — "${pEn}" ⇄ "${sEn}"`,
-        steps: cycle2Steps },
-      { id:'cycle_3', name:`Callbacks — mix frames`,
-        steps: cycle3Steps },
-      { id:'cycle_4', name:`Final pass — all 5 words cold`,
-        steps: cycle4Steps }
-    ],
+    cycles,
     _meta: {
       mode,
       introduced_ids: newWords.map(buildGenWordId),
@@ -8812,6 +8823,13 @@ function buildAutoplayStep(step){
         setTimeout(() => _buildSpeakEN(step.question_en, false, onEnDone), 350);
       });
     }
+  } else if(step.type === 'similar'){
+    /* v6.26 — speak the EN gloss as a hint, then idle. Auto-reveal does NOT
+       fire — the step waits for buildSimilarPick(). After pick, the linger
+       timer carries the user to the next step. */
+    const set = similarSetById(step.set_id);
+    const target = set?.items?.[step.item_idx];
+    if(target?.en) _buildSpeakEN(target.en, false);
   }
 }
 
@@ -8839,6 +8857,7 @@ function buildAutoNext(){
   } else {
     b.revealed = false;
     b._writeAttempt = null;  /* v6.25 */
+    b._similarPick = null;   /* v6.26 */
     b.stepIdx++;
   }
   render();
@@ -8929,6 +8948,14 @@ function _buildPlayJPForStep(step, onDone){
       _buildSpeakJPSequence(items, onDone);
     }
   }
+  else if(step.type === 'similar'){
+    /* v6.26 — speak the correct JP after reveal so the right answer lands
+       in the user's ear, not just on the screen. */
+    const set = similarSetById(step.set_id);
+    const target = set?.items?.[step.item_idx];
+    if(target?.jp) _buildSpeakJP(target.jp, onDone);
+    else if(onDone) onDone();
+  }
   else if(onDone) onDone();
 }
 
@@ -8990,11 +9017,46 @@ function buildWriteSubmit(){
 }
 window.buildWriteSubmit = buildWriteSubmit;
 
+/* v6.26 — Similar-step tap handler. Records pick, marks correct/wrong on the
+   step's per-item streak (same SIMILAR_RETIRE_STREAK contract Similar mode
+   uses), reveals, then auto-advances on the linger timer like a normal step. */
+function buildSimilarPick(idx){
+  const b = state.buildMode;
+  if(!b) return;
+  const step = b.steps[b.stepIdx];
+  if(!step || step.type !== 'similar') return;
+  if(b._similarPick != null) return;  /* already picked */
+  b._similarPick = idx;
+  b.revealed = true;
+  const correct = (idx === step.item_idx);
+  /* Update SIMILAR streak/retire bookkeeping so progress here counts toward
+     standalone Similar mode too. */
+  try{
+    const stat = similarStatFor(step.set_id, step.item_idx);
+    stat.lastSeen = now();
+    if(correct){
+      stat.streak = (stat.streak || 0) + 1;
+      stat.correctCount = (stat.correctCount || 0) + 1;
+      if(stat.streak >= SIMILAR_RETIRE_STREAK){ stat.retired = true; stat.retiredAt = now(); }
+    } else {
+      stat.streak = 0;
+      stat.wrongCount = (stat.wrongCount || 0) + 1;
+    }
+    save();
+  }catch(e){}
+  render();
+  if(_buildAutoOn() && !b._paused){
+    setTimeout(() => { if(state.buildMode === b) _buildScheduleLinger(); }, 200);
+  }
+}
+window.buildSimilarPick = buildSimilarPick;
+
 function buildNextStep(){
   const b = state.buildMode;
   _buildClearTimer();
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
+  b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
@@ -9009,6 +9071,7 @@ function buildPrevStep(){
   _buildClearTimer();
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
+  b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx > 0) b.stepIdx--;
   render();
@@ -9021,6 +9084,7 @@ function buildRestart(){
   b._paused = false;
   b.stepIdx = 0; b.revealed = false; b.done = false;
   b._writeAttempt = null;  /* v6.25 */
+  b._similarPick = null;   /* v6.26 */
   if(b.lesson) b.lesson._completed = false;
   render();
 }
@@ -9441,6 +9505,7 @@ function renderBuildModeStep(){
     case 'callback':   body = _buildRenderCallback(step); break;
     case 'variation':  body = _buildRenderVariation(step); break;
     case 'qa':         body = _buildRenderQa(step); break;
+    case 'similar':    body = _buildRenderSimilar(step); break;
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
@@ -9482,9 +9547,11 @@ function renderBuildModeStep(){
       <button class="btn btn-secondary" onclick="buildReplayAudio()">🔊 Replay</button>
       ${b.revealed || step.type === 'introduce'
         ? `<button class="btn btn-primary" onclick="buildNextStep()">${b.stepIdx === total - 1 ? 'Finish ✓' : 'Next ›'}</button>`
-        : (_buildWriteApplies(step)
-            ? `<button class="btn btn-ghost" style="font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
-            : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`)
+        : (step.type === 'similar'
+            ? `<span style="flex:1;text-align:center;color:var(--muted);font-size:12px">tap a choice</span>`
+            : (_buildWriteApplies(step)
+                ? `<button class="btn btn-ghost" style="font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
+                : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`))
       }
     </div>
 
@@ -9516,7 +9583,76 @@ function _buildChipClass(step){
 function _buildChipLabel(step){
   if(step.type === 'variation') return 'ways';
   if(step.type === 'qa') return step._aiMode ? '🤖 ai chat' : 'q&a';
+  if(step.type === 'similar') return 'discriminate';
   return step.type;
+}
+
+/* v6.26 — Build Mode similar-words step. Picks a SIMILAR_SET whose items
+   include the lesson's primary or secondary verb (or a new-word JP), then
+   generates a multiple-choice discrimination question. Falls back to a
+   random set if no overlap. Returns null when SIMILAR_SETS is empty or
+   excluded sets fail to find a viable pick. */
+function _buildPickSimilarSetForLesson(primaryVerb, secondaryVerb, lessonWords){
+  if(!Array.isArray(SIMILAR_SETS) || SIMILAR_SETS.length === 0) return null;
+  const lessonJp = new Set([primaryVerb, secondaryVerb, ...(lessonWords || []).map(w => w?.jp)].filter(Boolean));
+  /* Strip parenthetical kanji from set item JPs so e.g. 'さむい (寒い)' matches verb 'さむい'. */
+  const stripParen = (s) => String(s || '').replace(/\s*[（(].*?[)）]/g, '').trim();
+  const overlapping = SIMILAR_SETS.filter(set =>
+    (set.items || []).some(it => lessonJp.has(stripParen(it.jp)))
+  );
+  if(overlapping.length) return overlapping[Math.floor(Math.random() * overlapping.length)];
+  return SIMILAR_SETS[Math.floor(Math.random() * SIMILAR_SETS.length)];
+}
+function _buildGenerateSimilarSteps(set, count){
+  if(!set || !Array.isArray(set.items) || set.items.length < 2) return [];
+  const n = Math.min(count || 2, set.items.length);
+  const idxs = set.items.map((_, i) => i);
+  /* Sample N distinct item indices to ask about. */
+  const order = idxs.slice().sort(() => Math.random() - 0.5).slice(0, n);
+  return order.map(itemIdx => ({
+    type: 'similar',
+    set_id: set.id,
+    item_idx: itemIdx,
+    options: idxs.slice().sort(() => Math.random() - 0.5)
+  }));
+}
+
+/* v6.26 — render the similar-words discrimination card. Pre-tap: shows the
+   target's English + note as the prompt, then N option buttons (item.jp).
+   Post-tap: highlights the correct option + the user's pick if wrong, and
+   shows the correct item's note for context. */
+function _buildRenderSimilar(step){
+  const b = state.buildMode;
+  const set = similarSetById(step.set_id);
+  if(!set) return `<div class="muted">Similar set "${esc(step.set_id)}" not found</div>`;
+  const target = set.items[step.item_idx];
+  if(!target) return `<div class="muted">Similar item missing</div>`;
+  const picked = (b._similarPick != null) ? b._similarPick : null;
+  const correctIdx = step.item_idx;
+  const optBtns = (step.options || []).map(idx => {
+    const it = set.items[idx];
+    if(!it) return '';
+    let style = 'width:100%;text-align:left;margin:4px 0;padding:10px 12px;font-size:16px';
+    let cls = 'btn btn-secondary';
+    if(picked != null){
+      if(idx === correctIdx){ cls = 'btn'; style += ';background:var(--green);color:#fff;border-color:var(--green)'; }
+      else if(idx === picked){ cls = 'btn'; style += ';background:var(--red);color:#fff;border-color:var(--red)'; }
+    }
+    const onclick = (picked != null) ? '' : `onclick="buildSimilarPick(${idx})"`;
+    return `<button class="${cls}" style="${style}" ${onclick} ${picked != null ? 'disabled' : ''}>${esc(it.jp)}</button>`;
+  }).join('');
+  const reveal = (picked != null) ? `
+    <div style="margin-top:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px">
+      <div style="font-size:13px;color:var(--green)"><b>${esc(set.items[correctIdx].jp)}</b> — ${esc(set.items[correctIdx].en)}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">${esc(set.items[correctIdx].note || '')}</div>
+    </div>` : '';
+  return `
+    <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Pick the JP that means:</div>
+    <div class="build-big-en">${esc(target.en)}</div>
+    <div class="muted" style="font-size:12px;text-align:center;margin:4px 0 10px">${esc(target.note || '')}</div>
+    ${optBtns}
+    ${reveal}
+  `;
 }
 
 function _buildRenderVariation(step){
