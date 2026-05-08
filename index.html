@@ -32,12 +32,12 @@ body{font-family:'Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webk
 .header .sub{font-size:10px;letter-spacing:2.5px;color:var(--faint);text-transform:uppercase;font-weight:700}
 
 /* Cards & layout */
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px}
 .card h3{font-size:12px;letter-spacing:2px;color:var(--dim);margin-bottom:10px;text-transform:uppercase}
-.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:12px}
-.stat-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 4px;text-align:center}
-.stat-num{font-size:22px;font-weight:900;line-height:1}
-.stat-label{font-size:9px;letter-spacing:1.5px;color:var(--faint);margin-top:4px;text-transform:uppercase}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:10px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center}
+.stat-num{font-size:17px;font-weight:900;line-height:1}
+.stat-label{font-size:9px;letter-spacing:1.4px;color:var(--faint);margin-top:3px;text-transform:uppercase}
 
 /* Buttons */
 .btn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .1s,opacity .1s;text-align:center;margin-bottom:7px;color:#fff}
@@ -384,7 +384,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.35.0';
+const APP_VERSION = '6.36.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9270,12 +9270,27 @@ function _buildStateWordIdForStep(step){
 }
 function _buildPaceFactor(step){
   if(!step || step.type === 'introduce') return 1.0; /* never rush new exposures */
+  /* v6.36 — split into length factor + mastery factor.
+     Single-word recall/callback is "instant or unknown", so half-speed.
+     Sentence steps (build/qa, sentence-only callback) keep full length so the
+     user has time to parse. */
+  const lengthFactor = _buildStepIsSingleWord(step) ? 0.55 : 1.0;
   const wid = _buildStateWordIdForStep(step);
-  if(!wid) return 1.0; /* sentence-only step or unknown — full pace */
-  const mastery = getMasteryForWord(wid);
-  if(mastery === 'guru' || mastery === 'master' || mastery === 'burned') return 0.5;
-  if(mastery === 'apprentice') return 0.7;
-  return 1.0;
+  let masteryFactor = 1.0;
+  if(wid){
+    const mastery = getMasteryForWord(wid);
+    if(mastery === 'guru' || mastery === 'master' || mastery === 'burned') masteryFactor = 0.5;
+    else if(mastery === 'apprentice') masteryFactor = 0.7;
+  }
+  return Math.max(0.3, lengthFactor * masteryFactor); /* floor so it's never absurdly fast */
+}
+function _buildStepIsSingleWord(step){
+  if(!step) return false;
+  /* recall/callback with word_id is by definition a single-word answer */
+  if((step.type === 'recall' || step.type === 'callback') && step.word_id) return true;
+  /* short phrase steps count as single-word for pacing */
+  if(step.type === 'phrase' && step.jp && step.jp.length <= 6) return true;
+  return false;
 }
 
 function buildAutoplayStep(step){
@@ -10708,13 +10723,15 @@ function renderHome(){
   const total = active.length || 1;
   const masterySegs = MASTERY.map(m => `<div class="mastery-strip-seg ${m}" style="width:${100*masteryBuckets[m]/total}%"></div>`).join('');
 
-  /* Streak strip — 3 compact cells */
-  const streakStrip = `
+  /* Streak strip — 3 compact cells. Hidden for brand-new users with no
+     activity (avoids a row of zeroes shouting at them). */
+  const showStreakStrip = streak > 0 || totalAttempts > 0;
+  const streakStrip = showStreakStrip ? `
     <div class="streak-strip">
       <div><div class="streak-num"><span class="em">🔥</span>${streak}</div><div class="streak-label">Streak</div></div>
       <div><div class="streak-num">${acc}%</div><div class="streak-label">Accuracy</div></div>
       <div><div class="streak-num">${active.length}</div><div class="streak-label">Deck</div></div>
-    </div>`;
+    </div>` : '';
 
   /* Hero — today's Vocab Blitz with section chips below */
   const bc = blitzCounts();
@@ -11208,6 +11225,26 @@ function blankMatchesScope(blank, scope){
   return true;
 }
 
+/* v6.36 — particle confusables. When the user drills a single particle, the
+   pool used to be 100% that particle, so they could pattern-match "the answer
+   is に" without reading the sentence. Mix in ~30% drills from commonly
+   confused particles so the answer isn't pre-decided. Tracking still applies
+   per-blank globally, so confusable hits also count toward retirement. */
+const PARTICLE_CONFUSABLES = {
+  'は': ['が'],          // topic vs subject
+  'が': ['は', 'を'],    // subject vs topic vs object
+  'を': ['が'],          // object vs subject (esp. with potential)
+  'に': ['で', 'へ'],    // existence-loc vs action-loc; destination
+  'で': ['に'],          // action-loc vs existence-loc
+  'へ': ['に'],          // direction vs destination
+  'と': ['や'],          // exhaustive and vs partial and
+  'や': ['と'],
+  'も': ['は'],          // also vs topic
+  'の': ['が'],          // possessive vs subject in relative clauses
+  'から': ['まで'],
+  'まで': ['から'],
+};
+
 function buildParticlePoolScoped(scope){
   const pairs = [];
   for(let di = 0; di < PARTICLE_DRILLS.length; di++){
@@ -11227,7 +11264,25 @@ function buildParticlePoolScoped(scope){
       }
     }
   }
-  return shuffleFY(pairs).slice(0, PARTICLE_SESSION_TARGET);
+  /* v6.36 — mix in confusable-particle drills when scoped to a single
+     particle (no use sub-scope). Otherwise the answer is always the scoped
+     particle and the user pattern-matches the scope, not the sentence. */
+  let confusables = [];
+  if(scope && scope.particle && !scope.use){
+    const confList = PARTICLE_CONFUSABLES[scope.particle] || [];
+    for(let di = 0; di < PARTICLE_DRILLS.length; di++){
+      const blanks = particleBlanks(PARTICLE_DRILLS[di]);
+      for(let bi = 0; bi < blanks.length; bi++){
+        if(confList.includes(blanks[bi].particle)) confusables.push({drillIdx:di, blankIdx:bi});
+      }
+    }
+    confusables = shuffleFY(confusables);
+    /* Aim for ~30% of the session being confusables. */
+    const want = Math.round(PARTICLE_SESSION_TARGET * 0.3);
+    confusables = confusables.slice(0, want);
+  }
+  const inScope = shuffleFY(pairs).slice(0, Math.max(1, PARTICLE_SESSION_TARGET - confusables.length));
+  return shuffleFY(inScope.concat(confusables));
 }
 
 function buildParticlePool(){ return buildParticlePoolScoped({}); }
