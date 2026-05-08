@@ -367,8 +367,8 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 <nav class="bottom-nav">
   <button class="nav-btn" data-screen="home"><span class="nav-ico">🏠</span>Home</button>
   <button class="nav-btn" data-screen="blitz"><span class="nav-ico">⚡</span>Blitz</button>
-  <button class="nav-btn" data-screen="phrases"><span class="nav-ico">💬</span>Phrases</button>
-  <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>More</button>
+  <button class="nav-btn" data-screen="library"><span class="nav-ico">📚</span>Library</button>
+  <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>Settings</button>
 </nav>
 
 <button class="back-fab" id="backFab" title="Back">←</button>
@@ -384,7 +384,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.34.0';
+const APP_VERSION = '6.35.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5769,8 +5769,7 @@ function renderPhrases(){
   const counts = phraseCounts();
   const header = `
     <div class="card">
-      <h2 style="margin-top:0">Phrases</h2>
-      <div class="muted" style="font-size:13px;line-height:1.5">
+      <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
         Practical chunks — what you'd actually say to a friend, in a shop, on the way somewhere. Drill: read the English, type the Japanese.
       </div>
       <div class="stats-row" style="margin-top:12px">
@@ -5802,7 +5801,7 @@ function renderPhrases(){
           <h3 style="margin:0">${esc(c.label)}</h3>
           <span class="muted" style="font-size:12px">${cc.retired} / ${cc.total} mastered</span>
         </div>
-        <button class="btn btn-orange" style="width:100%;font-size:14px;padding:10px" onclick="startPhraseBlitz('${c.key}')">Drill ${esc(c.label.toLowerCase())}</button>
+        <button class="btn btn-primary" style="width:100%;font-size:14px;padding:10px" onclick="startPhraseBlitz('${c.key}')">Drill ${esc(c.label.toLowerCase())}</button>
         <div style="height:4px"></div>
         <button class="btn btn-blue" style="width:100%;font-size:13px;padding:8px" onclick="startBuildModePhraseSpam('${c.key}')">🎲 Spam ${esc(c.label.toLowerCase())} in Build Mode</button>
         <div class="collapsible" id="phr_${c.key}" style="margin-top:8px">
@@ -5816,11 +5815,7 @@ function renderPhrases(){
     `;
   }).join('');
 
-  return header + cats + `
-    <div class="card">
-      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
-    </div>
-  `;
+  return header + cats;
 }
 
 function renderPhraseBlitz(){
@@ -6359,8 +6354,7 @@ function renderVariations(){
 
   return `
     <div class="card">
-      <h2 style="margin-top:0">Variations</h2>
-      <div class="muted" style="font-size:13px;line-height:1.5">
+      <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
         One thing in English, several ways in Japanese — casual, polite, softened, past, alternate phrasing. Type any one variant; the others reveal afterward so you absorb new ways naturally.
       </div>
       <div class="stats-row" style="margin-top:12px">
@@ -6377,9 +6371,6 @@ function renderVariations(){
     <div class="card">
       <h3 style="margin-top:0">Browse all intents</h3>
       ${items}
-    </div>
-    <div class="card">
-      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
     </div>
   `;
 }
@@ -6879,8 +6870,7 @@ function renderSimilar(){
     }).join('');
     return `
       <div class="card">
-        <h2 style="margin-top:0">🔍 Similar words</h2>
-        <div class="muted" style="font-size:13px;line-height:1.5">
+        <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
           Confusable JP words paired with concise nuance notes. Each round shows one English gloss — pick the matching Japanese. Reveal shows the whole set so the contrast lands every round. 3-in-a-row retires an item; misses resurface it.
         </div>
         <div class="stats-row" style="margin-top:12px">
@@ -6897,9 +6887,6 @@ function renderSimilar(){
       <div class="card">
         <h3 style="margin-top:0">Browse all sets</h3>
         ${browse}
-      </div>
-      <div class="card">
-        <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
       </div>
     `;
   }
@@ -11319,7 +11306,7 @@ function renderParticlesIndex(){
       </div>`;
     }).join('') : '';
     const drillAllBtn = isOpen
-      ? `<button class="btn btn-orange" style="width:100%;margin-top:10px;font-size:13px;padding:9px" onclick="startParticleScope({particle:'${jsEsc(p)}'})">Drill all uses of ${esc(p)}</button>`
+      ? `<button class="btn btn-primary" style="width:100%;margin-top:10px;font-size:13px;padding:9px" onclick="startParticleScope({particle:'${jsEsc(p)}'})">Drill all uses of ${esc(p)}</button>`
       : '';
     return `<div class="card" style="padding:12px">
       <div onclick="particlesToggleExpand('${jsEsc(p)}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px">
@@ -11338,17 +11325,13 @@ function renderParticlesIndex(){
 
   return `
     <div class="card">
-      <h2 style="margin-top:0">Particles</h2>
-      <div class="muted" style="font-size:13px;line-height:1.5">
+      <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
         Three uses per particle, the way your teacher taught it. Tap a particle to see its uses, then drill one use, all uses, or every particle.
       </div>
       <div class="spacer"></div>
       ${allBtn}
     </div>
     ${cards}
-    <div class="card">
-      <button class="btn btn-secondary" style="width:100%" onclick="nav('home')">Back home</button>
-    </div>
   `;
 }
 
