@@ -384,7 +384,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 
 'use strict';
 
-const APP_VERSION = '6.36.0';
+const APP_VERSION = '6.37.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2273,6 +2273,11 @@ function getDrillableWords(){
   const suspended = new Set(state.settings.suspendedWords || []);
   const mastered = new Set(state.settings.masteredWords || []);
   const moduleIds = activeModuleWordIdSet();
+  /* v6.37 — Mastered review section: include ★mastered words, bypass
+     module gating. Suspended is still respected. */
+  if(activeVocabSection().mode === 'mastered'){
+    return active.filter(w => !suspended.has(w.id));
+  }
   return active.filter(w =>
     !suspended.has(w.id) &&
     !mastered.has(w.id) &&
@@ -3198,7 +3203,12 @@ const VOCAB_SECTIONS = [
   { id:'clothing', name:'Clothing & colors',  emoji:'👕', themes:['clothing','colors'] },
   { id:'school',   name:'School & work',      emoji:'📚', themes:['school','work','tech'] },
   { id:'numbers',  name:'Numbers',            emoji:'🔢', themes:['numbers'] },
-  { id:'greetings',name:'Greetings & daily',  emoji:'👋', themes:['greetings','daily','feelings'] }
+  { id:'greetings',name:'Greetings & daily',  emoji:'👋', themes:['greetings','daily','feelings'] },
+  /* v6.37 — boom-boom-boom recall sprint over everything you know cold.
+     Pool = ★mastered + SM-2 mature words. Bypasses module gating, bypasses
+     mastered-exclusion, bypasses SM-2 throttling. Just rotates so the
+     hard-earned vocab stays sharp. */
+  { id:'mastered', name:'Mastered review',    emoji:'🏆', themes:null, mode:'mastered' }
 ];
 function vocabSectionById(id){ return VOCAB_SECTIONS.find(s => s.id === id) || VOCAB_SECTIONS[0]; }
 function activeVocabSection(){
@@ -3211,6 +3221,15 @@ function activeVocabSection(){
    reflect the current scope. */
 function vocabSectionFilter(words){
   const sec = activeVocabSection();
+  /* v6.37 — Mastered review: pool is your ★mastered + SM-2 mature words. */
+  if(sec.mode === 'mastered'){
+    const masteredSet = new Set(state.settings.masteredWords || []);
+    return words.filter(w => {
+      if(masteredSet.has(w.id)) return true;
+      const st = state.stats[w.id];
+      return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
+    });
+  }
   if(!sec.themes) return words;
   const set = new Set(sec.themes);
   return words.filter(w => set.has(w.theme));
@@ -3274,7 +3293,13 @@ function formCounts(){
 
 function blitzCounts(){
   /* v6.33 — counts respect the active vocab section so the home subtitle
-     reflects only what the next session will draw from. */
+     reflects only what the next session will draw from.
+     v6.37 — Mastered review: report the pool size as "due" so the hero CTA
+     looks active ("12 ready to sprint" instead of "0 due · 0 new"). */
+  if(activeVocabSection().mode === 'mastered'){
+    const pool = vocabSectionFilter(getActiveWords());
+    return {due: pool.length, overdue: pool.length, unseen: 0};
+  }
   const active = vocabSectionFilter(getActiveWords());
   const t = now();
   let due = 0, overdue = 0, unseen = 0;
@@ -3301,6 +3326,16 @@ function buildBlitzPool(opts){
   /* v6.10 — drillable (excludes Suspended + Mastered) instead of active.
      v6.33 — also restrict to active vocab section (theme group) when set. */
   const drillable = vocabSectionFilter(getDrillableWords()).filter(w => !exclude.has(w.id));
+  /* v6.37 — Mastered review sprint: skip SM-2 throttling. Just rotate the
+     pool of words you already know — fast recall to keep them sharp. Each
+     entry needs only 1 correct to graduate (no streak), and they all enter
+     as "mature" so the UI doesn't show learning-phase scaffolding. */
+  if(activeVocabSection().mode === 'mastered'){
+    const cap = targetLearn + targetMature;
+    return shuffleFY(drillable.slice()).slice(0, cap).map(w => ({
+      id:w.id, streak:0, required:1, answers:0, everWrong:false, mature:true, masteredReview:true
+    }));
+  }
   const t = now();
   const unseen = [], youngDue = [], youngNotDue = [], matureDue = [], focused = [];
   const focusSet = new Set(state.settings.focusWords || []);
@@ -8692,8 +8727,10 @@ function buildGenerateVocabSpamLesson(opts){
   const want = (opts && opts.count) || 30;
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
+  /* v6.37 — Mastered review: include ★mastered words in the spam pool. */
+  const isMasteredMode = activeVocabSection().mode === 'mastered';
   const sectionPool = vocabSectionFilter(getActiveWords()).filter(w =>
-    !masteredSet.has(w.id) && !suspendedSet.has(w.id)
+    (isMasteredMode || !masteredSet.has(w.id)) && !suspendedSet.has(w.id)
   );
   if(sectionPool.length < 1) throw new Error('No words in this section — pick a different scope or enable the N5 pack.');
   const pool = shuffleFY(sectionPool.slice()).slice(0, Math.min(want, sectionPool.length));
@@ -10740,9 +10777,14 @@ function renderHome(){
   const reviewsLabel = Math.min(bc.due, targetR);
   const newsLabel = Math.min(bc.unseen, targetN);
   const blitzEmpty = bc.due === 0 && bc.unseen === 0;
+  const isMasteredMode = activeVocabSection().mode === 'mastered';
+  const heroEyebrow = isMasteredMode ? 'Sprint' : 'Today';
+  const heroTitle = isMasteredMode ? 'Mastered review' : 'Vocab Blitz';
   const blitzSub = blitzEmpty
-    ? 'Enable the N5 pack in Settings to start.'
-    : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue`:''}`;
+    ? (isMasteredMode ? 'No mastered words yet — keep drilling and they\'ll show up here.' : 'Enable the N5 pack in Settings to start.')
+    : (isMasteredMode
+      ? `${bc.due} ready · boom-boom-boom recall, no SM-2 throttling`
+      : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue`:''}`);
   const blitzDis = blitzEmpty ? 'disabled' : '';
 
   /* Vocab section chips — horizontal scroll */
@@ -10751,13 +10793,24 @@ function renderHome(){
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   const moduleIds = activeModuleWordIdSet();
   const scopeChips = VOCAB_SECTIONS.map(sec => {
-    const themeSet = sec.themes ? new Set(sec.themes) : null;
-    const count = active.filter(w =>
-      !suspendedSet.has(w.id) &&
-      !masteredSet.has(w.id) &&
-      (!moduleIds || moduleIds.has(w.id)) &&
-      (!themeSet || themeSet.has(w.theme))
-    ).length;
+    let count;
+    if(sec.mode === 'mastered'){
+      /* v6.37 — count = ★mastered + SM-2 mature words (the boom-boom-boom pool). */
+      count = active.filter(w => {
+        if(suspendedSet.has(w.id)) return false;
+        if(masteredSet.has(w.id)) return true;
+        const st = state.stats[w.id];
+        return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
+      }).length;
+    } else {
+      const themeSet = sec.themes ? new Set(sec.themes) : null;
+      count = active.filter(w =>
+        !suspendedSet.has(w.id) &&
+        !masteredSet.has(w.id) &&
+        (!moduleIds || moduleIds.has(w.id)) &&
+        (!themeSet || themeSet.has(w.theme))
+      ).length;
+    }
     const isActive = activeVoc === sec.id;
     const isDis = count === 0 && sec.id !== 'all';
     const cls = `scope-chip${isActive ? ' active' : ''}`;
@@ -10768,10 +10821,10 @@ function renderHome(){
 
   const hero = `
     <div class="hero">
-      <div class="hero-eyebrow">Today</div>
-      <div class="hero-title">Vocab Blitz</div>
+      <div class="hero-eyebrow">${esc(heroEyebrow)}</div>
+      <div class="hero-title">${esc(heroTitle)}</div>
       <div class="hero-sub">${esc(blitzSub)}</div>
-      <button class="hero-cta" ${blitzDis} onclick="startBlitz()">⚡ Start session</button>
+      <button class="hero-cta" ${blitzDis} onclick="startBlitz()">${isMasteredMode ? '🏆 Sprint' : '⚡ Start session'}</button>
       <button class="hero-secondary" ${blitzDis} onclick="startBuildModeVocabSpam()">🎲 Spam — audio, out loud</button>
     </div>
     <div class="scope-row">${scopeChips}</div>`;
