@@ -356,95 +356,63 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .mastery-legend-mini i{display:inline-block;width:8px;height:8px;border-radius:2px}
 
 /* ============================================================ */
-/* v6.38 — Home redesign "Sumi" (墨)                              */
-/* Premium-dark: Noto Serif wordmark, single vermillion accent,   */
-/* huge breathing CTA, hairline dividers, generous whitespace.    */
+/* v6.39 — Home redesign "Speak-style"                            */
+/* Top bar + giant content card hero + Up-Next list + stats      */
+/* footer. Vermillion glow + faded kanji decoration on hero.     */
 /* ============================================================ */
 
-/* Hide global header on home — home owns its own brand-row */
+/* Hide global header on home — home owns its own top bar */
 body[data-screen="home"] .header{display:none}
-body[data-screen="home"] .app{padding-top:max(18px,env(safe-area-inset-top))}
+body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
-.home-v7{animation:homeRise .55s cubic-bezier(.16,1,.3,1) both}
+.home-v8{animation:homeRise .55s cubic-bezier(.16,1,.3,1) both}
 @keyframes homeRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
-/* Brand row */
-.brand-row{display:flex;align-items:flex-start;justify-content:space-between;margin:4px 0 30px;padding:0 2px;gap:14px}
-.brand-mark{font-family:'Noto Serif JP',serif;font-weight:200;font-size:34px;line-height:1;color:var(--text);letter-spacing:-1px}
-.brand-mark .romaji{display:block;font-family:'Noto Sans JP',sans-serif;font-size:9px;letter-spacing:4px;color:var(--faint);margin-top:8px;text-transform:uppercase;font-weight:700}
-.identity{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;padding-top:6px}
-.identity-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:999px;background:var(--card);border:1px solid var(--border);font-size:11px;font-weight:700;color:var(--text);letter-spacing:.3px;line-height:1}
-.identity-chip .em{font-size:11px;line-height:1}
-.identity-chip.flame{color:#fbbf24;border-color:rgba(251,191,36,.25)}
+/* Top bar */
+.h8-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 18px;gap:12px}
+.h8-icon-btn{background:var(--card);border:1px solid var(--border);width:40px;height:40px;border-radius:20px;cursor:pointer;color:var(--text);font-family:inherit;font-size:17px;display:flex;align-items:center;justify-content:center;transition:transform .12s,border-color .15s}
+.h8-icon-btn:active{transform:scale(.94)}
+.h8-icon-btn:hover{border-color:var(--dim)}
+.h8-mark{font-family:'Noto Serif JP',serif;font-weight:300;font-size:22px;letter-spacing:-.5px;color:var(--text);text-align:center;line-height:1}
+.h8-mark .r{display:block;font-family:'Noto Sans JP',sans-serif;font-size:8px;letter-spacing:3.5px;color:var(--faint);margin-top:4px;font-weight:700;text-transform:uppercase}
+.h8-streak{display:inline-flex;align-items:center;gap:5px;padding:8px 13px;border-radius:999px;background:var(--card);border:1px solid rgba(251,191,36,.25);font-size:12px;font-weight:800;color:#fbbf24;letter-spacing:.3px;line-height:1}
 
-/* Greeting */
-.greeting{font-size:12px;letter-spacing:.5px;color:var(--dim);text-align:center;margin-bottom:14px;font-weight:500}
+/* Hero content card — Speak's signature element */
+.h8-hero{position:relative;background:linear-gradient(135deg,#1d0f10 0%,#120b0a 55%,#0c0a09 100%);border:1px solid rgba(239,68,68,.16);border-radius:24px;padding:24px 22px 22px;margin-bottom:24px;overflow:hidden;min-height:240px;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:0 16px 44px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04)}
+.h8-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 18% 0%,rgba(239,68,68,.22) 0%,transparent 60%);pointer-events:none}
+.h8-hero::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 90% 100%,rgba(251,191,36,.05) 0%,transparent 50%);pointer-events:none}
+.h8-hero-deco{position:absolute;right:-22px;top:-30px;font-family:'Noto Serif JP',serif;font-size:220px;font-weight:200;color:rgba(239,68,68,.07);line-height:1;pointer-events:none;user-select:none;letter-spacing:-12px}
+.h8-hero-deco.emoji{font-family:'Noto Sans JP',sans-serif;font-size:170px;opacity:.07;color:transparent;text-shadow:0 0 0 #fff;top:-10px;right:-10px;letter-spacing:0}
+.h8-hero-eyebrow{position:relative;font-size:10px;letter-spacing:4px;color:rgba(239,68,68,.92);text-transform:uppercase;font-weight:800;margin-bottom:10px}
+.h8-hero-title{position:relative;font-size:28px;font-weight:800;line-height:1.15;color:var(--text);margin-bottom:10px;letter-spacing:-.4px;max-width:85%}
+.h8-hero-meta{position:relative;font-size:13px;color:var(--dim);margin-bottom:20px;letter-spacing:.2px;line-height:1.45}
+.h8-hero-cta{position:relative;display:inline-flex;align-items:center;gap:8px;background:#fff;color:#0c0a09;border:none;border-radius:14px;padding:14px 24px;font-family:inherit;font-size:14px;font-weight:800;letter-spacing:.4px;cursor:pointer;align-self:flex-start;box-shadow:0 8px 22px rgba(0,0,0,.4);transition:transform .12s,box-shadow .2s}
+.h8-hero-cta:active{transform:scale(.96);box-shadow:0 4px 12px rgba(0,0,0,.5)}
+.h8-hero-cta:hover{box-shadow:0 10px 28px rgba(0,0,0,.45)}
+.h8-hero-cta:disabled{opacity:.4;cursor:not-allowed;background:var(--card2);color:var(--dim);box-shadow:none}
 
-/* Due hero — the centerpiece */
-.due-hero{text-align:center;margin:0 0 24px;padding:14px 0 4px}
-.due-num{font-family:'Noto Serif JP',serif;font-weight:200;font-size:96px;line-height:1;color:var(--text);letter-spacing:-4px;margin-bottom:10px}
-.due-num.empty{color:var(--faint);font-size:64px}
-.due-num .accent{color:var(--red)}
-.due-label{font-size:10px;letter-spacing:4px;color:var(--faint);text-transform:uppercase;font-weight:700}
-.due-mode{font-size:12px;color:var(--dim);margin-top:8px;font-weight:500;letter-spacing:.3px}
+/* Section heading */
+.h8-section{font-size:10px;letter-spacing:4px;color:var(--faint);text-transform:uppercase;font-weight:800;margin:8px 4px 12px}
 
-/* Premium CTA — soft glow + breathing pulse */
-.cta-primary{display:block;width:100%;padding:18px;border:none;border-radius:18px;background:var(--red);color:#fff;font-family:inherit;font-size:15px;font-weight:700;letter-spacing:.4px;cursor:pointer;box-shadow:0 8px 28px rgba(239,68,68,.32),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .25s;animation:ctaBreathe 3.6s ease-in-out infinite}
-.cta-primary:active{transform:scale(.97)}
-.cta-primary:disabled{opacity:.4;cursor:not-allowed;animation:none;box-shadow:none}
-@keyframes ctaBreathe{0%,100%{box-shadow:0 8px 28px rgba(239,68,68,.30),inset 0 1px 0 rgba(255,255,255,.1)}50%{box-shadow:0 10px 38px rgba(239,68,68,.48),inset 0 1px 0 rgba(255,255,255,.12)}}
-.cta-secondary{display:block;width:100%;padding:13px;margin-top:10px;border:1px solid var(--border);border-radius:16px;background:transparent;color:var(--text);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.3px;cursor:pointer;transition:transform .12s,border-color .15s,background .15s}
-.cta-secondary:active{transform:scale(.98);background:var(--card)}
-.cta-secondary:hover{border-color:var(--dim)}
-.cta-secondary:disabled{opacity:.35;cursor:not-allowed}
+/* Up-Next unified rounded list with hairline separators */
+.h8-list{display:flex;flex-direction:column;gap:1px;background:var(--border);border-radius:18px;overflow:hidden;border:1px solid var(--border)}
+.h8-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);cursor:pointer;transition:background .15s,padding-left .15s;border:none;width:100%;text-align:left;font-family:inherit;color:var(--text)}
+.h8-row:hover{background:var(--card2);padding-left:18px}
+.h8-row:active{background:var(--card2)}
+.h8-row[disabled]{opacity:.45;cursor:not-allowed}
+.h8-row-emoji{font-size:22px;width:32px;text-align:center;flex-shrink:0;line-height:1}
+.h8-row-body{flex:1;min-width:0}
+.h8-row-title{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.1px;line-height:1.2}
+.h8-row-meta{font-size:11.5px;color:var(--faint);margin-top:3px;letter-spacing:.2px}
+.h8-row-arrow{font-size:20px;color:var(--faint);font-weight:300;line-height:1}
 
-/* Quick actions — text-link row */
-.quick-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:22px 0 6px}
-.quick-link{background:transparent;border:none;color:var(--text);padding:12px 4px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:transform .12s,color .15s,background .15s;border-radius:14px;letter-spacing:.5px;text-transform:uppercase}
-.quick-link:active{transform:scale(.96);background:var(--card)}
-.quick-link:hover{color:var(--red)}
-.quick-link .qe{font-size:20px;display:block;margin-bottom:5px;line-height:1;text-transform:none}
-.quick-link .qm{font-size:9.5px;color:var(--faint);font-weight:600;letter-spacing:.4px;display:block;margin-top:3px;text-transform:none}
-
-/* Hairline divider — barely there */
-.hairline{height:1px;background:linear-gradient(90deg,transparent,var(--border) 30%,var(--border) 70%,transparent);margin:20px 0;border:0}
-
-/* Soft section heading */
-.home-v7 .section-soft{font-size:10px;letter-spacing:3.5px;color:var(--faint);text-transform:uppercase;font-weight:700;margin:22px 0 12px;padding-left:2px}
-
-/* Scope row override on home */
-.home-v7 .scope-row{margin-top:8px;padding-bottom:4px}
-.home-v7 .scope-chip{background:transparent;color:var(--dim);font-size:11px;padding:6px 11px;font-weight:600;border-color:var(--border)}
-.home-v7 .scope-chip.active{background:var(--red);color:#fff;border-color:var(--red)}
-.home-v7 .scope-chip:hover:not(.active):not(:disabled){border-color:var(--dim);color:var(--text)}
-
-/* Tile grid override on home — premium retread */
-.home-v7 .tile-grid{gap:6px;margin-bottom:0}
-.home-v7 .tile{background:var(--card);border:1px solid var(--border);border-radius:14px;min-height:84px;padding:13px 6px 11px;transition:transform .12s,border-color .18s,background .18s}
-.home-v7 .tile:hover{border-color:var(--red);background:var(--card2)}
-.home-v7 .tile-emoji{font-size:22px;margin-bottom:3px}
-.home-v7 .tile-name{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
-.home-v7 .tile-meta{font-size:9px;color:var(--faint);letter-spacing:.2px}
-
-/* Continue strip refinement on home */
-.home-v7 .continue-strip{background:var(--card);border:1px solid var(--red);border-radius:14px;box-shadow:0 4px 16px rgba(239,68,68,.18);margin-top:8px}
-.home-v7 .continue-strip .arrow,.home-v7 .continue-strip .ico{color:var(--red)}
-
-/* Module strip refinement on home */
-.home-v7 .module-strip{background:transparent;border:1px solid var(--border);padding:13px 14px;margin-top:8px;border-radius:14px}
-.home-v7 .module-strip-bar > div{background:var(--red)}
-
-/* Mastery slim card */
-.mastery-slim{margin-top:12px;padding:14px;background:transparent;border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:border-color .15s,background .15s}
-.mastery-slim:active{transform:scale(.99)}
-.mastery-slim:hover{border-color:var(--dim)}
-.mastery-slim-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-.mastery-slim-title{font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;font-weight:700}
-.mastery-slim-link{font-size:12px;color:var(--red);font-weight:600}
-.mastery-slim-meta{font-size:11px;color:var(--faint);margin-top:8px;letter-spacing:.2px}
-
-/* Empty-state polish — when blitz is empty */
-.due-hero.empty .due-num{font-size:56px;color:var(--dim)}
+/* Stats footer — 3-cell strip */
+.h8-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;margin-top:20px;background:var(--border);border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+.h8-stat{background:var(--card);padding:16px 8px;text-align:center}
+.h8-stat-num{font-family:'Noto Serif JP',serif;font-weight:300;font-size:24px;color:var(--text);line-height:1;letter-spacing:-.5px}
+.h8-stat-num.flame{color:#fbbf24}
+.h8-stat-num.accent{color:var(--red)}
+.h8-stat-label{font-size:9px;letter-spacing:2px;color:var(--faint);margin-top:7px;text-transform:uppercase;font-weight:800}
 </style>
 </head>
 <body>
@@ -476,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(18px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '6.38.0';
+const APP_VERSION = '6.39.0';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -10841,27 +10809,15 @@ function updateNav(){
    where each mode stands without paragraphs. */
 function renderHome(){
   const active = getActiveWords();
-  const masteryBuckets = {new:0,learning:0,apprentice:0,guru:0,master:0,burned:0};
-  for(const w of active) masteryBuckets[getMasteryForWord(w.id)]++;
   const streak = state.streak.current || 0;
   const totalAttempts = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.length||0),0);
   const totalCorrect = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.filter(a=>a.correct).length||0),0);
   const acc = totalAttempts ? Math.round(100*totalCorrect/totalAttempts) : 0;
 
-  const total = active.length || 1;
-  const masterySegs = MASTERY.map(m => `<div class="mastery-strip-seg ${m}" style="width:${100*masteryBuckets[m]/total}%"></div>`).join('');
-
   const masteredSet = new Set(state.settings.masteredWords || []);
-  const focusSet = new Set(state.settings.focusWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
-  const focusCount = focusSet.size;
-  const suspCount = suspendedSet.size;
-  const mastCount = masteredSet.size;
 
-  const hour = new Date().getHours();
-  const greet = hour < 5 ? 'Late one' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 22 ? 'Good evening' : 'Late one';
-
-  /* Hero numbers — Vocab Blitz today */
+  /* Decide what today's session is — drives the hero card */
   const bc = blitzCounts();
   const targetR = state.settings.blitzReviews || 20;
   const targetN = state.settings.blitzNew || 10;
@@ -10870,181 +10826,161 @@ function renderHome(){
   const blitzEmpty = bc.due === 0 && bc.unseen === 0;
   const sec = activeVocabSection();
   const isMasteredMode = sec.mode === 'mastered';
-  const heroNum = isMasteredMode ? bc.due : (reviewsLabel + newsLabel);
-  const heroLabel = isMasteredMode
-    ? 'Mastered review'
-    : (sec.id === 'all' ? 'Due today' : `${sec.emoji} ${sec.name}`);
-  const heroSub = blitzEmpty
-    ? (isMasteredMode ? 'No mastered words yet' : 'Enable a vocab pack in Settings')
-    : (isMasteredMode
-      ? `${bc.due} ready · no SM-2 throttle`
-      : `${reviewsLabel} due · ${newsLabel} new${bc.overdue>targetR?` · +${bc.overdue-targetR} overdue`:''}`);
-  const blitzDis = blitzEmpty ? 'disabled' : '';
+  const bm = state.buildMode;
+  const hasResume = !!(bm && bm.lesson && !bm.done);
 
-  /* Identity chips top-right */
-  const identityChips = [];
-  if(streak > 0) identityChips.push(`<span class="identity-chip flame"><span class="em">🔥</span>${streak}</span>`);
-  if(totalAttempts > 0) identityChips.push(`<span class="identity-chip">${acc}%</span>`);
-
-  const brandRow = `
-    <div class="brand-row">
-      <div class="brand-mark">一心<span class="romaji">Isshin</span></div>
-      <div class="identity">${identityChips.join('')}</div>
-    </div>`;
-
-  const dueHero = blitzEmpty ? `
-    <div class="due-hero empty">
-      <div class="due-num empty">·</div>
-      <div class="due-label">All clear</div>
-      <div class="due-mode">${esc(heroSub)}</div>
-    </div>` : `
-    <div class="due-hero">
-      <div class="due-num"><span class="accent">${heroNum}</span></div>
-      <div class="due-label">${esc(heroLabel)}</div>
-      <div class="due-mode">${esc(heroSub)}</div>
-    </div>`;
-
-  const ctaRow = `
-    <button class="cta-primary" ${blitzDis} onclick="startBlitz()">${isMasteredMode ? '🏆 Begin sprint' : '⚡ Begin session'}</button>
-    <button class="cta-secondary" ${blitzDis} onclick="startBuildModeVocabSpam()">🎲 Spam mode — audio out loud</button>`;
-
-  /* Quick actions — Mastered / Focus / Library */
-  const quickActions = `
-    <div class="quick-actions">
-      <button class="quick-link" onclick="setVocabSection('mastered')">
-        <span class="qe">🏆</span>Mastered<span class="qm">${mastCount} ready</span>
-      </button>
-      <button class="quick-link" onclick="nav('library')">
-        <span class="qe">⭐</span>Focus<span class="qm">${focusCount} starred</span>
-      </button>
-      <button class="quick-link" onclick="nav('library')">
-        <span class="qe">📚</span>Library<span class="qm">${active.length} words</span>
-      </button>
-    </div>`;
-
-  /* Vocab section scope chips */
-  const activeVoc = state.settings?.vocabSection || 'all';
-  const moduleIds = activeModuleWordIdSet();
-  const scopeChips = VOCAB_SECTIONS.map(secX => {
-    let count;
-    if(secX.mode === 'mastered'){
-      count = active.filter(w => {
-        if(suspendedSet.has(w.id)) return false;
-        if(masteredSet.has(w.id)) return true;
-        const st = state.stats[w.id];
-        return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
-      }).length;
-    } else {
-      const themeSet = secX.themes ? new Set(secX.themes) : null;
-      count = active.filter(w =>
-        !suspendedSet.has(w.id) &&
-        !masteredSet.has(w.id) &&
-        (!moduleIds || moduleIds.has(w.id)) &&
-        (!themeSet || themeSet.has(w.theme))
-      ).length;
-    }
-    const isActive = activeVoc === secX.id;
-    const isDis = count === 0 && secX.id !== 'all';
-    const cls = `scope-chip${isActive ? ' active' : ''}`;
-    return `<button class="${cls}" ${isDis ? 'disabled' : `onclick="setVocabSection('${secX.id}')"`}>
-      ${esc(secX.emoji)} ${esc(secX.name)}<span class="ct">${count}</span>
-    </button>`;
-  }).join('');
-  const scopeRow = `<div class="scope-row">${scopeChips}</div>`;
-
-  /* Continue strip */
-  const continueStrip = (() => {
-    const bm = state.buildMode;
-    if(!bm || !bm.lesson || bm.done) return '';
-    const t = bm.lesson.title || 'Build Mode lesson';
+  let heroEyebrow, heroTitle, heroMeta, heroDeco, heroCta, heroAction, heroDis = '';
+  if(hasResume){
+    /* Resume takes priority */
     const stepsLeft = (bm.steps?.length || 0) - (bm.stepIdx || 0);
-    return `
-      <div class="continue-strip" onclick="nav('buildMode')">
-        <div class="ico">▶</div>
-        <div class="label">
-          <div class="label-t">Resume — ${esc(t)}</div>
-          <div class="label-s">${stepsLeft} step${stepsLeft===1?'':'s'} left</div>
-        </div>
-        <div class="arrow">→</div>
-      </div>`;
-  })();
+    heroEyebrow = 'IN PROGRESS';
+    heroTitle = bm.lesson.title || 'Build Mode session';
+    heroMeta = `${stepsLeft} step${stepsLeft===1?'':'s'} left · pick up where you left off`;
+    heroDeco = '続';
+    heroCta = '▶ Resume';
+    heroAction = `nav('buildMode')`;
+  } else if(blitzEmpty){
+    heroEyebrow = 'INBOX ZERO';
+    heroTitle = isMasteredMode ? 'No mastered words yet' : 'You\'re all caught up';
+    heroMeta = isMasteredMode
+      ? 'Drill some words and ★-mark them — they\'ll show up here for sprint review.'
+      : 'Pick a different drill below or come back tomorrow.';
+    heroDeco = '空';
+    heroCta = '✓ All clear';
+    heroDis = 'disabled';
+  } else if(isMasteredMode){
+    const est = Math.max(1, Math.round(bc.due * 4 / 60));
+    heroEyebrow = 'TODAY · SPRINT';
+    heroTitle = 'Mastered review';
+    heroMeta = `${bc.due} ready · boom-boom-boom recall · ~${est} min`;
+    heroDeco = '極';
+    heroCta = '🏆 Begin sprint';
+    heroAction = 'startBlitz()';
+  } else {
+    const enabled = state.settings.modulesEnabled;
+    const cur = enabled ? (moduleById(state.settings.currentModuleId || MODULES[0].id) || MODULES[0]) : null;
+    const total = reviewsLabel + newsLabel;
+    const est = Math.max(2, Math.round(total * 5 / 60));
+    heroEyebrow = 'TODAY · SESSION';
+    heroTitle = cur ? `Module ${cur.num} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`);
+    const overdue = bc.overdue > targetR ? ` · +${bc.overdue-targetR} overdue` : '';
+    heroMeta = `${reviewsLabel} due · ${newsLabel} new${overdue} · ~${est} min`;
+    heroDeco = cur ? cur.emoji : (sec.emoji || '心');
+    heroCta = '⚡ Begin session';
+    heroAction = 'startBlitz()';
+  }
 
-  /* Module strip */
-  const moduleStrip = (() => {
-    if(!state.settings.modulesEnabled) return '';
-    const curId = state.settings.currentModuleId || MODULES[0].id;
-    const cur = moduleById(curId) || MODULES[0];
-    const prog = moduleProgress(cur.id);
-    const idx = MODULES.findIndex(m => m.id === cur.id);
-    const next = idx >= 0 && idx < MODULES.length - 1 ? MODULES[idx + 1] : null;
-    const nextLine = !next
-      ? 'Final module — full curriculum unlocked.'
-      : `Next: ${next.emoji} ${esc(next.name)}${moduleIsUnlocked(next.id) ? ' (unlocked)' : ` · ${MODULE_UNLOCK_PCT}% to unlock`}`;
-    return `
-      <div class="module-strip" onclick="nav('modules')">
-        <div class="module-strip-head">
-          <div class="module-strip-title">Module ${cur.num} · ${cur.emoji} ${esc(cur.name)}</div>
-          <div class="module-strip-pct">${prog.pct}% · ${prog.masteredCount}/${prog.total}</div>
-        </div>
-        <div class="module-strip-bar"><div style="width:${prog.pct}%"></div></div>
-        <div class="module-strip-sub">${esc(nextLine)}</div>
-      </div>`;
-  })();
+  /* Top bar — settings icon · wordmark · streak */
+  const topBar = `
+    <div class="h8-bar">
+      <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
+      <div class="h8-mark">一心<span class="r">Isshin</span></div>
+      ${streak > 0
+        ? `<span class="h8-streak">🔥 ${streak}</span>`
+        : `<button class="h8-icon-btn" onclick="nav('library')" title="Library">📚</button>`}
+    </div>`;
 
-  /* Tile grid — secondary drill modes */
+  /* Hero card — the centerpiece */
+  const decoIsKanji = /^[぀-ヿ一-鿿]$/.test(heroDeco);
+  const decoCls = decoIsKanji ? 'h8-hero-deco' : 'h8-hero-deco emoji';
+  const heroAct = heroAction ? `onclick="${heroAction}"` : '';
+  const heroCard = `
+    <div class="h8-hero">
+      <div class="${decoCls}">${esc(heroDeco)}</div>
+      <div class="h8-hero-eyebrow">${esc(heroEyebrow)}</div>
+      <div class="h8-hero-title">${esc(heroTitle)}</div>
+      <div class="h8-hero-meta">${esc(heroMeta)}</div>
+      <button class="h8-hero-cta" ${heroDis} ${heroAct}>${esc(heroCta)}</button>
+    </div>`;
+
+  /* Up Next — alternative sessions, dynamic based on what has content */
   const fc = formCounts();
-  const scc = sentenceBlitzCounts();
   const pc = phraseCounts();
+  const scc = sentenceBlitzCounts();
   const vc = variationCounts();
   const simC = similarCounts();
-  const tiles = [
-    { emoji:'📖', name:'Forms',     meta: fc.verbs===0 ? '—' : `${fc.due} due`, click:`nav('forms')` },
-    { emoji:'💬', name:'Phrases',   meta: `${pc.retired}/${pc.total}`, click:`nav('phrases')` },
-    { emoji:'📜', name:'Sentences', meta: `${scc.retired}/${scc.total}`, click:`startSentenceBlitz()` },
-    { emoji:'🔀', name:'Variations', meta: `${vc.drillsDone}/${vc.totalDrills}`, click:`nav('variations')` },
-    { emoji:'🔍', name:'Similar',   meta: simC.totalSets===0 ? '—' : `${simC.setsDone}/${simC.totalSets}`, click:`nav('similar')` },
-    { emoji:'🔗', name:'Particles', meta: 'taxonomy', click:`nav('particles')` },
-    { emoji:'🎲', name:'Build',     meta: 'sentences', click:`startBuildMode()` },
-    { emoji:'あ', name:'Kana',      meta: 'hira · kata', click:`startKanaBlitz('all')` }
-  ];
-  const tileGrid = `
-    <div class="tile-grid">
-      ${tiles.map(t => `
-        <button class="tile" onclick="${t.click}">
-          <div class="tile-emoji">${esc(t.emoji)}</div>
-          <div class="tile-name">${esc(t.name)}</div>
-          <div class="tile-meta">${esc(t.meta)}</div>
+  const masteredReady = active.filter(w => {
+    if(suspendedSet.has(w.id)) return false;
+    if(masteredSet.has(w.id)) return true;
+    const st = state.stats[w.id];
+    return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
+  }).length;
+
+  const upNextRows = [
+    /* Mastered review — only show if not already the active hero and has content */
+    !isMasteredMode && masteredReady > 0
+      ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
+      : null,
+    /* Spam mode — voice/audio out loud, always shown if blitz has content */
+    !blitzEmpty
+      ? { emoji:'🎲', title:'Spam mode', meta:'Audio out loud · 30 steps · hands-free', click:`startBuildModeVocabSpam()` }
+      : null,
+    /* Forms */
+    fc.verbs > 0
+      ? { emoji:'📖', title:'Form drills', meta: fc.due > 0 ? `${fc.due} due · ${fc.drilled} drilled` : `${fc.drilled} drilled · all caught up` , click:`nav('forms')` }
+      : null,
+    /* Phrases */
+    pc.total > 0
+      ? { emoji:'💬', title:'Phrases', meta:`${pc.retired}/${pc.total} mastered`, click:`nav('phrases')` }
+      : null,
+    /* Sentences */
+    scc.total > 0
+      ? { emoji:'📜', title:'Sentence Blitz', meta:`${scc.retired}/${scc.total} mastered`, click:`startSentenceBlitz()` }
+      : null,
+    /* Particles — always available */
+    { emoji:'🔗', title:'Particles', meta:'Drill は · が · に · で · を', click:`nav('particles')` },
+    /* Variations */
+    vc.totalDrills > 0
+      ? { emoji:'🔀', title:'Variations', meta:`${vc.drillsDone}/${vc.totalDrills} drills done`, click:`nav('variations')` }
+      : null,
+    /* Similar */
+    simC.totalSets > 0
+      ? { emoji:'🔍', title:'Similar words', meta:`${simC.setsDone}/${simC.totalSets} sets done`, click:`nav('similar')` }
+      : null,
+    /* Build Mode — always */
+    { emoji:'🎯', title:'Build Mode', meta:'Audio sentence construction', click:`startBuildMode()` },
+    /* Kana */
+    { emoji:'あ', title:'Kana Blitz', meta:'Hiragana · Katakana · Mix', click:`startKanaBlitz('all')` }
+  ].filter(Boolean);
+
+  const upNext = `
+    <div class="h8-section">More to do</div>
+    <div class="h8-list">
+      ${upNextRows.map(r => `
+        <button class="h8-row" onclick="${r.click}">
+          <div class="h8-row-emoji">${esc(r.emoji)}</div>
+          <div class="h8-row-body">
+            <div class="h8-row-title">${esc(r.title)}</div>
+            <div class="h8-row-meta">${esc(r.meta)}</div>
+          </div>
+          <div class="h8-row-arrow">›</div>
         </button>
       `).join('')}
     </div>`;
 
-  const libMeta = (focusCount || suspCount || mastCount)
-    ? `${focusCount} ⭐ · ${suspCount} suspended · ${mastCount} mastered`
-    : `${active.length} words across ${MASTERY.length} stages`;
-  const masteryCard = `
-    <div class="mastery-slim" onclick="nav('library')">
-      <div class="mastery-slim-head">
-        <span class="mastery-slim-title">Mastery</span>
-        <span class="mastery-slim-link">Library →</span>
+  /* Stats footer */
+  const statsRow = `
+    <div class="h8-stats">
+      <div class="h8-stat">
+        <div class="h8-stat-num flame">${streak}</div>
+        <div class="h8-stat-label">Streak</div>
       </div>
-      <div class="mastery-mini">${masterySegs}</div>
-      <div class="mastery-slim-meta">${esc(libMeta)}</div>
+      <div class="h8-stat">
+        <div class="h8-stat-num">${acc}%</div>
+        <div class="h8-stat-label">Accuracy</div>
+      </div>
+      <div class="h8-stat">
+        <div class="h8-stat-num accent">${active.length}</div>
+        <div class="h8-stat-label">Words</div>
+      </div>
     </div>`;
 
   return `
-    <div class="home-v7">
-      ${brandRow}
-      <div class="greeting">${esc(greet)}</div>
-      ${dueHero}
-      ${ctaRow}
-      ${quickActions}
-      <hr class="hairline">
-      ${scopeRow}
-      ${continueStrip}
-      ${moduleStrip}
-      <div class="section-soft">More drills</div>
-      ${tileGrid}
-      ${masteryCard}
+    <div class="home-v8">
+      ${topBar}
+      ${heroCard}
+      ${upNext}
+      ${statsRow}
     </div>
   `;
 }
