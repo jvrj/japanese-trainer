@@ -3888,7 +3888,8 @@ function renderBlitz(){
     const voiceOn = state.settings.buildVoiceMode && voiceSupported();
     const sayLang = (cur === 'jp-en') ? 'English' : 'Japanese';
     const voiceLine = voiceOn
-      ? `<div id="blitzVoiceLabel" style="text-align:center;font-size:13px;padding:8px 12px;margin-bottom:10px;background:var(--card2);border-radius:10px;color:var(--blue)">🎙️ Voice mode — say it in <b>${esc(sayLang)}</b></div>`
+      ? `<div id="blitzVoiceLabel" style="text-align:center;font-size:13px;padding:10px 12px;margin-bottom:8px;background:rgba(100,150,255,0.1);border:1px solid var(--blue);border-radius:10px;color:var(--blue);font-weight:600">🎙️ Voice mode — say it in <b>${esc(sayLang)}</b></div>
+         <button class="btn btn-blue" style="width:100%;font-size:14px;padding:12px;margin-bottom:10px" onclick="_blitzVoiceListen(true)">🎤 Listen now (manual)</button>`
       : '';
     return head + `<div class="card">
       ${voiceLine}
@@ -3984,81 +3985,100 @@ function _blitzSetListenLabel(text){
   const el = document.getElementById('blitzVoiceLabel');
   if(el) el.textContent = text;
 }
-function _blitzVoiceListen(){
+function _blitzVoiceListen(manual){
   const b = state.blitz;
-  if(!b || b.complete || b.submitted) return;
-  if(!_buildVoiceModeActive()) return;
-  if(state.screen !== 'blitz') return;
+  if(!b){ _blitzSetListenLabel('— no session'); return; }
+  if(b.complete){ _blitzSetListenLabel('— session complete'); return; }
+  if(b.submitted){ _blitzSetListenLabel('— card already submitted'); return; }
+  if(!_buildVoiceModeActive()){
+    _blitzSetListenLabel(voiceSupported() ? '— voice mode is OFF' : '— STT unsupported in this browser');
+    return;
+  }
+  if(state.screen !== 'blitz'){ _blitzSetListenLabel('— not on blitz screen'); return; }
   const w = blitzCurrent();
-  if(!w) return;
-  // Skip introduce phase — that has its own auto-advance.
-  if(!vocabIsIntroduced(w)) return;
+  if(!w){ _blitzSetListenLabel('— no current word'); return; }
+  if(!vocabIsIntroduced(w)){
+    // New word — let the introduce phase run; my auto-introduce promotes after a beat.
+    _blitzSetListenLabel('— introducing new word, listen will start after');
+    return;
+  }
   const cur = b.currentDir || b.direction;
   const lang = cur === 'jp-en' ? 'en-US' : 'ja-JP';
   const sayLangLabel = cur === 'jp-en' ? 'English' : 'Japanese';
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
 
   const startListen = () => {
-    if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted) return;
-    _blitzSetListenLabel(`🎤 listening — say it in ${sayLangLabel}`);
+    if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted){
+      _blitzSetListenLabel('— state changed before listen could start');
+      return;
+    }
+    _blitzSetListenLabel(`🎤 LISTENING — say it in ${sayLangLabel}`);
     let alts = [];
-    startVoice(
-      (results) => { alts = results || []; },
-      (err) => {
-        if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted) return;
-        if(err){
-          // Surface mic permission / hardware errors so the user knows why.
-          const code = err && err.error;
-          if(code === 'not-allowed' || code === 'service-not-allowed'){
-            _blitzSetListenLabel('🚫 mic permission denied — tap address bar to allow');
-            showToast('Microphone permission is blocked. Allow it in your browser, then tap the 🎙 pill again.', {tone:'warn', duration:6000});
-            state.settings.buildVoiceMode = false;  // bail out so user isn't stranded
-            save();
-            render();
+    let started = false;
+    try{
+      startVoice(
+        (results) => { alts = results || []; if(alts.length) _blitzSetListenLabel(`📝 heard partial: "${alts[0].transcript}"`); },
+        (err) => {
+          if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted) return;
+          if(err){
+            const code = err && err.error;
+            if(code === 'not-allowed' || code === 'service-not-allowed'){
+              _blitzSetListenLabel('🚫 MIC BLOCKED — allow in browser, then re-toggle');
+              showToast('Microphone permission is blocked. Allow it in your browser site settings, then re-toggle voice mode.', {tone:'warn', duration:7000});
+              state.settings.buildVoiceMode = false;
+              save();
+              render();
+              return;
+            }
+            if(code === 'language-not-supported' || code === 'bad-grammar'){
+              _blitzSetListenLabel(`🚫 STT language ${lang} unsupported here`);
+              showToast(`Speech recognition for ${lang} not available in this browser.`, {tone:'warn', duration:5000});
+              return;
+            }
+            if(code === 'no-speech'){
+              _blitzSetListenLabel('🤔 no speech detected — revealing');
+              if(typeof blitzReveal === 'function') blitzReveal();
+              return;
+            }
+            _blitzSetListenLabel(`🚫 STT error: ${code || 'unknown'}`);
+          }
+          if(!alts.length){
+            _blitzSetListenLabel('🤔 nothing captured — revealing the answer');
+            if(typeof blitzReveal === 'function') blitzReveal();
             return;
           }
-          if(code === 'language-not-supported' || code === 'bad-grammar'){
-            _blitzSetListenLabel(`🚫 ${lang} not supported on this device`);
-            showToast(`Speech recognition for ${lang} not available in this browser.`, {tone:'warn', duration:5000});
-            return;
-          }
-        }
-        if(!alts.length){
-          // No transcript captured. Voice mode = no typing ever. Auto-reveal
-          // (marks card wrong; the wrong-answer auto-advance speaks the JP
-          // and moves on after a short linger). Never focus the input.
-          _blitzSetListenLabel('🤔 didn\'t catch that — revealing');
-          if(typeof blitzReveal === 'function') blitzReveal();
-          return;
-        }
-        const best = alts.slice().sort((a,c) => (c.conf||0) - (a.conf||0))[0];
-        const heard = (best.transcript || '').trim();
-        _blitzSetListenLabel(`heard: "${heard}"`);
-        const inp = $('#blitzInput');
-        if(inp){ inp.value = heard; }
-        blitzSubmit();
-      },
-      lang
-    );
+          const best = alts.slice().sort((a,c) => (c.conf||0) - (a.conf||0))[0];
+          const heard = (best.transcript || '').trim();
+          _blitzSetListenLabel(`✓ heard: "${heard}" — submitting`);
+          const inp = $('#blitzInput');
+          if(inp){ inp.value = heard; }
+          blitzSubmit();
+        },
+        lang
+      );
+      started = true;
+    } catch(e){
+      _blitzSetListenLabel(`🚫 startVoice threw: ${String(e && e.message || e)}`);
+      return;
+    }
+    if(!started) return;
     _blitzVoiceTimer = setTimeout(() => {
       if(state.voiceListening){ try{ stopVoice(); }catch(e){} }
     }, listenSec * 1000 + 2500);
   };
 
-  // For JP→EN cards, speak the JP prompt first then listen — using
-  // _buildSpeakJP because it fires onDone when speech actually ends, not via
-  // a pre-cancel polling race that started the listener mid-utterance.
   if(cur === 'jp-en'){
-    _blitzSetListenLabel('🔊 speaking the prompt…');
+    _blitzSetListenLabel('🔊 speaking the JP prompt…');
     _buildSpeakJP(w.jp, () => {
-      // Small breath after speech ends to let the audio buffer settle.
+      _blitzSetListenLabel('🎙 prompt done — listen starting');
       _blitzVoiceTimer = setTimeout(startListen, 200);
     });
   } else {
-    _blitzSetListenLabel('🔇 listening shortly…');
-    _blitzVoiceTimer = setTimeout(startListen, 250);
+    _blitzSetListenLabel('🎙 voice mode armed — listen starting');
+    _blitzVoiceTimer = setTimeout(startListen, manual ? 50 : 250);
   }
 }
+window._blitzVoiceListen = _blitzVoiceListen;
 /* Auto-advance the wrong-answer "type the correct answer to continue" gate
    when voice mode is on. The user can hear the JP TTS once (auto-played by
    the existing reveal flow) then we move them on, instead of stranding on
@@ -9063,6 +9083,38 @@ function startBuildModeVocabSpam(){
 }
 window.startBuildModeVocabSpam = startBuildModeVocabSpam;
 
+/* Random Drill — ignores section + module gating, pulls 30 random words from
+   the entire active deck and runs them as Build Mode Spam (audio-led, voice
+   mode honored). The "I just want a hands-free shuffle" entry point. */
+function startRandomDrill(opts){
+  try{
+    const want = (opts && opts.count) || 30;
+    const suspendedSet = new Set(state.settings.suspendedWords || []);
+    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id));
+    if(pool.length < 1){
+      showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
+      return;
+    }
+    const picked = shuffleFY(pool.slice()).slice(0, Math.min(want, pool.length));
+    const lesson = {
+      id: 'Gr_' + Date.now().toString(36),
+      title: `Random Drill — ${picked.length} words`,
+      duration_mins: Math.max(3, Math.round(picked.length * 0.4)),
+      new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
+      carryover_words: [],
+      cycles: [{id:'random', name:'Random · full deck', steps: picked.map(w => ({type:'recall', word_id:w.id}))}],
+      _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
+    };
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'home';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){
+    showToast("Can't start Random Drill — " + (e.message || e), {tone:'warn', duration:5000});
+  }
+}
+window.startRandomDrill = startRandomDrill;
+
 /* Phrase Spam — pull ~25 phrases (filterable by category) from PHRASE_POOL
    and emit phrase steps. Mirrors _buildGeneratePhraseSteps but as a single-
    topic spam session. */
@@ -11341,9 +11393,13 @@ function renderHome(){
     const overdue = bc.overdue > targetR ? ` · +${bc.overdue-targetR} overdue` : '';
     heroMeta = `${reviewsLabel} due · ${newsLabel} new${overdue} · ~${est} min`;
     heroDeco = cur ? cur.emoji : (sec.emoji || '心');
-    heroCta = '⚡ Begin session';
-    heroAction = 'startBlitz()';
-    if(state.settings.buildVoiceMode && voiceSupported()) heroMeta = `${heroMeta} · 🎙️ voice on`;
+    /* When voice mode is on, route Begin Session to Build Mode (audio-led,
+       voice-native) instead of typed Vocab Blitz. The user wants hands-free
+       drilling and Build Mode is the shape that handles voice cleanly. */
+    const voiceOn = state.settings.buildVoiceMode && voiceSupported();
+    heroCta = voiceOn ? '🎙️ Begin session (hands-free)' : '⚡ Begin session';
+    heroAction = voiceOn ? 'startRandomDrill()' : 'startBlitz()';
+    if(voiceOn) heroMeta = `${heroMeta} · audio-led, voice-scored`;
   }
 
   /* Top bar — settings icon · wordmark · streak */
@@ -11402,13 +11458,17 @@ function renderHome(){
   }).length;
 
   const upNextRows = [
+    /* Random Drill — pulls 30 random words from the WHOLE active deck
+       (no module gating, no section filter). Always works, always
+       audio-led. The "I just want to drive and drill" entry point. */
+    { emoji:'🎲', title:'Random drill', meta:'30 random words from full deck · audio-led · honors voice mode', click:`startRandomDrill()` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
       ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
       : null,
-    /* Spam mode — voice/audio out loud, always shown if blitz has content */
+    /* Spam mode — current section, audio out loud */
     !blitzEmpty
-      ? { emoji:'🎲', title:'Spam mode', meta:'Audio out loud · 30 steps · hands-free', click:`startBuildModeVocabSpam()` }
+      ? { emoji:'🌀', title:'Spam mode (current section)', meta:'Audio out loud · 30 steps · hands-free', click:`startBuildModeVocabSpam()` }
       : null,
     /* Forms */
     fc.verbs > 0
