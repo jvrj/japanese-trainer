@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '6.40.2';
+const APP_VERSION = '6.40.3';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -12303,6 +12303,12 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>Update</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">If the app feels stale (still on an old version after a deploy), the service worker is caching old files. This unregisters the worker, clears every cache, and forces a hard reload — your saved data is untouched.</div>
+      <button class="btn btn-primary" style="width:100%" onclick="forceUpdate()">🔄 Force update from server</button>
+    </div>
+
+    <div class="card">
       <h3>Removed words (${(state.settings.removedWords||[]).length})</h3>
       <div class="muted" style="margin-bottom:8px">Words you've removed from the active pool. Tap to restore.</div>
       ${(state.settings.removedWords||[]).length ? (state.settings.removedWords||[]).map(id => {
@@ -12438,6 +12444,30 @@ function addWord(){
   alert('Word added (flagged unverified).');
   render();
 }
+
+/* Force update — unregister all service workers, clear every cache, then
+   hard-reload bypassing the disk cache. Survives the most stubborn PWA
+   caching. localStorage (your saved progress) is untouched. */
+async function forceUpdate(){
+  try{
+    if('serviceWorker' in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if('caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch(e){
+    console.warn('forceUpdate cleanup error', e);
+  }
+  // Bypass the disk cache by appending a unique query string. location.reload(true)
+  // is deprecated and does nothing on most browsers now.
+  const url = new URL(location.href);
+  url.searchParams.set('_v', Date.now().toString(36));
+  location.replace(url.toString());
+}
+window.forceUpdate = forceUpdate;
 
 function exportJSON(){
   const data = {version:6, exportedAt:new Date().toISOString(), words:state.words.filter(w=>w.source==='user'), stats:state.stats, formStats:state.formStats||{}, kanaStats:state.kanaStats||{}, sentenceStats:state.sentenceStats||{}, phraseStats:state.phraseStats||{}, particleStats:state.particleStats||{}, variationStats:state.variationStats||{}, similarStats:state.similarStats||{}, settings:state.settings, notes:state.notes, streak:state.streak, logs:state.logs.slice(-200)};
