@@ -1812,6 +1812,8 @@ const DEFAULT_SETTINGS = {
   buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
   buildTtsRate:0.6,           // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
+  buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
+  voiceListenSec:7,           // Voice Mode: how long to listen on each step before timing out
   /* v6.16 — Modules: themed progression with linear unlock. */
   modulesEnabled:true,        // master switch — flip off in Settings to access all words at once
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
@@ -2701,16 +2703,19 @@ function getRecognition(){
 }
 function voiceSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
 
-function startVoice(onResult, onEnd){
+function startVoice(onResult, onEnd, lang){
   const rec = getRecognition();
   if(!rec) { onEnd && onEnd(new Error('unsupported')); return; }
+  // Per-call language override so the same recognizer can listen for EN
+  // (Vocab Blitz JP→EN direction) or JP (everything else). Defaults to ja-JP.
+  rec.lang = lang || 'ja-JP';
   state.voiceListening = true;
   rec.onresult = (e)=>{
     const alts = [];
     for(let i=0;i<e.results.length;i++){
       for(let j=0;j<e.results[i].length;j++) alts.push({transcript:e.results[i][j].transcript, conf:e.results[i][j].confidence});
     }
-    log('voice_result',{alts});
+    log('voice_result',{alts, lang: rec.lang});
     onResult && onResult(alts);
   };
   rec.onerror = (e)=>{ state.voiceListening=false; log('voice_err',{err:e.error}); onEnd && onEnd(e); };
@@ -2721,6 +2726,74 @@ function stopVoice(){ try{ _rec && _rec.stop(); }catch(e){} state.voiceListening
 function updateVoiceBtn(){
   const btn = $('#voiceBtn');
   if(btn) btn.classList.toggle('listening', state.voiceListening);
+}
+
+/* =========================================================================
+   VOICE SCORING — kana-fold + Levenshtein. Used by Build Mode Voice Mode
+   to grade what the user said against the target JP. Generous on near-misses
+   (STT mishears constantly) so "close" feels forgiving in the car.
+   ========================================================================= */
+function _kataToHira(s){
+  // U+30A1–30F6 → U+3041–3096. Leaves hiragana, kanji, ASCII alone.
+  return (s||'').replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+function _stripJpPunct(s){
+  // Drop Japanese + ASCII punctuation, all whitespace incl. ideographic space.
+  return (s||'').replace(/[、。！？!?.,'"…・「」『』（）()\s　]+/g,'');
+}
+function _levenshtein(a, b){
+  if(a === b) return 0;
+  if(!a) return b.length;
+  if(!b) return a.length;
+  const al = a.length, bl = b.length;
+  let prev = new Array(bl+1);
+  for(let j=0;j<=bl;j++) prev[j] = j;
+  for(let i=1;i<=al;i++){
+    const cur = [i];
+    for(let j=1;j<=bl;j++){
+      const c = a.charCodeAt(i-1) === b.charCodeAt(j-1) ? 0 : 1;
+      cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+c);
+    }
+    prev = cur;
+  }
+  return prev[bl];
+}
+/* Score the best of N speech-recognition alternatives against a target JP
+   string. Returns {verdict:'correct'|'close'|'wrong', heard, dist}.
+   Tries kana-folded match first, romaji fallback if the user spoke phonetics
+   (e.g. browser fell back to en-US recognition). */
+function _voiceScoreJa(targetJp, alts){
+  if(!targetJp) return {verdict:'wrong', heard:'', dist:Infinity};
+  const targetN = _kataToHira(_stripJpPunct(targetJp));
+  const targetRomaji = (typeof kanaToRomaji === 'function')
+    ? kanaToRomaji(targetJp).replace(/\s+/g,'').toLowerCase()
+    : '';
+  let best = {dist:Infinity, heard:''};
+  for(const a of (alts || [])){
+    const tx = (a && a.transcript) || '';
+    if(!tx) continue;
+    const txN = _kataToHira(_stripJpPunct(tx));
+    if(txN){
+      const d = _levenshtein(txN, targetN);
+      if(d < best.dist) best = {dist:d, heard:tx, scope:Math.max(txN.length, targetN.length)};
+    }
+    if(targetRomaji){
+      const rxN = tx.toLowerCase().replace(/[^a-z]/g,'');
+      if(rxN){
+        const dr = _levenshtein(rxN, targetRomaji);
+        if(dr < best.dist) best = {dist:dr, heard:tx, scope:Math.max(rxN.length, targetRomaji.length)};
+      }
+    }
+  }
+  if(best.dist === Infinity) return {verdict:'wrong', heard:'', dist:Infinity};
+  const scope = best.scope || Math.max(1, targetN.length);
+  const ratio = best.dist / scope;
+  if(best.dist === 0) return {verdict:'correct', heard:best.heard, dist:0};
+  // Forgiving "close": 1 edit on short words, or up to ~25% on longer ones.
+  if(best.dist <= 1 || ratio <= 0.25) return {verdict:'close', heard:best.heard, dist:best.dist};
+  // A bit more slack for sentence-length targets where STT has more room to drift.
+  if(scope >= 8 && ratio <= 0.4) return {verdict:'close', heard:best.heard, dist:best.dist};
+  return {verdict:'wrong', heard:best.heard, dist:best.dist};
 }
 
 /* =========================================================================
@@ -3726,6 +3799,10 @@ window.blitzEnd = blitzEnd;
 
 function renderBlitz(){
   const b = state.blitz;
+  // Cancel any pending voice listener / timer from a prior render before
+  // scheduling a new one. Without this, rapid re-renders (toggleDir, advance)
+  // can leak overlapping STT sessions.
+  if(typeof _blitzVoiceClear === 'function') _blitzVoiceClear();
   if(!b) return `<div class="card"><div class="muted">No active session.</div>
     <button class="btn btn-primary" style="margin-top:12px" onclick="startBlitz()">Start</button></div>`;
 
@@ -3765,11 +3842,15 @@ function renderBlitz(){
     : `Streak ${poolItem.streak}/${poolItem.required}`;
   const progressLabel = `${b.tally.graduated}/${b.tally.total} graduated · pool ${b.pool.length}`;
 
+  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="blitzToggleVoiceMode()" title="Hands-free voice mode — listens for your spoken answer">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
   const head = `<div class="card" style="padding:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
       <span class="muted" style="font-size:13px">${esc(progressLabel)}</span>
       <span class="muted" style="font-size:12px">${esc(streakLabel)}</span>
-      <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
+      <div style="display:flex;gap:6px">
+        ${voicePill}
+        <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
+      </div>
     </div>
   </div>`;
 
@@ -3781,6 +3862,8 @@ function renderBlitz(){
       b._lastIntroAutoplay = w.id;
       setTimeout(() => { try{ speakJP(w.jp); }catch(e){} }, 300);
     }
+    // Voice mode: skip the "Got it — drill me" tap by auto-promoting after a beat.
+    if(typeof _blitzVoiceMaybeAutoIntroduce === 'function') _blitzVoiceMaybeAutoIntroduce();
     return head + `<div class="card">
       <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">New word</div>
       <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(w.en)}</div>
@@ -3799,7 +3882,16 @@ function renderBlitz(){
   }
 
   if(!b.submitted){
+    // Voice mode: speak the prompt (if JP→EN) and listen for the answer.
+    // Always scheduled — _blitzVoiceListen self-aborts if voice mode is off.
+    if(typeof _blitzVoiceListen === 'function') setTimeout(_blitzVoiceListen, 80);
+    const voiceOn = state.settings.buildVoiceMode && voiceSupported();
+    const sayLang = (cur === 'jp-en') ? 'English' : 'Japanese';
+    const voiceLine = voiceOn
+      ? `<div id="blitzVoiceLabel" style="text-align:center;font-size:13px;padding:8px 12px;margin-bottom:10px;background:var(--card2);border-radius:10px;color:var(--blue)">🎙️ Voice mode — say it in <b>${esc(sayLang)}</b></div>`
+      : '';
     return head + `<div class="card">
+      ${voiceLine}
       <div class="muted" style="font-size:12px;margin-bottom:6px">${cur === 'jp-en' ? 'Japanese' : 'English'}</div>
       <div style="font-size:32px;text-align:center;padding:16px 0">${esc(prompt)}</div>
       <input id="blitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${esc(inputPlaceholder)}" onkeydown="if(event.key==='Enter'){event.preventDefault();blitzSubmit();}">
@@ -3815,6 +3907,11 @@ function renderBlitz(){
 
   const correct = !!b.autoCorrect;
   const graduated = !!b.justGraduated;
+  // Voice mode: skip the "type the correct answer" tap gate — speak the JP
+  // once and auto-advance after a beat so the driver isn't stranded.
+  if(!correct && typeof _blitzVoiceMaybeAutoAdvanceAfterWrong === 'function'){
+    _blitzVoiceMaybeAutoAdvanceAfterWrong();
+  }
   const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
   const gradStat = graduated ? state.stats[b.justGraduated] : null;
   const nextLbl = gradStat ? smIntervalLabel(gradStat.smInterval) : '';
@@ -3867,6 +3964,135 @@ function blitzTypeToContinue(){
   if(res.correct) blitzAdvance();
 }
 window.blitzTypeToContinue = blitzTypeToContinue;
+
+/* =========================================================================
+   VOCAB BLITZ — VOICE MODE
+   When state.settings.buildVoiceMode is on, every Blitz card auto-listens for
+   the answer in the right language (EN for jp-en direction, JP for en-jp),
+   drops the best transcript into the input, and submits. On STT failure the
+   user can still type — the input is focused as fallback. After the wrong-
+   answer "type to continue" gate, voice mode auto-advances after a beat so
+   driving doesn't strand on a typing requirement.
+   ========================================================================= */
+let _blitzVoiceTimer = null;
+function _blitzVoiceClear(){
+  if(_blitzVoiceTimer){ clearTimeout(_blitzVoiceTimer); _blitzVoiceTimer = null; }
+  if(state.voiceListening){ try{ stopVoice(); }catch(e){} }
+}
+function _blitzSetListenLabel(text){
+  // Update the in-card listening label without a full re-render.
+  const el = document.getElementById('blitzVoiceLabel');
+  if(el) el.textContent = text;
+}
+function _blitzVoiceListen(){
+  const b = state.blitz;
+  if(!b || b.complete || b.submitted) return;
+  if(!_buildVoiceModeActive()) return;
+  if(state.screen !== 'blitz') return;
+  const w = blitzCurrent();
+  if(!w) return;
+  // Skip introduce phase — that has its own auto-advance.
+  if(!vocabIsIntroduced(w)) return;
+  const cur = b.currentDir || b.direction;
+  const lang = cur === 'jp-en' ? 'en-US' : 'ja-JP';
+  const sayLangLabel = cur === 'jp-en' ? 'English' : 'Japanese';
+  const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
+
+  const startListen = () => {
+    if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted) return;
+    _blitzSetListenLabel(`🎤 listening — say it in ${sayLangLabel}`);
+    let alts = [];
+    startVoice(
+      (results) => { alts = results || []; },
+      (err) => {
+        if(state.screen !== 'blitz' || !state.blitz || state.blitz.submitted) return;
+        if(err){
+          // Surface mic permission / hardware errors so the user knows why.
+          const code = err && err.error;
+          if(code === 'not-allowed' || code === 'service-not-allowed'){
+            _blitzSetListenLabel('🚫 mic permission denied — tap address bar to allow');
+            showToast('Microphone permission is blocked. Allow it in your browser, then tap the 🎙 pill again.', {tone:'warn', duration:6000});
+            state.settings.buildVoiceMode = false;  // bail out so user isn't stranded
+            save();
+            render();
+            return;
+          }
+          if(code === 'language-not-supported' || code === 'bad-grammar'){
+            _blitzSetListenLabel(`🚫 ${lang} not supported on this device`);
+            showToast(`Speech recognition for ${lang} not available in this browser.`, {tone:'warn', duration:5000});
+            return;
+          }
+        }
+        if(!alts.length){
+          // No transcript captured. Voice mode = no typing ever. Auto-reveal
+          // (marks card wrong; the wrong-answer auto-advance speaks the JP
+          // and moves on after a short linger). Never focus the input.
+          _blitzSetListenLabel('🤔 didn\'t catch that — revealing');
+          if(typeof blitzReveal === 'function') blitzReveal();
+          return;
+        }
+        const best = alts.slice().sort((a,c) => (c.conf||0) - (a.conf||0))[0];
+        const heard = (best.transcript || '').trim();
+        _blitzSetListenLabel(`heard: "${heard}"`);
+        const inp = $('#blitzInput');
+        if(inp){ inp.value = heard; }
+        blitzSubmit();
+      },
+      lang
+    );
+    _blitzVoiceTimer = setTimeout(() => {
+      if(state.voiceListening){ try{ stopVoice(); }catch(e){} }
+    }, listenSec * 1000 + 2500);
+  };
+
+  // For JP→EN cards, speak the JP prompt first then listen — using
+  // _buildSpeakJP because it fires onDone when speech actually ends, not via
+  // a pre-cancel polling race that started the listener mid-utterance.
+  if(cur === 'jp-en'){
+    _blitzSetListenLabel('🔊 speaking the prompt…');
+    _buildSpeakJP(w.jp, () => {
+      // Small breath after speech ends to let the audio buffer settle.
+      _blitzVoiceTimer = setTimeout(startListen, 200);
+    });
+  } else {
+    _blitzSetListenLabel('🔇 listening shortly…');
+    _blitzVoiceTimer = setTimeout(startListen, 250);
+  }
+}
+/* Auto-advance the wrong-answer "type the correct answer to continue" gate
+   when voice mode is on. The user can hear the JP TTS once (auto-played by
+   the existing reveal flow) then we move them on, instead of stranding on
+   a typing requirement that's unsafe to fulfil while driving. */
+function _blitzVoiceMaybeAutoAdvanceAfterWrong(){
+  if(!_buildVoiceModeActive()) return;
+  const b = state.blitz;
+  if(!b || !b.submitted || b.autoCorrect) return;
+  // Speak the correct answer once, then auto-advance after a short linger.
+  const w = blitzCurrent();
+  if(w){ try{ speakJP(w.jp); }catch(e){} }
+  _blitzVoiceClear();
+  _blitzVoiceTimer = setTimeout(() => {
+    if(state.screen !== 'blitz' || !state.blitz || !state.blitz.submitted) return;
+    blitzAdvance();
+  }, 2800);
+}
+/* Auto-advance the introduce phase in voice mode after the user has heard
+   the new word a couple times. Without this, voice users hit the "Got it —
+   drill me" button which is a tap-required gate. */
+function _blitzVoiceMaybeAutoIntroduce(){
+  if(!_buildVoiceModeActive()) return;
+  const b = state.blitz;
+  if(!b || b.complete || b.submitted) return;
+  const w = blitzCurrent();
+  if(!w || vocabIsIntroduced(w)) return;
+  if(state.screen !== 'blitz') return;
+  _blitzVoiceClear();
+  _blitzVoiceTimer = setTimeout(() => {
+    if(state.screen !== 'blitz' || !state.blitz) return;
+    const cur = blitzCurrent();
+    if(cur && !vocabIsIntroduced(cur)) vocabMarkIntroduced(cur.id);
+  }, 2400);
+}
 
 /* Keyboard shortcuts when a card is revealed.
    Blitz + Form Blitz: Enter/Space advance; no per-grade keys (auto-graded).
@@ -8789,10 +9015,30 @@ function buildGenerateVocabSpamLesson(opts){
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   /* v6.37 — Mastered review: include ★mastered words in the spam pool. */
   const isMasteredMode = activeVocabSection().mode === 'mastered';
-  const sectionPool = vocabSectionFilter(getActiveWords()).filter(w =>
-    (isMasteredMode || !masteredSet.has(w.id)) && !suspendedSet.has(w.id)
-  );
-  if(sectionPool.length < 1) throw new Error('No words in this section — pick a different scope or enable the N5 pack.');
+  /* Progressive widening — when the strict section pool is thin (e.g. user
+     ★-mastered most of a small section), keep relaxing filters until we have
+     enough words for a real spam session. Never strand the user with 1 word. */
+  const minViable = Math.min(want, 10);
+  const tries = [
+    () => vocabSectionFilter(getActiveWords()).filter(w =>
+      (isMasteredMode || !masteredSet.has(w.id)) && !suspendedSet.has(w.id)),
+    () => vocabSectionFilter(getActiveWords()).filter(w => !suspendedSet.has(w.id)),
+    () => getActiveWords().filter(w => !masteredSet.has(w.id) && !suspendedSet.has(w.id)),
+    () => getActiveWords().filter(w => !suspendedSet.has(w.id))
+  ];
+  let sectionPool = [];
+  let widenedAt = 0;
+  for(let i = 0; i < tries.length; i++){
+    sectionPool = tries[i]();
+    widenedAt = i;
+    if(sectionPool.length >= minViable) break;
+  }
+  if(sectionPool.length < 1) throw new Error('No words available — enable the N5 pack in Settings.');
+  if(widenedAt > 0){
+    const why = ['', 'including ★mastered', 'ignoring section filter', 'using whole deck'][widenedAt];
+    log('vocab_spam_widen', {widenedAt, poolSize: sectionPool.length, why});
+    showToast(`Section was thin — widened pool ${why} so you get a full session.`, {tone:'info', duration:3500});
+  }
   const pool = shuffleFY(sectionPool.slice()).slice(0, Math.min(want, sectionPool.length));
   const sec = activeVocabSection();
   const steps = pool.map(w => ({ type:'recall', word_id: w.id }));
@@ -9093,6 +9339,126 @@ function _buildAiMode(){
   if(typeof window.fetch !== 'function') return false;
   return true;
 }
+
+/* =========================================================================
+   BUILD MODE — VOICE MODE (hands-free, on-device scoring)
+   When on, recall/build/callback/substitute/phrase/variation/form_drill steps
+   run as: speak EN prompt → listen ja-JP → score → spoken verdict → reveal.
+   Forgiving: "close" counts as correct. Two STT misses on a single step fall
+   back to typed Write Mode for that step only, so road noise can't strand
+   you mid-session. AI Q&A keeps its own dedicated path.
+   ========================================================================= */
+function _buildVoiceModeActive(){
+  return state.settings && state.settings.buildVoiceMode === true && voiceSupported();
+}
+function _buildVoiceTargetForStep(step){
+  if(!step) return null;
+  if(step.type === 'recall'){
+    const w = buildWordById(step.word_id); return w ? w.jp : null;
+  }
+  if(step.type === 'callback'){
+    if(step.word_id){ const w = buildWordById(step.word_id); return w ? w.jp : null; }
+    if(step.sentence_jp) return step.sentence_jp;
+    return null;
+  }
+  if(step.type === 'build') return step.sentence_jp || null;
+  if(step.type === 'substitute') return step.result_jp || null;
+  if(step.type === 'phrase') return step.jp || null;
+  if(step.type === 'form_drill') return step.target_jp || step.word_jp || null;
+  if(step.type === 'variation'){
+    const ways = (step.ways || []).map(v => v && v.jp).filter(Boolean);
+    return ways.length ? ways : null;
+  }
+  return null;
+}
+function _buildVoiceShouldListen(step){
+  if(!_buildVoiceModeActive()) return false;
+  if(!step) return false;
+  if(step.type === 'introduce' || step.type === 'similar') return false;
+  if(step.type === 'qa') return false; // AI path or scripted reveal owns qa
+  return _buildVoiceTargetForStep(step) != null;
+}
+function _buildVoiceListen(target, onVerdict){
+  const b = state.buildMode;
+  if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
+  const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
+  const listenMs = listenSec * 1000;
+  _buildSetPhase('listen', listenMs);
+  let alts = [];
+  b._sttActive = true;
+  startVoice(
+    (results) => { alts = results || []; },
+    (err) => {
+      b._sttActive = false;
+      if(state.buildMode !== b || b._paused) return;
+      if(err || !alts.length){
+        log('voice_step_nostt', {type: target ? 'has_target' : 'no_target', err: err && err.error});
+        onVerdict({verdict:'nostt'});
+        return;
+      }
+      const targets = Array.isArray(target) ? target : [target];
+      let best = {verdict:'wrong', heard:'', dist:Infinity};
+      for(const t of targets){
+        const r = _voiceScoreJa(t, alts);
+        if(r.verdict === 'correct'){ best = r; break; }
+        if(r.dist < best.dist) best = r;
+      }
+      log('voice_step_score', {verdict:best.verdict, dist:best.dist, heard:best.heard});
+      onVerdict(best);
+    }
+  );
+  // Hard timeout — onend usually fires, but belt-and-braces in case it doesn't.
+  if(b._autoTimer) clearTimeout(b._autoTimer);
+  b._autoTimer = setTimeout(() => {
+    if(state.buildMode !== b) return;
+    if(b._sttActive){ try{ stopVoice(); }catch(e){} }
+  }, listenMs + 2500);
+}
+/* Speaks a short EN verdict, then calls cb so the caller can reveal (which
+   itself plays the canonical JP). Keeps audio chain short — every extra
+   second of speech delays the next step. */
+function _buildSayVerdict(verdict, cb){
+  const phrase = verdict === 'correct' ? 'correct'
+              : verdict === 'close'   ? 'close — listen'
+              : 'not quite — listen';
+  _buildSpeakEN(phrase, false, cb);
+}
+function _buildVoiceListenStep(step){
+  const b = state.buildMode;
+  if(!b) return;
+  const target = _buildVoiceTargetForStep(step);
+  const fallToThink = () => {
+    const baseSec = Math.max(1, (state.settings.buildThinkSec || 4));
+    const thinkMs = baseSec * _buildPaceFactor(step) * 1000;
+    _buildSetPhase('think', thinkMs);
+    _buildSchedule(() => buildAutoReveal(), thinkMs);
+  };
+  if(!target){ fallToThink(); return; }
+  _buildVoiceListen(target, (res) => {
+    if(state.buildMode !== b || b._paused) return;
+    if(res.verdict === 'nostt'){
+      // Voice mode = no typing ever. STT silence just falls through to the
+      // normal think→reveal flow — the canonical JP plays, lesson moves on.
+      log('voice_step_nostt', {type: step.type});
+      fallToThink();
+      return;
+    }
+    // Record voice attempt against the SRS stats slot. "close" counts as
+    // correct (per user's spec) so it credits firstCorrect / lastSeen too.
+    const wid = _buildStateWordIdForStep(step);
+    if(wid){
+      const isCorrect = (res.verdict !== 'wrong');
+      const st = smStatFor(wid);
+      st.attempts = st.attempts || [];
+      st.attempts.push({ts: now(), correct: isCorrect, voice: true});
+      if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
+      st.lastSeen = now();
+    }
+    _buildSayVerdict(res.verdict, () => {
+      if(state.buildMode === b && !b._paused) buildAutoReveal();
+    });
+  });
+}
 function _buildAiQaActive(step){
   if(!step || step.type !== 'qa') return false;
   /* v6.12 — _aiAttempted now means "we got a complete Claude response", not
@@ -9346,7 +9712,11 @@ function _buildAutoOn(){ return state.settings.buildAutoAdvance !== false; }
    sentences worth typing. */
 function _buildWriteOn(){ return !!state.settings.buildWriteMode; }
 function _buildWriteApplies(step){
-  if(!step || !_buildWriteOn()) return false;
+  if(!step) return false;
+  /* Voice Mode = no typing ever. While voice mode is on, every step is
+     audio-led — we never force a typed input, even after STT silence. */
+  if(_buildVoiceModeActive()) return false;
+  if(!_buildWriteOn()) return false;
   if(step.type === 'build' || step.type === 'substitute') return true;
   if(step.type === 'callback' && step.sentence_jp) return true;
   if(step.type === 'form_drill') return true;  /* v6.27 — typing fits conjugation drills naturally */
@@ -9408,6 +9778,10 @@ function buildAutoplayStep(step){
 
   const onEnDone = () => {
     if(!auto) return;
+    if(_buildVoiceShouldListen(step)){
+      _buildVoiceListenStep(step);
+      return;
+    }
     const baseSec = Math.max(1, (state.settings.buildThinkSec || 4));
     const thinkMs = baseSec * _buildPaceFactor(step) * 1000;
     _buildSetPhase('think', thinkMs);
@@ -9529,6 +9903,104 @@ function buildTogglePause(){
   }
 }
 window.buildTogglePause = buildTogglePause;
+
+async function buildToggleVoiceMode(){
+  if(!voiceSupported()){
+    showToast('Speech recognition not supported in this browser.', {tone:'warn'});
+    return;
+  }
+  const turningOn = !state.settings.buildVoiceMode;
+  if(turningOn){
+    const ok = await _voicePreflightMic();
+    if(!ok){
+      showToast('Microphone permission was blocked. Allow it in your browser settings, then try again.', {tone:'warn', duration:6000});
+      return;
+    }
+  }
+  state.settings.buildVoiceMode = turningOn;
+  save();
+  log('voice_mode_toggle', {on: state.settings.buildVoiceMode});
+  // If we were mid-listen and the user flipped it off, stop STT cleanly.
+  const b = state.buildMode;
+  if(b){
+    _buildClearTimer();
+    try{ window.speechSynthesis?.cancel(); }catch(e){}
+  }
+  render();
+  // Re-arm autoplay on the current step so the new mode takes effect immediately
+  // — without this, you'd need to advance a step before voice mode kicks in.
+  if(b && !b._paused){
+    const step = b.steps[b.stepIdx];
+    if(step && !b.revealed) setTimeout(() => buildAutoplayStep(step), 80);
+  }
+  showToast(state.settings.buildVoiceMode ? '🎙️ Voice mode ON — speak the answer' : 'Voice mode off', {tone:'info', duration:2500});
+}
+window.buildToggleVoiceMode = buildToggleVoiceMode;
+
+/* Ask the browser for mic permission upfront. If we don't pre-flight, the
+   first listen attempt inside a drill triggers the permission prompt mid-card
+   and the user (driving) can't see/tap "Allow" in time. Calling getUserMedia
+   here surfaces the prompt immediately on toggle-on. */
+async function _voicePreflightMic(){
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+    // We only needed the permission grant — release the stream right away.
+    try{ stream.getTracks().forEach(t => t.stop()); }catch(e){}
+    return true;
+  } catch(e){
+    log('voice_preflight_err', {err: String(e && e.name || e)});
+    return false;
+  }
+}
+async function homeToggleVoiceMode(){
+  if(!voiceSupported()){
+    showToast('Speech recognition not supported in this browser.', {tone:'warn'});
+    return;
+  }
+  const turningOn = !state.settings.buildVoiceMode;
+  if(turningOn){
+    const ok = await _voicePreflightMic();
+    if(!ok){
+      showToast('Microphone permission was blocked. Allow it in your browser settings, then try again.', {tone:'warn', duration:6000});
+      return;
+    }
+  }
+  state.settings.buildVoiceMode = turningOn;
+  save();
+  log('voice_mode_toggle', {on: state.settings.buildVoiceMode, from:'home'});
+  render();
+  showToast(state.settings.buildVoiceMode
+    ? '🎙️ Voice mode ON — every drill will listen for your answer'
+    : 'Voice mode off — drills are typing-only again',
+    {tone:'info', duration:2800});
+}
+window.homeToggleVoiceMode = homeToggleVoiceMode;
+
+async function blitzToggleVoiceMode(){
+  if(!voiceSupported()){
+    showToast('Speech recognition not supported in this browser.', {tone:'warn'});
+    return;
+  }
+  const turningOn = !state.settings.buildVoiceMode;
+  if(turningOn){
+    const ok = await _voicePreflightMic();
+    if(!ok){
+      showToast('Microphone permission was blocked. Allow it in your browser settings, then try again.', {tone:'warn', duration:6000});
+      return;
+    }
+  }
+  state.settings.buildVoiceMode = turningOn;
+  save();
+  log('voice_mode_toggle', {on: state.settings.buildVoiceMode, from:'blitz'});
+  // Re-render so the listener kicks in (or shuts off) on the current card.
+  render();
+  showToast(state.settings.buildVoiceMode
+    ? '🎙️ Voice mode ON — listening on each card'
+    : 'Voice mode off',
+    {tone:'info', duration:2200});
+}
+window.blitzToggleVoiceMode = blitzToggleVoiceMode;
 
 function buildReplayAudio(){
   const b = state.buildMode;
@@ -10205,9 +10677,12 @@ function renderBuildModeStep(){
     <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}${chainPill}</div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
-        ${auto ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="buildTogglePause()">${paused ? '▶ Resume' : '⏸ Pause'}</button>` : ''}
+        <div style="display:flex;gap:6px">
+          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — listens, scores, falls back to type after 2 misses">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
+          ${auto ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="buildTogglePause()">${paused ? '▶ Resume' : '⏸ Pause'}</button>` : ''}
+        </div>
       </div>
       ${body}
       ${countdown}
@@ -10868,6 +11343,7 @@ function renderHome(){
     heroDeco = cur ? cur.emoji : (sec.emoji || '心');
     heroCta = '⚡ Begin session';
     heroAction = 'startBlitz()';
+    if(state.settings.buildVoiceMode && voiceSupported()) heroMeta = `${heroMeta} · 🎙️ voice on`;
   }
 
   /* Top bar — settings icon · wordmark · streak */
@@ -10884,13 +11360,32 @@ function renderHome(){
   const decoIsKanji = /^[぀-ヿ一-鿿]$/.test(heroDeco);
   const decoCls = decoIsKanji ? 'h8-hero-deco' : 'h8-hero-deco emoji';
   const heroAct = heroAction ? `onclick="${heroAction}"` : '';
+  /* Exit banner — the user can land in Mastered Review with a tiny pool by
+     tapping the up-next row, which leaves them stuck on a 1-word session
+     with no obvious way out. Surface a one-tap exit here. */
+  const isStuckMastered = isMasteredMode && (bc.due || 0) <= 3;
+  const exitBanner = isStuckMastered ? `
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="font-size:12px;color:var(--dim);text-align:left">You're in <b>Mastered Review</b> (only ★mastered words). Pool is small.</div>
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="setVocabSection('all')">← Full session</button>
+    </div>` : '';
+  /* Voice Mode toggle — big and unmissable. Sits between the hero meta and
+     the CTA so the driver sees it before tapping start. */
+  const voiceModeOn = state.settings.buildVoiceMode === true && voiceSupported();
+  const voiceToggle = voiceSupported() ? `
+    <button onclick="homeToggleVoiceMode()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:12px 16px;border-radius:14px;font-size:14px;font-weight:600;border:2px solid ${voiceModeOn ? 'var(--blue)' : 'var(--border)'};background:${voiceModeOn ? 'rgba(100,150,255,0.1)' : 'transparent'};color:${voiceModeOn ? 'var(--blue)' : 'var(--text)'};cursor:pointer">
+      <span style="font-size:18px">${voiceModeOn ? '🎙️' : '🎙'}</span>
+      <span>${voiceModeOn ? 'Voice Mode ON · hands-free drills' : 'Voice Mode OFF · tap for hands-free'}</span>
+    </button>` : '';
   const heroCard = `
+    ${exitBanner}
     <div class="h8-hero">
       <div class="${decoCls}">${esc(heroDeco)}</div>
       <div class="h8-hero-eyebrow">${esc(heroEyebrow)}</div>
       <div class="h8-hero-title">${esc(heroTitle)}</div>
       <div class="h8-hero-meta">${esc(heroMeta)}</div>
       <button class="h8-hero-cta" ${heroDis} ${heroAct}>${esc(heroCta)}</button>
+      ${voiceToggle}
     </div>`;
 
   /* Up Next — alternative sessions, dynamic based on what has content */
@@ -11652,6 +12147,10 @@ function renderSettings(){
         <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Write mode</div><div class="word-en">v6.25 · type the JP for build/substitute/callback steps. Hiragana or romaji both fine. Speech is muted on prompt; auto-advance still applies on correct.</div></div>
         <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🎙️ Voice mode (works on every drill)</div><div class="word-en">${voiceSupported() ? 'Universal switch — when on, Build Mode and Vocab Blitz both listen for your spoken answer and submit it for you. Close matches count as correct. After 2 STT misses on a card, it falls back to typing so you\'re never stranded. Designed for driving.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
+        <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
+        <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??8).toFixed(1)}s · pause after JP audio before next step</div></div>
@@ -11813,6 +12312,13 @@ function setBuildLingerSec(r){
 }
 window.setBuildThinkSec = setBuildThinkSec;
 window.setBuildLingerSec = setBuildLingerSec;
+function setVoiceListenSec(r){
+  const v = parseInt(r, 10);
+  if(!isNaN(v)) state.settings.voiceListenSec = v;
+  save();
+  _updateRangeLabel('Listen window', x => x.toFixed(0) + 's · how long Voice mode waits for you to speak before moving on', v);
+}
+window.setVoiceListenSec = setVoiceListenSec;
 function setBuildIntroduceLingerSec(r){
   const v = parseFloat(r);
   if(!isNaN(v)) state.settings.buildIntroduceLingerSec = v;
