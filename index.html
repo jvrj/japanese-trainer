@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '6.40.3';
+const APP_VERSION = '6.40.4';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1807,14 +1807,14 @@ const DEFAULT_SETTINGS = {
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
   vocabSection:'all',         // v6.33 — Vocab Blitz: scope to a topical noun/vocab section (time/food/body/family/...) or 'all'
-  buildThinkSec:3,            // pause after EN prompt before JP reveals (snappier defaults v6.40.2)
-  buildLingerSec:4,           // pause after JP audio before next step
-  buildIntroduceLingerSec:6,  // extra time after a brand-new word is introduced
-  buildTtsRate:0.7,           // Build Mode JP TTS rate (slower than global so new words land)
-  buildEnTtsRate:1.15,        // Build Mode EN TTS rate (snappy gloss readback)
+  buildThinkSec:2,            // pause after EN prompt before JP reveals (v6.40.4 hard crunch)
+  buildLingerSec:2.5,         // pause after JP audio before next step
+  buildIntroduceLingerSec:4,  // extra time after a brand-new word is introduced
+  buildTtsRate:0.8,           // Build Mode JP TTS rate
+  buildEnTtsRate:1.35,        // Build Mode EN TTS rate (close to natural speed)
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
-  voiceListenSec:7,           // Voice Mode: how long to listen on each step before timing out
+  voiceListenSec:4,           // Voice Mode: how long to listen on each step before timing out
   /* v6.16 — Modules: themed progression with linear unlock. */
   modulesEnabled:true,        // master switch — flip off in Settings to access all words at once
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
@@ -2108,16 +2108,18 @@ function load(){
     // v6.14 — autopilot pacing: bump 5s linger → 8s, 5s introduce → 10s for users on previous defaults.
     if(state.settings.buildLingerSec === 5) state.settings.buildLingerSec = 8;
     if(state.settings.buildIntroduceLingerSec === 5) state.settings.buildIntroduceLingerSec = 10;
-    // v6.40.2 — Snappy pacing: trim Build Mode timers and bump EN TTS rate so
-    // spam-mode loops feel less draggy. One-time migration via _pacingV2 flag
-    // so users who customized aren't reset more than once.
-    if(!state.settings._pacingV2){
-      if(state.settings.buildThinkSec === 5) state.settings.buildThinkSec = 3;
-      if(state.settings.buildLingerSec === 8) state.settings.buildLingerSec = 4;
-      if(state.settings.buildIntroduceLingerSec === 10) state.settings.buildIntroduceLingerSec = 6;
-      if(state.settings.buildTtsRate === 0.6) state.settings.buildTtsRate = 0.7;
-      if(state.settings.buildEnTtsRate == null) state.settings.buildEnTtsRate = 1.15;
-      state.settings._pacingV2 = true;
+    // v6.40.4 — hard pacing crunch. After v6.40.2 still felt sluggish (long
+    // dead pause between EN speech and JP reveal during voice listen),
+    // collapse defaults further AND shorten listen window. Migrates ANY
+    // value at-or-above the new caps (not just the prior defaults).
+    if(!state.settings._pacingV3){
+      if((state.settings.buildThinkSec || 0) >= 3) state.settings.buildThinkSec = 2;
+      if((state.settings.buildLingerSec || 0) >= 4) state.settings.buildLingerSec = 2.5;
+      if((state.settings.buildIntroduceLingerSec || 0) >= 6) state.settings.buildIntroduceLingerSec = 4;
+      if((state.settings.buildTtsRate || 0) <= 0.7) state.settings.buildTtsRate = 0.8;
+      if((state.settings.buildEnTtsRate || 0) <= 1.2) state.settings.buildEnTtsRate = 1.35;
+      if((state.settings.voiceListenSec || 0) >= 7) state.settings.voiceListenSec = 4;
+      state.settings._pacingV3 = true;
     }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
@@ -9503,10 +9505,11 @@ function _buildVoiceListenStep(step){
   _buildVoiceListen(target, (res) => {
     if(state.buildMode !== b || b._paused) return;
     if(res.verdict === 'nostt'){
-      // Voice mode = no typing ever. STT silence just falls through to the
-      // normal think→reveal flow — the canonical JP plays, lesson moves on.
+      // Voice mode + STT silence: reveal IMMEDIATELY. Adding a think phase
+      // here on top of the already-elapsed listen window is double-waiting
+      // and feels like a long dead pause between EN and JP.
       log('voice_step_nostt', {type: step.type});
-      fallToThink();
+      buildAutoReveal();
       return;
     }
     // Record voice attempt against the SRS stats slot. "close" counts as
@@ -9746,11 +9749,13 @@ function _buildSetPhase(phase, durMs){
   b._phase = phase;
   b._phaseDur = durMs;
   // Drive the countdown bar via direct DOM (avoids a full re-render and lets CSS animate cleanly).
+  // Listen phase animates too — without it the bar visually freezes during STT and the user
+  // perceives the app as paused rather than actively listening.
   const fill = document.querySelector('.build-countdown-fill');
   if(fill){
-    fill.classList.remove('run','think','linger');
+    fill.classList.remove('run','think','linger','listen');
     void fill.offsetWidth; // restart animation
-    if(phase === 'think' || phase === 'linger'){
+    if(phase === 'think' || phase === 'linger' || phase === 'listen'){
       fill.style.animationDuration = (durMs/1000) + 's';
       fill.classList.add('run', phase);
     } else {
