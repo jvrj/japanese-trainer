@@ -1807,10 +1807,11 @@ const DEFAULT_SETTINGS = {
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
   vocabSection:'all',         // v6.33 — Vocab Blitz: scope to a topical noun/vocab section (time/food/body/family/...) or 'all'
-  buildThinkSec:5,            // v5.9 — Build Mode: seconds to wait after EN prompt before auto-revealing JP (was 4)
-  buildLingerSec:8,           // v6.14 — bumped 5→8s for autopilot listening pace (was 5; user said timer felt too quick)
-  buildIntroduceLingerSec:10, // v6.14 — bumped 5→10s so new words have absorption time (was 5)
-  buildTtsRate:0.6,           // v5.9 — Build Mode: JP TTS rate, slower than global ttsRate so new words land. 0.4–1.0
+  buildThinkSec:3,            // pause after EN prompt before JP reveals (snappier defaults v6.40.2)
+  buildLingerSec:4,           // pause after JP audio before next step
+  buildIntroduceLingerSec:6,  // extra time after a brand-new word is introduced
+  buildTtsRate:0.7,           // Build Mode JP TTS rate (slower than global so new words land)
+  buildEnTtsRate:1.15,        // Build Mode EN TTS rate (snappy gloss readback)
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
   voiceListenSec:7,           // Voice Mode: how long to listen on each step before timing out
@@ -2107,6 +2108,17 @@ function load(){
     // v6.14 — autopilot pacing: bump 5s linger → 8s, 5s introduce → 10s for users on previous defaults.
     if(state.settings.buildLingerSec === 5) state.settings.buildLingerSec = 8;
     if(state.settings.buildIntroduceLingerSec === 5) state.settings.buildIntroduceLingerSec = 10;
+    // v6.40.2 — Snappy pacing: trim Build Mode timers and bump EN TTS rate so
+    // spam-mode loops feel less draggy. One-time migration via _pacingV2 flag
+    // so users who customized aren't reset more than once.
+    if(!state.settings._pacingV2){
+      if(state.settings.buildThinkSec === 5) state.settings.buildThinkSec = 3;
+      if(state.settings.buildLingerSec === 8) state.settings.buildLingerSec = 4;
+      if(state.settings.buildIntroduceLingerSec === 10) state.settings.buildIntroduceLingerSec = 6;
+      if(state.settings.buildTtsRate === 0.6) state.settings.buildTtsRate = 0.7;
+      if(state.settings.buildEnTtsRate == null) state.settings.buildEnTtsRate = 1.15;
+      state.settings._pacingV2 = true;
+    }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -9283,7 +9295,9 @@ function _buildSpeakEN(text, force, onDone){
     const ss = window.speechSynthesis;
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.9;
+    // Faster default — the previous 0.9 felt sluggish in spam-mode loops where
+    // every step plays an EN gloss. User-tunable via buildEnTtsRate.
+    u.rate = (state.settings && state.settings.buildEnTtsRate) || 1.15;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
     if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
     if(onDone){
@@ -12217,8 +12231,10 @@ function renderSettings(){
         <input type="range" min="0.5" max="12" step="0.25" value="${s.buildLingerSec??8}" oninput="setBuildLingerSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">New-word linger</div><div class="word-en">${(s.buildIntroduceLingerSec??10).toFixed(1)}s · extra time after a brand-new word is introduced</div></div>
         <input type="range" min="1" max="15" step="0.5" value="${s.buildIntroduceLingerSec??10}" oninput="setBuildIntroduceLingerSec(this.value)" style="width:160px"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">JP speed (Build Mode)</div><div class="word-en">${(s.buildTtsRate??0.6).toFixed(2)}× · slower than Vocab Blitz so you can mimic</div></div>
-        <input type="range" min="0.4" max="1" step="0.05" value="${s.buildTtsRate??0.6}" oninput="setBuildTtsRate(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">JP speed (Build Mode)</div><div class="word-en">${(s.buildTtsRate??0.7).toFixed(2)}× · slower than Vocab Blitz so you can mimic</div></div>
+        <input type="range" min="0.4" max="1" step="0.05" value="${s.buildTtsRate??0.7}" oninput="setBuildTtsRate(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">EN speed (Build Mode)</div><div class="word-en">${(s.buildEnTtsRate??1.15).toFixed(2)}× · how fast English glosses are spoken between cards</div></div>
+        <input type="range" min="0.8" max="1.5" step="0.05" value="${s.buildEnTtsRate??1.15}" oninput="setBuildEnTtsRate(this.value)" style="width:160px"></label>
     </div>
 
     <div class="card">
@@ -12391,8 +12407,15 @@ function setBuildTtsRate(r){
   save();
   _updateRangeLabel('JP speed (Build Mode)', x => x.toFixed(2) + '× · slower than Vocab Blitz so you can mimic', v);
 }
+function setBuildEnTtsRate(r){
+  const v = parseFloat(r);
+  if(!isNaN(v)) state.settings.buildEnTtsRate = v;
+  save();
+  _updateRangeLabel('EN speed (Build Mode)', x => x.toFixed(2) + '× · how fast English glosses are spoken between cards', v);
+}
 window.setBuildIntroduceLingerSec = setBuildIntroduceLingerSec;
 window.setBuildTtsRate = setBuildTtsRate;
+window.setBuildEnTtsRate = setBuildEnTtsRate;
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
 function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
 window.saveAnthropicKey = saveAnthropicKey;
