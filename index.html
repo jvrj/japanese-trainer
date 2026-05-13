@@ -2712,7 +2712,7 @@ function getRecognition(){
   _rec.lang = 'ja-JP';
   _rec.continuous = false;
   _rec.interimResults = false;
-  _rec.maxAlternatives = 3;
+  _rec.maxAlternatives = 8;
   return _rec;
 }
 function voiceSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
@@ -2782,32 +2782,71 @@ function _voiceScoreJa(targetJp, alts){
   const targetRomaji = (typeof kanaToRomaji === 'function')
     ? kanaToRomaji(targetJp).replace(/\s+/g,'').toLowerCase()
     : '';
-  let best = {dist:Infinity, heard:''};
+  let best = {dist:Infinity, heard:'', heardN:'', contained:false};
   for(const a of (alts || [])){
     const tx = (a && a.transcript) || '';
     if(!tx) continue;
     const txN = _kataToHira(_stripJpPunct(tx));
     if(txN){
       const d = _levenshtein(txN, targetN);
-      if(d < best.dist) best = {dist:d, heard:tx, scope:Math.max(txN.length, targetN.length)};
+      /* Substring containment — STT often returns "家いえ" (kanji + reading)
+         or "いえ、です" (target + filler). If the kana-folded transcript
+         contains the target (or vice versa for partials), treat as a hit. */
+      const contained = (targetN.length >= 2 && (txN.includes(targetN) || targetN.includes(txN)));
+      if(d < best.dist || (contained && !best.contained)){
+        best = {dist:d, heard:tx, heardN:txN, scope:Math.max(txN.length, targetN.length), contained};
+      }
     }
     if(targetRomaji){
       const rxN = tx.toLowerCase().replace(/[^a-z]/g,'');
       if(rxN){
         const dr = _levenshtein(rxN, targetRomaji);
-        if(dr < best.dist) best = {dist:dr, heard:tx, scope:Math.max(rxN.length, targetRomaji.length)};
+        const containedR = (targetRomaji.length >= 3 && (rxN.includes(targetRomaji) || targetRomaji.includes(rxN)));
+        if(dr < best.dist || (containedR && !best.contained)){
+          best = {dist:dr, heard:tx, heardN:rxN, scope:Math.max(rxN.length, targetRomaji.length), contained:containedR};
+        }
       }
     }
   }
   if(best.dist === Infinity) return {verdict:'wrong', heard:'', dist:Infinity};
   const scope = best.scope || Math.max(1, targetN.length);
   const ratio = best.dist / scope;
-  if(best.dist === 0) return {verdict:'correct', heard:best.heard, dist:0};
-  // Forgiving "close": 1 edit on short words, or up to ~25% on longer ones.
-  if(best.dist <= 1 || ratio <= 0.25) return {verdict:'close', heard:best.heard, dist:best.dist};
-  // A bit more slack for sentence-length targets where STT has more room to drift.
-  if(scope >= 8 && ratio <= 0.4) return {verdict:'close', heard:best.heard, dist:best.dist};
-  return {verdict:'wrong', heard:best.heard, dist:best.dist};
+  if(best.dist === 0) return {verdict:'correct', heard:best.heard, heardN:best.heardN, dist:0};
+  /* Containment counts as close — target was spoken, just with extra material. */
+  if(best.contained) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  /* Forgiving "close": 1 edit always, 2 edits if target ≥3 chars (short kana
+     words suffer most from STT noise), then ratio thresholds for longer text. */
+  if(best.dist <= 1) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  if(best.dist <= 2 && scope >= 3 && ratio <= 0.5) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  if(ratio <= 0.25) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  if(scope >= 8 && ratio <= 0.4) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  return {verdict:'wrong', heard:best.heard, heardN:best.heardN, dist:best.dist};
+}
+
+/* Look up what the user actually said against the active deck. Returns the
+   matching word ({jp, en, r}) so we can tell them "you said X, which means Y"
+   instead of just "not quite". Matches on kana-folded JP or on romaji.
+   Excludes the prompt word itself so we don't repeat what they were asked. */
+function _voiceLookupHeard(heardN, excludeJp){
+  if(!heardN || heardN.length < 2) return null;
+  const words = (state && state.words) || [];
+  const exclude = excludeJp ? _kataToHira(_stripJpPunct(excludeJp)) : '';
+  let exact = null, partial = null;
+  for(const w of words){
+    if(!w.jp) continue;
+    const wn = _kataToHira(_stripJpPunct(w.jp));
+    if(!wn || wn === exclude) continue;
+    if(wn === heardN){ exact = w; break; }
+    if(!partial && wn.length >= 2 && (heardN.includes(wn) || wn.includes(heardN))){
+      /* Prefer the longest containment match if multiple. */
+      partial = w;
+    }
+    if(w.romaji){
+      const wr = w.romaji.toLowerCase().replace(/[^a-z]/g,'');
+      if(wr && wr === heardN){ exact = w; break; }
+    }
+  }
+  return exact || partial;
 }
 
 /* =========================================================================
@@ -9491,6 +9530,18 @@ function _buildSayVerdict(verdict, cb){
               : 'not quite — listen';
   _buildSpeakEN(phrase, false, cb);
 }
+/* Same as _buildSayVerdict but, on a wrong answer with a recognized different
+   word, names the mismatch out loud so the user learns the difference: e.g.
+   "no, that means 'cat' — listen for 'house'". Falls back to the plain
+   verdict if we couldn't identify what they actually said. */
+function _buildSayVerdictWithMiss(verdict, heardWord, cb){
+  if(verdict === 'wrong' && heardWord && heardWord.en){
+    const phrase = `no, that means ${heardWord.en} — listen`;
+    _buildSpeakEN(phrase, false, cb);
+    return;
+  }
+  _buildSayVerdict(verdict, cb);
+}
 function _buildVoiceListenStep(step){
   const b = state.buildMode;
   if(!b) return;
@@ -9509,6 +9560,7 @@ function _buildVoiceListenStep(step){
       // here on top of the already-elapsed listen window is double-waiting
       // and feels like a long dead pause between EN and JP.
       log('voice_step_nostt', {type: step.type});
+      b._lastVoice = null;
       buildAutoReveal();
       return;
     }
@@ -9523,7 +9575,20 @@ function _buildVoiceListenStep(step){
       if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
       st.lastSeen = now();
     }
-    _buildSayVerdict(res.verdict, () => {
+    /* Stash heard text + reverse lookup so the reveal panel can show
+       "you said X (means Y)" — and on wrong, the verdict TTS can name the
+       mismatch instead of just saying "not quite". */
+    const promptJp = Array.isArray(target) ? target[0] : target;
+    const heardWord = (res.verdict !== 'correct')
+      ? _voiceLookupHeard(res.heardN || '', promptJp)
+      : null;
+    b._lastVoice = {
+      verdict: res.verdict,
+      heard: res.heard || '',
+      heardN: res.heardN || '',
+      heardWord,  /* {jp,en,r} or null */
+    };
+    _buildSayVerdictWithMiss(res.verdict, heardWord, () => {
       if(state.buildMode === b && !b._paused) buildAutoReveal();
     });
   });
@@ -9941,6 +10006,7 @@ function buildAutoNext(){
     b.revealed = false;
     b._writeAttempt = null;  /* v6.25 */
     b._similarPick = null;   /* v6.26 */
+    b._lastVoice = null;
     b.stepIdx++;
   }
   render();
@@ -10248,6 +10314,7 @@ function buildNextStep(){
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
+  b._lastVoice = null;     /* clear voice "you said X" feedback between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
@@ -10263,6 +10330,7 @@ function buildPrevStep(){
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
+  b._lastVoice = null;     /* clear voice "you said X" feedback between steps */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx > 0) b.stepIdx--;
   render();
@@ -10276,6 +10344,7 @@ function buildRestart(){
   b.stepIdx = 0; b.revealed = false; b.done = false;
   b._writeAttempt = null;  /* v6.25 */
   b._similarPick = null;   /* v6.26 */
+  b._lastVoice = null;
   if(b.lesson) b.lesson._completed = false;
   /* Reshuffle on "Run it again" for spammy modes — independent steps with no
      intro→callback dependencies. Keeps the same word set, fresh order, so the
@@ -10975,6 +11044,7 @@ function _buildRenderPhrase(step){
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Phrase:</div>
       <div class="build-big-jp">${esc(step.jp)}</div>
       <div class="build-big-en">${esc(step.en)}</div>
+      ${_buildRenderHeard()}
     `;
   }
   return banner + `
@@ -11082,6 +11152,29 @@ function _buildRenderIntroduce(step){
   `;
 }
 
+/* Render the "you said X (means Y)" feedback block for the reveal panel.
+   Visible whenever voice mode produced a heard transcript on this step.
+   Color-coded by verdict so the user can compare at a glance. */
+function _buildRenderHeard(){
+  const b = state.buildMode;
+  const lv = b && b._lastVoice;
+  if(!lv || !lv.heard) return '';
+  const verdict = lv.verdict;
+  const color = verdict === 'correct' ? 'var(--green)'
+              : verdict === 'close'   ? 'var(--blue)'
+              : 'var(--red)';
+  const label = verdict === 'correct' ? '✓ you said'
+              : verdict === 'close'   ? '~ you said (close)'
+              : '✗ you said';
+  const meaning = (verdict !== 'correct' && lv.heardWord && lv.heardWord.en)
+    ? ` <span style="color:var(--dim)">— means <b>${esc(lv.heardWord.en)}</b></span>`
+    : '';
+  return `
+    <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
+      ${label}: <b>${esc(lv.heard)}</b>${meaning}
+    </div>`;
+}
+
 function _buildRenderRecall(step){
   const b = state.buildMode;
   const w = buildWordById(step.word_id); if(!w) return '';
@@ -11091,6 +11184,7 @@ function _buildRenderRecall(step){
       <div class="build-big-jp">${esc(w.jp)}</div>
       <div class="build-romaji">${esc(w.r)}</div>
       <div class="build-big-en">${esc(w.en)}</div>
+      ${_buildRenderHeard()}
     `;
   }
   return `
@@ -11176,6 +11270,7 @@ function _buildRenderCallback(step){
         <div class="build-big-jp">${esc(w.jp)}</div>
         <div class="build-romaji">${esc(w.r)}</div>
         <div class="build-big-en">${esc(w.en)}</div>
+        ${_buildRenderHeard()}
       `;
     }
     return banner + `
