@@ -10277,6 +10277,14 @@ function buildRestart(){
   b._writeAttempt = null;  /* v6.25 */
   b._similarPick = null;   /* v6.26 */
   if(b.lesson) b.lesson._completed = false;
+  /* Reshuffle on "Run it again" for spammy modes — independent steps with no
+     intro→callback dependencies. Keeps the same word set, fresh order, so the
+     user isn't drilling muscle-memory of the sequence. Real Build-chain
+     lessons (simple/complex/social) keep their structured order. */
+  const SHUFFLE_ON_RESTART = new Set(['vocabSpam','randomDrill','phraseSpam','sentenceSpam','variationSpam','similarSpam']);
+  if(b.steps && b.steps.length > 1 && SHUFFLE_ON_RESTART.has(b.lesson?._meta?.mode)){
+    b.steps = shuffleFY(b.steps);
+  }
   render();
 }
 window.buildRestart = buildRestart;
