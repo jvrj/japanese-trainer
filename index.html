@@ -9820,7 +9820,7 @@ function _buildPaceFactor(step){
     if(mastery === 'guru' || mastery === 'master' || mastery === 'burned') masteryFactor = 0.5;
     else if(mastery === 'apprentice') masteryFactor = 0.7;
   }
-  return Math.max(0.3, lengthFactor * masteryFactor); /* floor so it's never absurdly fast */
+  return Math.max(0.6, lengthFactor * masteryFactor); /* floor — was 0.3, but mastered single-word cards (0.55×0.5=0.275) felt blink-fast */
 }
 function _buildStepIsSingleWord(step){
   if(!step) return false;
