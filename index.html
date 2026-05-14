@@ -2817,14 +2817,23 @@ function _voiceScoreJa(targetJp, alts){
     }
     if(txN){
       const d = _levenshtein(txN, targetN);
-      const contained = (targetN.length >= 2 && (txN.includes(targetN) || targetN.includes(txN)));
+      /* Min length 1 (was 2) — single-syllable words like き/お/え should
+         still earn credit when STT returns them inside a longer phrase. */
+      const contained = (targetN.length >= 1 && (txN.includes(targetN) || targetN.includes(txN)));
       /* Kana-only comparison strips kanji from BOTH sides — "家いえ" vs "いえ"
          becomes "いえ" vs "いえ" = perfect match, not a 1-edit miss. */
       let dK = Infinity, containedK = false, scopeK = 0;
       if(txKana && targetKana){
         dK = _levenshtein(txKana, targetKana);
-        containedK = (targetKana.length >= 2 && (txKana.includes(targetKana) || targetKana.includes(txKana)));
+        containedK = (targetKana.length >= 1 && (txKana.includes(targetKana) || targetKana.includes(txKana)));
         scopeK = Math.max(txKana.length, targetKana.length);
+      }
+      /* Loose 2-char substring overlap — catches partial captures like
+         "びじゅつかん" → "びじゅ" or noisy mishears that share a chunk. */
+      if(!containedK && targetKana.length >= 3 && txKana.length >= 2){
+        for(let i=0;i+2<=targetKana.length;i++){
+          if(txKana.includes(targetKana.slice(i, i+2))){ containedK = true; break; }
+        }
       }
       const useK = containedK || dK < d;
       const finalD = useK ? dK : d;
@@ -2865,13 +2874,15 @@ function _voiceScoreJa(targetJp, alts){
   const out = {heard:best.heard, heardDisplay, heardN:best.heardN, dist:best.dist};
   if(best.dist === 0) return Object.assign({verdict:'correct'}, out);
   if(best.contained) return Object.assign({verdict:'close'}, out);
-  if(best.dist <= 1) return Object.assign({verdict:'close'}, out);
-  /* Loosened: 2 edits OK for any 2+ char word at ratio ≤0.6 (was 3+ at 0.5).
-     Short kana words like き/え/お suffer worst from STT and need the slack. */
-  if(best.dist <= 2 && scope >= 2 && ratio <= 0.6) return Object.assign({verdict:'close'}, out);
-  if(best.dist <= 3 && scope >= 4 && ratio <= 0.5) return Object.assign({verdict:'close'}, out);
-  if(ratio <= 0.3) return Object.assign({verdict:'close'}, out);
-  if(scope >= 6 && ratio <= 0.5) return Object.assign({verdict:'close'}, out);
+  /* v6.40.12 — Phone PWA + Chrome JP STT pass: scoring loosened across the
+     board. User explicitly opted in to "credit might fire on near-misses"
+     because false negatives were ruining sessions on phone mics. */
+  if(best.dist <= 2) return Object.assign({verdict:'close'}, out);
+  if(best.dist <= 3 && scope >= 3 && ratio <= 0.7) return Object.assign({verdict:'close'}, out);
+  if(best.dist <= 4 && scope >= 4 && ratio <= 0.65) return Object.assign({verdict:'close'}, out);
+  if(best.dist <= 5 && scope >= 5 && ratio <= 0.6) return Object.assign({verdict:'close'}, out);
+  if(ratio <= 0.5) return Object.assign({verdict:'close'}, out);
+  if(scope >= 6 && ratio <= 0.65) return Object.assign({verdict:'close'}, out);
   return Object.assign({verdict:'wrong'}, out);
 }
 
