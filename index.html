@@ -1814,7 +1814,7 @@ const DEFAULT_SETTINGS = {
   buildEnTtsRate:1.35,        // Build Mode EN TTS rate (close to natural speed)
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
-  voiceListenSec:4,           // Voice Mode: how long to listen on each step before timing out
+  voiceListenSec:6,           // Voice Mode: how long to listen on each step before timing out
   /* v6.16 — Modules: themed progression with linear unlock. */
   modulesEnabled:true,        // master switch — flip off in Settings to access all words at once
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
@@ -2120,6 +2120,13 @@ function load(){
       if((state.settings.buildEnTtsRate || 0) <= 1.2) state.settings.buildEnTtsRate = 1.35;
       if((state.settings.voiceListenSec || 0) >= 7) state.settings.voiceListenSec = 4;
       state.settings._pacingV3 = true;
+    }
+    if(!state.settings._pacingV4){
+      /* Quiet speakers were getting cut off at 4s. Bump anyone still on the
+         old force-set value of 4 (or below) up to the new 6s default. Users
+         who deliberately picked 5/7+ are left alone. */
+      if((state.settings.voiceListenSec || 0) <= 4) state.settings.voiceListenSec = 6;
+      state.settings._pacingV4 = true;
     }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
@@ -2710,8 +2717,12 @@ function getRecognition(){
   if(_rec) return _rec;
   _rec = new SR();
   _rec.lang = 'ja-JP';
-  _rec.continuous = false;
-  _rec.interimResults = false;
+  /* continuous + interim: lets STT keep listening through quiet pauses and
+     surface partial recognition before it commits to "speech ended". Quiet
+     speakers were getting cut mid-word with the strict end-of-utterance VAD
+     under continuous:false. Our caller closes the mic on listen timeout. */
+  _rec.continuous = true;
+  _rec.interimResults = true;
   _rec.maxAlternatives = 12;
   return _rec;
 }
@@ -9611,7 +9622,10 @@ function _buildVoiceListenStep(step){
       // here on top of the already-elapsed listen window is double-waiting
       // and feels like a long dead pause between EN and JP.
       log('voice_step_nostt', {type: step.type});
-      b._lastVoice = null;
+      /* Stash nostt so the reveal panel can surface "didn't hear you" —
+         silently skipping the echo block makes the user think they were
+         ignored, especially when they spoke quietly. */
+      b._lastVoice = {verdict:'nostt', heard:'', heardDisplay:'', heardN:'', heardWord:null};
       buildAutoReveal();
       return;
     }
@@ -11210,7 +11224,14 @@ function _buildRenderIntroduce(step){
 function _buildRenderHeard(){
   const b = state.buildMode;
   const lv = b && b._lastVoice;
-  if(!lv || !lv.heard) return '';
+  if(!lv) return '';
+  if(lv.verdict === 'nostt'){
+    return `
+      <div style="text-align:center;font-size:13px;color:var(--dim);margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
+        🎤 couldn't hear you — speak up a bit or move closer to the mic
+      </div>`;
+  }
+  if(!lv.heard) return '';
   /* Kana-only echo so a learner who can't read kanji can verify what STT
      thought they said. Falls back to a matched-deck word's kana (also pure
      hiragana in our dataset) if the raw heard string was pure kanji. */
