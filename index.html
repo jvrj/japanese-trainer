@@ -2712,7 +2712,7 @@ function getRecognition(){
   _rec.lang = 'ja-JP';
   _rec.continuous = false;
   _rec.interimResults = false;
-  _rec.maxAlternatives = 8;
+  _rec.maxAlternatives = 12;
   return _rec;
 }
 function voiceSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
@@ -2755,6 +2755,11 @@ function _stripJpPunct(s){
   // Drop Japanese + ASCII punctuation, all whitespace incl. ideographic space.
   return (s||'').replace(/[、。！？!?.,'"…・「」『』（）()\s　]+/g,'');
 }
+function _stripKanji(s){
+  /* Strip CJK ideographs so display + comparison are kana-only. STT often
+     returns kanji forms ("家", "言った") which the learner can't read yet. */
+  return (s||'').replace(/[㐀-䶿一-鿿豈-﫿]/g,'');
+}
 function _levenshtein(a, b){
   if(a === b) return 0;
   if(!a) return b.length;
@@ -2773,28 +2778,56 @@ function _levenshtein(a, b){
   return prev[bl];
 }
 /* Score the best of N speech-recognition alternatives against a target JP
-   string. Returns {verdict:'correct'|'close'|'wrong', heard, dist}.
-   Tries kana-folded match first, romaji fallback if the user spoke phonetics
-   (e.g. browser fell back to en-US recognition). */
+   string. Returns {verdict, heard, heardDisplay, heardN, dist}.
+   `heardDisplay` is kana-only (kanji stripped) for the user-facing echo —
+   the learner can't read kanji yet, and Chrome's ja-JP STT loves to return
+   "家" / "言った" forms. We score every alt against both the full kana-fold
+   and the kana-only stripped form, taking whichever is closer. Romaji
+   fallback covers en-US misroutes too. */
 function _voiceScoreJa(targetJp, alts){
-  if(!targetJp) return {verdict:'wrong', heard:'', dist:Infinity};
+  if(!targetJp) return {verdict:'wrong', heard:'', heardDisplay:'', dist:Infinity};
   const targetN = _kataToHira(_stripJpPunct(targetJp));
+  const targetKana = _stripKanji(targetN);
   const targetRomaji = (typeof kanaToRomaji === 'function')
     ? kanaToRomaji(targetJp).replace(/\s+/g,'').toLowerCase()
     : '';
-  let best = {dist:Infinity, heard:'', heardN:'', contained:false};
+  let best = {dist:Infinity, heard:'', heardN:'', heardKana:'', scope:1, contained:false};
+  /* Track best display candidate — alt with the most kana characters, so
+     the echo can show pure hiragana/katakana even when score winner was a
+     kanji-heavy alt. */
+  let displayPick = {kanaLen:-1, heard:'', heardKana:''};
   for(const a of (alts || [])){
     const tx = (a && a.transcript) || '';
     if(!tx) continue;
     const txN = _kataToHira(_stripJpPunct(tx));
+    const txKana = _stripKanji(txN);
+    if(txKana.length > displayPick.kanaLen){
+      displayPick = {kanaLen: txKana.length, heard: tx, heardKana: txKana};
+    }
     if(txN){
       const d = _levenshtein(txN, targetN);
-      /* Substring containment — STT often returns "家いえ" (kanji + reading)
-         or "いえ、です" (target + filler). If the kana-folded transcript
-         contains the target (or vice versa for partials), treat as a hit. */
       const contained = (targetN.length >= 2 && (txN.includes(targetN) || targetN.includes(txN)));
-      if(d < best.dist || (contained && !best.contained)){
-        best = {dist:d, heard:tx, heardN:txN, scope:Math.max(txN.length, targetN.length), contained};
+      /* Kana-only comparison strips kanji from BOTH sides — "家いえ" vs "いえ"
+         becomes "いえ" vs "いえ" = perfect match, not a 1-edit miss. */
+      let dK = Infinity, containedK = false, scopeK = 0;
+      if(txKana && targetKana){
+        dK = _levenshtein(txKana, targetKana);
+        containedK = (targetKana.length >= 2 && (txKana.includes(targetKana) || targetKana.includes(txKana)));
+        scopeK = Math.max(txKana.length, targetKana.length);
+      }
+      const useK = containedK || dK < d;
+      const finalD = useK ? dK : d;
+      const finalContained = contained || containedK;
+      const finalKana = useK ? txKana : '';
+      const scope = useK ? scopeK : Math.max(txN.length, targetN.length);
+      /* Precedence: contained > non-contained even at higher dist. Within
+         same containment status, lower dist wins. Stops a low-distance
+         non-contained alt from clobbering an already-found contained hit. */
+      const better = best.contained
+        ? (finalContained && finalD < best.dist)
+        : (finalContained || finalD < best.dist);
+      if(better){
+        best = {dist:finalD, heard:tx, heardN:(useK ? txKana : txN), heardKana:finalKana, scope, contained:finalContained};
       }
     }
     if(targetRomaji){
@@ -2802,25 +2835,33 @@ function _voiceScoreJa(targetJp, alts){
       if(rxN){
         const dr = _levenshtein(rxN, targetRomaji);
         const containedR = (targetRomaji.length >= 3 && (rxN.includes(targetRomaji) || targetRomaji.includes(rxN)));
-        if(dr < best.dist || (containedR && !best.contained)){
-          best = {dist:dr, heard:tx, heardN:rxN, scope:Math.max(rxN.length, targetRomaji.length), contained:containedR};
+        const scopeR = Math.max(rxN.length, targetRomaji.length);
+        const better = best.contained
+          ? (containedR && dr < best.dist)
+          : (containedR || dr < best.dist);
+        if(better){
+          best = {dist:dr, heard:tx, heardN:rxN, heardKana:rxN, scope:scopeR, contained:containedR};
         }
       }
     }
   }
-  if(best.dist === Infinity) return {verdict:'wrong', heard:'', dist:Infinity};
-  const scope = best.scope || Math.max(1, targetN.length);
+  const heardDisplay = (displayPick.heardKana && displayPick.heardKana.length > 0)
+    ? displayPick.heardKana
+    : (best.heardKana || '');
+  if(best.dist === Infinity) return {verdict:'wrong', heard:'', heardDisplay:'', dist:Infinity};
+  const scope = best.scope || Math.max(1, (targetKana.length || targetN.length));
   const ratio = best.dist / scope;
-  if(best.dist === 0) return {verdict:'correct', heard:best.heard, heardN:best.heardN, dist:0};
-  /* Containment counts as close — target was spoken, just with extra material. */
-  if(best.contained) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
-  /* Forgiving "close": 1 edit always, 2 edits if target ≥3 chars (short kana
-     words suffer most from STT noise), then ratio thresholds for longer text. */
-  if(best.dist <= 1) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
-  if(best.dist <= 2 && scope >= 3 && ratio <= 0.5) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
-  if(ratio <= 0.25) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
-  if(scope >= 8 && ratio <= 0.4) return {verdict:'close', heard:best.heard, heardN:best.heardN, dist:best.dist};
-  return {verdict:'wrong', heard:best.heard, heardN:best.heardN, dist:best.dist};
+  const out = {heard:best.heard, heardDisplay, heardN:best.heardN, dist:best.dist};
+  if(best.dist === 0) return Object.assign({verdict:'correct'}, out);
+  if(best.contained) return Object.assign({verdict:'close'}, out);
+  if(best.dist <= 1) return Object.assign({verdict:'close'}, out);
+  /* Loosened: 2 edits OK for any 2+ char word at ratio ≤0.6 (was 3+ at 0.5).
+     Short kana words like き/え/お suffer worst from STT and need the slack. */
+  if(best.dist <= 2 && scope >= 2 && ratio <= 0.6) return Object.assign({verdict:'close'}, out);
+  if(best.dist <= 3 && scope >= 4 && ratio <= 0.5) return Object.assign({verdict:'close'}, out);
+  if(ratio <= 0.3) return Object.assign({verdict:'close'}, out);
+  if(scope >= 6 && ratio <= 0.5) return Object.assign({verdict:'close'}, out);
+  return Object.assign({verdict:'wrong'}, out);
 }
 
 /* Look up what the user actually said against the active deck. Returns the
@@ -2829,21 +2870,31 @@ function _voiceScoreJa(targetJp, alts){
    Excludes the prompt word itself so we don't repeat what they were asked. */
 function _voiceLookupHeard(heardN, excludeJp){
   if(!heardN || heardN.length < 2) return null;
+  /* Strip kanji so heardN matches our kana-only deck even when STT returned
+     a mixed form like "家いえ". */
+  const heardKana = _stripKanji(heardN);
+  const probes = [heardKana, heardN].filter(s => s && s.length >= 2);
+  if(!probes.length) return null;
   const words = (state && state.words) || [];
-  const exclude = excludeJp ? _kataToHira(_stripJpPunct(excludeJp)) : '';
+  const exclude = excludeJp ? _stripKanji(_kataToHira(_stripJpPunct(excludeJp))) : '';
   let exact = null, partial = null;
   for(const w of words){
     if(!w.jp) continue;
     const wn = _kataToHira(_stripJpPunct(w.jp));
-    if(!wn || wn === exclude) continue;
-    if(wn === heardN){ exact = w; break; }
-    if(!partial && wn.length >= 2 && (heardN.includes(wn) || wn.includes(heardN))){
-      /* Prefer the longest containment match if multiple. */
-      partial = w;
+    if(!wn) continue;
+    const wKana = _stripKanji(wn);
+    if(wKana && wKana === exclude) continue;
+    for(const p of probes){
+      if(wKana && wKana === p){ exact = w; break; }
+      if(wn === p){ exact = w; break; }
+      if(!partial && wKana.length >= 2 && (p.includes(wKana) || wKana.includes(p))){
+        partial = w;
+      }
     }
+    if(exact) break;
     if(w.romaji){
       const wr = w.romaji.toLowerCase().replace(/[^a-z]/g,'');
-      if(wr && wr === heardN){ exact = w; break; }
+      if(wr && (wr === heardN || wr === heardKana)){ exact = w; break; }
     }
   }
   return exact || partial;
@@ -9585,6 +9636,7 @@ function _buildVoiceListenStep(step){
     b._lastVoice = {
       verdict: res.verdict,
       heard: res.heard || '',
+      heardDisplay: res.heardDisplay || '',
       heardN: res.heardN || '',
       heardWord,  /* {jp,en,r} or null */
     };
@@ -11159,6 +11211,12 @@ function _buildRenderHeard(){
   const b = state.buildMode;
   const lv = b && b._lastVoice;
   if(!lv || !lv.heard) return '';
+  /* Kana-only echo so a learner who can't read kanji can verify what STT
+     thought they said. Falls back to a matched-deck word's kana (also pure
+     hiragana in our dataset) if the raw heard string was pure kanji. */
+  let display = (lv.heardDisplay && lv.heardDisplay.trim()) || '';
+  if(!display && lv.heardWord && lv.heardWord.jp) display = lv.heardWord.jp;
+  if(!display) display = '(couldn’t catch the sound)';
   const verdict = lv.verdict;
   const color = verdict === 'correct' ? 'var(--green)'
               : verdict === 'close'   ? 'var(--blue)'
@@ -11171,7 +11229,7 @@ function _buildRenderHeard(){
     : '';
   return `
     <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
-      ${label}: <b>${esc(lv.heard)}</b>${meaning}
+      ${label}: <b>${esc(display)}</b>${meaning}
     </div>`;
 }
 
