@@ -9561,7 +9561,11 @@ function _buildVoiceListen(target, onVerdict){
   if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
   const listenMs = listenSec * 1000;
-  _buildSetPhase('listen', listenMs);
+  /* STT warmup — Chrome's audio capture takes 300-450ms after rec.start()
+     before samples land in the recognizer. Speak in that window and the
+     first syllable is lost. We start STT NOW but defer the visual "listen"
+     cue + countdown until warmup elapses so users don't speak too early. */
+  const WARMUP_MS = 450;
   let alts = [];
   b._sttActive = true;
   startVoice(
@@ -9585,12 +9589,23 @@ function _buildVoiceListen(target, onVerdict){
       onVerdict(best);
     }
   );
+  /* Defer the user-facing listen cue by WARMUP_MS so STT is hot before the
+     user starts speaking. Keeps a short-lived warmup marker on b so we can
+     cancel + clean up if the session is paused or torn down mid-warmup. */
+  if(b._sttWarmup) clearTimeout(b._sttWarmup);
+  b._sttWarmup = setTimeout(() => {
+    b._sttWarmup = null;
+    if(state.buildMode !== b || b._paused) return;
+    _buildSetPhase('listen', listenMs);
+  }, WARMUP_MS);
   // Hard timeout — onend usually fires, but belt-and-braces in case it doesn't.
+  // Measured from warmup-end (when the user is actually being cued) so users
+  // who paid the warmup cost still get the full listen window after the cue.
   if(b._autoTimer) clearTimeout(b._autoTimer);
   b._autoTimer = setTimeout(() => {
     if(state.buildMode !== b) return;
     if(b._sttActive){ try{ stopVoice(); }catch(e){} }
-  }, listenMs + 2500);
+  }, WARMUP_MS + listenMs + 2500);
 }
 /* Speaks a short EN verdict, then calls cb so the caller can reveal (which
    itself plays the canonical JP). Keeps audio chain short — every extra
@@ -9870,6 +9885,7 @@ function _buildOnVisibilityChange(){
 function _buildClearTimer(){
   const b = state.buildMode;
   if(b && b._autoTimer){ clearTimeout(b._autoTimer); b._autoTimer = null; }
+  if(b && b._sttWarmup){ clearTimeout(b._sttWarmup); b._sttWarmup = null; }
   if(b && b._sttActive){ try{ stopVoice(); }catch(e){} b._sttActive = false; }
   if(b){ b._phase = null; b._phaseDur = 0; }
 }
