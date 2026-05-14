@@ -2737,10 +2737,40 @@ function startVoice(onResult, onEnd, lang){
   state.voiceListening = true;
   rec.onresult = (e)=>{
     const alts = [];
+    /* Concatenated transcript: continuous-mode STT chops long words like
+       "kiiroi" into separate SpeechRecognitionResult chunks. None of the
+       chunks individually match the whole word — we have to glue them
+       together. Build one alt per "best-alternative path" plus a joined
+       fallback so the scorer can see the full utterance. */
+    const finalChunks = [];
+    const interimChunks = [];
+    let joinedTopAlts = [];
+    let joinedSecondAlts = [];
     for(let i=0;i<e.results.length;i++){
-      for(let j=0;j<e.results[i].length;j++) alts.push({transcript:e.results[i][j].transcript, conf:e.results[i][j].confidence});
+      const r = e.results[i];
+      const top = r[0] ? r[0].transcript : '';
+      const second = r[1] ? r[1].transcript : top;
+      if(r.isFinal){ finalChunks.push(top); }
+      else { interimChunks.push(top); }
+      joinedTopAlts.push(top);
+      joinedSecondAlts.push(second);
+      for(let j=0;j<r.length;j++){
+        alts.push({transcript:r[j].transcript, conf:r[j].confidence});
+      }
     }
-    log('voice_result',{alts, lang: rec.lang});
+    /* Prepend joined transcripts — scorer iterates alts in order and we want
+       the whole-utterance candidates considered first. Score will pick best
+       regardless, but logging-friendly to keep them at the top. */
+    if(finalChunks.length > 1){
+      alts.unshift({transcript:finalChunks.join(''), conf:1, joined:true});
+    }
+    if(joinedTopAlts.length > 1){
+      alts.unshift({transcript:joinedTopAlts.join(''), conf:1, joined:true});
+      if(joinedSecondAlts.join('') !== joinedTopAlts.join('')){
+        alts.unshift({transcript:joinedSecondAlts.join(''), conf:0.9, joined:true});
+      }
+    }
+    log('voice_result',{alts, finals:finalChunks, interims:interimChunks, lang: rec.lang});
     onResult && onResult(alts);
   };
   rec.onerror = (e)=>{ state.voiceListening=false; log('voice_err',{err:e.error}); onEnd && onEnd(e); };
