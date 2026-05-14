@@ -9626,6 +9626,7 @@ function _buildVoiceListen(target, onVerdict){
         if(r.verdict === 'correct'){ best = r; break; }
         if(r.dist < best.dist) best = r;
       }
+      best.alts = alts; /* pass through so reveal panel can show "show all heard" */
       log('voice_step_score', {verdict:best.verdict, dist:best.dist, heard:best.heard});
       onVerdict(best);
     }
@@ -9697,11 +9698,13 @@ function _buildVoiceListenStep(step){
     // Record voice attempt against the SRS stats slot. "close" counts as
     // correct (per user's spec) so it credits firstCorrect / lastSeen too.
     const wid = _buildStateWordIdForStep(step);
+    let attemptIdx = -1;
     if(wid){
       const isCorrect = (res.verdict !== 'wrong');
       const st = smStatFor(wid);
       st.attempts = st.attempts || [];
       st.attempts.push({ts: now(), correct: isCorrect, voice: true});
+      attemptIdx = st.attempts.length - 1;
       if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
       st.lastSeen = now();
     }
@@ -9718,6 +9721,9 @@ function _buildVoiceListenStep(step){
       heardDisplay: res.heardDisplay || '',
       heardN: res.heardN || '',
       heardWord,  /* {jp,en,r} or null */
+      wid,        /* for override-button SRS update */
+      attemptIdx, /* index into st.attempts so override can flip the right one */
+      alts: (res.alts || []).slice(0, 20), /* for "show all heard" diagnostic */
     };
     _buildSayVerdictWithMiss(res.verdict, heardWord, () => {
       if(state.buildMode === b && !b._paused) buildAutoReveal();
@@ -11322,10 +11328,61 @@ function _buildRenderHeard(){
       meaning = ` <span style="color:var(--dim)">— not in your deck</span>`;
     }
   }
+  /* Manual override + diagnostic. STT on phone PWAs misfires often; the
+     override lets the user reclaim credit without abandoning voice mode.
+     Diagnostic shows every STT alternative so the user can see exactly
+     what the recognizer heard if it keeps misreading them. */
+  let override = '';
+  if(verdict === 'wrong' || verdict === 'close'){
+    override = `
+      <div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;color:var(--green);border-color:var(--green)" onclick="buildVoiceOverride()">✓ I said it right</button>
+        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;color:var(--dim)" onclick="buildVoiceShowAlts()">show all heard</button>
+      </div>`;
+  }
+  const altsBlock = (lv._showAlts && Array.isArray(lv.alts) && lv.alts.length)
+    ? `<div style="margin-top:6px;padding:6px 8px;background:var(--card);border-radius:6px;font-size:11px;color:var(--dim);text-align:left;max-height:120px;overflow-y:auto">
+         <div style="margin-bottom:4px;font-weight:600">STT heard:</div>
+         ${lv.alts.map(a => `<div>· ${esc((a.joined?'[joined] ':'') + (a.transcript||''))}</div>`).join('')}
+       </div>`
+    : '';
   return `
     <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
       ${label}: <b>${esc(display)}</b>${meaning}
+      ${override}
+      ${altsBlock}
     </div>`;
+}
+
+/* Override: user tells the app they said it correctly despite STT scoring
+   it wrong/close. Flips the SRS attempt we recorded so mastery counts it.
+   Re-renders so the panel reflects the corrected verdict. */
+function buildVoiceOverride(){
+  const b = state.buildMode;
+  const lv = b && b._lastVoice;
+  if(!lv || lv.verdict === 'correct') return;
+  lv.verdict = 'correct';
+  /* Flip the SRS attempt we logged when scoring landed. attemptIdx points
+     at the exact attempt, so we don't accidentally rewrite a prior one. */
+  if(lv.wid && lv.attemptIdx >= 0){
+    const st = smStatFor(lv.wid);
+    if(st && st.attempts && st.attempts[lv.attemptIdx]){
+      st.attempts[lv.attemptIdx].correct = true;
+      st.attempts[lv.attemptIdx].override = true;
+      if(!st.firstCorrect) st.firstCorrect = now();
+      try{ save && save(); }catch(e){}
+    }
+  }
+  log('voice_override', {wid: lv.wid, heard: lv.heard});
+  if(typeof render === 'function') render();
+}
+
+function buildVoiceShowAlts(){
+  const b = state.buildMode;
+  const lv = b && b._lastVoice;
+  if(!lv) return;
+  lv._showAlts = !lv._showAlts;
+  if(typeof render === 'function') render();
 }
 
 function _buildRenderRecall(step){
