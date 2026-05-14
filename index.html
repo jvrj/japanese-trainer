@@ -2888,7 +2888,7 @@ function _voiceLookupHeard(heardN, excludeJp){
   if(!probes.length) return null;
   const words = (state && state.words) || [];
   const exclude = excludeJp ? _stripKanji(_kataToHira(_stripJpPunct(excludeJp))) : '';
-  let exact = null, partial = null;
+  let exact = null, partial = null, fuzzy = null, fuzzyDist = Infinity;
   for(const w of words){
     if(!w.jp) continue;
     const wn = _kataToHira(_stripJpPunct(w.jp));
@@ -2901,6 +2901,15 @@ function _voiceLookupHeard(heardN, excludeJp){
       if(!partial && wKana.length >= 2 && (p.includes(wKana) || wKana.includes(p))){
         partial = w;
       }
+      /* Fuzzy fallback — STT mishears phonetically (びじゅつかん heard as
+         びじゅっつかん, etc). Keep best near-match if exact/contained miss. */
+      if(wKana && p && wKana.length >= 3 && p.length >= 3){
+        const d = _levenshtein(p, wKana);
+        const scope = Math.max(p.length, wKana.length);
+        if(d <= 2 && d/scope <= 0.4 && d < fuzzyDist){
+          fuzzy = w; fuzzyDist = d;
+        }
+      }
     }
     if(exact) break;
     if(w.romaji){
@@ -2908,7 +2917,7 @@ function _voiceLookupHeard(heardN, excludeJp){
       if(wr && (wr === heardN || wr === heardKana)){ exact = w; break; }
     }
   }
-  return exact || partial;
+  return exact || partial || fuzzy;
 }
 
 /* =========================================================================
@@ -11245,9 +11254,17 @@ function _buildRenderHeard(){
   const label = verdict === 'correct' ? '✓ you said'
               : verdict === 'close'   ? '~ you said (close)'
               : '✗ you said';
-  const meaning = (verdict !== 'correct' && lv.heardWord && lv.heardWord.en)
-    ? ` <span style="color:var(--dim)">— means <b>${esc(lv.heardWord.en)}</b></span>`
-    : '';
+  /* Always tell the user what they actually said when wrong/close — meaning
+     from local deck lookup if we matched, otherwise an explicit "not in your
+     deck" so they know we tried instead of silently hiding the line. */
+  let meaning = '';
+  if(verdict !== 'correct'){
+    if(lv.heardWord && lv.heardWord.en){
+      meaning = ` <span style="color:var(--dim)">— means <b>${esc(lv.heardWord.en)}</b></span>`;
+    } else if(verdict === 'wrong'){
+      meaning = ` <span style="color:var(--dim)">— not in your deck</span>`;
+    }
+  }
   return `
     <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
       ${label}: <b>${esc(display)}</b>${meaning}
