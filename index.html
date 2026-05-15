@@ -10776,6 +10776,733 @@ function buildAuditHard(samples){
 }
 window.buildAuditHard = buildAuditHard;
 
+/* =========================================================================
+   SPEAK DRILLS (v6.41) — speech-first contrast & conjugation drills.
+   Two flavors:
+     - Contrast: pick the right word from a small candidate group given a
+       situation. Tests *usage*, not just word recognition (e.g. when to use
+       あげる vs もらう vs くれる).
+     - Conjugation: speak the requested form of a verb (past, te-form, etc.)
+       Reuses FORMS + toTa/toMasu/etc. so irregulars conjugate correctly.
+   Both use a constrained-vocabulary speech matcher — accuracy is far higher
+   than open-vocab scoring because the answer space is tiny (1-6 words).
+   Pure kana only in all user-facing content (per user preference).
+   ========================================================================= */
+
+const CONTRAST_SETS = [
+  {
+    id: 'giving',
+    emoji: '🎁',
+    title: 'Giving & Receiving',
+    blurb: 'あげる / もらう / くれる',
+    nuance: 'Japanese splits "give" by direction relative to the speaker\'s in-group. くれる = inward (to me / my side). あげる = outward (I give, or someone gives elsewhere). もらう = receive (subject is the receiver).',
+    candidates: ['あげる', 'もらう', 'くれる'],
+    prompts: [
+      { en: 'I gave a book to my friend',          full: 'ともだち に ほん を あげた',           answer: 'あげた',     nuance: 'I am the giver, gift goes outward → あげる (past: あげた).' },
+      { en: 'My friend gave me a book',            full: 'ともだち が ほん を くれた',           answer: 'くれた',     nuance: 'The gift comes inward to me — never あげる. Must be くれる.' },
+      { en: 'I got a book from my friend',         full: 'ともだち に ほん を もらった',         answer: 'もらった',   nuance: 'I am the receiver → もらう. Giver marked with に or から.' },
+      { en: 'Mom gave me chocolate',               full: 'おかあさん が チョコ を くれた',       answer: 'くれた',     nuance: 'Inward to me again → くれる. English "gave" hides the direction; Japanese forces you to mark it.' },
+      { en: "I'll give you a present",             full: 'プレゼント を あげる',                  answer: 'あげる',     nuance: 'Outward, from me to you.' },
+      { en: 'I received a letter from him',        full: 'かれ から てがみ を もらった',         answer: 'もらった',   nuance: 'I am the receiver.' },
+      { en: 'He gave me good advice',              full: 'かれ が いい アドバイス を くれた',     answer: 'くれた',     nuance: 'Inward — the advice came to me. くれる, not あげる.' },
+      { en: "Did you give it to her?",             full: 'かのじょ に あげた ？',                 answer: 'あげた',     nuance: 'Outward from you to her — neither party is the speaker.' },
+      { en: "My friend's brother gave me a pen",   full: 'ともだち の おにいさん が ペン を くれた', answer: 'くれた',  nuance: 'I am still the receiver → くれる, even though the giver chain is longer.' },
+      { en: 'I gave my little sister cake',        full: 'いもうと に ケーキ を あげた',         answer: 'あげた',     nuance: 'In-group boundary is around YOU, not your whole family. Sister is "outward" from speaker-self.' }
+    ]
+  },
+  {
+    id: 'motion',
+    emoji: '↔',
+    title: 'Going & Coming',
+    blurb: 'いく / くる',
+    nuance: 'くる means movement TOWARD the speaker\'s current location, not English "come." If you\'re moving toward where the listener is, that\'s still いく in Japanese — you\'re moving AWAY from here.',
+    candidates: ['いく', 'くる'],
+    prompts: [
+      { en: "I'm going to school tomorrow",         full: 'あした がっこう に いく',              answer: 'いく',       nuance: 'Moving away from "here" → いく.' },
+      { en: 'Are you coming to my party?',          full: 'パーティー に くる ？',                 answer: 'くる',       nuance: 'Listener moves toward speaker → くる.' },
+      { en: "I'll come to your house tomorrow",     full: 'あした おたく に いく',                 answer: 'いく',       nuance: 'TRAP. English "come to you" → Japanese いく, because you\'re leaving "here." Native speakers get this; English speakers stumble for months.' },
+      { en: 'The train is coming',                  full: 'でんしゃ が くる',                       answer: 'くる',       nuance: 'Moving toward where we are.' },
+      { en: 'He went to Tokyo',                     full: 'かれ は とうきょう に いった',         answer: 'いった',     nuance: 'Away from here, in the past.' },
+      { en: 'She came to see me',                   full: 'かのじょ が あい に きた',              answer: 'きた',       nuance: 'Toward speaker → くる (past: きた).' },
+      { en: "Let's go to the park",                 full: 'こうえん に いこう',                     answer: 'いこう',     nuance: 'Volitional form of いく.' },
+      { en: 'Please come here',                     full: 'ここ に きて',                            answer: 'きて',       nuance: '"Here" is where the speaker is → くる (te-form: きて).' },
+      { en: "I'll go pick you up",                  full: 'むかえ に いく',                          answer: 'いく',       nuance: 'You leave "here" to fetch them → いく.' },
+      { en: 'A package came for you',               full: 'こづつみ が きた',                       answer: 'きた',       nuance: 'It arrived at "here."' }
+    ]
+  },
+  {
+    id: 'knowing',
+    emoji: '💡',
+    title: 'Understanding & Knowing',
+    blurb: 'わかる / しる',
+    nuance: 'わかる = comprehend, grasp (internal understanding, particle が). しる = acquire information; almost always used in しっている form for "I know" — bare しる sounds wrong for present-tense knowing.',
+    candidates: ['わかる', 'しる'],
+    prompts: [
+      { en: 'I understand Japanese',                full: 'にほんご が わかる',                     answer: 'わかる',     nuance: 'Comprehension → わかる. Note particle が, not を — the thing understood is the subject.' },
+      { en: 'Do you know his name?',                full: 'なまえ を しっている ？',                answer: 'しっている', nuance: 'Information you possess → must be しっている, not bare しる.' },
+      { en: 'I get it now',                         full: 'わかった',                                 answer: 'わかった',   nuance: 'Moment of grasping → past of わかる.' },
+      { en: "I didn't know that",                   full: 'しらなかった',                            answer: 'しらなかった', nuance: 'Lacked the info → past negative of しる.' },
+      { en: 'I know that person',                   full: 'あの ひと を しっている',                answer: 'しっている', nuance: 'State of knowing them → しっている.' },
+      { en: 'I understood the question',            full: 'しつもん が わかった',                   answer: 'わかった',   nuance: 'Comprehended.' },
+      { en: "I don't understand",                   full: 'わからない',                              answer: 'わからない', nuance: "Can't grasp it → negative of わかる." },
+      { en: 'When did you find that out?',          full: 'いつ しった ？',                          answer: 'しった',     nuance: 'Moment of acquiring info — bare しる/しった IS used for "found out / came to know" (event), unlike continuous-state "know."' },
+      { en: 'I see (I understand)',                 full: 'わかる',                                   answer: 'わかる',     nuance: 'Common reply meaning "I get you."' },
+      { en: "I don't know him",                     full: 'かれ を しらない',                       answer: 'しらない',   nuance: '"Don\'t know" is the one place bare negative しる shows up.' }
+    ]
+  },
+  {
+    id: 'existence',
+    emoji: '◯',
+    title: 'There Is / I Have',
+    blurb: 'ある / いる',
+    nuance: 'ある = inanimate things, events, abstract concepts. いる = people, animals, anything with volition. Japanese "having" is expressed as existence — "I have a brother" = "a brother exists (to me)."',
+    candidates: ['ある', 'いる'],
+    prompts: [
+      { en: "There's a cat in the garden",          full: 'にわ に ねこ が いる',                   answer: 'いる',       nuance: 'Animate → いる.' },
+      { en: "There's a book on the table",          full: 'テーブル に ほん が ある',               answer: 'ある',       nuance: 'Inanimate → ある.' },
+      { en: "There's a party tonight",              full: 'こんばん パーティー が ある',           answer: 'ある',       nuance: 'Events use ある, not いる.' },
+      { en: 'My friend is at home',                 full: 'ともだち が いえ に いる',              answer: 'いる',       nuance: 'Person → いる.' },
+      { en: 'I have a meeting tomorrow',            full: 'あした かいぎ が ある',                  answer: 'ある',       nuance: '"Having" an appointment uses ある — no separate "have" verb in Japanese.' },
+      { en: 'I have a younger brother',             full: 'おとうと が いる',                       answer: 'いる',       nuance: '"Having" a person uses いる.' },
+      { en: 'There are three dogs',                 full: 'いぬ が さんびき いる',                 answer: 'いる',       nuance: 'Animate count → いる.' },
+      { en: 'I have time',                          full: 'じかん が ある',                          answer: 'ある',       nuance: 'Abstract → ある.' },
+      { en: 'There was a big earthquake',           full: 'おおきい じしん が あった',             answer: 'あった',     nuance: 'Events → ある (past: あった).' },
+      { en: 'My kids are at the park',              full: 'こども が こうえん に いる',             answer: 'いる',       nuance: 'People → いる.' }
+    ]
+  },
+  {
+    id: 'transintrans',
+    emoji: '⇄',
+    title: 'It Happens vs I Do It',
+    blurb: 'Transitive / Intransitive pairs',
+    nuance: 'Japanese has dozens of verb pairs where one is "happens by itself" (intransitive, particle が) and the partner is "I make it happen" (transitive, particle を). English uses one verb for both — Japanese forces you to pick.',
+    candidates: ['intransitive', 'transitive'],
+    perPromptCandidates: true,
+    prompts: [
+      { en: 'The door opened (by itself)',          full: 'ドア が あいた',                          answer: 'あいた',     candidates: ['あく', 'あける'],            nuance: 'No doer → intransitive あく. Particle が.' },
+      { en: 'I opened the door',                    full: 'ドア を あけた',                          answer: 'あけた',     candidates: ['あく', 'あける'],            nuance: 'I did it → transitive あける. Particle を.' },
+      { en: 'The light turned on',                  full: 'でんき が ついた',                        answer: 'ついた',     candidates: ['つく', 'つける'],            nuance: 'No agent → intransitive つく.' },
+      { en: 'I turned on the light',                full: 'でんき を つけた',                        answer: 'つけた',     candidates: ['つく', 'つける'],            nuance: 'I did it → transitive つける.' },
+      { en: 'The cup broke',                        full: 'コップ が こわれた',                     answer: 'こわれた',   candidates: ['こわれる', 'こわす'],        nuance: 'Broke by itself → intransitive こわれる.' },
+      { en: 'I broke the cup',                      full: 'コップ を こわした',                     answer: 'こわした',   candidates: ['こわれる', 'こわす'],        nuance: 'I broke it → transitive こわす.' },
+      { en: 'Class started',                        full: 'クラス が はじまった',                  answer: 'はじまった', candidates: ['はじまる', 'はじめる'],     nuance: 'It started → intransitive はじまる.' },
+      { en: 'I started class',                      full: 'クラス を はじめた',                     answer: 'はじめた',   candidates: ['はじまる', 'はじめる'],     nuance: 'I started it → transitive はじめる.' },
+      { en: 'The window closed',                    full: 'まど が しまった',                       answer: 'しまった',   candidates: ['しまる', 'しめる'],          nuance: 'Closed by itself → intransitive しまる.' },
+      { en: 'I closed the window',                  full: 'まど を しめた',                          answer: 'しめた',     candidates: ['しまる', 'しめる'],          nuance: 'I closed it → transitive しめる.' }
+    ]
+  },
+  {
+    id: 'wearing',
+    emoji: '👕',
+    title: 'Wearing (Body Zones)',
+    blurb: 'きる / はく / かぶる / つける / はめる / しめる',
+    nuance: 'Japanese has six "wear" verbs depending on which body zone the thing goes on. No general "wear" verb exists. Glasses use メガネ を かける as a 7th exception.',
+    candidates: ['きる', 'はく', 'かぶる', 'つける', 'はめる', 'しめる'],
+    prompts: [
+      { en: "I'm wearing a shirt",                  full: 'シャツ を きている',                     answer: 'きている',   nuance: 'Upper body → きる (ている = continuous "is wearing").' },
+      { en: "I'm wearing jeans",                    full: 'ジーンズ を はいている',                answer: 'はいている', nuance: 'Below waist → はく.' },
+      { en: "She's wearing a hat",                  full: 'ぼうし を かぶっている',                 answer: 'かぶっている', nuance: 'On head → かぶる.' },
+      { en: "He's wearing a watch",                 full: 'とけい を つけている',                   answer: 'つけている', nuance: 'Accessory → つける.' },
+      { en: "She's wearing a ring",                 full: 'ゆびわ を はめている',                   answer: 'はめている', nuance: 'Snug fit on finger → はめる.' },
+      { en: "He's wearing a tie",                   full: 'ネクタイ を しめている',                 answer: 'しめている', nuance: 'Tied/fastened → しめる.' },
+      { en: "She's wearing shoes",                  full: 'くつ を はいている',                     answer: 'はいている', nuance: 'Shoes are below the waist too → はく.' },
+      { en: "I'm wearing gloves",                   full: 'てぶくろ を はめている',                 answer: 'はめている', nuance: 'Snug fit on hands → はめる.' },
+      { en: "He's wearing a coat",                  full: 'コート を きている',                     answer: 'きている',   nuance: 'Upper / whole body → きる.' },
+      { en: "She's wearing a helmet",               full: 'ヘルメット を かぶっている',             answer: 'かぶっている', nuance: 'Goes over the head → かぶる.' }
+    ]
+  },
+  {
+    id: 'becoming',
+    emoji: '➜',
+    title: 'Become vs Make',
+    blurb: 'なる / する',
+    nuance: 'なる = "becomes" (intransitive — change happens to the subject). する = "do/make" (transitive — subject changes something). With い-adjectives: drop い + く. With な-adjectives & nouns: + に.',
+    candidates: ['なる', 'する'],
+    prompts: [
+      { en: 'It got cold',                          full: 'さむく なった',                          answer: 'なった',     nuance: 'The weather changed itself → なる (past: なった).' },
+      { en: 'Make the room warmer',                 full: 'へや を あたたかく して',               answer: 'して',       nuance: 'You change it → する (te-form: して).' },
+      { en: 'Quiet down (become quiet)',            full: 'しずか に なって',                       answer: 'なって',     nuance: 'Become — they quiet themselves.' },
+      { en: 'Be quiet (make yourself quiet)',       full: 'しずか に して',                          answer: 'して',       nuance: 'Make — you control your noise.' },
+      { en: 'I want to become a doctor',            full: 'いしゃ に なりたい',                     answer: 'なりたい',   nuance: 'Becoming, not making.' },
+      { en: "I'll make it delicious",               full: 'おいしく する',                           answer: 'する',       nuance: 'Causing the change → する.' },
+      { en: 'The road got narrower',                full: 'みち が せまく なった',                 answer: 'なった',     nuance: 'Road changed itself.' },
+      { en: "I'll make it easier",                  full: 'かんたん に する',                       answer: 'する',       nuance: 'Causing change.' },
+      { en: 'I got better at Japanese',             full: 'にほんご が じょうず に なった',         answer: 'なった',     nuance: 'YOU changed → なる. Saying じょうず に した = "I made it good at Japanese," which is nonsense.' },
+      { en: 'Make your handwriting neater',         full: 'じ を きれい に して',                   answer: 'して',       nuance: 'You change your writing.' }
+    ]
+  },
+  {
+    id: 'returning',
+    emoji: '↩',
+    title: 'Going Back',
+    blurb: 'もどる / かえる',
+    nuance: 'かえる = go HOME / to your base (house, country, hometown, hotel you\'re staying in). もどる = return to any previous location that isn\'t home (desk, store, topic). Mental model: "is this my home right now?"',
+    candidates: ['もどる', 'かえる'],
+    prompts: [
+      { en: "I'm going home now",                   full: 'いま かえる',                             answer: 'かえる',     nuance: 'Home → かえる.' },
+      { en: "I'll go back to the office",           full: 'オフィス に もどる',                     answer: 'もどる',     nuance: 'Office isn\'t home → もどる.' },
+      { en: "I'll come right back (here)",          full: 'すぐ もどる',                              answer: 'もどる',     nuance: 'Returning to this spot → もどる.' },
+      { en: 'He went back to his country',          full: 'くに に かえった',                       answer: 'かえった',   nuance: 'Home country → かえる.' },
+      { en: 'Let\'s get back to the main topic',    full: 'ほんだい に もどろう',                   answer: 'もどろう',   nuance: 'Topics aren\'t home → もどる (volitional).' },
+      { en: "I'm heading back to the hotel",        full: 'ホテル に かえる',                       answer: 'かえる',     nuance: 'Hotel is your temporary base — counts as かえる.' },
+      { en: 'Please go back to your seat',          full: 'せき に もどって',                       answer: 'もどって',   nuance: 'Seat isn\'t home → もどる.' },
+      { en: 'She went back home',                   full: 'うち に かえった',                       answer: 'かえった',   nuance: 'Home → かえる.' },
+      { en: 'Returning to page one',                full: '1ページ に もどる',                       answer: 'もどる',     nuance: 'Returning in a document → もどる.' },
+      { en: 'When are you going back to Japan?',    full: 'いつ にほん に かえる ？',                answer: 'かえる',     nuance: 'Home country → かえる.' }
+    ]
+  }
+];
+
+/* Conjugation drill: verbs we drill across forms. Reuses toTa/toMasu/etc.
+   from the existing FORMS infrastructure — gives us irregulars for free
+   (くる→きた, する→した, いく→いって for te-form, etc).
+   Verbs flagged `skipNai` have irregular negatives we don't want auto-derived. */
+const CONJUGATION_DRILL_VERBS = [
+  { jp: 'あげる',  en: 'give (outward)',         hint: 'ichidan' },
+  { jp: 'もらう',  en: 'receive',                hint: 'godan'   },
+  { jp: 'くれる',  en: 'give (inward to me)',    hint: 'ichidan' },
+  { jp: 'いく',    en: 'go',                     hint: 'godan · te-form irregular' },
+  { jp: 'くる',    en: 'come',                   hint: 'irregular' },
+  { jp: 'する',    en: 'do',                     hint: 'irregular' },
+  { jp: 'わかる',  en: 'understand',             hint: 'godan'   },
+  { jp: 'しる',    en: 'know / find out',        hint: 'godan'   },
+  { jp: 'なる',    en: 'become',                 hint: 'godan'   },
+  { jp: 'たべる',  en: 'eat',                    hint: 'ichidan' },
+  { jp: 'のむ',    en: 'drink',                  hint: 'godan'   },
+  { jp: 'みる',    en: 'see / watch',            hint: 'ichidan' },
+  { jp: 'きく',    en: 'listen / hear / ask',    hint: 'godan'   },
+  { jp: 'もどる',  en: 'return (not home)',      hint: 'godan'   },
+  { jp: 'かえる',  en: 'go home',                hint: 'godan'   },
+  { jp: 'はなす',  en: 'speak',                  hint: 'godan'   }
+];
+
+/* The 6 forms we drill — chosen as the most useful for early-stage learners.
+   Each maps to an entry in the existing FORMS array. */
+const CONJUGATION_DRILL_FORM_IDS = ['ta', 'nai', 'nakatta', 'te', 'tai', 'masu'];
+
+/* Get a FORMS entry by id. Used to pull conj() + label. */
+function _drillFormById(id){ return FORMS.find(f => f.id === id) || null; }
+
+/* Friendly label per form (English-first per user preference). */
+const DRILL_FORM_LABELS = {
+  ta:       'past',
+  nai:      'negative',
+  nakatta:  'past negative',
+  te:       'te-form',
+  tai:      'want to',
+  masu:     'polite present'
+};
+
+/* =========================================================================
+   CONSTRAINED-VOCAB SPEECH MATCHER
+   Given STT alternatives and a small set of expected candidate answers,
+   pick the closest candidate by kana-folded Levenshtein. Returns the index
+   into `candidates`, the heard string, and a verdict.
+   This is MUCH more accurate than the open-vocab _voiceScoreJa because we
+   only need to disambiguate between a few words, not match against all
+   possible Japanese.
+   ========================================================================= */
+function _matchCandidates(alts, candidates){
+  if(!alts || !alts.length || !candidates || !candidates.length){
+    return { match: null, candidateIdx: -1, heard: '', heardDisplay: '', dist: Infinity };
+  }
+  /* Normalize all candidates once. */
+  const targets = candidates.map(c => ({
+    raw: c,
+    norm: _kataToHira(_stripJpPunct(_stripKanji(c)))
+  }));
+  let displayPick = { kanaLen: -1, heard: '', heardKana: '' };
+  let best = { dist: Infinity, candidateIdx: -1, heard: '', heardKana: '', contained: false };
+  for(const a of alts){
+    const tx = (a && a.transcript) || '';
+    if(!tx) continue;
+    const txN = _kataToHira(_stripJpPunct(tx));
+    const txKana = _stripKanji(txN);
+    if(txKana.length > displayPick.kanaLen){
+      displayPick = { kanaLen: txKana.length, heard: tx, heardKana: txKana };
+    }
+    if(!txKana && !txN) continue;
+    /* Score against each candidate; track best. */
+    for(let i = 0; i < targets.length; i++){
+      const t = targets[i].norm;
+      if(!t) continue;
+      /* Try kana-only first (best signal). */
+      const probe = txKana || txN;
+      const d = _levenshtein(probe, t);
+      const contained = (t.length >= 2 && (probe.includes(t) || t.includes(probe)));
+      /* Loose 2-char overlap so partial captures still get credit. */
+      let overlap = false;
+      if(!contained && t.length >= 3 && probe.length >= 2){
+        for(let j = 0; j + 2 <= t.length; j++){
+          if(probe.includes(t.slice(j, j + 2))){ overlap = true; break; }
+        }
+      }
+      const finalContained = contained || overlap;
+      const better = best.contained
+        ? (finalContained && d < best.dist)
+        : (finalContained || d < best.dist);
+      if(better){
+        best = { dist: d, candidateIdx: i, heard: tx, heardKana: txKana || txN, contained: finalContained };
+      }
+    }
+  }
+  /* Convert distance → verdict. Constrained vocab is forgiving: as long as
+     one candidate is closest, accept it. Only "wrong" when nothing came
+     close enough to call. */
+  const heardDisplay = displayPick.heardKana || best.heardKana || '';
+  if(best.candidateIdx < 0 || best.dist === Infinity){
+    return { match: null, candidateIdx: -1, heard: '', heardDisplay, dist: Infinity };
+  }
+  const winner = targets[best.candidateIdx];
+  const scope = Math.max(winner.norm.length, 1);
+  const ratio = best.dist / scope;
+  /* Be very lenient — phone mics + ja-JP STT are messy and the candidate
+     space is small enough that ambiguity between candidates is rare. */
+  let verdict;
+  if(best.dist === 0) verdict = 'correct';
+  else if(best.contained) verdict = 'correct';
+  else if(best.dist <= 2 && ratio <= 0.6) verdict = 'correct';
+  else if(best.dist <= 3 && ratio <= 0.5) verdict = 'close';
+  else verdict = 'wrong';
+  return {
+    match: winner.raw,
+    candidateIdx: best.candidateIdx,
+    heard: best.heard,
+    heardDisplay,
+    dist: best.dist,
+    verdict
+  };
+}
+
+/* =========================================================================
+   DRILL SESSION STATE + LIFECYCLE
+   state.drillSession = {
+     mode: 'contrast' | 'conjugation',
+     setId: string,               // for contrast
+     verbIds: string[],           // for conjugation
+     prompts: [...],              // shuffled
+     idx: number,
+     lastResult: null | {verdict, heard, expected, prompt}
+   }
+   ========================================================================= */
+function _drillShuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function _drillBuildContrastPrompts(setId){
+  const set = CONTRAST_SETS.find(s => s.id === setId);
+  if(!set) return [];
+  return set.prompts.map((p, idx) => ({
+    kind: 'contrast',
+    setId: set.id,
+    setTitle: set.title,
+    setNuance: set.nuance,
+    promptIdx: idx,
+    en: p.en,
+    full: p.full,
+    answer: p.answer,
+    candidates: p.candidates || set.candidates,
+    nuance: p.nuance,
+    id: `drill_${set.id}_${idx}`
+  }));
+}
+
+function _drillBuildConjugationPrompts(verbList, formIds){
+  const verbs = verbList && verbList.length ? verbList : CONJUGATION_DRILL_VERBS;
+  const forms = (formIds && formIds.length ? formIds : CONJUGATION_DRILL_FORM_IDS)
+    .map(_drillFormById).filter(Boolean);
+  const out = [];
+  for(const v of verbs){
+    for(const f of forms){
+      let answer = '';
+      try { answer = f.conj(v.jp); } catch(e) { continue; }
+      if(!answer) continue;
+      out.push({
+        kind: 'conjugation',
+        verb: v.jp,
+        verbEn: v.en,
+        verbHint: v.hint,
+        formId: f.id,
+        formName: f.name,
+        formLabel: DRILL_FORM_LABELS[f.id] || f.hint || f.name,
+        formRule: f.rule,
+        answer,
+        candidates: [answer],
+        id: `drill_conj_${v.jp}_${f.id}`
+      });
+    }
+  }
+  return out;
+}
+
+function startContrastDrill(setId){
+  const prompts = _drillShuffle(_drillBuildContrastPrompts(setId));
+  if(!prompts.length){ if(typeof showToast === 'function') showToast('No prompts in that set.'); return; }
+  state.drillSession = {
+    mode: 'contrast',
+    setId,
+    prompts,
+    idx: 0,
+    lastResult: null,
+    listening: false,
+    paused: false
+  };
+  nav('speakDrillSession');
+}
+window.startContrastDrill = startContrastDrill;
+
+function startConjugationDrill(verbJpList){
+  let verbs = CONJUGATION_DRILL_VERBS;
+  if(verbJpList && verbJpList.length){
+    verbs = CONJUGATION_DRILL_VERBS.filter(v => verbJpList.includes(v.jp));
+  }
+  const prompts = _drillShuffle(_drillBuildConjugationPrompts(verbs, CONJUGATION_DRILL_FORM_IDS));
+  if(!prompts.length){ if(typeof showToast === 'function') showToast('No verbs selected.'); return; }
+  state.drillSession = {
+    mode: 'conjugation',
+    verbIds: verbs.map(v => v.jp),
+    prompts,
+    idx: 0,
+    lastResult: null,
+    listening: false,
+    paused: false
+  };
+  nav('speakDrillSession');
+}
+window.startConjugationDrill = startConjugationDrill;
+
+function endDrillSession(){
+  try{ if(state.voiceListening) stopVoice(); }catch(e){}
+  state.drillSession = null;
+  nav('speakDrills');
+}
+window.endDrillSession = endDrillSession;
+
+function _drillCurrentPrompt(){
+  const s = state.drillSession;
+  if(!s || !s.prompts) return null;
+  return s.prompts[s.idx] || null;
+}
+
+function _drillTrackAttempt(prompt, correct){
+  if(!prompt || !prompt.id) return;
+  state.drillStats = state.drillStats || {};
+  const rec = state.drillStats[prompt.id] = state.drillStats[prompt.id] || { attempts: 0, correct: 0, wrong: 0, last: 0 };
+  rec.attempts++;
+  if(correct) rec.correct++; else rec.wrong++;
+  rec.last = Date.now();
+  try{ save && save(); }catch(e){}
+}
+
+function drillStartListening(){
+  const s = state.drillSession;
+  const p = _drillCurrentPrompt();
+  if(!s || !p) return;
+  if(s.listening || s.lastResult) return;
+  if(!voiceSupported()){
+    if(typeof showToast === 'function') showToast('Speech recognition not supported on this browser.');
+    return;
+  }
+  s.listening = true;
+  s.lastResult = null;
+  /* Render immediately to flip the mic UI. */
+  render();
+  let timer = null;
+  const onResult = (alts) => {
+    /* We may receive multiple onResult callbacks before onend in continuous
+       mode. Accumulate alts on the session for a final scoring at onend. */
+    s._lastAlts = alts;
+  };
+  const onEnd = () => {
+    if(timer) clearTimeout(timer);
+    s.listening = false;
+    const alts = s._lastAlts || [];
+    delete s._lastAlts;
+    const result = _matchCandidates(alts, p.candidates || []);
+    const correct = result.verdict === 'correct' || result.verdict === 'close';
+    _drillTrackAttempt(p, correct);
+    s.lastResult = {
+      verdict: result.verdict,
+      heard: result.heard,
+      heardDisplay: result.heardDisplay,
+      matchedCandidate: result.match,
+      candidateIdx: result.candidateIdx,
+      alts: (alts || []).slice(0, 20)
+    };
+    render();
+  };
+  try { startVoice(onResult, onEnd, 'ja-JP'); } catch(e){ s.listening = false; render(); return; }
+  /* Auto-cut listening after 6s — matches voice mode timing. */
+  timer = setTimeout(() => { try{ stopVoice(); }catch(e){} }, 6000);
+}
+window.drillStartListening = drillStartListening;
+
+function drillStopListening(){
+  try{ stopVoice(); }catch(e){}
+}
+window.drillStopListening = drillStopListening;
+
+function drillNext(){
+  const s = state.drillSession;
+  if(!s) return;
+  s.lastResult = null;
+  s.idx++;
+  if(s.idx >= s.prompts.length){
+    s.done = true;
+  }
+  render();
+}
+window.drillNext = drillNext;
+
+function drillRetry(){
+  const s = state.drillSession;
+  if(!s) return;
+  s.lastResult = null;
+  render();
+}
+window.drillRetry = drillRetry;
+
+function drillOverride(){
+  const s = state.drillSession;
+  const p = _drillCurrentPrompt();
+  if(!s || !s.lastResult || !p) return;
+  /* Flip the most recent attempt to correct. */
+  state.drillStats = state.drillStats || {};
+  const rec = state.drillStats[p.id];
+  if(rec && rec.attempts > 0){
+    rec.wrong = Math.max(0, rec.wrong - 1);
+    rec.correct++;
+  }
+  s.lastResult.verdict = 'correct';
+  s.lastResult.overridden = true;
+  try{ save && save(); }catch(e){}
+  render();
+}
+window.drillOverride = drillOverride;
+
+function drillToggleAlts(){
+  const s = state.drillSession;
+  if(!s || !s.lastResult) return;
+  s.lastResult._showAlts = !s.lastResult._showAlts;
+  render();
+}
+window.drillToggleAlts = drillToggleAlts;
+
+/* =========================================================================
+   DRILL UI — entry index + active session
+   ========================================================================= */
+function renderSpeakDrills(){
+  const stats = state.drillStats || {};
+  const contrastTiles = CONTRAST_SETS.map(s => {
+    const attempted = s.prompts.filter(p => stats[`drill_${s.id}_${s.prompts.indexOf(p)}`]).length;
+    const total = s.prompts.length;
+    return `
+      <button class="h8-row" onclick="startContrastDrill('${esc(s.id)}')">
+        <div class="h8-row-emoji">${esc(s.emoji)}</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">${esc(s.title)}</div>
+          <div class="h8-row-meta">${esc(s.blurb)} · ${attempted}/${total} drilled</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>`;
+  }).join('');
+  const conjVerbCount = CONJUGATION_DRILL_VERBS.length;
+  const conjFormCount = CONJUGATION_DRILL_FORM_IDS.length;
+  const conjTotal = conjVerbCount * conjFormCount;
+  const conjAttempted = Object.keys(stats).filter(k => k.startsWith('drill_conj_')).length;
+  const conjTile = `
+    <button class="h8-row" onclick="startConjugationDrill()">
+      <div class="h8-row-emoji">📐</div>
+      <div class="h8-row-body">
+        <div class="h8-row-title">Conjugation mix</div>
+        <div class="h8-row-meta">${conjVerbCount} verbs × ${conjFormCount} forms · ${conjAttempted}/${conjTotal} drilled</div>
+      </div>
+      <div class="h8-row-arrow">›</div>
+    </button>`;
+  return `
+    <div class="home-v8">
+      <div class="h8-bar">
+        <button class="h8-icon-btn" onclick="goBack()" title="Back">←</button>
+        <div class="h8-mark">話す<span class="r">Speak drills</span></div>
+        <span style="width:36px"></span>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px">
+        <div style="font-size:13px;color:var(--dim);line-height:1.55">
+          Read the situation, <b>speak</b> the right Japanese word or form. The app listens for a small set of candidate answers per prompt — way more reliable than open-vocab voice mode. Reveal calls out the nuance so you learn the <i>why</i>, not just the gloss.
+        </div>
+      </div>
+      <div class="h8-section">Contrast sets · usage drills</div>
+      <div class="h8-list">${contrastTiles}</div>
+      <div class="h8-section" style="margin-top:18px">Conjugation drills · forms</div>
+      <div class="h8-list">${conjTile}</div>
+    </div>`;
+}
+
+function renderSpeakDrillSession(){
+  const s = state.drillSession;
+  if(!s || !s.prompts) return renderSpeakDrills();
+  if(s.done) return renderDrillComplete();
+  const p = _drillCurrentPrompt();
+  if(!p) return renderDrillComplete();
+  const progress = `${s.idx + 1} / ${s.prompts.length}`;
+  const lr = s.lastResult;
+  /* Header */
+  const header = `
+    <div class="h8-bar">
+      <button class="h8-icon-btn" onclick="endDrillSession()" title="Exit">✕</button>
+      <div class="h8-mark" style="font-size:13px;font-weight:600">${esc(s.mode === 'contrast' ? (CONTRAST_SETS.find(c => c.id === s.setId)?.title || 'Drill') : 'Conjugation')}</div>
+      <span style="font-size:12px;color:var(--dim);width:60px;text-align:right">${esc(progress)}</span>
+    </div>`;
+  /* Prompt body */
+  let promptBody;
+  if(p.kind === 'contrast'){
+    const chips = (p.candidates || []).map(c =>
+      `<span style="display:inline-block;padding:6px 14px;border-radius:999px;background:var(--card2);border:1px solid var(--border);font-size:15px;margin:3px">${esc(c)}</span>`
+    ).join('');
+    promptBody = `
+      <div style="text-align:center;padding:24px 16px">
+        <div style="font-size:11px;color:var(--dim);letter-spacing:1.5px;margin-bottom:10px">SITUATION</div>
+        <div style="font-size:20px;line-height:1.4;font-weight:500;margin-bottom:22px">${esc(p.en)}</div>
+        <div style="font-size:11px;color:var(--dim);letter-spacing:1.5px;margin-bottom:8px">SAY ONE OF</div>
+        <div>${chips}</div>
+      </div>`;
+  } else {
+    /* Conjugation */
+    promptBody = `
+      <div style="text-align:center;padding:24px 16px">
+        <div style="font-size:11px;color:var(--dim);letter-spacing:1.5px;margin-bottom:10px">VERB</div>
+        <div style="font-size:24px;font-weight:600;margin-bottom:4px">${esc(p.verb)}</div>
+        <div style="font-size:13px;color:var(--dim);margin-bottom:20px">to ${esc(p.verbEn)} · ${esc(p.verbHint)}</div>
+        <div style="font-size:11px;color:var(--dim);letter-spacing:1.5px;margin-bottom:8px">SPEAK THE FORM</div>
+        <div style="font-size:18px;font-weight:500">${esc(p.formLabel)} <span style="color:var(--dim);font-weight:400">(${esc(p.formName)})</span></div>
+      </div>`;
+  }
+  /* Mic + result panel */
+  let actionPanel;
+  if(lr){
+    actionPanel = renderDrillReveal(p, lr);
+  } else if(s.listening){
+    actionPanel = `
+      <div style="text-align:center;padding:18px">
+        <button onclick="drillStopListening()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;border:2px solid var(--blue);background:rgba(100,150,255,0.15);color:var(--blue);font-size:16px;font-weight:600;cursor:pointer">
+          <span style="font-size:22px">🎙️</span>
+          <span>Listening…  tap to stop</span>
+        </button>
+        <div style="font-size:11px;color:var(--dim);margin-top:10px">say it clearly · cuts in ~6s</div>
+      </div>`;
+  } else {
+    actionPanel = `
+      <div style="text-align:center;padding:18px">
+        <button onclick="drillStartListening()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;border:2px solid var(--border);background:var(--card2);color:var(--text);font-size:16px;font-weight:600;cursor:pointer">
+          <span style="font-size:22px">🎤</span>
+          <span>Tap to speak</span>
+        </button>
+      </div>`;
+  }
+  return `
+    <div class="home-v8">
+      ${header}
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;margin-bottom:12px;overflow:hidden">
+        ${promptBody}
+      </div>
+      ${actionPanel}
+    </div>`;
+}
+
+function renderDrillReveal(p, lr){
+  const verdict = lr.verdict;
+  const tone = verdict === 'correct' ? 'green' : (verdict === 'close' ? 'yellow' : 'red');
+  const toneStyle = tone === 'green'
+    ? 'border-color:#3a8c5f;background:rgba(50,180,100,0.08)'
+    : tone === 'yellow'
+      ? 'border-color:#b58a1a;background:rgba(220,170,40,0.08)'
+      : 'border-color:#9b4242;background:rgba(220,90,90,0.08)';
+  const badge = verdict === 'correct' ? '✓ correct'
+              : verdict === 'close'   ? '~ close · accepted'
+              : '✗ not quite';
+  const heardLine = lr.heard
+    ? `<div style="font-size:13px;color:var(--dim);margin-top:6px">You said: <b style="color:var(--text)">${esc(lr.heardDisplay || lr.heard)}</b></div>`
+    : `<div style="font-size:13px;color:var(--dim);margin-top:6px">Didn't catch what you said.</div>`;
+  const expectedLine = `<div style="font-size:13px;color:var(--dim);margin-top:4px">Expected: <b style="color:var(--text)">${esc(p.answer)}</b></div>`;
+  let fullLine = '';
+  if(p.full){
+    fullLine = `<div style="margin-top:14px;padding:10px 14px;background:var(--card2);border-radius:10px;font-size:16px;text-align:center"><span style="font-size:11px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:4px">FULL ANSWER</span>${esc(p.full)}</div>`;
+  } else if(p.kind === 'conjugation'){
+    fullLine = `<div style="margin-top:14px;padding:10px 14px;background:var(--card2);border-radius:10px;font-size:18px;text-align:center;font-weight:600">${esc(p.answer)}</div>`;
+  }
+  let nuanceLine = '';
+  if(p.nuance){
+    nuanceLine = `<div style="margin-top:12px;padding:10px 14px;background:var(--card2);border-radius:10px;font-size:13px;line-height:1.55;color:var(--text)"><span style="font-size:11px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:4px">NUANCE</span>${esc(p.nuance)}</div>`;
+  } else if(p.kind === 'conjugation' && p.formRule){
+    nuanceLine = `<div style="margin-top:12px;padding:10px 14px;background:var(--card2);border-radius:10px;font-size:13px;line-height:1.55;color:var(--text)"><span style="font-size:11px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:4px">PATTERN</span>${esc(p.formRule)}</div>`;
+  }
+  /* Diagnostic alts (toggle) */
+  const alts = lr.alts || [];
+  const altsBlock = (lr._showAlts && alts.length)
+    ? `<div style="margin-top:10px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:11px;color:var(--dim);max-height:180px;overflow-y:auto">
+         <div style="font-weight:600;margin-bottom:6px">All heard alternatives:</div>
+         ${alts.map(a => `<div style="font-family:monospace;font-size:11px">· ${esc((a.joined ? '[joined] ' : '') + (a.transcript || ''))}</div>`).join('')}
+       </div>`
+    : '';
+  const overrideBtn = (verdict !== 'correct' && !lr.overridden)
+    ? `<button onclick="drillOverride()" class="btn btn-ghost" style="font-size:13px;padding:8px 14px">✓ I said it right</button>`
+    : '';
+  const retryBtn = `<button onclick="drillRetry()" class="btn btn-ghost" style="font-size:13px;padding:8px 14px">🎤 try again</button>`;
+  const altsBtn = alts.length
+    ? `<button onclick="drillToggleAlts()" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;color:var(--dim)">${lr._showAlts ? 'hide' : 'show all heard'}</button>`
+    : '';
+  const nextBtn = `<button onclick="drillNext()" class="btn btn-primary" style="font-size:15px;padding:12px 28px;flex:1;max-width:200px">Next →</button>`;
+  return `
+    <div style="border:2px solid;border-radius:14px;padding:16px;${toneStyle}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:14px;font-weight:700">${esc(badge)}</span>
+      </div>
+      ${heardLine}
+      ${expectedLine}
+      ${fullLine}
+      ${nuanceLine}
+      ${altsBlock}
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center">
+        ${retryBtn}
+        ${overrideBtn}
+        ${altsBtn}
+        ${nextBtn}
+      </div>
+    </div>`;
+}
+
+function renderDrillComplete(){
+  const s = state.drillSession;
+  if(!s) return renderSpeakDrills();
+  const stats = state.drillStats || {};
+  let correct = 0, total = 0;
+  for(const p of s.prompts){
+    total++;
+    const r = stats[p.id];
+    if(r && r.correct > 0) correct++;
+  }
+  const acc = total ? Math.round(100 * correct / total) : 0;
+  return `
+    <div class="home-v8">
+      <div class="h8-bar">
+        <button class="h8-icon-btn" onclick="endDrillSession()" title="Back">←</button>
+        <div class="h8-mark">完了<span class="r">complete</span></div>
+        <span style="width:36px"></span>
+      </div>
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:48px;margin-bottom:10px">🎉</div>
+        <div style="font-size:22px;font-weight:600;margin-bottom:6px">Session complete</div>
+        <div style="font-size:14px;color:var(--dim);margin-bottom:24px">${correct} / ${total} on this run · ${acc}%</div>
+        <button class="btn btn-primary" onclick="endDrillSession()" style="font-size:15px;padding:12px 28px">Back to drills</button>
+      </div>
+    </div>`;
+}
+
 function renderBuildMode(){
   const b = state.buildMode;
   if(!b || !b.lesson) return renderBuildModeStart();
@@ -11618,7 +12345,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -11794,6 +12521,10 @@ function renderHome(){
        (no module gating, no section filter). Always works, always
        audio-led. The "I just want to drive and drill" entry point. */
     { emoji:'🎲', title:'Random drill', meta:'30 random words from full deck · audio-led · honors voice mode', click:`startRandomDrill()` },
+    /* Speak drills — speech-first contrast + conjugation drills (v6.41).
+       Picks the right word from a small group given a situation, or speaks
+       the requested verb form. Constrained-vocab matcher = high accuracy. */
+    { emoji:'🗣️', title:'Speak drills', meta:'Contrast pairs · verb forms · nuance-first · all speech', click:`nav('speakDrills')` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
       ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
