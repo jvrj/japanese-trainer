@@ -9255,7 +9255,11 @@ function startRandomDrill(opts){
   try{
     const want = (opts && opts.count) || 30;
     const suspendedSet = new Set(state.settings.suspendedWords || []);
-    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id));
+    const masteredSet = new Set(state.settings.masteredWords || []);
+    /* Mastered = "I know this forever" — honor it here too, not just in
+       Vocab Blitz. A word the user retired should never resurface in the
+       daily random drill. */
+    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id));
     if(pool.length < 1){
       showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
       return;
@@ -9932,6 +9936,7 @@ function _buildOnVisibilityChange(){
 function _buildClearTimer(){
   const b = state.buildMode;
   if(b && b._autoTimer){ clearTimeout(b._autoTimer); b._autoTimer = null; }
+  if(b && b._armTimer){ clearTimeout(b._armTimer); b._armTimer = null; }
   if(b && b._sttWarmup){ clearTimeout(b._sttWarmup); b._sttWarmup = null; }
   if(b && b._sttActive){ try{ stopVoice(); }catch(e){} b._sttActive = false; }
   if(b){ b._phase = null; b._phaseDur = 0; }
@@ -11833,7 +11838,26 @@ function renderBuildModeStep(){
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
-  if(!b.revealed && !paused){ setTimeout(() => buildAutoplayStep(step), 100); }
+  /* Arm autoplay AT MOST ONCE per (stepIdx, revealed) state. renderBuildModeStep
+     runs many times within a single card (save(), focus timers, voice toggles,
+     the post-reveal re-render…). Scheduling buildAutoplayStep on every render
+     stacked overlapping speak+linger chains that raced each other — the
+     "it says all the words so fast" bug. The arm key invalidates naturally
+     when the step advances or reveals, so the next state re-arms exactly once. */
+  if(!b.revealed && !paused){
+    const armKey = b.stepIdx + ':' + (b.revealed ? 1 : 0);
+    if(b._autoArmKey !== armKey){
+      b._autoArmKey = armKey;
+      if(b._armTimer){ clearTimeout(b._armTimer); }
+      b._armTimer = setTimeout(() => {
+        b._armTimer = null;
+        if(state.buildMode !== b || b._paused || b.revealed) return;
+        if(b._autoArmKey !== armKey) return;          /* state moved on */
+        const cur = b.steps[b.stepIdx];
+        if(cur) buildAutoplayStep(cur);
+      }, 100);
+    }
+  }
 
   const countdown = (auto && !paused) ? `
     <div class="build-countdown"><div class="build-countdown-fill"></div></div>
