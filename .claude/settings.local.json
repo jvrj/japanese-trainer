@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node --check C:/Users/Julius/Documents/GitHub/japanese-trainer/sw.js)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const src=fs.readFileSync\\('C:/Users/Julius/Documents/GitHub/japanese-trainer/index.html','utf8'\\); const m=src.match\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/\\); if\\(!m\\){console.log\\('no script tag'\\);process.exit\\(1\\);} const code=m[1]; require\\('vm'\\).createScript\\(code,{filename:'index.html-script'}\\); console.log\\('script parses OK \\('+code.length+' chars\\)'\\);\")",
+      "Bash(GIT_ASKPASS= GIT_TERMINAL_PROMPT=0 git *)",
+      "Bash(node *)",
+      "WebSearch",
+      "Bash(awk -F: '{if\\($1+0 >= 5100 && $1+0 <= 6700\\) print}')",
+      "Bash(git reset *)",
+      "Bash(curl -s https://jvrj.github.io/japanese-trainer/index.html)",
+      "Bash(curl -s https://jvrj.github.io/japanese-trainer/sw.js)",
+      "Bash(curl -sI https://jvrj.github.io/japanese-trainer/index.html)"
+    ]
+  }
+}

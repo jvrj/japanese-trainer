@@ -11046,22 +11046,54 @@ function _matchCandidates(alts, candidates){
       }
     }
   }
+  /* Second-best candidate distance: with a constrained set the real task is
+     DISCRIMINATION, not transcription. If one candidate is clearly closer
+     than the rest we accept it even when the absolute distance is large
+     (Chrome returns kanji forms that survive stripping as garbage). */
+  let secondDist = Infinity;
+  for(const a of alts){
+    const tx = (a && a.transcript) || '';
+    if(!tx) continue;
+    const txN = _kataToHira(_stripJpPunct(tx));
+    const probe = _stripKanji(txN) || txN;
+    if(!probe) continue;
+    for(let i = 0; i < targets.length; i++){
+      if(i === best.candidateIdx || !targets[i].norm) continue;
+      const d = _levenshtein(probe, targets[i].norm);
+      if(d < secondDist) secondDist = d;
+    }
+  }
   /* Convert distance → verdict. Constrained vocab is forgiving: as long as
      one candidate is closest, accept it. Only "wrong" when nothing came
      close enough to call. */
   const heardDisplay = displayPick.heardKana || best.heardKana || '';
   if(best.candidateIdx < 0 || best.dist === Infinity){
-    return { match: null, candidateIdx: -1, heard: '', heardDisplay, dist: Infinity };
+    return { match: null, candidateIdx: -1, heard: '', heardDisplay, dist: Infinity, verdict: 'wrong' };
   }
   const winner = targets[best.candidateIdx];
   const scope = Math.max(winner.norm.length, 1);
   const ratio = best.dist / scope;
-  /* Be very lenient — phone mics + ja-JP STT are messy and the candidate
-     space is small enough that ambiguity between candidates is rare. */
+  /* Okurigana / suffix match: STT "食べた" strips to "べた"; the expected
+     conjugation "たべた" ends with "べた". The form ending IS what we're
+     testing, so a shared 2+ char tail is a strong accept signal. */
+  let suffixHit = false;
+  const hk = best.heardKana || '';
+  if(hk && winner.norm){
+    const tail = Math.min(hk.length, winner.norm.length);
+    for(let n = tail; n >= 2; n--){
+      if(winner.norm.slice(-n) === hk.slice(-n)){ suffixHit = true; break; }
+    }
+  }
+  const onlyCandidate = targets.filter(t => t.norm).length <= 1;
+  /* Clearly closer than every other candidate (discrimination win). */
+  const margin = secondDist - best.dist;
   let verdict;
   if(best.dist === 0) verdict = 'correct';
   else if(best.contained) verdict = 'correct';
+  else if(suffixHit) verdict = 'correct';
   else if(best.dist <= 2 && ratio <= 0.6) verdict = 'correct';
+  else if(!onlyCandidate && margin >= 2 && best.dist <= scope) verdict = 'correct';
+  else if(!onlyCandidate && margin >= 1 && best.dist <= scope + 1) verdict = 'close';
   else if(best.dist <= 3 && ratio <= 0.5) verdict = 'close';
   else verdict = 'wrong';
   return {
@@ -11150,7 +11182,9 @@ function startContrastDrill(setId){
     idx: 0,
     lastResult: null,
     listening: false,
-    paused: false
+    paused: false,
+    autoMode: true,
+    _t: {}
   };
   nav('speakDrillSession');
 }
@@ -11170,14 +11204,17 @@ function startConjugationDrill(verbJpList){
     idx: 0,
     lastResult: null,
     listening: false,
-    paused: false
+    paused: false,
+    autoMode: true,
+    _t: {}
   };
   nav('speakDrillSession');
 }
 window.startConjugationDrill = startConjugationDrill;
 
 function endDrillSession(){
-  try{ if(state.voiceListening) stopVoice(); }catch(e){}
+  _drillClearTimers(state.drillSession);
+  try{ const s=state.drillSession; if(s) s._manualStop=true; if(state.voiceListening) stopVoice(); }catch(e){}
   state.drillSession = null;
   nav('speakDrills');
 }
@@ -11199,6 +11236,38 @@ function _drillTrackAttempt(prompt, correct){
   try{ save && save(); }catch(e){}
 }
 
+/* All session timers live here so nav/next/exit can cancel cleanly. */
+function _drillClearTimers(s){
+  if(!s) return;
+  s._t = s._t || {};
+  for(const k of Object.keys(s._t)){ try{ clearTimeout(s._t[k]); }catch(e){} s._t[k] = null; }
+}
+
+function _drillFinalize(p, alts){
+  const s = state.drillSession;
+  if(!s) return;
+  const result = _matchCandidates(alts || [], p.candidates || []);
+  const correct = result.verdict === 'correct' || result.verdict === 'close';
+  _drillTrackAttempt(p, correct);
+  s.lastResult = {
+    verdict: result.verdict,
+    heard: result.heard,
+    heardDisplay: result.heardDisplay,
+    matchedCandidate: result.match,
+    candidateIdx: result.candidateIdx,
+    alts: (alts || []).slice(0, 20)
+  };
+  render();
+  /* Hands-free: read the nuance, then move on. Tapping anything cancels. */
+  if(s.autoMode){
+    const wait = result.verdict === 'correct' ? 2600
+               : result.verdict === 'close' ? 4200 : 6000;
+    s._advanceAt = Date.now() + wait;
+    s._t = s._t || {};
+    s._t.advance = setTimeout(() => { s._advanceAt = 0; drillNext(); }, wait);
+  }
+}
+
 function drillStartListening(){
   const s = state.drillSession;
   const p = _drillCurrentPrompt();
@@ -11208,49 +11277,110 @@ function drillStartListening(){
     if(typeof showToast === 'function') showToast('Speech recognition not supported on this browser.');
     return;
   }
+  s._t = s._t || {};
+  if(s._t.arm){ clearTimeout(s._t.arm); s._t.arm = null; }
   s.listening = true;
   s.lastResult = null;
-  /* Render immediately to flip the mic UI. */
+  s._manualStop = false;
+  s._lastAlts = [];
+  /* Fresh recognizer each turn: the shared singleton throws InvalidStateError
+     when reused before its previous onend settles — that's the "barely
+     registers" symptom (start throws, we catch, nothing is heard). */
+  try{ if(_rec){ _rec.abort(); } }catch(e){}
+  _rec = null;
   render();
-  let timer = null;
+
   const onResult = (alts) => {
-    /* We may receive multiple onResult callbacks before onend in continuous
-       mode. Accumulate alts on the session for a final scoring at onend. */
     s._lastAlts = alts;
+    /* Early accept: as soon as the constrained matcher is confident, stop
+       and reveal — snappy, and avoids dead air / empty end-of-speech. */
+    const r = _matchCandidates(alts, p.candidates || []);
+    if(r.verdict === 'correct'){
+      s._manualStop = true;
+      _drillClearTimers(s);
+      try{ stopVoice(); }catch(e){}
+      s.listening = false;
+      _drillFinalize(p, alts);
+    }
   };
   const onEnd = () => {
-    if(timer) clearTimeout(timer);
+    if(s._t){ if(s._t.cut){ clearTimeout(s._t.cut); s._t.cut = null; } }
+    if(!s.listening) return; /* already finalized by early-accept */
     s.listening = false;
     const alts = s._lastAlts || [];
-    delete s._lastAlts;
-    const result = _matchCandidates(alts, p.candidates || []);
-    const correct = result.verdict === 'correct' || result.verdict === 'close';
-    _drillTrackAttempt(p, correct);
-    s.lastResult = {
-      verdict: result.verdict,
-      heard: result.heard,
-      heardDisplay: result.heardDisplay,
-      matchedCandidate: result.match,
-      candidateIdx: result.candidateIdx,
-      alts: (alts || []).slice(0, 20)
-    };
-    render();
+    const heardSomething = alts.some(a => a && a.transcript);
+    /* Nothing heard at all: usually a no-speech/abort hiccup, not a wrong
+       answer. In hands-free mode silently re-arm the mic instead of marking
+       it wrong and dead-ending. */
+    if(!heardSomething && !s._manualStop && s.autoMode && (s._retries || 0) < 2){
+      s._retries = (s._retries || 0) + 1;
+      s._t = s._t || {};
+      s._t.rearm = setTimeout(() => { drillStartListening(); }, 350);
+      return;
+    }
+    s._retries = 0;
+    _drillFinalize(p, alts);
   };
-  try { startVoice(onResult, onEnd, 'ja-JP'); } catch(e){ s.listening = false; render(); return; }
-  /* Auto-cut listening after 6s — matches voice mode timing. */
-  timer = setTimeout(() => { try{ stopVoice(); }catch(e){} }, 6000);
+
+  const tryStart = (attempt) => {
+    if(state.drillSession !== s || !s.listening) return;
+    try {
+      startVoice(onResult, onEnd, 'ja-JP');
+    } catch(e){
+      if(attempt < 1){ setTimeout(() => tryStart(attempt + 1), 300); return; }
+      s.listening = false; render(); return;
+    }
+  };
+  tryStart(0);
+  /* Hard cut after 7s if the early-accept matcher never gets confident. */
+  s._t.cut = setTimeout(() => { s._manualStop = true; try{ stopVoice(); }catch(e){} }, 7000);
 }
 window.drillStartListening = drillStartListening;
 
 function drillStopListening(){
+  const s = state.drillSession;
+  if(s) s._manualStop = true;
   try{ stopVoice(); }catch(e){}
 }
 window.drillStopListening = drillStopListening;
 
+/* Called from render() when a fresh prompt is on screen in hands-free mode:
+   give a short beat to read the situation, then open the mic automatically. */
+function _drillArmAutoListen(){
+  const s = state.drillSession;
+  const p = _drillCurrentPrompt();
+  if(!s || !p || !s.autoMode) return;
+  if(s.listening || s.lastResult) return;
+  if(!voiceSupported()) return;
+  s._t = s._t || {};
+  if(s._armedFor === p.id || s._t.arm) return;
+  s._armedFor = p.id;
+  const readMs = p.kind === 'contrast' ? 2200 : 1500;
+  s._t.arm = setTimeout(() => { s._t.arm = null; drillStartListening(); }, readMs);
+}
+
+function drillToggleAuto(){
+  const s = state.drillSession;
+  if(!s) return;
+  s.autoMode = !s.autoMode;
+  _drillClearTimers(s);
+  s._armedFor = null;
+  if(!s.autoMode){ s._manualStop = true; try{ stopVoice(); }catch(e){} s.listening = false; }
+  render();
+}
+window.drillToggleAuto = drillToggleAuto;
+
 function drillNext(){
   const s = state.drillSession;
   if(!s) return;
+  _drillClearTimers(s);
+  s._manualStop = true;
+  try{ if(s.listening) stopVoice(); }catch(e){}
+  s.listening = false;
   s.lastResult = null;
+  s._advanceAt = 0;
+  s._armedFor = null;
+  s._retries = 0;
   s.idx++;
   if(s.idx >= s.prompts.length){
     s.done = true;
@@ -11262,10 +11392,25 @@ window.drillNext = drillNext;
 function drillRetry(){
   const s = state.drillSession;
   if(!s) return;
+  _drillClearTimers(s);
   s.lastResult = null;
+  s._advanceAt = 0;
+  s._armedFor = null;
+  s._retries = 0;
   render();
 }
 window.drillRetry = drillRetry;
+
+/* Cancel a pending hands-free auto-advance so you can keep reading the
+   nuance as long as you want. */
+function drillStay(){
+  const s = state.drillSession;
+  if(!s) return;
+  if(s._t && s._t.advance){ clearTimeout(s._t.advance); s._t.advance = null; }
+  s._advanceAt = 0;
+  render();
+}
+window.drillStay = drillStay;
 
 function drillOverride(){
   const s = state.drillSession;
@@ -11328,7 +11473,7 @@ function renderSpeakDrills(){
     <div class="home-v8">
       <div class="h8-bar">
         <button class="h8-icon-btn" onclick="goBack()" title="Back">←</button>
-        <div class="h8-mark">話す<span class="r">Speak drills</span></div>
+        <div class="h8-mark">はなす<span class="r">Speak drills</span></div>
         <span style="width:36px"></span>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px">
@@ -11356,7 +11501,13 @@ function renderSpeakDrillSession(){
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="endDrillSession()" title="Exit">✕</button>
       <div class="h8-mark" style="font-size:13px;font-weight:600">${esc(s.mode === 'contrast' ? (CONTRAST_SETS.find(c => c.id === s.setId)?.title || 'Drill') : 'Conjugation')}</div>
-      <span style="font-size:12px;color:var(--dim);width:60px;text-align:right">${esc(progress)}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="drillToggleAuto()" title="Hands-free: mic opens itself and advances automatically"
+          style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer;border:1px solid ${s.autoMode ? 'var(--blue)' : 'var(--border)'};background:${s.autoMode ? 'rgba(100,150,255,0.15)' : 'var(--card2)'};color:${s.autoMode ? 'var(--blue)' : 'var(--dim)'}">
+          ${s.autoMode ? '🔁 hands-free' : '✋ manual'}
+        </button>
+        <span style="font-size:12px;color:var(--dim);min-width:42px;text-align:right">${esc(progress)}</span>
+      </div>
     </div>`;
   /* Prompt body */
   let promptBody;
@@ -11391,9 +11542,19 @@ function renderSpeakDrillSession(){
       <div style="text-align:center;padding:18px">
         <button onclick="drillStopListening()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;border:2px solid var(--blue);background:rgba(100,150,255,0.15);color:var(--blue);font-size:16px;font-weight:600;cursor:pointer">
           <span style="font-size:22px">🎙️</span>
-          <span>Listening…  tap to stop</span>
+          <span>Listening… speak now</span>
         </button>
-        <div style="font-size:11px;color:var(--dim);margin-top:10px">say it clearly · cuts in ~6s</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:10px">say it clearly${s.autoMode ? ' · scores itself when it hears you' : ' · tap to stop'}</div>
+      </div>`;
+  } else if(s.autoMode){
+    /* Hands-free idle: mic is about to open itself. Manual start optional. */
+    actionPanel = `
+      <div style="text-align:center;padding:18px">
+        <button onclick="drillStartListening()" style="display:inline-flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;border:2px dashed var(--border);background:transparent;color:var(--dim);font-size:15px;font-weight:600;cursor:pointer">
+          <span style="font-size:20px">🎤</span>
+          <span>Mic opens in a moment… or tap to speak now</span>
+        </button>
+        <div style="font-size:11px;color:var(--dim);margin-top:10px">read it, then just say it — no buttons needed</div>
       </div>`;
   } else {
     actionPanel = `
@@ -11404,6 +11565,8 @@ function renderSpeakDrillSession(){
         </button>
       </div>`;
   }
+  /* In hands-free mode, arm the auto-listen once this prompt is on screen. */
+  if(s.autoMode && !lr && !s.listening){ setTimeout(_drillArmAutoListen, 0); }
   return `
     <div class="home-v8">
       ${header}
@@ -11457,6 +11620,10 @@ function renderDrillReveal(p, lr){
     ? `<button onclick="drillToggleAlts()" class="btn btn-ghost" style="font-size:12px;padding:6px 12px;color:var(--dim)">${lr._showAlts ? 'hide' : 'show all heard'}</button>`
     : '';
   const nextBtn = `<button onclick="drillNext()" class="btn btn-primary" style="font-size:15px;padding:12px 28px;flex:1;max-width:200px">Next →</button>`;
+  const s2 = state.drillSession;
+  const autoNote = (s2 && s2.autoMode && s2._advanceAt)
+    ? `<div style="text-align:center;margin-top:10px;font-size:12px;color:var(--dim)">moving on automatically — <button onclick="drillStay()" class="btn btn-ghost" style="font-size:12px;padding:4px 12px">stay & read</button></div>`
+    : '';
   return `
     <div style="border:2px solid;border-radius:14px;padding:16px;${toneStyle}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -11473,6 +11640,7 @@ function renderDrillReveal(p, lr){
         ${altsBtn}
         ${nextBtn}
       </div>
+      ${autoNote}
     </div>`;
 }
 
@@ -11491,7 +11659,7 @@ function renderDrillComplete(){
     <div class="home-v8">
       <div class="h8-bar">
         <button class="h8-icon-btn" onclick="endDrillSession()" title="Back">←</button>
-        <div class="h8-mark">完了<span class="r">complete</span></div>
+        <div class="h8-mark">かんりょう<span class="r">complete</span></div>
         <span style="width:36px"></span>
       </div>
       <div style="text-align:center;padding:40px 20px">
