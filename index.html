@@ -9680,7 +9680,7 @@ function _buildVoiceListenStep(step){
   const target = _buildVoiceTargetForStep(step);
   const fallToThink = () => {
     const baseSec = Math.max(1, (state.settings.buildThinkSec || 4));
-    const thinkMs = baseSec * _buildPaceFactor(step) * 1000;
+    const thinkMs = Math.max(BUILD_MIN_THINK_MS, baseSec * _buildPaceFactor(step) * 1000);
     _buildSetPhase('think', thinkMs);
     _buildSchedule(() => buildAutoReveal(), thinkMs);
   };
@@ -9937,6 +9937,7 @@ function _buildClearTimer(){
   const b = state.buildMode;
   if(b && b._autoTimer){ clearTimeout(b._autoTimer); b._autoTimer = null; }
   if(b && b._armTimer){ clearTimeout(b._armTimer); b._armTimer = null; }
+  if(b && b._revealTimer){ clearTimeout(b._revealTimer); b._revealTimer = null; }
   if(b && b._sttWarmup){ clearTimeout(b._sttWarmup); b._sttWarmup = null; }
   if(b && b._sttActive){ try{ stopVoice(); }catch(e){} b._sttActive = false; }
   if(b){ b._phase = null; b._phaseDur = 0; }
@@ -9981,6 +9982,14 @@ function _buildSetPhase(phase, durMs){
                       : '';
   }
 }
+
+/* Absolute pacing floors for Build Mode autoplay. The adaptive pace-shrink
+   (mastery + short-word) may speed things up for words you know, but these
+   guarantee a fixed baseline so it never becomes a no-time-to-think speed
+   battle once the prompt has loaded. */
+const BUILD_MIN_THINK_MS = 3000;        /* recall/respond window per card */
+const BUILD_MIN_LINGER_MS = 3000;       /* time to read the revealed answer */
+const BUILD_MIN_INTRO_LINGER_MS = 5000; /* new-word exposure — extra dwell */
 
 function _buildAutoOn(){ return state.settings.buildAutoAdvance !== false; }
 /* v6.25 — Write Mode. When on AND the current step type is build/substitute
@@ -10062,7 +10071,11 @@ function buildAutoplayStep(step){
       return;
     }
     const baseSec = Math.max(1, (state.settings.buildThinkSec || 4));
-    const thinkMs = baseSec * _buildPaceFactor(step) * 1000;
+    /* Hard baseline: once the prompt has loaded the user ALWAYS gets at
+       least BUILD_MIN_THINK_MS to recall and respond. The adaptive
+       pace-shrink (known words → 0.5×) can speed things up but can never
+       turn it into a no-time-to-think speed battle. */
+    const thinkMs = Math.max(BUILD_MIN_THINK_MS, baseSec * _buildPaceFactor(step) * 1000);
     _buildSetPhase('think', thinkMs);
     _buildSchedule(() => buildAutoReveal(), thinkMs);
   };
@@ -10367,19 +10380,28 @@ function _buildScheduleLinger(){
   const sec = (step && step.type === 'introduce')
     ? (state.settings.buildIntroduceLingerSec ?? 10)
     : (state.settings.buildLingerSec ?? 8);
-  /* v6.5 — adaptive: known words shrink linger; introduce stays full. */
-  const lingerMs = Math.max(0, sec) * _buildPaceFactor(step) * 1000;
+  /* v6.5 — adaptive: known words shrink linger; introduce stays full.
+     Floored so the answer never flashes past before the user can read it. */
+  const lingerFloor = (step && step.type === 'introduce') ? BUILD_MIN_INTRO_LINGER_MS : BUILD_MIN_LINGER_MS;
+  const lingerMs = Math.max(lingerFloor, Math.max(0, sec) * _buildPaceFactor(step) * 1000);
   _buildSetPhase('linger', lingerMs);
   _buildSchedule(() => buildAutoNext(), lingerMs);
 }
 
 function buildRevealStep(){
   const b = state.buildMode;
+  if(!b) return;
+  if(b.revealed) return;  /* idempotent — mashing Reveal can't stack playbacks */
   _buildClearTimer();
   b.revealed = true;
   render();
   const step = b.steps[b.stepIdx];
-  setTimeout(() => {
+  /* Tracked so _buildClearTimer (called on Next/pause/voice) cancels a
+     pending playback instead of letting it overlap the next card — that
+     overlap is what made the cadence collapse to near-instant. */
+  b._revealTimer = setTimeout(() => {
+    b._revealTimer = null;
+    if(state.buildMode !== b) return;
     _buildPlayJPForStep(step, () => {
       if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
     });
@@ -10409,7 +10431,9 @@ function buildWriteSubmit(){
   _buildClearTimer();
   b.revealed = true;
   render();
-  setTimeout(() => {
+  b._revealTimer = setTimeout(() => {
+    b._revealTimer = null;
+    if(state.buildMode !== b) return;
     _buildPlayJPForStep(step, () => {
       if(state.buildMode === b && !b._paused && _buildAutoOn()) _buildScheduleLinger();
     });
@@ -12520,7 +12544,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -12717,6 +12741,14 @@ function renderHome(){
        Picks the right word from a small group given a situation, or speaks
        the requested verb form. Constrained-vocab matcher = high accuracy. */
     { emoji:'🗣️', title:'Speak drills', meta:'Contrast pairs · verb forms · nuance-first · all speech', click:`nav('speakDrills')` },
+    /* Module path — themed progression browser. Was unreachable: the screen
+       existed and was registered, but nothing navigated to it, so users only
+       ever saw Module 1 with no way to see/unlock the other 8. */
+    { emoji:'🧩', title:'Module path',
+      meta: state.settings.modulesEnabled
+        ? `${MODULES.filter(m => moduleIsUnlocked(m.id)).length}/${MODULES.length} unlocked · browse & unlock`
+        : `gating off · all ${MODULES.length} modules open`,
+      click:`nav('modules')` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
       ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
