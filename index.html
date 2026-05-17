@@ -3342,17 +3342,50 @@ function moduleWords(moduleId){
   return getActiveWords().filter(w => moduleForWord(w).id === moduleId);
 }
 
+/* v6.42 — graded progress. The old metric only credited a word once it was
+   ★mastered OR SM-2 mature (>=7-day interval). SM-2 intervals can't reach
+   7 days without reviews spaced across real calendar days, so a user who
+   drilled a module hard in one sitting saw a flat 0% — effort was invisible.
+   Now every word contributes partial weight by mastery bucket, so practice
+   shows immediately, while full credit still requires genuine mastery and
+   the 80% unlock gate still means most words are at guru+ . */
+const MODULE_MASTERY_WEIGHT = { new:0, learning:0.15, apprentice:0.4, guru:0.7, master:1, burned:1 };
 function moduleProgress(moduleId){
   const words = moduleWords(moduleId);
-  if(words.length === 0) return { pct:0, masteredCount:0, total:0, words:[] };
+  if(words.length === 0) return { pct:0, masteredCount:0, startedCount:0, total:0, words:[] };
   const masteredSet = new Set(state.settings.masteredWords || []);
-  let credited = 0;
+  let weighted = 0, masteredCount = 0, startedCount = 0;
   for(const w of words){
-    if(masteredSet.has(w.id)){ credited++; continue; }
     const st = state.stats[w.id];
-    if(st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN){ credited++; }
+    const fullyMastered = masteredSet.has(w.id)
+      || (st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN);
+    if(fullyMastered){ weighted += 1; masteredCount++; startedCount++; continue; }
+    /* Signal A — attempts-derived bucket. Only Vocab Blitz writes
+       st.attempts, so this is 'new' (0) for Random-Drill-only learners. */
+    const bucketW = MODULE_MASTERY_WEIGHT[getMasteryForWord(w.id)] ?? 0;
+    /* Signal B — raw SM-2 state. Random Drill / Build Mode credit progress
+       ONLY via smGrade(), which grows smInterval + correctCount but never
+       touches st.attempts. Without reading this, all that practice is
+       invisible. Interval growth toward the 7-day mature mark is the
+       fairest effort proxy; capped < 1 so genuine maturity / ★Master is
+       still what reaches 100%. */
+    let smW = 0;
+    if(st){
+      if(st.smInterval) smW = Math.min(0.85, st.smInterval / BLITZ_MATURE_MIN);
+      if((st.correctCount || 0) > 0) smW = Math.max(smW, 0.15);
+      else if((st.reviewCount || 0) > 0) smW = Math.max(smW, 0.08);
+    }
+    const wgt = Math.max(bucketW, smW);
+    weighted += wgt;
+    if(wgt > 0) startedCount++;
   }
-  return { pct: Math.round(100 * credited / words.length), masteredCount: credited, total: words.length, words };
+  return {
+    pct: Math.round(100 * weighted / words.length),
+    masteredCount,                 /* fully mastered (★ or SM-2 mature) */
+    startedCount,                  /* any word with progress on it */
+    total: words.length,
+    words
+  };
 }
 
 function moduleIsUnlocked(moduleId){
@@ -12857,9 +12890,10 @@ function renderModules(){
     return `<div class="card" style="${current ? 'border:2px solid var(--green)' : (unlocked ? '' : 'opacity:0.7')}">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
         <h3 style="margin:0">${m.emoji} Module ${m.num} — ${esc(m.name)}</h3>
-        <span class="muted" style="font-size:12px">${prog.pct}% · ${prog.masteredCount}/${prog.total}</span>
+        <span class="muted" style="font-size:12px">${prog.pct}%</span>
       </div>
       ${bar}
+      <div class="muted" style="font-size:11px;margin-top:6px">${prog.masteredCount} mastered · ${prog.startedCount}/${prog.total} words touched</div>
       ${meta}
       ${footer}
     </div>`;
