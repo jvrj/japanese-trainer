@@ -2297,7 +2297,7 @@ const DEFAULT_SETTINGS = {
   blitzNew:10,                // Vocab Blitz target new-word count per session
   blitzDirection:'jp-en',     // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
   formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
-  includeKatakana:false,      // v5.2 — when false, any vocab word containing katakana chars is excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
+  includeKatakana:true,       // v7.x — default ON. Katakana is part of the learner's allowed script (only kanji is restricted) and many essential modern words are katakana-only. When false, katakana-containing words are excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
@@ -2622,6 +2622,14 @@ function load(){
          who deliberately picked 5/7+ are left alone. */
       if((state.settings.voiceListenSec || 0) <= 4) state.settings.voiceListenSec = 6;
       state.settings._pacingV4 = true;
+    }
+    if(!state.settings._katakanaDefaultV1){
+      /* v7.x — katakana is part of the learner's allowed script (only kanji
+         is restricted), and ~140 essential modern words (loanwords, counters)
+         are katakana-only. Flip the historical hiragana-only default ON once.
+         Users can still turn it off afterward; the flag prevents re-forcing. */
+      state.settings.includeKatakana = true;
+      state.settings._katakanaDefaultV1 = true;
     }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
