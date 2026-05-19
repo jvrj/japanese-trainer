@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.32';
+const APP_VERSION = '7.33';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2289,7 +2289,8 @@ const DEFAULT_SETTINGS = {
   n5PackEnabled:true,
   removedWords:[],            // word IDs manually removed from active pool — nuclear option, hides word everywhere
   suspendedWords:[],          // v6.10 — Library: temp-paused from Vocab Blitz drilling. Other modes still use the word as content.
-  focusWords:[],              // v6.10 — Library: user-boosted; priority slot in every Vocab Blitz pool. Auto-clears at Mature.
+  focusWords:[],              // v6.10 — Library: user-boosted; priority slot in every Vocab Blitz pool. v7.31: user-owned (no auto-clear).
+  buildWholeDeck:true,        // v7.33 — Build Mode draws from the whole active deck, not just Vocab-Blitz-seen words. false = old gated behaviour.
   masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
   anthropicModel:'claude-haiku-4-5-20251001',
@@ -3027,34 +3028,28 @@ function focusAddCurrentBuild(){
 }
 window.focusAddCurrentBuild = focusAddCurrentBuild;
 
-/* Tiny AUDITED frame set — hiragana only, no kanji, grammatical for ANY
-   word of the given pos. The word's own kana is substituted verbatim:
-   i-adjectives already end in い (predicative + attributive both work),
-   na-adjectives take な only in the attributive frame, nouns use frames
-   that are valid regardless of animacy. Verbs/adverbs/particles get no
-   frame (conjugation/placement is word-specific) — they rely on the
-   generated Build sentences instead. */
-const FOCUS_FRAMES = {
-  'n': [
-    {jp:'これ は ＿ です。',          en:'This is ＿.'},
-    {jp:'＿ は どこ ですか。',         en:'Where is the ＿?'},
-    {jp:'＿ を おねがい します。',     en:'＿, please.'}
-  ],
-  'adj': [
-    {jp:'＿ です。',                   en:'It is ＿.'},
-    {jp:'とても ＿ です。',            en:'It is very ＿.'},
-    {jp:'＿ ひと です ね。',           en:'(That is) a ＿ person, isn\'t it.'}
-  ],
-  'adj-na': [
-    {jp:'＿ です。',                   en:'It is ＿.'},
-    {jp:'とても ＿ です。',            en:'It is very ＿.'},
-    {jp:'＿ な ひと です ね。',        en:'(That is) a ＿ person, isn\'t it.'}
-  ]
-};
-function focusFramesFor(w){
-  const set = FOCUS_FRAMES[w.pos];
-  if(!set) return [];
-  return set.map(f => ({ jp: f.jp.replace('＿', w.jp), en: f.en.replace('＿', w.en || '') }));
+/* v7.33 — real, naturally-EXTENDING sentences for a basket word, pulled
+   from the same vetted, kanji-free generators Build Mode uses. We take the
+   richest (last) framing of each fitting variation group, then a fitting
+   Q&A — so every line is a genuine sentence that grows, not a fill-in
+   skeleton (the user: "not even in a sentence that naturally extends").
+   Noun-only: the {N} templates assume a noun slot, so non-nouns get an
+   honest "drill it" message rather than forced, ungrammatical output. */
+function focusSentencesFor(w){
+  if(!w || w.pos !== 'n') return [];
+  const out = [];
+  for(const g of BUILD_VARIATION_GROUPS){
+    if(!buildWordFitsCfg(w, g) || !g.ways || !g.ways.length) continue;
+    const way = g.ways[g.ways.length - 1];          /* richest / most-extended framing */
+    out.push({ jp: way.jp.replace(/\{N\}/g, w.jp), en: g.en.replace(/\{N\}/g, w.en || '') });
+    if(out.length >= 3) return out;
+  }
+  for(const t of BUILD_QA_TEMPLATES){
+    if(!buildWordFitsCfg(w, t)) continue;
+    out.push({ jp: t.question_jp.replace(/\{N\}/g, w.jp) + '？', en: t.question_en.replace(/\{N\}/g, w.en || '') });
+    if(out.length >= 3) return out;
+  }
+  return out;
 }
 
 /* Drill the whole basket as a sentence-construction Build session: per
@@ -3203,18 +3198,21 @@ function renderFocus(){
 
   const cards = words.map(w => {
     const romaji = w.romaji || kanaToRomaji(w.jp) || '';
-    const frames = focusFramesFor(w);
-    const framesHtml = frames.length
+    const sents = focusSentencesFor(w);
+    const framesHtml = sents.length
       ? `<div style="margin-top:8px">
-           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">How to use it</div>
-           ${frames.map(f => `<div style="font-size:14px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px">
-              <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
-              <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">In a sentence</div>
+           ${sents.map(f => `<div style="font-size:14px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;display:flex;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
+                <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+              </div>
+              <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(f.jp)}')" title="Listen">🔊</button>
             </div>`).join('')}
          </div>`
       : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">${w.pos === 'v'
-            ? 'Verb — the pattern changes with conjugation. Drill it below to see it built into sentences (and try Form drills).'
-            : 'Drill below to see this used inside generated sentences.'}</div>`;
+            ? 'Verb — its shape changes with conjugation, so it lives best inside a real sentence. Tap “Drill all in sentences” below to build with it (and see Form drills).'
+            : 'No ready-made sentence for this one yet — “Drill all in sentences” below will work it into generated sentences.'}</div>`;
     return `<div class="card" style="padding:12px;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
         <div style="flex:1;min-width:0">
@@ -4544,6 +4542,14 @@ function vocabIsIntroduced(w){
   if(!st) return false;
   if(st.attempts && st.attempts.length > 0) return true;
   return !!st.introduced;
+}
+/* v7.33 — Build Mode used to require every word be "introduced" in Vocab
+   Blitz first, which walled Build off from the rest of the app (user: "build
+   mode just doesn't work because it's tied to vocab blitz... what's the point
+   of that?"). Build now draws from the WHOLE active deck by default. Setting
+   buildWholeDeck:false restores the old Blitz-gated behaviour. */
+function buildIntroOk(w){
+  return state.settings.buildWholeDeck === false ? vocabIsIntroduced(w) : true;
 }
 function vocabMarkIntroduced(id){
   const st = smStatFor(id);
@@ -9142,7 +9148,7 @@ function buildMultiSlotFill(tmpl, deck, excludeWordIds, preferredWordIds){
         !masteredSet.has(w.id) &&
         !suspendedSet.has(w.id) &&
         (!moduleIds || moduleIds.has(w.id)) &&
-        vocabIsIntroduced(w) &&
+        buildIntroOk(w) &&
         (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
         (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
         (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -9197,7 +9203,7 @@ function buildChainPickWords(){
     w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
     (!moduleIds || moduleIds.has(w.id)) &&
-    vocabIsIntroduced(w)
+    buildIntroOk(w)
   );
   if(candidates.length < 3) return null;
   const dueScore = w => {
@@ -9258,7 +9264,7 @@ function buildPoolForCfg(deck, cfg){
     !masteredSet.has(w.id) &&
     !suspendedSet.has(w.id) &&
     (!moduleIds || moduleIds.has(w.id)) &&
-    vocabIsIntroduced(w) &&
+    buildIntroOk(w) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
     (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -9377,7 +9383,7 @@ function buildGenerateLesson(mode){
       !masteredSet.has(w.id) &&
       !suspendedSet.has(w.id) &&
       (!moduleIds || moduleIds.has(w.id)) &&
-      vocabIsIntroduced(w) &&
+      buildIntroOk(w) &&
       (!p.slotWords || p.slotWords.includes(w.en)) &&
       (!s.slotWords || s.slotWords.includes(w.en)) &&
       (!p.slotExclude || !p.slotExclude.includes(w.en)) &&
@@ -9403,7 +9409,7 @@ function buildGenerateLesson(mode){
     deck.filter(w =>
       w.pos === 'n' && !hasKatakana(w.jp) &&
       !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
-      (!moduleIds || moduleIds.has(w.id)) && vocabIsIntroduced(w)
+      (!moduleIds || moduleIds.has(w.id)) && buildIntroOk(w)
     ).forEach(w => { themeCounts[w.theme] = (themeCounts[w.theme] || 0) + 1; });
     const have = Object.entries(themeCounts)
       .sort((a,b) => b[1]-a[1])
@@ -9554,7 +9560,7 @@ function buildGenerateLesson(mode){
       w.pos === 'n' && !hasKatakana(w.jp) && w.jp && w.en && w.romaji &&
       !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
       (!moduleIds || moduleIds.has(w.id)) &&
-      vocabIsIntroduced(w) &&
+      buildIntroOk(w) &&
       !newIdSet.has(buildGenWordId(w)) && !cbIds.has(buildGenWordId(w)) &&
       fitsTmpl(w, primary) && fitsTmpl(w, secondary)
     );
@@ -9742,7 +9748,7 @@ function buildGenerateHardLesson(){
     w.jp && w.en && w.romaji &&
     !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
     (!moduleIds || moduleIds.has(w.id)) &&
-    vocabIsIntroduced(w) &&
+    buildIntroOk(w) &&
     (!cfg.slotThemes || cfg.slotThemes.includes(w.theme)) &&
     (!cfg.slotWords || cfg.slotWords.includes(w.en)) &&
     (!cfg.slotExclude || !cfg.slotExclude.includes(w.en))
@@ -9887,15 +9893,15 @@ function startBuildModeHand(){
 window.startBuildModeHand = startBuildModeHand;
 
 function startBuildModeGenerated(mode){
-  /* v6.12.1 — pre-check: Build Mode now requires words encountered in Vocab Blitz.
-     Without this guard, the user gets a cryptic "no compatible secondary" toast
-     when the real issue is they haven't drilled any vocab yet. */
+  /* v7.33 — pre-check: Build Mode draws from the whole active deck now, not
+     just Vocab-Blitz-seen words. Only bail if the deck genuinely lacks enough
+     usable nouns (e.g. N5 pack disabled), not because the user hasn't drilled. */
   const introducedNouns = (state.words || []).filter(w =>
-    w.pos === 'n' && !hasKatakana(w.jp) && vocabIsIntroduced(w)
+    w.pos === 'n' && !hasKatakana(w.jp) && buildIntroOk(w)
   );
   if(introducedNouns.length < 6){
     showToast(
-      `Build Mode pulls from words you've drilled in Vocab Blitz — you've encountered ${introducedNouns.length} so far. Drill ~6+ nouns in Vocab Blitz first, then come back.`,
+      `Build Mode needs at least ~6 usable nouns in your active deck — it found ${introducedNouns.length}. Enable the N5 pack (or fewer suspended/mastered words) in Settings.`,
       {tone:'warn', duration:6500}
     );
     return;
@@ -9915,11 +9921,11 @@ function startBuildModeGenerated(mode){
       .slice(0, 5)
       .map(([t,n]) => `${t}×${n}`).join(' · ');
     showToast(
-      `Drawing from ${introducedNouns.length} introduced words: ${themeBreakdown}`,
+      `Drawing from ${introducedNouns.length} deck words: ${themeBreakdown}`,
       {tone:'info', duration:4500}
     );
   } catch(e){
-    showToast("Can't generate lesson — " + e.message + ". Drill more vocab in Vocab Blitz across varied themes (places, family, body, etc.).", {tone:'warn', duration:6500});
+    showToast("Can't generate lesson — " + e.message + ". Try enabling more themes/modules, or unsuspend some words in Settings.", {tone:'warn', duration:6500});
   }
 }
 window.startBuildModeGenerated = startBuildModeGenerated;
@@ -12872,7 +12878,7 @@ function _buildPickFormDrillVerbs(deck, count){
     w.pos === 'v' && w.jp && !hasKatakana(w.jp) &&
     !masteredSet.has(w.id) && !suspendedSet.has(w.id) &&
     (!moduleIds || moduleIds.has(w.id)) &&
-    vocabIsIntroduced(w)
+    buildIntroOk(w)
   );
   if(verbs.length === 0) return [];
   /* v6.29 — bias against verbs that appear in the form_recent log AT ALL
