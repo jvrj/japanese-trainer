@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.31';
+const APP_VERSION = '7.32';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -11817,6 +11817,32 @@ const CONTRAST_SETS = [
       { en: 'She went back home',                   full: 'うち に かえった',                       answer: 'かえった',   nuance: 'Home → かえる.' },
       { en: 'Returning to page one',                full: '1ページ に もどる',                       answer: 'もどる',     nuance: 'Returning in a document → もどる.' },
       { en: 'When are you going back to Japan?',    full: 'いつ にほん に かえる ？',                answer: 'かえる',     nuance: 'Home country → かえる.' }
+    ]
+  },
+  {
+    /* v7.32 — the "seems / evidence" family. The おいしそう vs おいしいそうだ
+       trap and its cousins. NOT vocabulary — a productive grammar pattern
+       chosen by EVIDENCE SOURCE. Kana-only; every prompt names WHY that
+       marker, since the whole skill is matching marker → evidence. */
+    id: 'seeming',
+    emoji: '🤔',
+    title: 'Seems / Looks / I heard',
+    blurb: '〜そう / 〜そうだ / みたい / ようだ / らしい',
+    nuance: 'All five mean roughly "it seems ___", but you pick by EVIDENCE SOURCE. 〜そう (drop い / ますstem) = from how it LOOKS right now — visual, immediate, unverified. 〜そうだ (on the PLAIN form) = HEARSAY, you were told / read it. 〜みたい = casual "seems like", inference or resemblance (spoken). 〜ようだ = formal "appears", reasoned inference from concrete evidence. 〜らしい = "apparently / I gather" (reliable indirect info) OR "typical of / befitting". The killer: appearance おいしそう DROPS the い; hearsay おいしいそうだ KEEPS it — same そう, opposite meaning.',
+    candidates: ['そう', 'そうだ', 'みたい', 'ようだ', 'らしい'],
+    prompts: [
+      { en: '(You see a cake) That looks tasty!',        full: 'ケーキ が おいしそう',                  answer: 'おいしそう',     candidates: ['おいしそう','おいしいそうだ'], nuance: 'You SEE it, have not tasted → appearance 〜そう. い-adj drops the い: おいしい→おいしそう.' },
+      { en: 'I hear that shop is tasty',                 full: 'あの みせ は おいしいそうだ',          answer: 'おいしいそうだ', candidates: ['おいしそう','おいしいそうだ'], nuance: 'Someone told you → hearsay 〜そうだ on the PLAIN form (おいしい + そうだ). The い stays. Opposite of #1.' },
+      { en: 'It looks like it is going to rain',         full: 'あめ が ふりそう',                      answer: 'ふりそう',       candidates: ['ふりそう','ふるそうだ'],       nuance: 'Dark sky, about to happen → imminent 〜そう on the ますstem (ふり + そう).' },
+      { en: 'I heard it will rain tomorrow',             full: 'あした あめ が ふるそうだ',            answer: 'ふるそうだ',     candidates: ['ふりそう','ふるそうだ'],       nuance: 'From the forecast / someone → hearsay 〜そうだ on plain ふる. ますstem+そう would mean YOU see it coming.' },
+      { en: 'He looks energetic / healthy',              full: 'かれ は げんきそう',                    answer: 'げんきそう',     candidates: ['げんきそう','げんきだそうだ'], nuance: 'な-adj appearance = stem + そう (げんき + そう). Judged by your eyes, now.' },
+      { en: 'I hear he is doing well',                   full: 'かれ は げんきだそうだ',              answer: 'げんきだそうだ', candidates: ['げんきそう','げんきだそうだ'], nuance: 'Hearsay on a な-adj keeps だ: げんき + だ + そうだ. You were told, did not see him.' },
+      { en: 'It seems she already left (casual)',        full: 'かのじょ は もう かえったみたい',      answer: 'かえったみたい', candidates: ['みたい','ようだ'],             nuance: 'Casual inference from evidence (her shoes are gone) → 〜みたい on plain past. Spoken register.' },
+      { en: 'It appears she already left (formal)',      full: 'かのじょ は もう かえったようだ',      answer: 'かえったようだ', candidates: ['みたい','ようだ'],             nuance: 'Same inference, formal / written → 〜ようだ. みたい and ようだ are the same idea at different politeness.' },
+      { en: 'Apparently he is a teacher',                full: 'かれ は せんせいらしい',              answer: 'せんせいらしい', candidates: ['らしい','みたい'],             nuance: 'Reliable indirect info you gather from around → 〜らしい on a noun. Less "I infer", more "I gather/heard".' },
+      { en: 'That is so like him / typical of him',      full: 'かれ らしい',                          answer: 'かれらしい',     candidates: ['らしい','みたい'],             nuance: 'Same 〜らしい, the OTHER meaning: "typical of / befitting". Context decides "apparently" vs "so very him".' },
+      { en: 'This looks expensive (no price seen)',      full: 'これ は たかそう',                      answer: 'たかそう',       candidates: ['たかそう','たかいらしい'],     nuance: 'Judging purely by appearance → 〜そう (たかい→たかそう, drop い).' },
+      { en: 'I gather this one is expensive',            full: 'これ は たかいらしい',                answer: 'たかいらしい',   candidates: ['たかそう','たかいらしい'],     nuance: 'You did NOT judge by looks — you heard / gathered it → 〜らしい on plain たかい.' }
     ]
   }
 ];
