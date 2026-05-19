@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.30';
+const APP_VERSION = '7.31';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2302,7 +2302,7 @@ const DEFAULT_SETTINGS = {
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
   formSection:'all',          // v6.32 — Form Drill / Form Spam: scope to a verb section (movement/routine/comm/obj/mind/suru/state) or 'all'
   vocabSection:'all',         // v6.33 — Vocab Blitz: scope to a topical noun/vocab section (time/food/body/family/...) or 'all'
-  buildThinkSec:2,            // pause after EN prompt before JP reveals (v6.40.4 hard crunch)
+  buildThinkSec:5,            // v7.40 — pause after EN prompt before JP reveals. Raised from the v6.40.4 crunch value of 2: too fast to recall an unfamiliar-but-known word.
   buildLingerSec:2.5,         // pause after JP audio before next step
   buildIntroduceLingerSec:4,  // extra time after a brand-new word is introduced
   buildTtsRate:0.8,           // Build Mode JP TTS rate
@@ -2631,6 +2631,15 @@ function load(){
       state.settings.includeKatakana = true;
       state.settings._katakanaDefaultV1 = true;
     }
+    if(!state.settings._pacingV5){
+      /* v7.40 — undo the v6.40.4 think-time crunch. _pacingV3 force-set
+         buildThinkSec to 2 for everyone ≥3 and there was no signal to find
+         the slider again, so recall felt like a speed battle. Lift anyone
+         still below the new 5s default up to 5; deliberate longer picks
+         (≥5) are left alone. Paired with the BUILD_MIN_THINK_MS 3→5s floor. */
+      if((state.settings.buildThinkSec || 0) < 5) state.settings.buildThinkSec = 5;
+      state.settings._pacingV5 = true;
+    }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
@@ -2945,17 +2954,296 @@ function libraryResetWord(id){
 }
 window.libraryResetWord = libraryResetWord;
 
-/* Auto-clear focus when a word reaches mature (smInterval ≥ 7d).
-   Called from blitzRecordAnswer after smGrade graduates a card. */
-function libraryAutoClearFocusIfMature(wordId){
-  const focus = state.settings.focusWords || [];
-  if(!focus.includes(wordId)) return;
-  const st = state.stats[wordId];
-  if(!st) return;
-  ensureSm(st);
-  if(st.smInterval >= BLITZ_MATURE_MIN){
-    state.settings.focusWords = focus.filter(x => x !== wordId);
+/* v7.31 — focus is now a USER-OWNED basket (the Focus workshop). It used to
+   silently empty itself the moment a word matured, which is exactly the
+   "I chose words and they vanished / it barely works" frustration. Words
+   now leave the basket ONLY when the user drops them (or masters/suspends
+   them). Kept as a no-op so the blitzRecordAnswer call site stays intact. */
+function libraryAutoClearFocusIfMature(/* wordId */){
+  /* intentionally does nothing — see comment above */
+}
+
+/* =========================================================================
+   FOCUS WORKSHOP (v7.31)
+   The "I can learn words but can't build sentences with them — yet" loop.
+   `focusWords` is the basket; this gives it a home. For each chosen word
+   the user sees its usage-nuance + a few SAFE kana sentence frames (the
+   "how": reusable skeletons to drop the word into), then drills the whole
+   basket as a sentence-construction Build session, then pulls a fresh
+   batch and re-picks. All generated practice reuses the vetted Build-Mode
+   sentence generators (kanji-free by project invariant); nothing here
+   hand-rolls Japanese beyond the tiny audited, hiragana-only frame set.
+   ========================================================================= */
+function focusBasketWords(){
+  const ids = state.settings.focusWords || [];
+  const byId = new Map((state.words || []).map(w => [w.id, w]));
+  return ids.map(id => byId.get(id)).filter(Boolean);
+}
+function focusAdd(id){
+  const s = state.settings;
+  s.focusWords = s.focusWords || [];
+  if(s.focusWords.includes(id)) return false;
+  /* focus is mutually exclusive with mastered/suspended (cf. libraryFocusToggle) */
+  s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
+  s.masteredWords  = (s.masteredWords  || []).filter(x => x !== id);
+  s.focusWords.push(id);
+  save();
+  return true;
+}
+function focusDrop(id){
+  const s = state.settings;
+  s.focusWords = (s.focusWords || []).filter(x => x !== id);
+  save();
+  render();
+}
+window.focusDrop = focusDrop;
+
+/* In-context capture — grab a word the instant it trips you up. */
+function focusAddCurrentBlitz(){
+  if(!state.blitz) return;
+  const w = blitzCurrent();
+  if(!w) return;
+  const added = focusAdd(w.id);
+  if(typeof showToast === 'function'){
+    showToast(added ? `⭐ ${w.jp} → Focus · build sentences with it later`
+                     : `Already in your Focus basket`, {tone:'info', duration:2800});
   }
+  render();
+}
+window.focusAddCurrentBlitz = focusAddCurrentBlitz;
+function focusAddCurrentBuild(){
+  const wid = (typeof _buildCurrentStepWordId === 'function') ? _buildCurrentStepWordId() : null;
+  const lw = wid ? buildWordById(wid) : null;
+  const w = lw ? (state.words || []).find(d => d.jp === lw.jp && d.en === lw.en) : null;
+  if(!w){
+    if(typeof showToast === 'function') showToast("No deck word on this step to add.", {tone:'warn', duration:3000});
+    return;
+  }
+  const added = focusAdd(w.id);
+  if(typeof showToast === 'function'){
+    showToast(added ? `⭐ ${w.jp} → Focus` : `Already in your Focus basket`, {tone:'info', duration:2800});
+  }
+  render();
+}
+window.focusAddCurrentBuild = focusAddCurrentBuild;
+
+/* Tiny AUDITED frame set — hiragana only, no kanji, grammatical for ANY
+   word of the given pos. The word's own kana is substituted verbatim:
+   i-adjectives already end in い (predicative + attributive both work),
+   na-adjectives take な only in the attributive frame, nouns use frames
+   that are valid regardless of animacy. Verbs/adverbs/particles get no
+   frame (conjugation/placement is word-specific) — they rely on the
+   generated Build sentences instead. */
+const FOCUS_FRAMES = {
+  'n': [
+    {jp:'これ は ＿ です。',          en:'This is ＿.'},
+    {jp:'＿ は どこ ですか。',         en:'Where is the ＿?'},
+    {jp:'＿ を おねがい します。',     en:'＿, please.'}
+  ],
+  'adj': [
+    {jp:'＿ です。',                   en:'It is ＿.'},
+    {jp:'とても ＿ です。',            en:'It is very ＿.'},
+    {jp:'＿ ひと です ね。',           en:'(That is) a ＿ person, isn\'t it.'}
+  ],
+  'adj-na': [
+    {jp:'＿ です。',                   en:'It is ＿.'},
+    {jp:'とても ＿ です。',            en:'It is very ＿.'},
+    {jp:'＿ な ひと です ね。',        en:'(That is) a ＿ person, isn\'t it.'}
+  ]
+};
+function focusFramesFor(w){
+  const set = FOCUS_FRAMES[w.pos];
+  if(!set) return [];
+  return set.map(f => ({ jp: f.jp.replace('＿', w.jp), en: f.en.replace('＿', w.en || '') }));
+}
+
+/* Drill the whole basket as a sentence-construction Build session: per
+   word a recall card, then (when a vetted generator fits it) a variation
+   step and a Q&A step — both EN→JP production, i.e. building a sentence
+   that USES the word. real_word_ids feeds SM-2 credit on completion. */
+function buildFocusLesson(){
+  const pool = focusBasketWords().slice(0, 14);
+  if(pool.length < 1) throw new Error('Your Focus basket is empty — add some words first.');
+  const toRef = w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji });
+  const steps = [];
+  for(const w of pool){
+    steps.push({ type:'recall', word_id:w.id });
+    const v = buildGenerateVariationStep(state.words, w);
+    if(v) steps.push(v);
+    const q = buildGenerateQaStep(state.words, w);
+    if(q) steps.push(q);
+  }
+  return {
+    id:'Gfoc_' + Date.now().toString(36),
+    title:'Focus — build sentences with your words',
+    duration_mins: Math.max(3, Math.round(steps.length * 0.4)),
+    new_words: pool.map(toRef),
+    carryover_words: [],
+    cycles:[{ id:'focus', name:`Your ${pool.length} chosen word${pool.length===1?'':'s'}`, steps }],
+    _meta:{ mode:'focus', real_word_ids: pool.map(w => w.id) }
+  };
+}
+function startFocusDrill(){
+  try{
+    const lesson = buildFocusLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'focus';
+    if(typeof _buildWakeLockSync === 'function') _buildWakeLockSync();
+    nav('buildMode');
+  }catch(e){
+    if(typeof showToast === 'function') showToast("Can't start Focus drill — " + (e.message || e), {tone:'warn', duration:5000});
+  }
+}
+window.startFocusDrill = startFocusDrill;
+
+/* Fresh-batch chooser — surface words worth sentence work (learning >
+   new > mature, basket/mastered/suspended excluded) and let the user
+   tick which to pull into the basket. This is the re-pick step. */
+function focusFreshBatch(){
+  const inBasket   = new Set(state.settings.focusWords   || []);
+  const masteredS  = new Set(state.settings.masteredWords  || []);
+  const suspendedS = new Set(state.settings.suspendedWords || []);
+  const pool = getActiveWords().filter(w =>
+    !inBasket.has(w.id) && !masteredS.has(w.id) && !suspendedS.has(w.id));
+  if(!pool.length){
+    if(typeof showToast === 'function') showToast('No more words available to add.', {tone:'info', duration:3000});
+    return;
+  }
+  const score = w => {
+    const st = state.stats[w.id];
+    if(!st || !st.attempts || !st.attempts.length) return 1;          /* new */
+    ensureSm(st);
+    return st.smInterval >= BLITZ_MATURE_MIN ? 2 : 0;                 /* mature : learning */
+  };
+  const ranked = pool.slice().sort((a,b) => score(a) - score(b));
+  const batch = shuffleFY(ranked.slice(0, 40)).slice(0, 12);
+  state._focusUi = { picking:true, batch: batch.map(w => w.id), checked:{} };
+  render();
+}
+window.focusFreshBatch = focusFreshBatch;
+function focusBatchToggle(id){
+  const ui = state._focusUi; if(!ui) return;
+  ui.checked[id] = !ui.checked[id];
+  render();
+}
+window.focusBatchToggle = focusBatchToggle;
+function focusBatchAdd(){
+  const ui = state._focusUi; if(!ui) return;
+  let n = 0;
+  for(const id of ui.batch){ if(ui.checked[id] && focusAdd(id)) n++; }
+  state._focusUi = { picking:false, batch:[], checked:{} };
+  if(typeof showToast === 'function')
+    showToast(n ? `Added ${n} word${n===1?'':'s'} to Focus` : 'Nothing selected', {tone:'info', duration:2600});
+  render();
+}
+window.focusBatchAdd = focusBatchAdd;
+function focusBatchCancel(){
+  state._focusUi = { picking:false, batch:[], checked:{} };
+  render();
+}
+window.focusBatchCancel = focusBatchCancel;
+
+function renderFocus(){
+  const ui = state._focusUi = state._focusUi || { picking:false, batch:[], checked:{} };
+  const byId = new Map((state.words || []).map(w => [w.id, w]));
+
+  /* ---- fresh-batch chooser sub-view ---- */
+  if(ui.picking){
+    const rows = ui.batch.map(id => {
+      const w = byId.get(id);
+      if(!w) return '';
+      const on = !!ui.checked[id];
+      const romaji = w.romaji || kanaToRomaji(w.jp) || '';
+      return `<div class="card" style="padding:10px 12px;margin-bottom:6px;cursor:pointer;border:1px solid ${on ? 'var(--blue)' : 'var(--border)'}" onclick="focusBatchToggle('${jsEsc(id)}')">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:18px;width:22px;text-align:center">${on ? '☑' : '☐'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(w.en || '')}</div>
+            <div class="muted" style="font-size:13px;margin-top:2px">
+              <span class="jp" style="color:var(--text);font-size:14px">${esc(w.jp)}</span>
+              ${romaji ? ` <span style="font-style:italic">· ${esc(romaji)}</span>` : ''}
+            </div>
+            ${w.note ? `<div class="muted" style="font-size:12px;margin-top:4px;line-height:1.4">${esc(w.note)}</div>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    const nSel = ui.batch.filter(id => ui.checked[id]).length;
+    return `
+      <div class="card">
+        <h2 style="margin-top:0">Fresh batch</h2>
+        <div class="muted" style="font-size:13px">Tick the words you want to learn to build sentences with. They join your Focus basket.</div>
+      </div>
+      ${rows || `<div class="muted" style="text-align:center;padding:30px 10px">No candidates right now.</div>`}
+      <div class="card" style="position:sticky;bottom:8px">
+        <button class="btn btn-primary" style="width:100%" onclick="focusBatchAdd()">Add ${nSel} to Focus</button>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" style="width:100%;font-size:13px" onclick="focusBatchCancel()">Cancel</button>
+      </div>`;
+  }
+
+  /* ---- basket view ---- */
+  const words = focusBasketWords();
+
+  if(!words.length){
+    return `
+      <div class="card">
+        <h2 style="margin-top:0">⭐ Focus</h2>
+        <div class="muted" style="font-size:14px;line-height:1.6">
+          This is your sentence-building workshop. Pick a handful of words, see <b>how</b> to drop each one into a real Japanese sentence, then drill the whole set as a guided sentence-construction session.
+          <div class="spacer"></div>
+          <b>Two ways to add words:</b><br>
+          • Tap <b>⭐ Work on this</b> when a word trips you up in Vocab Blitz or Build Mode.<br>
+          • Or grab a fresh batch right here.
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" style="width:100%" onclick="focusFreshBatch()">+ Get a fresh batch</button>
+      </div>`;
+  }
+
+  const cards = words.map(w => {
+    const romaji = w.romaji || kanaToRomaji(w.jp) || '';
+    const frames = focusFramesFor(w);
+    const framesHtml = frames.length
+      ? `<div style="margin-top:8px">
+           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">How to use it</div>
+           ${frames.map(f => `<div style="font-size:14px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px">
+              <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
+              <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+            </div>`).join('')}
+         </div>`
+      : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">${w.pos === 'v'
+            ? 'Verb — the pattern changes with conjugation. Drill it below to see it built into sentences (and try Form drills).'
+            : 'Drill below to see this used inside generated sentences.'}</div>`;
+    return `<div class="card" style="padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div class="jp" style="font-size:20px;font-weight:700;color:var(--text)">${esc(w.jp)}</div>
+          <div class="muted" style="font-size:13px;margin-top:2px">
+            ${romaji ? `<span style="font-style:italic">${esc(romaji)}</span> · ` : ''}${esc(w.en || '')}
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:var(--muted);white-space:nowrap" onclick="focusDrop('${jsEsc(w.id)}')">✕ drop</button>
+      </div>
+      ${w.note ? `<div style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(245,158,11,0.10);border-left:3px solid #f59e0b;border-radius:4px;line-height:1.5"><b style="font-size:10px;letter-spacing:0.06em">NUANCE</b><br>${esc(w.note)}</div>` : ''}
+      ${framesHtml}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h2 style="margin:0">⭐ Focus</h2>
+        <span class="muted" style="font-size:13px">${words.length} word${words.length===1?'':'s'}</span>
+      </div>
+      <div class="muted" style="font-size:13px;margin-top:6px">See how each word slots into a sentence, then drill the whole set as guided EN→JP construction.</div>
+    </div>
+    ${cards}
+    <div class="card" style="position:sticky;bottom:8px">
+      <button class="btn btn-primary" style="width:100%" onclick="startFocusDrill()">▶ Drill all ${words.length} in sentences</button>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary" style="width:100%;font-size:13px" onclick="focusFreshBatch()">+ Get a fresh batch</button>
+    </div>`;
 }
 
 function buildSession(overrideSize){
@@ -4651,6 +4939,9 @@ function renderBlitz(){
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown}</div>
     ${matchHint}
     <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="focusAddCurrentBlitz()" title="Add to Focus — practice building sentences with it">⭐ Work on this in sentences</button>
+    </div>
     <div class="spacer"></div>
     ${continueCtl}
   </div>`;
@@ -10535,7 +10826,7 @@ function _buildSetPhase(phase, durMs){
    (mastery + short-word) may speed things up for words you know, but these
    guarantee a fixed baseline so it never becomes a no-time-to-think speed
    battle once the prompt has loaded. */
-const BUILD_MIN_THINK_MS = 3000;        /* recall/respond window per card */
+const BUILD_MIN_THINK_MS = 5000;        /* v7.40 — hard recall/respond window per card. Was 3000; users on short cards (single-word recall) had no time to pull an unfamiliar-but-known word from memory before JP played. This floor governs both the normal and voice-listen paths regardless of the adaptive pace-shrink. */
 const BUILD_MIN_LINGER_MS = 3000;       /* time to read the revealed answer */
 const BUILD_MIN_INTRO_LINGER_MS = 5000; /* new-word exposure — extra dwell */
 
@@ -12489,6 +12780,7 @@ function renderBuildModeStep(){
       const missed = b._missed && b._missed.has(wid);
       return `<div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;${missed ? 'color:var(--red);border-color:var(--red)' : 'color:var(--muted)'}" onclick="buildToggleMissed()">${missed ? '✗ marked missed (will reset SRS)' : '✗ Missed it (optional)'}</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="focusAddCurrentBuild()" title="Add to Focus — practice building sentences with it">⭐ Work on this</button>
         <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="buildMasterCurrentWord()" title="Mastered — never see this word again">★ Master this word</button>
       </div>`;
     })()}
@@ -13111,7 +13403,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -13282,7 +13574,14 @@ function renderHome(){
     return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
   }).length;
 
+  const focusN = (state.settings.focusWords || []).length;
   const upNextRows = [
+    /* Focus workshop — the user-owned sentence-construction basket. Top of
+       the list: it's the "I can learn words but can't build sentences with
+       them yet" loop the user explicitly asked for. */
+    { emoji:'⭐', title:'Focus — build sentences',
+      meta: focusN ? `${focusN} chosen · drill them in sentences` : 'Pick words · learn to use them in sentences',
+      click:`nav('focus')` },
     /* Random Drill — pulls 30 random words from the WHOLE active deck
        (no module gating, no section filter). Always works, always
        audio-led. The "I just want to drive and drill" entry point. */
@@ -13437,7 +13736,7 @@ function renderModules(){
    Affects only Vocab Blitz drilling; other modes still use the word as content. */
 
 function libraryUpdateUi(field, value){
-  state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null};
+  state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null, view:'topic', openThemes:[]};
   state._libraryUi[field] = value;
   if(field !== 'search') render(); /* search re-render is handled inline to keep focus in input */
 }
@@ -13461,6 +13760,17 @@ function libraryToggleExpand(id){
 }
 window.libraryToggleExpand = libraryToggleExpand;
 
+function libraryToggleTheme(t){
+  state._libraryUi = state._libraryUi || {};
+  const open = new Set(state._libraryUi.openThemes || []);
+  if(open.has(t)) open.delete(t); else open.add(t);
+  state._libraryUi.openThemes = [...open];
+  /* List-only refresh so the accordion keeps its scroll position. */
+  const list = $('#libList');
+  if(list) list.innerHTML = libraryRenderList();
+}
+window.libraryToggleTheme = libraryToggleTheme;
+
 function libraryStatusBadge(status, focused){
   const colors = {
     new: 'background:var(--card2);color:var(--dim)',
@@ -13472,6 +13782,49 @@ function libraryStatusBadge(status, focused){
   const label = {new:'New', learning:'Learning', mature:'Mature', suspended:'Suspended', mastered:'Mastered'}[status] || status;
   const focusBit = focused ? `<span class="pill" style="background:var(--orange);color:#fff;margin-right:4px">⭐ Focus</span>` : '';
   return focusBit + `<span class="pill" style="${colors[status] || ''}">${esc(label)}</span>`;
+}
+
+/* v7.40 — Library "Topics" view. Each word already carries a `theme`; this
+   maps every theme to a display label + emoji and a learner-friendly order.
+   Unknown themes fall back to a title-cased label and sort to the end. */
+const THEME_META = {
+  greetings:{label:'Greetings',emoji:'👋'},
+  phrases:{label:'Handy phrases',emoji:'💬'},
+  daily:{label:'Daily life',emoji:'📅'},
+  people:{label:'People',emoji:'🧑'},
+  family:{label:'Family',emoji:'👨‍👩‍👧'},
+  body:{label:'Body',emoji:'🫀'},
+  health:{label:'Health',emoji:'🩺'},
+  feelings:{label:'Feelings',emoji:'😊'},
+  food:{label:'Food & drink',emoji:'🍙'},
+  home:{label:'Home',emoji:'🏠'},
+  clothing:{label:'Clothing',emoji:'👕'},
+  objects:{label:'Objects',emoji:'📦'},
+  animals:{label:'Animals',emoji:'🐾'},
+  nature:{label:'Nature',emoji:'🌿'},
+  weather:{label:'Weather',emoji:'🌤️'},
+  colors:{label:'Colors',emoji:'🎨'},
+  numbers:{label:'Numbers',emoji:'🔢'},
+  counters:{label:'Counters',emoji:'🧮'},
+  time:{label:'Time',emoji:'⏰'},
+  places:{label:'Places',emoji:'📍'},
+  travel:{label:'Travel',emoji:'✈️'},
+  school:{label:'School',emoji:'🏫'},
+  work:{label:'Work',emoji:'💼'},
+  tech:{label:'Technology',emoji:'💻'},
+  adjectives:{label:'Adjectives',emoji:'✏️'},
+  adverbs:{label:'Adverbs',emoji:'⚡'},
+  verbpairs:{label:'Verb pairs',emoji:'🔁'},
+  onomatope:{label:'Onomatopoeia',emoji:'💥'},
+  grammar:{label:'Grammar',emoji:'🔤'},
+};
+const THEME_ORDER = ['greetings','phrases','daily','people','family','body','health','feelings','food','home','clothing','objects','animals','nature','weather','colors','numbers','counters','time','places','travel','school','work','tech','adjectives','adverbs','verbpairs','onomatope','grammar'];
+function themeMeta(t){
+  return THEME_META[t] || {label: t ? (t.charAt(0).toUpperCase() + t.slice(1)) : 'Other', emoji:'•'};
+}
+function themeRank(t){
+  const i = THEME_ORDER.indexOf(t);
+  return i === -1 ? 999 : i;
 }
 
 function libraryRenderList(){
@@ -13511,19 +13864,12 @@ function libraryRenderList(){
       return wB - wA;
     },
   };
-  words.sort(sortFns[ui.sort] || sortFns.en);
-
   if(!words.length){
     return `<div class="muted" style="text-align:center;padding:30px 10px">No words match.</div>`;
   }
 
-  /* v6.10 — render up to 400 to keep DOM light. Most filters slice well below this. */
-  const MAX = 400;
-  const overflow = words.length > MAX;
-  const rendered = words.slice(0, MAX);
   const expandedId = ui.expandedId;
-
-  return rendered.map(w => {
+  const cardHtml = (w) => {
     const status = libraryWordStatus(w);
     const focused = focusSet.has(w.id);
     const romaji = w.romaji || kanaToRomaji(w.jp) || '';
@@ -13565,7 +13911,54 @@ function libraryRenderList(){
       </div>
       ${tray}
     </div>`;
-  }).join('') + (overflow ? `<div class="muted" style="text-align:center;padding:10px;font-size:12px">+${words.length - MAX} more — refine search to see them</div>` : '');
+  };
+
+  /* Topics view — collapsible accordion grouped by `theme`. Collapsed
+     sections render only a header so the DOM stays light; an active search
+     auto-opens every group that has a match. */
+  if(ui.view === 'topic'){
+    const groups = new Map();
+    for(const w of words){
+      const t = w.theme || 'other';
+      if(!groups.has(t)) groups.set(t, []);
+      groups.get(t).push(w);
+    }
+    const searching = !!q;
+    const open = new Set(ui.openThemes || []);
+    const keys = [...groups.keys()].sort((a, b) => {
+      const ra = themeRank(a), rb = themeRank(b);
+      if(ra !== rb) return ra - rb;
+      return themeMeta(a).label.localeCompare(themeMeta(b).label);
+    });
+    let budget = 400;
+    return keys.map(t => {
+      const list = groups.get(t).sort(sortFns[ui.sort] || sortFns.en);
+      const meta = themeMeta(t);
+      const isOpen = searching || open.has(t);
+      const head = `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin-bottom:6px;cursor:pointer" onclick="libraryToggleTheme('${jsEsc(t)}')">
+        <div style="font-size:15px;font-weight:700;color:var(--text)">${meta.emoji} ${esc(meta.label)}</div>
+        <div class="muted" style="font-size:13px;white-space:nowrap">${list.length}&nbsp;&nbsp;${isOpen ? '▾' : '▸'}</div>
+      </div>`;
+      if(!isOpen) return head;
+      let body;
+      if(budget <= 0){
+        body = `<div class="muted" style="padding:4px 0 10px;font-size:12px">Too many words open — collapse a topic or search to narrow.</div>`;
+      } else {
+        const slice = list.slice(0, budget);
+        budget -= slice.length;
+        body = slice.map(cardHtml).join('') + (list.length > slice.length
+          ? `<div class="muted" style="text-align:center;padding:8px;font-size:12px">+${list.length - slice.length} more — search to narrow</div>` : '');
+      }
+      return head + `<div style="padding:0 2px 14px">${body}</div>`;
+    }).join('');
+  }
+
+  /* Flat list — sorted, capped at 400 to keep the DOM light. */
+  words.sort(sortFns[ui.sort] || sortFns.en);
+  const MAX = 400;
+  const overflow = words.length > MAX;
+  return words.slice(0, MAX).map(cardHtml).join('')
+    + (overflow ? `<div class="muted" style="text-align:center;padding:10px;font-size:12px">+${words.length - MAX} more — refine search to see them</div>` : '');
 }
 
 function libraryRenderTally(){
@@ -13594,16 +13987,25 @@ function libraryRenderTally(){
 }
 
 function renderLibrary(){
-  const ui = state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null};
+  const ui = state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null, view:'topic', openThemes:[]};
+  if(!ui.view) ui.view = 'topic';
+  if(!ui.openThemes) ui.openThemes = [];
 
   const filterChip = (key, label) => `<button class="tag${ui.filter === key ? ' active' : ''}" onclick="libraryUpdateUi('filter', '${key}')">${esc(label)}</button>`;
   const sortOption = (key, label) => `<option value="${key}"${ui.sort === key ? ' selected' : ''}>${esc(label)}</option>`;
+  const viewBtn = (key, label) => `<button class="tag${ui.view === key ? ' active' : ''}" onclick="libraryUpdateUi('view', '${key}')">${esc(label)}</button>`;
 
   return `
     ${libraryRenderTally()}
 
     <div class="card">
       <input id="libSearch" class="input" type="text" placeholder="Search EN, JP, or romaji" autocomplete="off" autocorrect="off" spellcheck="false" oninput="librarySearchInput()" value="${esc(ui.search || '')}">
+      <div class="spacer"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span class="muted" style="font-size:12px">View:</span>
+        ${viewBtn('topic', '📚 Topics')}
+        ${viewBtn('list', '☰ List')}
+      </div>
       <div class="spacer"></div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="muted" style="font-size:12px">Sort:</span>
