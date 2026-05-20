@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.37';
+const APP_VERSION = '7.38';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3042,11 +3042,12 @@ const FOCUS_DRINK_ROMAJI = new Set(['mizu','ocha','koohii','gyuunyuu','juusu','b
 const FOCUS_SENTENCE_BANK = {
   noun: {
     places: [
+      ['すみません、{N}は どこ ですか。',         'Excuse me, where is the {EN}?',                   'すみません + どこ = asking for directions politely.'],
+      ['{N}まで つれて いって ください。',       'Please take me to the {EN}.',                       'つれて いく = take (a person) somewhere. て + ください.'],
       ['{N}に いきます。',                       'I go to the {EN}.',                                 'に marks destination. いきます = polite present of いく.'],
+      ['いっしょに {N}に いきませんか。',          'Want to go to the {EN} together?',                 '〜ませんか = polite invitation. Negative question = "won\'t you?"'],
       ['あした {N}に いきます。',                 "Tomorrow I'm going to the {EN}.",                  'Time word (あした) goes before the destination.'],
       ['きのう {N}に いきました。',               'I went to the {EN} yesterday.',                    'いきます → いきました (polite past).'],
-      ['{N}は どこ ですか。',                   'Where is the {EN}?',                                'は = topic. どこ = where. ですか = polite question.'],
-      ['いっしょに {N}に いきませんか。',          'Want to go to the {EN} together?',                 '〜ませんか = polite invitation. Negative question = "won\'t you?"'],
       ['{N}に いきたい です。',                  'I want to go to the {EN}.',                         '〜たい attaches to the い-stem (いき + たい) = want to do.'],
       ['{N}で あいましょう。',                  "Let's meet at the {EN}.",                          'で marks where an action happens (≠ に which marks destination).'],
       ['{N}から かえりました。',                'I came back from the {EN}.',                       'から = from (origin point).'],
@@ -3054,29 +3055,36 @@ const FOCUS_SENTENCE_BANK = {
       ['{N}に いったことが あります。',          'I have been to the {EN} before.',                  '〜たことが あります = "have done before" (experience).'],
     ],
     food: [
-      ['{N}を たべます。',                      'I eat {EN}.',                                      'を marks the direct object. たべます = polite present.'],
+      ['{N}を ください。',                       'Please give me {EN}.',                             '〜を ください = polite "please give me".'],
+      ['{N}を とって ください。',                'Please pass me the {EN}.',                         'At the table. とる = take/pick up.'],
+      ['{N}は いかが ですか。',                  'How about some {EN}?',                             'いかが = polite "how about?" (offering).'],
+      ['もう すこし {N}を ください。',           'A little more {EN}, please.',                       'もう すこし = "a bit more".'],
+      ['{N}を たべます。',                       'I eat {EN}.',                                      'を marks the direct object. たべます = polite present.'],
       ['{N}が すき です。',                     'I like {EN}.',                                     'すき takes が, not を. "Like" is a state, not an action.'],
       ['{N}を たべたい です。',                 'I want to eat {EN}.',                              '〜たい on the い-stem (たべ + たい) = want to.'],
       ['{N}は おいしい です。',                 'The {EN} is delicious.',                           'は = topic. おいしい i-adjective predicate.'],
-      ['{N}を ください。',                     'Please give me {EN}.',                             '〜を ください = polite "please give me".'],
       ['いっしょに {N}を たべましょう。',         "Let's eat {EN} together.",                         '〜ましょう = polite "let\'s". Volitional polite form.'],
       ['きのう {N}を たべました。',              'I ate {EN} yesterday.',                            'たべます → たべました (polite past).'],
       ['{N}は あまり たべません。',              "I don't eat {EN} much.",                          'あまり + negative = "not much/often".'],
       ['あした ともだち と {N}を たべます。',     "Tomorrow I'll eat {EN} with a friend.",          'と = with. Extended: time + companion + obj + verb.'],
     ],
     drink: [
-      ['{N}を のみます。',                      'I drink {EN}.',                                    'のむ = drink. を marks the direct object.'],
+      ['{N}を ください。',                       'Please give me {EN}.',                             '〜を ください = polite request.'],
+      ['もう いっぱい {N}を ください。',         'Another glass of {EN}, please.',                    'もう いっぱい = "one more cup".'],
+      ['{N}は いかが ですか。',                  'How about some {EN}?',                             'いかが = polite "how about?" (offering).'],
+      ['{N}を のみます。',                       'I drink {EN}.',                                    'のむ = drink. を marks the direct object.'],
       ['{N}が すき です。',                     'I like {EN}.',                                     'すき takes が (state particle, not action).'],
       ['{N}を のみたい です。',                 'I want to drink {EN}.',                            '〜たい on the い-stem (のみ + たい).'],
-      ['{N}を ください。',                     'Please give me {EN}.',                             '〜を ください = polite request.'],
       ['いっしょに {N}を のみませんか。',         'Want to drink {EN} together?',                    '〜ませんか = polite invitation.'],
       ['{N}は つめたい です。',                 'The {EN} is cold.',                                'つめたい = cold-to-touch (i-adj). For drinks/objects.'],
       ['きのう {N}を のみました。',              'I drank {EN} yesterday.',                          'のみます → のみました (polite past).'],
     ],
     people: [
+      ['{N}に つたえて ください。',              'Please tell the {EN}.',                            'つたえる = convey/tell. に for recipient. て + ください.'],
+      ['{N}を てつだって ください。',            'Please help the {EN}.',                            'てつだう = help. を for the one being helped.'],
       ['{N}と はなしました。',                  'I talked with the {EN}.',                         'と = with (a person). はなす → はなしました.'],
-      ['わたしの {N}は やさしい です。',          'My {EN} is kind.',                                'の = possession. やさしい = kind (i-adj).'],
       ['{N}に あいたい です。',                  'I want to see the {EN}.',                         'あう "to meet" takes に. 〜たい want-to.'],
+      ['わたしの {N}は やさしい です。',          'My {EN} is kind.',                                'の = possession. やさしい = kind (i-adj).'],
       ['{N}が ふたり います。',                  'There are two {EN}s.',                            'います for animate. ふたり = 2 (people-counter).'],
       ['きのう {N}と あいました。',              'I met the {EN} yesterday.',                       'あう → あいました.'],
       ['{N}は しんせつ です。',                  'The {EN} is kind/helpful.',                       'しんせつ = kind/helpful (na-adj, takes です).'],
@@ -3105,7 +3113,12 @@ const FOCUS_SENTENCE_BANK = {
       ['{N}は はやい です。',                    'The {EN} is fast.',                               'はやい = fast (i-adj).'],
     ],
     objects: [
+      ['{N}を かして ください。',                 'Please lend me the {EN}.',                       'かす = lend. て-form + ください = polite request.'],
+      ['{N}を もって もらえますか。',             'Could you hold the {EN} for me?',                 'もつ = hold. て + もらえますか = "could you do X for me?" (favor).'],
+      ['{N}を とって ください。',                'Please pass the {EN}.',                           'とる = take/pick up. Standard table request.'],
+      ['すみません、{N}は どこ ですか。',         'Excuse me, where is the {EN}?',                   'すみません = polite opener. は = topic, どこ = where.'],
       ['{N}が あります。',                       'I have a {EN}.',                                  'ある/あります for inanimate "to exist/have".'],
+      ['{N}を かして もらえますか。',             'Could I borrow your {EN}?',                       'Receiver-side: もらえますか softens to "could you let me have...".'],
       ['この {N}は あたらしい です。',            'This {EN} is new.',                               'この = "this" (immediately before the noun).'],
       ['{N}を つかいます。',                     'I use a {EN}.',                                   'つかう = use.'],
       ['{N}を かいたい です。',                  'I want to buy a {EN}.',                           'かう = buy. 〜たい want-to.'],
@@ -3113,6 +3126,8 @@ const FOCUS_SENTENCE_BANK = {
       ['きのう {N}を かいました。',              'I bought a {EN} yesterday.',                      'かう → かいました.'],
     ],
     home: [
+      ['すみません、{N}は どこ ですか。',         'Excuse me, where is the {EN}?',                   'Asking which room is where.'],
+      ['{N}に きて ください。',                  'Please come to the {EN}.',                         'くる → きて (te-form). + ください = polite request.'],
       ['{N}に います。',                         "I'm in the {EN}.",                               'に + います for stative location.'],
       ['{N}は きれい です。',                    'The {EN} is clean.',                              'きれい na-adj. きれい です = "is clean".'],
       ['{N}を そうじします。',                   'I clean the {EN}.',                               'そうじする = "to clean". を for place.'],
@@ -3120,6 +3135,8 @@ const FOCUS_SENTENCE_BANK = {
       ['{N}に いきます。',                       'I go to the {EN}.',                               'に = destination.'],
     ],
     tech: [
+      ['{N}を かして もらえますか。',             'Could I borrow your {EN}?',                       'もらえますか = polite "could you let me...?"'],
+      ['{N}の つかいかた を おしえて ください。', 'Please teach me how to use the {EN}.',            'つかいかた = "how to use" (い-stem + かた). おしえる = teach.'],
       ['{N}を つかいます。',                     'I use a {EN}.',                                   'つかう = use.'],
       ['この {N}は あたらしい です。',            'This {EN} is new.',                               'この + i-adj.'],
       ['{N}が ほしい です。',                    'I want a {EN}.',                                  'ほしい = want-an-object (i-adj). Takes が.'],
@@ -3127,6 +3144,8 @@ const FOCUS_SENTENCE_BANK = {
       ['まいにち {N}を つかいます。',             'I use a {EN} every day.',                         'まいにち = every day.'],
     ],
     school: [
+      ['{N}を おしえて ください。',              'Please teach me {EN}.',                            'おしえる = teach. を for what is taught.'],
+      ['{N}が わかりません。',                  "I don't understand {EN}.",                        'わかる = understand. が marks the thing understood. Polite negative ません.'],
       ['{N}は たのしい です。',                  'The {EN} is fun.',                                'たのしい i-adj.'],
       ['{N}は むずかしい です。',                 'The {EN} is hard.',                              'むずかしい = difficult (i-adj).'],
       ['{N}が だいすき です。',                  'I love the {EN}.',                                'だいすき takes が.'],
@@ -3180,6 +3199,8 @@ const FOCUS_SENTENCE_BANK = {
       ['この {N}は きれい です。',                'This {EN} is pretty.',                            'きれい na-adj.'],
     ],
     clothing: [
+      ['この {N}は どう ですか。',                'How is this {EN}?',                                'どう ですか = "how is it?" Asking opinion (shopping/wearing).'],
+      ['{N}を かして もらえますか。',             'Could I borrow your {EN}?',                       'もらえますか softens to "could you let me...?"'],
       ['{N}を きます。',                         'I wear a {EN}.',                                  'きる = wear (upper body). Note: pants use はく, hats かぶる.'],
       ['この {N}は かわいい です。',              'This {EN} is cute.',                              'かわいい i-adj.'],
       ['{N}を かいたい です。',                  'I want to buy a {EN}.',                          'かう + 〜たい.'],
@@ -3273,6 +3294,133 @@ const FOCUS_SENTENCE_BANK = {
     ['{N}が すき です。',                       'I like {EN}.',                                    'すき takes が.'],
   ],
 };
+
+/* v7.38 — Glossary for word-level meanings. User can't recognise every
+   non-focus word in a sentence ("some words ive never heard of please
+   give me the meaning of the words"). Below the EN line we surface a
+   compact "word = meaning · word = meaning" gloss so each token in
+   the sentence is readable. Kana-only, multi-character tokens included
+   so longer verbs like いきました are matched before the trailing は. */
+const FOCUS_GLOSS = {
+  /* particles */
+  'は':'(topic)','が':'(subj)','を':'(obj)','に':'to/at','で':'at/by','と':'with/and',
+  'から':'from','まで':'until','の':"'s/of",'も':'also','へ':'toward','や':'and',
+  'か':'?','ね':'(tag)','よ':'(emph)',
+  /* polite endings */
+  'です':'is','でした':'was','ですか':'is?','でしょう':'probably','じゃ':'(neg)',
+  /* requests / favours */
+  'ください':'please give','もらえますか':'could you?','ください。':'please give',
+  /* time */
+  'あした':'tomorrow','きのう':'yesterday','きょう':'today','いま':'now',
+  'まいにち':'every day','まいあさ':'every morning','いつも':'always','すぐ':'right away',
+  'もう':'more/already','すこし':'a little','ちょっと':'a bit','もうすこし':'a bit more',
+  'いっぱい':'a cup of','ひとつ':'one','ふたつ':'two','みっつ':'three',
+  /* pronouns / demonstratives */
+  'わたし':'I','わたしの':'my','あなた':'you','かれ':'he','かのじょ':'she',
+  'これ':'this(thing)','それ':'that(thing)','あれ':'that(far)',
+  'この':'this','その':'that','あの':'that(far)',
+  'ここ':'here','そこ':'there','あそこ':'over there',
+  'どこ':'where','どれ':'which','どう':'how','いつ':'when','なに':'what','なん':'what',
+  /* polite verbs - polite present */
+  'いきます':'go','きます':'come','します':'do','たべます':'eat','のみます':'drink',
+  'みます':'see','あいます':'meet','はなします':'speak','かいます':'buy',
+  'つかいます':'use','あらいます':'wash','のります':'ride','きます':'wear/come',
+  'あります':'have/exist','います':'be(person)','なります':'become',
+  'できます':'can do','おもいます':'think','かんじます':'feel','はしります':'run',
+  'まちます':'wait','かえりました':'returned',
+  /* polite past */
+  'いきました':'went','きました':'came','しました':'did','たべました':'ate',
+  'のみました':'drank','みました':'saw','あいました':'met','はなしました':'talked',
+  'かいました':'bought','こわれました':'broke','なりました':'became',
+  'いいました':'said','おぼえました':'memorised',
+  /* polite negative */
+  'ません':'not','たべません':"don't eat",'のみません':"don't drink",
+  'ありません':"don't have",
+  /* want-to */
+  'たい':'want to','いきたい':'want to go','たべたい':'want to eat',
+  'のみたい':'want to drink','あいたい':'want to meet','かいたい':'want to buy',
+  'のりたい':'want to ride',
+  /* invitation / volitional */
+  'ましょう':"let's",'ませんか':"won't you?",
+  /* te-form requests */
+  'かして':'lend(please)','もって':'hold(please)','とって':'pass(please)',
+  'おしえて':'teach(please)','つたえて':'tell(please)','てつだって':'help(please)',
+  'みて':'look(please)','きて':'come(please)','して':'do(please)','たべて':'eat(please)',
+  'のんで':'drink(please)','いって':'go(please)','つれて':'take(person)',
+  /* common adjectives */
+  'おいしい':'delicious','おおきい':'big','ちいさい':'small','たかい':'expensive/tall',
+  'やすい':'cheap','あたらしい':'new','ふるい':'old','はやい':'fast/early',
+  'おそい':'slow/late','かわいい':'cute','きれい':'pretty/clean','やさしい':'kind/easy',
+  'むずかしい':'hard','たのしい':'fun','おもい':'heavy','かるい':'light','ながい':'long',
+  'みじかい':'short','あつい':'hot','さむい':'cold','つめたい':'cold(touch)',
+  'いそがしい':'busy','いたい':'hurts','つよい':'strong','よわい':'weak',
+  'いたかった':'hurt(past)',
+  /* feeling / desire / state */
+  'すき':'like','だいすき':'love','ほしい':'want(thing)','しんせつ':'kind','しんぱい':'worry',
+  /* adverbs / intensifiers */
+  'とても':'very','あまり':'not very','よく':'often/well','ぜんぜん':'not at all',
+  'ずっと':'all along','ちょっと':'a bit','いっしょに':'together',
+  /* connectives */
+  'でも':'but','そして':'then','だから':'so','ところで':'by the way',
+  /* common content nouns appearing in templates */
+  'ともだち':'friend','ひと':'person','がくせい':'student','せんせい':'teacher',
+  'ほん':'book','くるま':'car','シャツ':'shirt','えいが':'movie','でんわ':'phone',
+  'てがみ':'letter','ごはん':'meal/rice','いろ':'color','みち':'road',
+  'もの':'thing(s)','なに か':'something','れい':'example','つかいかた':'how to use',
+  'きを':'attention(を)','けが':'injury','つもり':'plan','ことが':'(fact)',
+  'のが':"(act of)",'のは':"(act of)",
+  /* numbers / counters */
+  'ひとり':'1 person','ふたり':'2 people','じ':"o'clock",'かい':'times',
+  /* misc fixed pieces in templates */
+  'いかが':'how about','どう ですか':'how is it?','すみません':'excuse me',
+  'おねがいします':'please','ありがとう':'thank you',
+  'かもしれません':'might','まえに':'before','たことが':'(experience)',
+  'よう に':"so as to",'して います':'do(continuous)','じゃ ない':"isn't",
+  'じゃ ありません':"isn't (polite)",'わかりません':"don't understand",
+};
+
+/* Particles that can be cleanly peeled off the tail of a token like
+   "びょういん" + "に" → 2 tokens. Order longest first so multi-char
+   particles (まで, から) split before single-char ones. */
+const _GLOSS_TAIL_PARTICLES = ['までに','までは','までも','では','には','とは','から','まで','じゃ','とは','では','には','のは','のが','のを','のに','のと','のも','は','が','を','に','で','と','の','も','へ','や','か','ね','よ'];
+
+function _focusGlossTokenize(jp){
+  const stripped = jp.replace(/[。、！？「」（）()「」\[\]]/g, ' ');
+  const words = stripped.split(/\s+/).filter(Boolean);
+  const out = [];
+  for(const w of words){
+    /* peel up to two trailing particles, longest first */
+    let cur = w;
+    let peeled = [];
+    for(let pass = 0; pass < 2 && cur.length > 1; pass++){
+      let hit = null;
+      for(const p of _GLOSS_TAIL_PARTICLES){
+        if(cur.length > p.length && cur.endsWith(p)){ hit = p; break; }
+      }
+      if(!hit) break;
+      peeled.unshift(hit);
+      cur = cur.slice(0, -hit.length);
+    }
+    if(cur) out.push(cur);
+    for(const p of peeled) out.push(p);
+  }
+  return out;
+}
+
+function focusGlossLine(jp, focusJp){
+  const tokens = _focusGlossTokenize(jp);
+  const seen = new Set();
+  const parts = [];
+  for(const tk of tokens){
+    if(!tk) continue;
+    if(tk === focusJp) continue;
+    if(seen.has(tk)) continue;
+    seen.add(tk);
+    const gloss = FOCUS_GLOSS[tk];
+    if(gloss) parts.push({tk, gloss});
+  }
+  return parts;
+}
 
 function focusSentencesFor(w, max){
   if(!w) return [];
@@ -3503,16 +3651,23 @@ function renderFocus(){
     const framesHtml = sents.length
       ? `<div style="margin-top:8px">
            <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">In a sentence</div>
-           ${sents.map(f => `<div style="font-size:14px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px">
+           ${sents.map(f => {
+             const gloss = focusGlossLine(f.jp, w.jp);
+             const glossHtml = gloss.length
+               ? `<div style="font-size:11px;margin-top:5px;line-height:1.55;color:var(--muted)">${gloss.map(g => `<span class="jp" style="color:var(--text)">${esc(g.tk)}</span><span style="opacity:0.7">&nbsp;=&nbsp;${esc(g.gloss)}</span>`).join(' · ')}</div>`
+               : '';
+             return `<div style="font-size:14px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px">
               <div style="display:flex;align-items:flex-start;gap:8px">
                 <div style="flex:1;min-width:0">
                   <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
                   <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+                  ${glossHtml}
                 </div>
                 <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(f.jp)}')" title="Listen">🔊</button>
               </div>
               ${f.note ? `<div style="font-size:11px;margin-top:6px;padding:5px 7px;background:rgba(59,130,246,0.08);border-left:2px solid #3b82f6;border-radius:3px;line-height:1.4;color:var(--text)"><b style="font-size:9px;letter-spacing:0.06em;color:#3b82f6">WHY</b> ${esc(f.note)}</div>` : ''}
-            </div>`).join('')}
+            </div>`;
+           }).join('')}
          </div>`
       : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">Drill below will work this one into sentences.</div>`;
     return `<div class="card" style="padding:12px;margin-bottom:8px">
@@ -13084,7 +13239,7 @@ function renderBuildModeStep(){
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
           ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — listens, scores, falls back to type after 2 misses">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
-          ${auto ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="buildTogglePause()">${paused ? '▶ Resume' : '⏸ Pause'}</button>` : ''}
+          <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
       ${body}
@@ -13552,14 +13707,20 @@ function _buildRenderWriteInput(promptEn){
 function _buildRenderBuild(step){
   const b = state.buildMode;
   if(_buildWriteApplies(step) && !b.revealed) return _buildRenderWriteInput(step.sentence_en);
+  const focusJp = step.word_id ? (buildWordById(step.word_id)?.jp || '') : '';
+  const gloss = step.sentence_jp ? focusGlossLine(step.sentence_jp, focusJp) : [];
+  const glossBlock = gloss.length
+    ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:4px;font-size:13px;line-height:1.65;text-align:left">${gloss.map(g => `<span class="jp" style="color:var(--text)">${esc(g.tk)}</span><span style="color:var(--muted);opacity:0.85">&nbsp;=&nbsp;${esc(g.gloss)}</span>`).join(' · ')}</div>`
+    : '';
   const whyBlock = step.sentence_note
-    ? `<div style="margin-top:14px;padding:10px 12px;background:rgba(59,130,246,0.10);border-left:3px solid #3b82f6;border-radius:4px;line-height:1.5;text-align:left;font-size:13px"><b style="font-size:10px;letter-spacing:0.08em;color:#3b82f6">WHY</b><br>${esc(step.sentence_note)}</div>`
+    ? `<div style="margin-top:10px;padding:10px 12px;background:rgba(59,130,246,0.10);border-left:3px solid #3b82f6;border-radius:4px;line-height:1.5;text-align:left;font-size:13px"><b style="font-size:10px;letter-spacing:0.08em;color:#3b82f6">WHY</b><br>${esc(step.sentence_note)}</div>`
     : '';
   if(b.revealed){
     return `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
       <div class="build-big-jp">${esc(step.sentence_jp)}</div>
       <div class="build-big-en">${esc(step.sentence_en)}</div>
+      ${glossBlock}
       ${whyBlock}
     `;
   }
