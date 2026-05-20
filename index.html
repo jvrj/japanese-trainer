@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.36';
+const APP_VERSION = '7.37';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3028,202 +3028,255 @@ function focusAddCurrentBuild(){
 }
 window.focusAddCurrentBuild = focusAddCurrentBuild;
 
-/* v7.35 — Focus sentence bank. For EVERY word the user picks (any pos,
-   any theme), return 3-4 naturally conversational sentences showing how
-   to slot the word into real Japanese. User spec, verbatim: byouin →
-   "im going to the hospital tomorrow" / "do you want to go to the
-   hospital with me tomorrow to see ___?". Kana only, no kanji ever.
-   Verbs use dictionary-form-only frames so we never have to conjugate. */
+/* v7.37 — Focus sentence bank. Each template is [jp, en, note]:
+   the JP sentence with the focus word slotted in, the EN gloss, and
+   a one-line WHY explaining the grammar (particle role, conjugation
+   rule, register). Notes turn the drill from "guess and reveal" into
+   "see WHY this construction works".
+   Sentences are ordered as a progression: basic → past/question →
+   extended (compound: time + companion + place + verb).
+   I-adjectives get extra substitution tokens {Aneg}/{Apast}/{Aadv}
+   so we can produce grammatically correct conjugations from any い-adj. */
 const FOCUS_DRINK_ROMAJI = new Set(['mizu','ocha','koohii','gyuunyuu','juusu','biiru','osake','wain','nomimono']);
 
 const FOCUS_SENTENCE_BANK = {
   noun: {
     places: [
-      ['あした {N}に いきます。',          "Tomorrow I'm going to the {EN}."],
-      ['いっしょに {N}に いきませんか。',     'Want to go to the {EN} together?'],
-      ['きのう {N}に いきました。',         'I went to the {EN} yesterday.'],
-      ['{N}は どこ ですか。',             'Where is the {EN}?'],
+      ['{N}に いきます。',                       'I go to the {EN}.',                                 'に marks destination. いきます = polite present of いく.'],
+      ['あした {N}に いきます。',                 "Tomorrow I'm going to the {EN}.",                  'Time word (あした) goes before the destination.'],
+      ['きのう {N}に いきました。',               'I went to the {EN} yesterday.',                    'いきます → いきました (polite past).'],
+      ['{N}は どこ ですか。',                   'Where is the {EN}?',                                'は = topic. どこ = where. ですか = polite question.'],
+      ['いっしょに {N}に いきませんか。',          'Want to go to the {EN} together?',                 '〜ませんか = polite invitation. Negative question = "won\'t you?"'],
+      ['{N}に いきたい です。',                  'I want to go to the {EN}.',                         '〜たい attaches to the い-stem (いき + たい) = want to do.'],
+      ['{N}で あいましょう。',                  "Let's meet at the {EN}.",                          'で marks where an action happens (≠ に which marks destination).'],
+      ['{N}から かえりました。',                'I came back from the {EN}.',                       'から = from (origin point).'],
+      ['あした ともだち と {N}に いきます。',     "Tomorrow I'm going to the {EN} with a friend.",   'と = with (companion). Extended order: time → companion → place → verb.'],
+      ['{N}に いったことが あります。',          'I have been to the {EN} before.',                  '〜たことが あります = "have done before" (experience).'],
     ],
     food: [
-      ['{N}を たべたい です。',            'I want to eat {EN}.'],
-      ['{N}が すき です。',                'I like {EN}.'],
-      ['{N}は おいしい です。',             'The {EN} is delicious.'],
-      ['いっしょに {N}を たべましょう。',     "Let's eat {EN} together."],
+      ['{N}を たべます。',                      'I eat {EN}.',                                      'を marks the direct object. たべます = polite present.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                     'すき takes が, not を. "Like" is a state, not an action.'],
+      ['{N}を たべたい です。',                 'I want to eat {EN}.',                              '〜たい on the い-stem (たべ + たい) = want to.'],
+      ['{N}は おいしい です。',                 'The {EN} is delicious.',                           'は = topic. おいしい i-adjective predicate.'],
+      ['{N}を ください。',                     'Please give me {EN}.',                             '〜を ください = polite "please give me".'],
+      ['いっしょに {N}を たべましょう。',         "Let's eat {EN} together.",                         '〜ましょう = polite "let\'s". Volitional polite form.'],
+      ['きのう {N}を たべました。',              'I ate {EN} yesterday.',                            'たべます → たべました (polite past).'],
+      ['{N}は あまり たべません。',              "I don't eat {EN} much.",                          'あまり + negative = "not much/often".'],
+      ['あした ともだち と {N}を たべます。',     "Tomorrow I'll eat {EN} with a friend.",          'と = with. Extended: time + companion + obj + verb.'],
     ],
     drink: [
-      ['{N}を のみたい です。',            'I want to drink {EN}.'],
-      ['{N}が すき です。',                'I like {EN}.'],
-      ['{N}を ください。',                'Please give me {EN}.'],
-      ['いっしょに {N}を のみませんか。',     'Want to drink {EN} together?'],
+      ['{N}を のみます。',                      'I drink {EN}.',                                    'のむ = drink. を marks the direct object.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                     'すき takes が (state particle, not action).'],
+      ['{N}を のみたい です。',                 'I want to drink {EN}.',                            '〜たい on the い-stem (のみ + たい).'],
+      ['{N}を ください。',                     'Please give me {EN}.',                             '〜を ください = polite request.'],
+      ['いっしょに {N}を のみませんか。',         'Want to drink {EN} together?',                    '〜ませんか = polite invitation.'],
+      ['{N}は つめたい です。',                 'The {EN} is cold.',                                'つめたい = cold-to-touch (i-adj). For drinks/objects.'],
+      ['きのう {N}を のみました。',              'I drank {EN} yesterday.',                          'のみます → のみました (polite past).'],
     ],
     people: [
-      ['{N}と はなしました。',             'I talked with the {EN}.'],
-      ['わたしの {N}は やさしい です。',     'My {EN} is kind.'],
-      ['{N}に あいたい です。',            'I want to see the {EN}.'],
-      ['{N}が ふたり います。',            'There are two {EN}s.'],
+      ['{N}と はなしました。',                  'I talked with the {EN}.',                         'と = with (a person). はなす → はなしました.'],
+      ['わたしの {N}は やさしい です。',          'My {EN} is kind.',                                'の = possession. やさしい = kind (i-adj).'],
+      ['{N}に あいたい です。',                  'I want to see the {EN}.',                         'あう "to meet" takes に. 〜たい want-to.'],
+      ['{N}が ふたり います。',                  'There are two {EN}s.',                            'います for animate. ふたり = 2 (people-counter).'],
+      ['きのう {N}と あいました。',              'I met the {EN} yesterday.',                       'あう → あいました.'],
+      ['{N}は しんせつ です。',                  'The {EN} is kind/helpful.',                       'しんせつ = kind/helpful (na-adj, takes です).'],
+      ['あした {N}と えいが を みます。',         "Tomorrow I'll see a movie with the {EN}.",       'Extended: time + companion + obj + verb.'],
     ],
     family: [
-      ['わたしの {N}です。',               'This is my {EN}.'],
-      ['{N}が います。',                   'I have a {EN}.'],
-      ['{N}と あいたい です。',            'I want to see my {EN}.'],
-      ['わたしの {N}は やさしい です。',     'My {EN} is kind.'],
+      ['わたしの {N}です。',                    'This is my {EN}.',                                'の marks possession.'],
+      ['{N}が います。',                        'I have a {EN}.',                                  'For people: いる/います (animate "to exist").'],
+      ['わたしの {N}は やさしい です。',         'My {EN} is kind.',                                'やさしい = kind/gentle (i-adj).'],
+      ['{N}と あいたい です。',                  'I want to see my {EN}.',                          'と = with. あう = meet.'],
+      ['まいにち {N}に でんわ します。',          'I call my {EN} every day.',                       'でんわする = "to phone" (suru-verb). に = recipient.'],
+      ['きのう {N}と はなしました。',            'I talked with my {EN} yesterday.',               'と = with. はなす → はなしました.'],
     ],
     body: [
-      ['{N}が いたい です。',              'My {EN} hurts.'],
-      ['{N}を つかいます。',               'I use my {EN}.'],
-      ['{N}を あらいます。',               'I wash my {EN}.'],
+      ['{N}が いたい です。',                   'My {EN} hurts.',                                  'いたい takes が (state particle).'],
+      ['{N}を あらいます。',                    'I wash my {EN}.',                                 'を marks the direct object.'],
+      ['{N}を つかいます。',                    'I use my {EN}.',                                  'つかう = use. を for the body part as tool.'],
+      ['{N}が おおきい です。',                 'My {EN} is big.',                                 'おおきい = big (i-adj).'],
+      ['きのう {N}が いたかった です。',          'My {EN} hurt yesterday.',                         'いたい → いたかった (i-adj past). Drop い + add かった.'],
     ],
     animals: [
-      ['{N}は かわいい です。',             'The {EN} is cute.'],
-      ['{N}が だいすき です。',             'I love {EN}s.'],
-      ['{N}を みました。',                 'I saw a {EN}.'],
+      ['{N}は かわいい です。',                  'The {EN} is cute.',                               'かわいい = cute (i-adj).'],
+      ['{N}が だいすき です。',                  'I love {EN}s.',                                   'だいすき = "love" (great-like). Takes が.'],
+      ['{N}を かいたい です。',                  'I want to own a {EN}.',                           'かう (for an animal) = to keep as a pet. 〜たい want-to.'],
+      ['{N}を みました。',                       'I saw a {EN}.',                                   'みる → みました. を for the seen object.'],
+      ['{N}は はやい です。',                    'The {EN} is fast.',                               'はやい = fast (i-adj).'],
     ],
     objects: [
-      ['{N}が あります。',                 'I have a {EN}.'],
-      ['この {N}は あたらしい です。',       'This {EN} is new.'],
-      ['{N}を かいたい です。',             'I want to buy a {EN}.'],
-      ['{N}を つかいます。',                'I use a {EN}.'],
+      ['{N}が あります。',                       'I have a {EN}.',                                  'ある/あります for inanimate "to exist/have".'],
+      ['この {N}は あたらしい です。',            'This {EN} is new.',                               'この = "this" (immediately before the noun).'],
+      ['{N}を つかいます。',                     'I use a {EN}.',                                   'つかう = use.'],
+      ['{N}を かいたい です。',                  'I want to buy a {EN}.',                           'かう = buy. 〜たい want-to.'],
+      ['{N}は たかい です。',                    'The {EN} is expensive.',                          'たかい = expensive/tall (i-adj).'],
+      ['きのう {N}を かいました。',              'I bought a {EN} yesterday.',                      'かう → かいました.'],
     ],
     home: [
-      ['{N}に います。',                   "I'm in the {EN}."],
-      ['{N}は きれい です。',               'The {EN} is clean.'],
-      ['{N}を そうじします。',              'I clean the {EN}.'],
+      ['{N}に います。',                         "I'm in the {EN}.",                               'に + います for stative location.'],
+      ['{N}は きれい です。',                    'The {EN} is clean.',                              'きれい na-adj. きれい です = "is clean".'],
+      ['{N}を そうじします。',                   'I clean the {EN}.',                               'そうじする = "to clean". を for place.'],
+      ['まいにち {N}を つかいます。',             'I use the {EN} every day.',                       'まいにち = every day.'],
+      ['{N}に いきます。',                       'I go to the {EN}.',                               'に = destination.'],
     ],
     tech: [
-      ['{N}を つかいます。',                'I use a {EN}.'],
-      ['この {N}は あたらしい です。',       'This {EN} is new.'],
-      ['{N}が ほしい です。',                'I want a {EN}.'],
+      ['{N}を つかいます。',                     'I use a {EN}.',                                   'つかう = use.'],
+      ['この {N}は あたらしい です。',            'This {EN} is new.',                               'この + i-adj.'],
+      ['{N}が ほしい です。',                    'I want a {EN}.',                                  'ほしい = want-an-object (i-adj). Takes が.'],
+      ['{N}が こわれました。',                  'My {EN} broke.',                                  'こわれる = break (intransitive). Past polite.'],
+      ['まいにち {N}を つかいます。',             'I use a {EN} every day.',                         'まいにち = every day.'],
     ],
     school: [
-      ['{N}は たのしい です。',              'The {EN} is fun.'],
-      ['{N}は むずかしい です。',            'The {EN} is hard.'],
-      ['{N}が だいすき です。',              'I love the {EN}.'],
-      ['{N}に いきます。',                  'I go to {EN}.'],
+      ['{N}は たのしい です。',                  'The {EN} is fun.',                                'たのしい i-adj.'],
+      ['{N}は むずかしい です。',                 'The {EN} is hard.',                              'むずかしい = difficult (i-adj).'],
+      ['{N}が だいすき です。',                  'I love the {EN}.',                                'だいすき takes が.'],
+      ['{N}を します。',                         'I do {EN}.',                                      'する → します. Generic "to do" verb.'],
+      ['{N}に いきます。',                       'I go to {EN}.',                                   'に = destination.'],
+      ['きのう {N}を しました。',                'I did {EN} yesterday.',                           'します → しました.'],
     ],
     work: [
-      ['{N}は いそがしい です。',            'The {EN} is busy.'],
-      ['{N}を します。',                   'I do {EN}.'],
-      ['{N}に いきます。',                  'I go to {EN}.'],
+      ['{N}は いそがしい です。',                 'The {EN} is busy.',                              'いそがしい = busy (i-adj).'],
+      ['{N}を します。',                         'I do {EN}.',                                      'する = do. Suru-verb pattern.'],
+      ['{N}に いきます。',                       'I go to {EN}.',                                   'に = destination.'],
+      ['きょう は {N}が あります。',             'I have {EN} today.',                              'ある = exist/have (inanimate).'],
+      ['あした {N}が あります。',                'I have {EN} tomorrow.',                           'ある with future time = scheduled event.'],
     ],
     travel: [
-      ['{N}に のります。',                  'I get on the {EN}.'],
-      ['{N}で いきます。',                  'I go by {EN}.'],
-      ['{N}は はやい です。',                'The {EN} is fast.'],
+      ['{N}に のります。',                       'I get on the {EN}.',                              'のる = board. Takes に.'],
+      ['{N}で いきます。',                       'I go by {EN}.',                                   'で = means/instrument (by means of).'],
+      ['{N}は はやい です。',                    'The {EN} is fast.',                               'はやい i-adj.'],
+      ['{N}に のりたい です。',                  'I want to ride the {EN}.',                        '〜たい want-to.'],
+      ['この {N}は たかい です。',                'This {EN} is expensive.',                        'たかい = expensive (i-adj).'],
     ],
     time: [
-      ['{N}に あいましょう。',              "Let's meet on/at {EN}."],
-      ['{N}は いそがしい です。',            '{EN} is busy.'],
-      ['{N}まで まちます。',                "I'll wait until {EN}."],
-      ['{N}が すき です。',                  'I like {EN}.'],
+      ['きょう は {N}です。',                   'Today is {EN}.',                                  'は = topic. X は Y です = "X is Y".'],
+      ['{N}に あいましょう。',                  "Let's meet on/at {EN}.",                          'に for specific time points (Monday, 3 o\'clock).'],
+      ['{N}は いそがしい です。',                '{EN} is busy.',                                   'いそがしい i-adj.'],
+      ['{N}まで まちます。',                     "I'll wait until {EN}.",                          'まで = until (time limit).'],
+      ['{N}から しごと です。',                  "Work starts at {EN}.",                            'から = from (start point).'],
     ],
     weather: [
-      ['きょう は {N}です。',                'Today is {EN}.'],
-      ['{N}が すき です。',                  'I like {EN}.'],
-      ['{N}に なりました。',                 "It's become {EN}."],
+      ['きょう は {N}です。',                   'Today is {EN}.',                                  'X は Y です. Weather noun as predicate.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                    'すき takes が.'],
+      ['{N}に なりました。',                    "It's become {EN}.",                              'なる = become. に for the resulting state.'],
+      ['あした は {N}でしょう。',                'Tomorrow will be {EN}.',                          'でしょう = "probably/will be" (forecast tone).'],
     ],
     nature: [
-      ['{N}が すき です。',                  'I like {EN}.'],
-      ['{N}を みました。',                   'I saw {EN}.'],
-      ['{N}は きれい です。',                'The {EN} is beautiful.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                    'すき takes が.'],
+      ['{N}を みました。',                       'I saw {EN}.',                                     'みる + を for sight.'],
+      ['{N}は きれい です。',                    'The {EN} is beautiful.',                          'きれい = pretty (na-adj). Stays as-is before です.'],
+      ['{N}に いきたい です。',                  'I want to go to {EN}.',                          'に = destination, 〜たい want-to.'],
     ],
     health: [
-      ['{N}が あります。',                   'I have {EN}.'],
-      ['{N}が しんぱい です。',               "I'm worried about {EN}."],
-      ['{N}に きを つけます。',               "I'll take care of my {EN}."],
+      ['{N}が あります。',                       'I have {EN}.',                                    'ある for non-animate concept.'],
+      ['{N}が しんぱい です。',                  "I'm worried about {EN}.",                         'しんぱい = worry (na-adj/noun). Takes が.'],
+      ['{N}に きを つけます。',                   "I'll take care of {EN}.",                        'きを つける = "to be careful with". に for the target.'],
+      ['{N}を のみました。',                     'I took {EN}.',                                    '(Medicine) のむ = take. Lit. "drink".'],
     ],
     colors: [
-      ['{N}が すき です。',                  'I like {EN}.'],
-      ['この いろ は {N}です。',              'This color is {EN}.'],
-      ['{N}の くるま が ほしい です。',        'I want a {EN} car.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                    'すき takes が.'],
+      ['この いろ は {N}です。',                 'This color is {EN}.',                            'X は Y です. Color as predicate.'],
+      ['{N}の くるま が ほしい です。',           'I want a {EN} car.',                              'の = modifier joining noun-color to noun.'],
+      ['この {N}は きれい です。',                'This {EN} is pretty.',                            'きれい na-adj.'],
     ],
     clothing: [
-      ['{N}を きます。',                    'I wear a {EN}.'],
-      ['この {N}は かわいい です。',          'This {EN} is cute.'],
-      ['{N}を かいたい です。',              'I want to buy a {EN}.'],
+      ['{N}を きます。',                         'I wear a {EN}.',                                  'きる = wear (upper body). Note: pants use はく, hats かぶる.'],
+      ['この {N}は かわいい です。',              'This {EN} is cute.',                              'かわいい i-adj.'],
+      ['{N}を かいたい です。',                  'I want to buy a {EN}.',                          'かう + 〜たい.'],
+      ['{N}は たかい です。',                    'The {EN} is expensive.',                          'たかい i-adj.'],
+      ['きのう {N}を かいました。',              'I bought a {EN} yesterday.',                      'かう → かいました.'],
     ],
     numbers: [
-      ['{N}つ ください。',                  'Please give me {EN} of them.'],
-      ['{N}かい いきました。',               'I went {EN} times.'],
-      ['{N}じ に あいましょう。',            "Let's meet at {EN} o'clock."],
+      ['{N}つ ください。',                       'Please give me {EN} of them.',                   'つ = generic counter (1-10).'],
+      ['{N}かい いきました。',                   'I went {EN} times.',                              'かい = "times" counter.'],
+      ['{N}じ に あいましょう。',                "Let's meet at {EN} o'clock.",                    'じ = o\'clock. に marks the time.'],
     ],
     counters: [
-      ['{N} ください。',                    'Please give me {EN}.'],
-      ['{N} あります。',                    'I have {EN}.'],
+      ['{N} ください。',                        'Please give me {EN}.',                            'Counter follows the noun directly.'],
+      ['{N} あります。',                        'There are {EN}.',                                 'For inanimate items.'],
     ],
     feelings: [
-      ['{N}が あります。',                   'I have {EN}.'],
-      ['{N}を かんじます。',                 'I feel {EN}.'],
-      ['とても {N}です。',                  "I'm very {EN}."],
+      ['{N}が あります。',                       'I have {EN}.',                                    'ある for abstract concepts.'],
+      ['{N}を かんじます。',                     'I feel {EN}.',                                    'かんじる = feel. を for the feeling.'],
+      ['とても {N}です。',                       "It's very {EN}.",                                'とても = very. Intensifier.'],
     ],
     greetings: [
-      ['{N}。',                            '{EN}.'],
-      ['「{N}」と いいます。',              'You say "{EN}".'],
-      ['まいあさ 「{N}」と いいます。',        'Every morning I say "{EN}".'],
+      ['{N}。',                                '{EN}.',                                            'Set phrase used in a specific situation.'],
+      ['「{N}」と いいます。',                   'You say "{EN}".',                                '〜と いう = "say". と is the quotation marker.'],
     ],
     _default: [
-      ['これ は {N}です。',                 'This is {EN}.'],
-      ['{N}が すき です。',                 'I like {EN}.'],
-      ['{N}が あります。',                  'I have {EN}.'],
+      ['これ は {N}です。',                     'This is {EN}.',                                  'これ = this. X は Y です.'],
+      ['{N}が すき です。',                     'I like {EN}.',                                    'すき takes が.'],
+      ['{N}が あります。',                       'I have {EN}.',                                    'ある = exist (inanimate).'],
     ],
   },
-  /* Verbs — dictionary form slotted into frames that don't require us
-     to know whether the verb is godan, ichidan, or irregular. */
+  /* Verbs — dictionary-form patterns so we never have to conjugate.
+     Templates use {N} = the dictionary form verb (e.g., たべる). */
   v: [
-    ['{N}のが すき です。',                 'I like to {EN}.'],
-    ['{N}つもり です。',                   'I plan to {EN}.'],
-    ['{N}ことが できます。',                'I can {EN}.'],
-    ['{N}かもしれません。',                 'I might {EN}.'],
+    ['{N}のが すき です。',                     'I like to {EN}.',                                '〜のが すき = "like doing". の nominalizes the action.'],
+    ['{N}つもり です。',                        'I plan to {EN}.',                                '〜つもり です = plan/intend to. Dictionary form attaches directly.'],
+    ['{N}ことが できます。',                    'I can {EN}.',                                     '〜ことが できる = ability. こと nominalizes.'],
+    ['{N}まえに、なに か たべます。',            'Before I {EN}, I eat something.',                '〜まえに = "before doing" (dictionary form + まえに).'],
+    ['{N}と おもいます。',                      'I think (I will) {EN}.',                         '〜と おもう = "think that". Plain form before と.'],
+    ['{N}かもしれません。',                     'I might {EN}.',                                   '〜かもしれません = might/possibly. Plain form + かもしれません.'],
+    ['まいにち {N}ように して います。',         'I try to {EN} every day.',                       '〜ようにする = "try to do" (make an effort).'],
   ],
-  /* i-adjectives — end in い in their plain form. */
+  /* i-adjectives — replacement tokens {A}/{Aneg}/{Apast}/{Aadv}
+     give us correct negative/past/adverbial forms without literal い+くない. */
   adj: [
-    ['とても {N} です。',                  'It is very {EN}.'],
-    ['きょう は {N} ですね。',              "Today is {EN}, isn't it?"],
-    ['{N} もの が すき です。',             'I like {EN} things.'],
-    ['あまり {N} くない です。',             "It's not very {EN}."],
+    ['とても {A} です。',                       'It is very {EN}.',                                'とても = very. i-adj + です stays as-is.'],
+    ['きょう は {A} ですね。',                   "Today is {EN}, isn't it?",                       '〜ね = soft confirmation tag.'],
+    ['{A} もの が すき です。',                  'I like {EN} things.',                            'i-adj before a noun stays in dictionary form.'],
+    ['あまり {Aneg} です。',                    "It's not very {EN}.",                            'i-adj negative: drop final い, add くない. Then + です = polite.'],
+    ['きのう は {Apast} です。',                 'Yesterday was {EN}.',                            'i-adj past: drop final い, add かった. Then + です = polite.'],
+    ['{Aadv} なりました。',                      'It became {EN}.',                                'i-adj adverbial: drop い, add く. Then + なる = become.'],
+    ['{A} と おもいます。',                      'I think it is {EN}.',                            'と おもう = think that. Plain adjective before と.'],
   ],
-  /* na-adjectives — need な before a noun. */
+  /* na-adjectives — base form, no conjugation token needed for these templates. */
   'adj-na': [
-    ['とても {N} です。',                  'It is very {EN}.'],
-    ['{N} な ひと が すき です。',          'I like {EN} people.'],
-    ['ここ は {N} です。',                 'This place is {EN}.'],
-    ['きのう は {N} でした。',              'Yesterday it was {EN}.'],
+    ['とても {N} です。',                       'It is very {EN}.',                                'na-adj + です. No な before です.'],
+    ['{N} な ひと が すき です。',               'I like {EN} people.',                            'na-adj before a noun needs な.'],
+    ['ここ は {N} です。',                      'This place is {EN}.',                            'X は Y です. na-adj as predicate.'],
+    ['きのう は {N} でした。',                   'Yesterday it was {EN}.',                          'na-adj past polite: です → でした.'],
+    ['{N} じゃ ありません。',                    "It's not {EN}.",                                'na-adj negative polite: じゃ ありません (or では ありません).'],
   ],
   adv: [
-    ['{N} やります。',                    'I do it {EN}.'],
-    ['{N} はなします。',                   'I speak {EN}.'],
-    ['{N} たべます。',                     'I eat {EN}.'],
+    ['{N} はなします。',                         'I speak {EN}.',                                  'Adverbs go before the verb they modify.'],
+    ['{N} たべます。',                           'I eat {EN}.',                                    'Adverb + verb. No particle needed between them.'],
+    ['{N} やります。',                           'I do it {EN}.',                                  'やる = do (casual). Adverb modifies the verb.'],
+    ['{N} はしります。',                         'I run {EN}.',                                    'はしる = run.'],
   ],
   expr: [
-    ['「{N}」と いいました。',             'I said "{EN}".'],
-    ['まいにち 「{N}」と いいます。',        'I say "{EN}" every day.'],
-    ['{N}',                              '{EN}'],
+    ['「{N}」と いいました。',                   'I said "{EN}".',                                 'と marks a quotation. いう → いいました.'],
+    ['まいにち 「{N}」と いいます。',             'I say "{EN}" every day.',                        'まいにち = every day.'],
   ],
   pron: [
-    ['{N} です。',                        "It's {EN}."],
-    ['{N} を つかいます。',                'I use "{EN}".'],
-    ['{N} が すき です。',                 'I like {EN}.'],
+    ['{N} は がくせい です。',                   '{EN} is a student.',                             'X は Y です. Pronoun + topic particle.'],
+    ['{N} を つかいます。',                     'I use "{EN}".',                                  '(Demonstrative pronouns) を marks object.'],
+    ['{N} が すき です。',                       '{EN} likes it.',                                 'すき takes が.'],
   ],
   part: [
-    ['「{N}」を つかいます。',              'I use "{EN}".'],
-    ['これ は 「{N}」の れい です。',        'This is an example of "{EN}".'],
+    ['「{N}」を つかいます。',                   'I use "{EN}".',                                  '(Particle) Used to mark a grammatical role.'],
+    ['これ は 「{N}」の れい です。',             'This is an example of "{EN}".',                  'の = "of" (modifier).'],
   ],
   conj: [
-    ['ねます。{N}、おきます。',             "I'll sleep. {EN}, I'll wake up."],
-    ['「{N}」を おぼえました。',            'I memorized "{EN}".'],
+    ['ねます。{N}、おきます。',                   "I'll sleep. {EN}, I'll wake up.",                'Conjunctions sit at the start of the second clause.'],
+    ['「{N}」を おぼえました。',                  'I memorized "{EN}".',                            'おぼえる = memorize.'],
   ],
   num: [
-    ['{N}つ ください。',                  '{EN}, please.'],
-    ['{N}かい いきました。',               'I went {EN} times.'],
-    ['{N}じ です。',                       "It's {EN} o'clock."],
+    ['{N}つ ください。',                         '{EN}, please.',                                   'つ = generic counter (1-10).'],
+    ['{N}かい いきました。',                     'I went {EN} times.',                              'かい = "times" counter.'],
+    ['{N}じ です。',                             "It's {EN} o'clock.",                              'じ = o\'clock counter.'],
   ],
   _default: [
-    ['これ は {N}です。',                 'This is {EN}.'],
-    ['{N}が すき です。',                  'I like {EN}.'],
+    ['これ は {N}です。',                       'This is {EN}.',                                  'X は Y です.'],
+    ['{N}が すき です。',                       'I like {EN}.',                                    'すき takes が.'],
   ],
 };
 
-function focusSentencesFor(w){
+function focusSentencesFor(w, max){
   if(!w) return [];
+  max = max == null ? 6 : max;
   let pool;
   if(w.pos === 'n'){
     let key = w.theme || '_default';
@@ -3234,9 +3287,21 @@ function focusSentencesFor(w){
   }
   const slot = w.jp;
   const en   = w.en || '';
-  return pool.slice(0, 4).map(([jpTpl, enTpl]) => ({
-    jp: jpTpl.replace(/\{N\}/g, slot),
-    en: enTpl.replace(/\{EN\}/g, en).replace(/\{N\}/g, slot),
+  const ctx = { N: slot, EN: en };
+  if(w.pos === 'adj' && /い$/.test(slot)){
+    const base = slot.slice(0, -1);
+    ctx.A    = slot;
+    ctx.Aneg = base + 'くない';
+    ctx.Apast= base + 'かった';
+    ctx.Aadv = base + 'く';
+  } else {
+    ctx.A = slot; ctx.Aneg = slot; ctx.Apast = slot; ctx.Aadv = slot;
+  }
+  const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => ctx[k] != null ? ctx[k] : ('{'+k+'}'));
+  return pool.slice(0, max).map(([jpTpl, enTpl, noteTpl]) => ({
+    jp:   fill(jpTpl),
+    en:   fill(enTpl),
+    note: noteTpl ? fill(noteTpl) : ''
   }));
 }
 
@@ -3253,9 +3318,11 @@ function buildFocusLesson(){
   const steps = [];
   for(const w of pool){
     steps.push({ type:'recall', word_id:w.id });
-    const sents = focusSentencesFor(w);
+    /* v7.37 — cap drill at 4 sentences per word so a 14-word basket
+       stays under ~75 steps. Display still shows up to 6. */
+    const sents = focusSentencesFor(w, 4);
     for(const s of sents){
-      steps.push({ type:'build', sentence_jp:s.jp, sentence_en:s.en, word_id:w.id });
+      steps.push({ type:'build', sentence_jp:s.jp, sentence_en:s.en, sentence_note:s.note, word_id:w.id });
     }
   }
   return {
@@ -3284,21 +3351,50 @@ window.startFocusDrill = startFocusDrill;
 /* Fresh-batch chooser — surface words worth sentence work (learning >
    new > mature, basket/mastered/suspended excluded) and let the user
    tick which to pull into the basket. This is the re-pick step.
-   v7.36 — content-words only. User: "good words to use not bloody
-   itterashai". Set-phrases (expr), particles, conjunctions, pronouns,
-   and bare numerals can't really be "built sentences with" — you say
-   them, you don't construct around them. So the chooser only surfaces
-   nouns, verbs, i-adjectives, na-adjectives, and adverbs. */
+   v7.36 — content-words only (no expr/part/conj/pron/num).
+   v7.37 — topic chips filter the candidate pool by theme or pos. */
 const FOCUS_CHOOSABLE_POS = new Set(['n','v','adj','adj-na','adv']);
-function focusFreshBatch(){
+const FOCUS_CHIPS = [
+  {key:'all',       label:'All'},
+  {key:'places',    label:'Places'},
+  {key:'food',      label:'Food'},
+  {key:'people',    label:'People'},
+  {key:'family',    label:'Family'},
+  {key:'body',      label:'Body'},
+  {key:'animals',   label:'Animals'},
+  {key:'objects',   label:'Things'},
+  {key:'home',      label:'Home'},
+  {key:'school',    label:'School'},
+  {key:'work',      label:'Work'},
+  {key:'travel',    label:'Travel'},
+  {key:'time',      label:'Time'},
+  {key:'tech',      label:'Tech'},
+  {key:'clothing',  label:'Clothing'},
+  {key:'verbs',     label:'Verbs'},
+  {key:'adjs',      label:'Adjectives'},
+  {key:'advs',      label:'Adverbs'},
+];
+function _focusChipMatches(w, key){
+  if(key === 'all')   return true;
+  if(key === 'verbs') return w.pos === 'v';
+  if(key === 'adjs')  return w.pos === 'adj' || w.pos === 'adj-na';
+  if(key === 'advs')  return w.pos === 'adv';
+  return w.theme === key;
+}
+function focusFreshBatch(filterKey){
+  const ui = state._focusUi || {};
+  if(!filterKey) filterKey = ui.batchFilter || 'all';
   const inBasket   = new Set(state.settings.focusWords   || []);
   const masteredS  = new Set(state.settings.masteredWords  || []);
   const suspendedS = new Set(state.settings.suspendedWords || []);
   const pool = getActiveWords().filter(w =>
     FOCUS_CHOOSABLE_POS.has(w.pos) &&
+    _focusChipMatches(w, filterKey) &&
     !inBasket.has(w.id) && !masteredS.has(w.id) && !suspendedS.has(w.id));
   if(!pool.length){
-    if(typeof showToast === 'function') showToast('No more words available to add.', {tone:'info', duration:3000});
+    /* Keep picker open with chips so the user can switch filter. */
+    state._focusUi = { picking:true, batchFilter:filterKey, batch:[], checked:{} };
+    render();
     return;
   }
   const score = w => {
@@ -3309,10 +3405,12 @@ function focusFreshBatch(){
   };
   const ranked = pool.slice().sort((a,b) => score(a) - score(b));
   const batch = shuffleFY(ranked.slice(0, 40)).slice(0, 12);
-  state._focusUi = { picking:true, batch: batch.map(w => w.id), checked:{} };
+  state._focusUi = { picking:true, batchFilter:filterKey, batch: batch.map(w => w.id), checked:{} };
   render();
 }
 window.focusFreshBatch = focusFreshBatch;
+function focusFilterChip(key){ focusFreshBatch(key); }
+window.focusFilterChip = focusFilterChip;
 function focusBatchToggle(id){
   const ui = state._focusUi; if(!ui) return;
   ui.checked[id] = !ui.checked[id];
@@ -3361,12 +3459,18 @@ function renderFocus(){
       </div>`;
     }).join('');
     const nSel = ui.batch.filter(id => ui.checked[id]).length;
+    const active = ui.batchFilter || 'all';
+    const chipsHtml = FOCUS_CHIPS.map(c => {
+      const on = c.key === active;
+      return `<button class="btn" style="font-size:12px;padding:5px 11px;border-radius:999px;background:${on ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${on ? '#fff' : 'var(--text)'};border:1px solid ${on ? 'var(--blue)' : 'var(--border)'};white-space:nowrap" onclick="focusFilterChip('${c.key}')">${esc(c.label)}</button>`;
+    }).join('');
     return `
       <div class="card">
         <h2 style="margin-top:0">Fresh batch</h2>
-        <div class="muted" style="font-size:13px">Tick the words you want to learn to build sentences with. They join your Focus basket.</div>
+        <div class="muted" style="font-size:13px">Pick a topic, then tick the words you want to drill in sentences.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;overflow-x:auto;-webkit-overflow-scrolling:touch">${chipsHtml}</div>
       </div>
-      ${rows || `<div class="muted" style="text-align:center;padding:30px 10px">No candidates right now.</div>`}
+      ${rows || `<div class="muted" style="text-align:center;padding:30px 10px">No ${active === 'all' ? '' : esc(active) + ' '}words available right now. Try another topic.</div>`}
       <div class="card" style="position:sticky;bottom:8px">
         <button class="btn btn-primary" style="width:100%" onclick="focusBatchAdd()">Add ${nSel} to Focus</button>
         <div class="spacer"></div>
@@ -3399,12 +3503,15 @@ function renderFocus(){
     const framesHtml = sents.length
       ? `<div style="margin-top:8px">
            <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">In a sentence</div>
-           ${sents.map(f => `<div style="font-size:14px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px;display:flex;align-items:flex-start;gap:8px">
-              <div style="flex:1;min-width:0">
-                <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
-                <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+           ${sents.map(f => `<div style="font-size:14px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:6px;margin-bottom:4px">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <span class="jp" style="color:var(--text)">${esc(f.jp)}</span>
+                  <div class="muted" style="font-size:12px;margin-top:2px">${esc(f.en)}</div>
+                </div>
+                <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(f.jp)}')" title="Listen">🔊</button>
               </div>
-              <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(f.jp)}')" title="Listen">🔊</button>
+              ${f.note ? `<div style="font-size:11px;margin-top:6px;padding:5px 7px;background:rgba(59,130,246,0.08);border-left:2px solid #3b82f6;border-radius:3px;line-height:1.4;color:var(--text)"><b style="font-size:9px;letter-spacing:0.06em;color:#3b82f6">WHY</b> ${esc(f.note)}</div>` : ''}
             </div>`).join('')}
          </div>`
       : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">Drill below will work this one into sentences.</div>`;
@@ -13445,11 +13552,15 @@ function _buildRenderWriteInput(promptEn){
 function _buildRenderBuild(step){
   const b = state.buildMode;
   if(_buildWriteApplies(step) && !b.revealed) return _buildRenderWriteInput(step.sentence_en);
+  const whyBlock = step.sentence_note
+    ? `<div style="margin-top:14px;padding:10px 12px;background:rgba(59,130,246,0.10);border-left:3px solid #3b82f6;border-radius:4px;line-height:1.5;text-align:left;font-size:13px"><b style="font-size:10px;letter-spacing:0.08em;color:#3b82f6">WHY</b><br>${esc(step.sentence_note)}</div>`
+    : '';
   if(b.revealed){
     return `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
       <div class="build-big-jp">${esc(step.sentence_jp)}</div>
       <div class="build-big-en">${esc(step.sentence_en)}</div>
+      ${whyBlock}
     `;
   }
   return `
