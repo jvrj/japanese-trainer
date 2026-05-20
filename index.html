@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.38';
+const APP_VERSION = '7.39';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3295,6 +3295,336 @@ const FOCUS_SENTENCE_BANK = {
   ],
 };
 
+/* v7.39 — Per-word custom sentences keyed by romaji. User: "every
+   sentence with every word is the same thing when they are nuanced
+   words and different sentences could be better". Hand-curated to
+   reflect each word's actual cultural and grammatical context — apples
+   get peeled, mandarins are eaten in winter at the kotatsu, wine has
+   colours, soba is a New Year's tradition. Engine pulls these FIRST,
+   then falls back to bucket templates for any uncovered word. */
+const FOCUS_WORD_SENTENCES = {
+  /* --- food: general --- */
+  'tabemono': [
+    ['すき な たべもの は なん ですか。',           'What food do you like?',                          'なん = "what" (used before です). な = na-adj attributive (すき → すき な).'],
+    ['いろいろ な たべもの が すき です。',          'I like various foods.',                            'いろいろ な = "various" (na-adj). が marks the liked thing.'],
+    ['この たべもの は はじめて です。',            "This food is a first for me.",                    'はじめて = "first time".'],
+  ],
+  'nomimono': [
+    ['つめたい のみもの を ください。',             'A cold drink please.',                             'つめたい = cold (i-adj, before noun stays as-is).'],
+    ['なに か のみもの は いかが ですか。',         'How about something to drink?',                    'なに か = "something". いかが ですか = polite offer.'],
+    ['すき な のみもの は なん ですか。',           "What's your favorite drink?",                     'なに/なん = what.'],
+  ],
+
+  /* --- staples --- */
+  'gohan': [
+    ['ごはん を たきます。',                        'I cook the rice.',                                 'たく = cook (specifically rice/grains).'],
+    ['もう ごはん を たべました か。',              'Have you eaten yet?',                              'もう + past = "already". ごはん also means "meal".'],
+    ['ごはん の じかん です。',                     "It's mealtime.",                                  'じかん = time. の = "of".'],
+    ['ごはん を おかわり ください。',              'A second helping of rice please.',                  'おかわり = "another serving" (refill).'],
+  ],
+  'pan': [
+    ['まいあさ パン を たべます。',                'I eat bread every morning.',                       'まいあさ = every morning.'],
+    ['パン に バター を ぬります。',                'I spread butter on the bread.',                    'ぬる = spread. に = onto (target).'],
+    ['パン を やきます。',                          'I toast the bread.',                               'やく = bake/toast/grill.'],
+    ['ふわふわ の パン が すき です。',            'I like fluffy bread.',                             'ふわふわ = fluffy (onomatopoeia). の links to noun.'],
+  ],
+
+  /* --- drinks --- */
+  'mizu': [
+    ['みず を いっぱい ください。',                'A glass of water please.',                         'いっぱい = "one cup/glass" (counter).'],
+    ['つめたい みず が のみたい です。',           'I want to drink cold water.',                      'つめたい = cold-to-touch. 〜たい want-to.'],
+    ['みず を こぼしました。',                      'I spilled the water.',                             'こぼす = spill. → こぼしました (past polite).'],
+  ],
+  'ocha': [
+    ['おちゃ を いっぱい いかが ですか。',         'How about a cup of tea?',                          'いかが ですか = polite "how about?" (offering).'],
+    ['にほん の おちゃ は にがい です。',          'Japanese tea is bitter.',                          'にがい = bitter (i-adj).'],
+    ['あつい おちゃ が のみたい です。',           'I want hot tea.',                                  'あつい = hot (for things).'],
+  ],
+  'koohii': [
+    ['あさ コーヒー を のみます。',                'I drink coffee in the morning.',                   'あさ = morning. Time word leads.'],
+    ['コーヒー に さとう を いれます か。',        'Do you put sugar in your coffee?',                 'いれる = put in. に = into.'],
+    ['つよい コーヒー が すき です。',             'I like strong coffee.',                            'つよい = strong (i-adj).'],
+  ],
+  'gyuunyuu': [
+    ['ぎゅうにゅう を コップ いっぱい のみます。',  'I drink a glass full of milk.',                    'コップ = drinking glass. いっぱい = "full of/one cup".'],
+    ['コーヒー に ぎゅうにゅう を いれます。',     'I put milk in my coffee.',                          'いれる = put in.'],
+    ['こども は ぎゅうにゅう が すき です。',      'Kids like milk.',                                  'こども = child.'],
+  ],
+  'juusu': [
+    ['オレンジ ジュース が すき です。',           'I like orange juice.',                             'Compound noun with の dropped before katakana ジュース.'],
+    ['つめたい ジュース を のみたい です。',       'I want a cold juice.',                             'つめたい i-adj. 〜たい.'],
+    ['ジュース と コーヒー、どちら に しますか。', 'Juice or coffee, which will it be?',               'どちら = "which of two". に する = "decide on".'],
+  ],
+  'biiru': [
+    ['ビール を いっぽん ください。',               'One bottle of beer please.',                       'いっぽん = "1" + long-thin counter (bottles).'],
+    ['ともだち と ビール を のみます。',           'I drink beer with friends.',                       'と = with.'],
+    ['つめたい ビール が おいしい です。',         'Cold beer is delicious.',                          'つめたい. おいしい i-adj.'],
+  ],
+  'osake': [
+    ['おさけ は あまり のみません。',              "I don't drink much alcohol.",                     'あまり + neg = "not much".'],
+    ['きのう おさけ を のみすぎました。',          'I drank too much alcohol yesterday.',              '〜すぎる = "too much" (い-stem + すぎる).'],
+    ['にほん で は おさけ は はたち から です。',  'In Japan, alcohol is from age 20.',                'はたち = age 20. から = from.'],
+  ],
+  'wain': [
+    ['あかい ワイン と しろい ワイン、どちら が すき ですか。', 'Red or white wine, which do you like?', 'あかい = red, しろい = white. どちら = which-of-two.'],
+    ['ワイン を いっぱい のみます。',               "I'll have a glass of wine.",                       'いっぱい = "one glass/cup".'],
+    ['フランス の ワイン は おいしい です。',      'French wine is delicious.',                        'の = from/of (origin).'],
+  ],
+
+  /* --- meats --- */
+  'niku': [
+    ['にく を やきます。',                          'I grill the meat.',                                'やく = grill/bake.'],
+    ['にく より さかな が すき です。',             'I prefer fish to meat.',                           'X より Y が すき = "prefer Y to X" (より = than).'],
+    ['この にく は やわらかい です。',             'This meat is tender.',                             'やわらかい = soft/tender (i-adj).'],
+  ],
+  'gyuuniku': [
+    ['ぎゅうにく の ステーキ を ちゅうもん します。', "I'll order a beef steak.",                       'ちゅうもん する = order. の links beef + steak.'],
+    ['ぎゅうにく は たかい です。',                'Beef is expensive.',                                'たかい = expensive.'],
+    ['ぎゅうにく を やきます。',                    'I grill the beef.',                                'やく = grill.'],
+  ],
+  'toriniku': [
+    ['とりにく は やすい です。',                  'Chicken is cheap.',                                'やすい = cheap (i-adj).'],
+    ['とりにく の りょうり が すき です。',         'I like chicken dishes.',                           'りょうり = cuisine/dish.'],
+    ['とりにく を から あげ に します。',          "I'll make fried chicken with it.",                  'からあげ = fried chicken. に する = "make into".'],
+  ],
+  'butaniku': [
+    ['ぶたにく は たべません。',                   "I don't eat pork.",                                'Polite negative ません.'],
+    ['ぶたにく の トンカツ を たべました。',       'I ate pork tonkatsu.',                              'トンカツ = breaded pork cutlet.'],
+    ['ぶたにく を つかった カレー です。',         'It is curry made with pork.',                       'つかう → つかった (past, modifying noun).'],
+  ],
+  'sakana': [
+    ['さかな を つります。',                        'I fish (catch fish).',                             'つる = "to fish" (catch).'],
+    ['やいた さかな が すき です。',                'I like grilled fish.',                             'やいた = grilled (past form modifying noun).'],
+    ['この さかな は あたらしい です。',           'This fish is fresh.',                              'あたらしい = "new/fresh".'],
+  ],
+  'tamago': [
+    ['たまご を ふたつ ください。',                 'Two eggs please.',                                 'ふたつ = "two" (generic counter).'],
+    ['たまご を ゆでます。',                       'I boil the egg.',                                  'ゆでる = boil (food).'],
+    ['あさごはん に たまご を たべます。',         'I eat egg for breakfast.',                          'あさごはん に = "at/for breakfast".'],
+  ],
+
+  /* --- vegetables / produce --- */
+  'yasai': [
+    ['やさい を たべて ください。',                'Please eat your vegetables.',                      'て-form + ください = polite imperative.'],
+    ['やさい は からだ に いい です。',            'Vegetables are good for the body.',                'からだ = body. に いい = "good for".'],
+    ['サラダ に いろいろ な やさい を いれます。', 'I put various vegetables in the salad.',           'いろいろ な = various.'],
+  ],
+  'kudamono': [
+    ['くだもの が だいすき です。',                'I love fruit.',                                    'だいすき takes が.'],
+    ['あまい くだもの が すき です。',             'I like sweet fruit.',                              'あまい = sweet (i-adj).'],
+    ['あさ に くだもの を たべます。',             'I eat fruit in the morning.',                      'に = "at" (time point).'],
+  ],
+  'ringo': [
+    ['りんご を むきます。',                        'I peel the apple.',                                'むく = peel (fruit). Different verb from の (drink).'],
+    ['あかい りんご を ひとつ ください。',         'One red apple please.',                            'あかい = red. ひとつ = "one" (generic).'],
+    ['りんご ジュース が のみたい です。',         'I want to drink apple juice.',                     '〜たい. Compound noun (no の between two katakana/loanword and native).'],
+    ['いちにち いっこ りんご を たべます。',       'I eat one apple a day.',                            'いちにち = a day. いっこ = "one piece" (counter).'],
+  ],
+  'mikan': [
+    ['ふゆ に みかん を たべます。',                'I eat mandarins in winter.',                       'ふゆ = winter. に = at (time).'],
+    ['みかん を むく の は かんたん です。',       'Peeling mandarins is easy.',                       'の は nominalises the action. かんたん na-adj.'],
+    ['こたつ で みかん を たべます。',             'I eat mandarins at the kotatsu.',                  'こたつ = heated table. で = at (location of action).'],
+  ],
+  'banana': [
+    ['バナナ を いっぽん ください。',               'One banana please.',                               'いっぽん = "1" + long-object counter.'],
+    ['きいろい バナナ が すき です。',              'I like yellow bananas.',                           'きいろい = yellow (i-adj).'],
+    ['あさごはん に バナナ を たべます。',         'I eat banana for breakfast.',                      'あさごはん に = "for breakfast".'],
+  ],
+  'momo': [
+    ['もも は あまくて みずみずしい です。',       'Peaches are sweet and juicy.',                      'あまくて = "sweet AND" (i-adj te-form connector).'],
+    ['もも を むいて たべます。',                   'I peel and eat the peach.',                        'むく → むいて. て-form chains actions.'],
+    ['もも の ジュース が のみたい です。',         'I want to drink peach juice.',                     'の links peach + juice.'],
+  ],
+  'budou': [
+    ['ぶどう を ひとふさ ください。',               'One bunch of grapes please.',                      'ひとふさ = "1" + bunch counter.'],
+    ['ぶどう から ワイン を つくります。',         'Wine is made from grapes.',                         'から = from (source material).'],
+    ['あかい ぶどう より みどり が すき です。',   'I prefer green grapes to red.',                    'より = "than". みどり = green (here as a noun: "green ones").'],
+  ],
+  'ichigo': [
+    ['いちご が だいすき です。',                  'I love strawberries.',                             'だいすき takes が.'],
+    ['いちご の ケーキ を ください。',             'A strawberry cake please.',                         'の links strawberry + cake.'],
+    ['あまい いちご を たべました。',              'I ate a sweet strawberry.',                         'あまい = sweet. Past polite たべました.'],
+  ],
+  'suika': [
+    ['なつ に すいか を たべます。',                'I eat watermelon in summer.',                      'なつ = summer.'],
+    ['すいか は おおきい です。',                  'Watermelons are big.',                              'おおきい i-adj.'],
+    ['すいか を きります。',                        'I cut the watermelon.',                            'きる = cut.'],
+  ],
+  'nashi': [
+    ['なし は あまくて みずみずしい です。',       'Pears are sweet and juicy.',                       'te-form chain: あまく + て (i-adj).'],
+    ['なし を むきます。',                         'I peel the pear.',                                 'むく = peel (fruit).'],
+    ['にほん の なし は おおきい です。',          'Japanese pears are big.',                           'の = from/of.'],
+  ],
+  'kinoko': [
+    ['きのこ の スープ を つくります。',           "I'll make mushroom soup.",                         'つくる = make.'],
+    ['きのこ が きらい です。',                    'I dislike mushrooms.',                              'きらい takes が (state). na-adj.'],
+    ['もり で きのこ を みつけました。',           'I found mushrooms in the forest.',                  'もり = forest. みつける = find.'],
+  ],
+  'tamanegi': [
+    ['たまねぎ を きる と なみだ が でます。',     'When I cut onions, tears come out.',                'と = "when/if" (conditional). なみだ = tears.'],
+    ['たまねぎ を いためます。',                   'I stir-fry the onion.',                             'いためる = stir-fry.'],
+    ['たまねぎ を こまかく きります。',            'I finely chop the onion.',                          'こまかく = finely (adverbial of こまかい).'],
+  ],
+  'ninjin': [
+    ['こども は にんじん が きらい です。',         'Children dislike carrots.',                        'きらい na-adj.'],
+    ['にんじん は からだ に いい です。',           'Carrots are good for the body.',                   'に いい = good for.'],
+    ['サラダ に にんじん を いれます。',           'I put carrots in the salad.',                       'いれる = put in.'],
+  ],
+  'kyuuri': [
+    ['きゅうり を サラダ に いれます。',           'I put cucumber in the salad.',                     'に = into.'],
+    ['きゅうり は みずみずしい です。',            'Cucumbers are juicy.',                              'みずみずしい = "juicy" (i-adj).'],
+    ['きゅうり を うすく きります。',              'I slice cucumber thinly.',                          'うすく = "thinly" (adverbial of うすい).'],
+  ],
+  'nasu': [
+    ['なす を やきます。',                          'I grill the eggplant.',                            'やく = grill.'],
+    ['なす の りょうり が すき です。',            'I like eggplant dishes.',                           'りょうり = dish/cuisine.'],
+    ['なす は むらさき です。',                    'Eggplants are purple.',                             'むらさき = purple (noun, used with です).'],
+  ],
+  'daikon': [
+    ['だいこん は おでん に いれます。',           'I put daikon in oden.',                             'おでん = oden stew.'],
+    ['だいこん を おろします。',                   'I grate the daikon.',                               'おろす = grate (also "let down").'],
+    ['しろい だいこん を かいました。',            'I bought a white daikon.',                          'しろい = white. Past polite かいました.'],
+  ],
+  'toufu': [
+    ['とうふ は からだ に いい です。',            'Tofu is good for the body.',                       'に いい = good for.'],
+    ['とうふ を つかった りょうり が すき です。', 'I like dishes made with tofu.',                    'つかう → つかった (past, modifying noun).'],
+    ['ひやした とうふ を たべます。',              'I eat chilled tofu.',                              'ひやす = chill. ひやした = chilled (past as adj).'],
+  ],
+
+  /* --- meals (asa/hiru/ban) --- */
+  'asagohan': [
+    ['まいあさ あさごはん を たべます。',          'I eat breakfast every morning.',                    'まいあさ = every morning.'],
+    ['あさごはん は なに を たべました か。',      'What did you have for breakfast?',                  'なに を = "what" + obj.'],
+    ['あさごはん を たべないで でかけました。',    'I went out without eating breakfast.',              '〜ないで = without doing. でかける = go out.'],
+  ],
+  'hirugohan': [
+    ['ひるごはん を たべに いきましょう。',        "Let's go eat lunch.",                              'たべ に いく = "go to eat" (い-stem + に + いく).'],
+    ['ひるごはん に なに を たべます か。',        'What will you eat for lunch?',                      'に = "for" (this meal).'],
+    ['きょう の ひるごはん は おべんとう です。',  "Today's lunch is a bento.",                         'おべんとう = packed lunch.'],
+  ],
+  'bangohan': [
+    ['ばんごはん は しちじ から です。',           'Dinner is from 7 o’clock.',                   'しちじ = 7 o\'clock. から = from.'],
+    ['ばんごはん を いっしょに たべませんか。',     'Want to eat dinner together?',                     '〜ませんか = polite invitation.'],
+    ['ばんごはん を つくります。',                  "I'll make dinner.",                                'つくる = make/cook.'],
+  ],
+  'ryouri': [
+    ['おかあさん の りょうり は おいしい です。',  "Mom's cooking is delicious.",                      'おかあさん = mom (with respectful honourifics).'],
+    ['わたし は りょうり が へた です。',          "I'm bad at cooking.",                              'へた na-adj. が marks the skill.'],
+    ['にほん の りょうり が だいすき です。',      'I love Japanese cuisine.',                         'にほん の りょうり = "Japanese cuisine".'],
+  ],
+
+  /* --- sweets / treats --- */
+  'okashi': [
+    ['こども に おかし を あげます。',             'I give sweets to the children.',                    'あげる = give. に = recipient.'],
+    ['あまい おかし が すき です。',               'I like sweet snacks.',                              'あまい sweet.'],
+    ['おかし を たべすぎました。',                  'I ate too many sweets.',                            '〜すぎる = too much (い-stem + すぎる).'],
+  ],
+  'satou': [
+    ['コーヒー に さとう を いれます か。',        'Do you put sugar in your coffee?',                 'いれる = put in.'],
+    ['さとう は あまい です。',                     'Sugar is sweet.',                                  'あまい = sweet.'],
+    ['さとう を すこし ください。',                'A little sugar please.',                            'すこし = a little.'],
+  ],
+  'shio': [
+    ['しお を すこし いれます。',                  'I add a little salt.',                              'いれる = put in.'],
+    ['この りょうり は しおからい です。',         'This dish is salty.',                              'しおからい = salty (i-adj, lit. "salt-spicy").'],
+    ['しお を とって ください。',                  'Please pass the salt.',                             'At the table. とる = pick up.'],
+  ],
+
+  /* --- noodle dishes --- */
+  'raamen': [
+    ['ラーメン を たべに いきましょう。',          "Let's go eat ramen.",                              'たべ に いく = "go to eat".'],
+    ['とんこつ ラーメン が だいすき です。',       'I love tonkotsu ramen.',                            'とんこつ = pork-bone broth.'],
+    ['ラーメン は あつい うち に たべて ください。','Eat the ramen while it\'s hot.',                  'あつい うち に = "while it is hot" (うち = "during").'],
+  ],
+  'udon': [
+    ['うどん を たべに いきましょう。',            "Let's go eat udon.",                               'たべ に いく.'],
+    ['うどん より ラーメン が すき です。',        'I prefer ramen over udon.',                         'X より Y が すき = "prefer Y to X".'],
+    ['あつい うどん が おいしい です。',           'Hot udon is delicious.',                           'あつい = hot.'],
+  ],
+  'soba': [
+    ['そば は そばこ から つくります。',           'Soba is made from buckwheat flour.',                'そばこ = buckwheat flour. から = from (source).'],
+    ['つめたい そば を たべました。',              'I ate cold soba.',                                  'つめたい = cold (food/object).'],
+    ['としこし に そば を たべます。',             'I eat soba at year\'s end.',                       'としこし = year-end (cultural tradition).'],
+  ],
+
+  /* --- prepared dishes --- */
+  'sushi': [
+    ['おすし を たべに いきましょう。',            "Let's go eat sushi.",                              'たべ に いく.'],
+    ['おすし は しょうゆ を つけて たべます。',     'Sushi is eaten dipped in soy sauce.',              'つける → つけて (te-form). て chains "dip-then-eat".'],
+    ['まわる おすし に いきたい です。',           'I want to go to a conveyor-belt sushi place.',     'まわる = revolve. (Modifies おすし.)'],
+    ['おすし は にほん の りょうり です。',        'Sushi is Japanese cuisine.',                       'X は Y の りょうり です.'],
+  ],
+  'piza': [
+    ['ピザ を ちゅうもん します。',                "I'll order pizza.",                                'ちゅうもん する = order.'],
+    ['ピザ を いちまい ください。',                'One pizza please.',                                 'いちまい = "1" + flat-object counter.'],
+    ['チーズ が おおい ピザ が すき です。',       'I like pizza with lots of cheese.',                'おおい = many/much (i-adj).'],
+  ],
+  'suupu': [
+    ['あつい スープ を のみます。',                'I drink hot soup.',                                 '(Soup uses のむ, not たべる.)'],
+    ['スープ を スプーン で のみます。',           'I have soup with a spoon.',                         'で = by means of.'],
+    ['みそ スープ が すき です。',                 'I like miso soup.',                                 '(Both みそしる and みそ スープ are used.)'],
+  ],
+  'chiizu': [
+    ['パン と チーズ を たべます。',               'I eat bread and cheese.',                           'と = and (between nouns).'],
+    ['チーズ は ミルク から つくります。',         'Cheese is made from milk.',                         'から = from (source).'],
+    ['チーズ ケーキ が すき です。',               'I like cheesecake.',                                'Compound noun: チーズ + ケーキ.'],
+  ],
+  'keeki': [
+    ['たんじょうび に ケーキ を たべます。',       'I eat cake on my birthday.',                       'たんじょうび = birthday. に = on (occasion).'],
+    ['ケーキ を いっこ ください。',                'One piece of cake please.',                         'いっこ = "1" + small-thing counter.'],
+    ['ケーキ を つくる の は たのしい です。',     'Making cakes is fun.',                              'の は nominalises the action. たのしい i-adj.'],
+  ],
+  'aisukuriimu': [
+    ['なつ に アイスクリーム を たべます。',       'I eat ice cream in summer.',                       'なつ = summer.'],
+    ['アイスクリーム を いっこ ください。',        'One ice cream please.',                             'いっこ counter.'],
+    ['チョコレート アイスクリーム が すき です。', 'I like chocolate ice cream.',                      'Compound noun.'],
+  ],
+  'sarada': [
+    ['サラダ を つくります。',                     "I'll make a salad.",                               'つくる = make.'],
+    ['サラダ に ドレッシング を かけます。',       'I put dressing on the salad.',                      'かける = pour-on/sprinkle. に = onto.'],
+    ['やさい サラダ を ちゅうもん します。',       "I'll order a vegetable salad.",                    'ちゅうもん する.'],
+  ],
+  'sandoicchi': [
+    ['サンドイッチ を つくりました。',             'I made a sandwich.',                                'つくる → つくりました.'],
+    ['たまご サンドイッチ が すき です。',         'I like egg sandwiches.',                            'Compound noun.'],
+    ['ピクニック に サンドイッチ を もって いきます。', "I'll bring sandwiches to the picnic.",         'もって いく = take/bring.'],
+  ],
+  'chokoreeto': [
+    ['バレンタイン に チョコレート を あげます。', "I give chocolate on Valentine's.",                 'バレンタイン = Valentine. あげる = give.'],
+    ['チョコレート は あまい です。',              'Chocolate is sweet.',                               'あまい = sweet.'],
+    ['ホワイトデー に チョコレート を もらいました。', "I received chocolate on White Day.",            'もらう = receive.'],
+  ],
+  'hanbaagaa': [
+    ['ハンバーガー を ちゅうもん します。',        "I'll order a hamburger.",                          'ちゅうもん する.'],
+    ['ハンバーガー と ポテト を ください。',       'A hamburger and fries please.',                     'と = and. ポテト = fries.'],
+    ['ハンバーガー を たべに いきましょう。',      "Let's go eat hamburgers.",                         'たべ に いく.'],
+  ],
+  'tenpura': [
+    ['えび の てんぷら が すき です。',            'I like shrimp tempura.',                           'えび = shrimp. の links shrimp + tempura.'],
+    ['てんぷら と うどん を ちゅうもん します。',  "I'll order tempura and udon.",                    'と = and (listing).'],
+    ['てんぷら は あつい うち に たべます。',      'Eat tempura while it\'s hot.',                     'うち に = "while" (during a state).'],
+  ],
+
+  /* --- condiments --- */
+  'miso': [
+    ['みそ で みそしる を つくります。',           'I make miso soup with miso.',                       'で = with/by-means-of. みそしる = miso soup.'],
+    ['あかみそ と しろみそ が あります。',          'There is red miso and white miso.',                'と connects nouns.'],
+    ['みそ は はっこう しょくひん です。',         'Miso is a fermented food.',                         'はっこう = fermentation. しょくひん = food product.'],
+  ],
+  'shouyu': [
+    ['おすし に しょうゆ を つけます。',           'I dip the sushi in soy sauce.',                    'つける = dip.'],
+    ['しょうゆ を とって ください。',              'Please pass the soy sauce.',                        'とる = pick up.'],
+    ['にほん の しょうゆ は あじ が こい です。',  'Japanese soy sauce has a deep flavor.',            'あじ = flavour. こい = strong/deep (i-adj).'],
+  ],
+
+  /* --- abstract food concepts --- */
+  'aji': [
+    ['この りょうり は あじ が いい です。',       'This dish tastes good.',                            'あじ が いい = "the flavour is good".'],
+    ['あじ が うすい です。',                       'The flavor is bland.',                              'うすい = thin/weak/light.'],
+    ['あじ を みて ください。',                     'Please taste it.',                                  'みる = (here) "check/try" idiomatically.'],
+  ],
+};
+
 /* v7.38 — Glossary for word-level meanings. User can't recognise every
    non-focus word in a sentence ("some words ive never heard of please
    give me the meaning of the words"). Below the EN line we surface a
@@ -3425,14 +3755,6 @@ function focusGlossLine(jp, focusJp){
 function focusSentencesFor(w, max){
   if(!w) return [];
   max = max == null ? 6 : max;
-  let pool;
-  if(w.pos === 'n'){
-    let key = w.theme || '_default';
-    if(key === 'food' && FOCUS_DRINK_ROMAJI.has((w.romaji||'').toLowerCase())) key = 'drink';
-    pool = FOCUS_SENTENCE_BANK.noun[key] || FOCUS_SENTENCE_BANK.noun._default;
-  } else {
-    pool = FOCUS_SENTENCE_BANK[w.pos] || FOCUS_SENTENCE_BANK._default;
-  }
   const slot = w.jp;
   const en   = w.en || '';
   const ctx = { N: slot, EN: en };
@@ -3446,11 +3768,43 @@ function focusSentencesFor(w, max){
     ctx.A = slot; ctx.Aneg = slot; ctx.Apast = slot; ctx.Aadv = slot;
   }
   const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => ctx[k] != null ? ctx[k] : ('{'+k+'}'));
-  return pool.slice(0, max).map(([jpTpl, enTpl, noteTpl]) => ({
-    jp:   fill(jpTpl),
-    en:   fill(enTpl),
-    note: noteTpl ? fill(noteTpl) : ''
-  }));
+  const out = [];
+  /* v7.39 — try hand-curated per-word sentences first (FOCUS_WORD_SENTENCES).
+     These are nuance-specific (apples get peeled, mandarins are eaten at the
+     kotatsu, soba at year-end). Fall back to bucket templates only if the
+     word isn't curated yet, or to top up the count. */
+  const custom = FOCUS_WORD_SENTENCES[(w.romaji||'').toLowerCase()];
+  if(custom){
+    for(const tuple of custom){
+      if(out.length >= max) break;
+      const [jpTpl, enTpl, noteTpl] = tuple;
+      out.push({
+        jp:   fill(jpTpl),
+        en:   fill(enTpl),
+        note: noteTpl ? fill(noteTpl) : ''
+      });
+    }
+  }
+  if(out.length < max){
+    let pool;
+    if(w.pos === 'n'){
+      let key = w.theme || '_default';
+      if(key === 'food' && FOCUS_DRINK_ROMAJI.has((w.romaji||'').toLowerCase())) key = 'drink';
+      pool = FOCUS_SENTENCE_BANK.noun[key] || FOCUS_SENTENCE_BANK.noun._default;
+    } else {
+      pool = FOCUS_SENTENCE_BANK[w.pos] || FOCUS_SENTENCE_BANK._default;
+    }
+    for(const tuple of pool){
+      if(out.length >= max) break;
+      const [jpTpl, enTpl, noteTpl] = tuple;
+      out.push({
+        jp:   fill(jpTpl),
+        en:   fill(enTpl),
+        note: noteTpl ? fill(noteTpl) : ''
+      });
+    }
+  }
+  return out;
 }
 
 /* v7.35 — Drill the whole basket as direct EN→JP sentence production.
