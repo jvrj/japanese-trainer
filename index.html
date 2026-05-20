@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.34';
+const APP_VERSION = '7.35';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3028,34 +3028,224 @@ function focusAddCurrentBuild(){
 }
 window.focusAddCurrentBuild = focusAddCurrentBuild;
 
-/* v7.33 — real, naturally-EXTENDING sentences for a basket word, pulled
-   from the same vetted, kanji-free generators Build Mode uses. We take the
-   richest (last) framing of each fitting variation group, then a fitting
-   Q&A — so every line is a genuine sentence that grows, not a fill-in
-   skeleton (the user: "not even in a sentence that naturally extends").
-   Noun-only: the {N} templates assume a noun slot, so non-nouns get an
-   honest "drill it" message rather than forced, ungrammatical output. */
+/* v7.35 — Focus sentence bank. For EVERY word the user picks (any pos,
+   any theme), return 3-4 naturally conversational sentences showing how
+   to slot the word into real Japanese. User spec, verbatim: byouin →
+   "im going to the hospital tomorrow" / "do you want to go to the
+   hospital with me tomorrow to see ___?". Kana only, no kanji ever.
+   Verbs use dictionary-form-only frames so we never have to conjugate. */
+const FOCUS_DRINK_ROMAJI = new Set(['mizu','ocha','koohii','gyuunyuu','juusu','biiru','osake','wain','nomimono']);
+
+const FOCUS_SENTENCE_BANK = {
+  noun: {
+    places: [
+      ['あした {N}に いきます。',          "Tomorrow I'm going to the {EN}."],
+      ['いっしょに {N}に いきませんか。',     'Want to go to the {EN} together?'],
+      ['きのう {N}に いきました。',         'I went to the {EN} yesterday.'],
+      ['{N}は どこ ですか。',             'Where is the {EN}?'],
+    ],
+    food: [
+      ['{N}を たべたい です。',            'I want to eat {EN}.'],
+      ['{N}が すき です。',                'I like {EN}.'],
+      ['{N}は おいしい です。',             'The {EN} is delicious.'],
+      ['いっしょに {N}を たべましょう。',     "Let's eat {EN} together."],
+    ],
+    drink: [
+      ['{N}を のみたい です。',            'I want to drink {EN}.'],
+      ['{N}が すき です。',                'I like {EN}.'],
+      ['{N}を ください。',                'Please give me {EN}.'],
+      ['いっしょに {N}を のみませんか。',     'Want to drink {EN} together?'],
+    ],
+    people: [
+      ['{N}と はなしました。',             'I talked with the {EN}.'],
+      ['わたしの {N}は やさしい です。',     'My {EN} is kind.'],
+      ['{N}に あいたい です。',            'I want to see the {EN}.'],
+      ['{N}が ふたり います。',            'There are two {EN}s.'],
+    ],
+    family: [
+      ['わたしの {N}です。',               'This is my {EN}.'],
+      ['{N}が います。',                   'I have a {EN}.'],
+      ['{N}と あいたい です。',            'I want to see my {EN}.'],
+      ['わたしの {N}は やさしい です。',     'My {EN} is kind.'],
+    ],
+    body: [
+      ['{N}が いたい です。',              'My {EN} hurts.'],
+      ['{N}を つかいます。',               'I use my {EN}.'],
+      ['{N}を あらいます。',               'I wash my {EN}.'],
+    ],
+    animals: [
+      ['{N}は かわいい です。',             'The {EN} is cute.'],
+      ['{N}が だいすき です。',             'I love {EN}s.'],
+      ['{N}を みました。',                 'I saw a {EN}.'],
+    ],
+    objects: [
+      ['{N}が あります。',                 'I have a {EN}.'],
+      ['この {N}は あたらしい です。',       'This {EN} is new.'],
+      ['{N}を かいたい です。',             'I want to buy a {EN}.'],
+      ['{N}を つかいます。',                'I use a {EN}.'],
+    ],
+    home: [
+      ['{N}に います。',                   "I'm in the {EN}."],
+      ['{N}は きれい です。',               'The {EN} is clean.'],
+      ['{N}を そうじします。',              'I clean the {EN}.'],
+    ],
+    tech: [
+      ['{N}を つかいます。',                'I use a {EN}.'],
+      ['この {N}は あたらしい です。',       'This {EN} is new.'],
+      ['{N}が ほしい です。',                'I want a {EN}.'],
+    ],
+    school: [
+      ['{N}は たのしい です。',              'The {EN} is fun.'],
+      ['{N}は むずかしい です。',            'The {EN} is hard.'],
+      ['{N}が だいすき です。',              'I love the {EN}.'],
+      ['{N}に いきます。',                  'I go to {EN}.'],
+    ],
+    work: [
+      ['{N}は いそがしい です。',            'The {EN} is busy.'],
+      ['{N}を します。',                   'I do {EN}.'],
+      ['{N}に いきます。',                  'I go to {EN}.'],
+    ],
+    travel: [
+      ['{N}に のります。',                  'I get on the {EN}.'],
+      ['{N}で いきます。',                  'I go by {EN}.'],
+      ['{N}は はやい です。',                'The {EN} is fast.'],
+    ],
+    time: [
+      ['{N}に あいましょう。',              "Let's meet on/at {EN}."],
+      ['{N}は いそがしい です。',            '{EN} is busy.'],
+      ['{N}まで まちます。',                "I'll wait until {EN}."],
+      ['{N}が すき です。',                  'I like {EN}.'],
+    ],
+    weather: [
+      ['きょう は {N}です。',                'Today is {EN}.'],
+      ['{N}が すき です。',                  'I like {EN}.'],
+      ['{N}に なりました。',                 "It's become {EN}."],
+    ],
+    nature: [
+      ['{N}が すき です。',                  'I like {EN}.'],
+      ['{N}を みました。',                   'I saw {EN}.'],
+      ['{N}は きれい です。',                'The {EN} is beautiful.'],
+    ],
+    health: [
+      ['{N}が あります。',                   'I have {EN}.'],
+      ['{N}が しんぱい です。',               "I'm worried about {EN}."],
+      ['{N}に きを つけます。',               "I'll take care of my {EN}."],
+    ],
+    colors: [
+      ['{N}が すき です。',                  'I like {EN}.'],
+      ['この いろ は {N}です。',              'This color is {EN}.'],
+      ['{N}の くるま が ほしい です。',        'I want a {EN} car.'],
+    ],
+    clothing: [
+      ['{N}を きます。',                    'I wear a {EN}.'],
+      ['この {N}は かわいい です。',          'This {EN} is cute.'],
+      ['{N}を かいたい です。',              'I want to buy a {EN}.'],
+    ],
+    numbers: [
+      ['{N}つ ください。',                  'Please give me {EN} of them.'],
+      ['{N}かい いきました。',               'I went {EN} times.'],
+      ['{N}じ に あいましょう。',            "Let's meet at {EN} o'clock."],
+    ],
+    counters: [
+      ['{N} ください。',                    'Please give me {EN}.'],
+      ['{N} あります。',                    'I have {EN}.'],
+    ],
+    feelings: [
+      ['{N}が あります。',                   'I have {EN}.'],
+      ['{N}を かんじます。',                 'I feel {EN}.'],
+      ['とても {N}です。',                  "I'm very {EN}."],
+    ],
+    greetings: [
+      ['{N}。',                            '{EN}.'],
+      ['「{N}」と いいます。',              'You say "{EN}".'],
+      ['まいあさ 「{N}」と いいます。',        'Every morning I say "{EN}".'],
+    ],
+    _default: [
+      ['これ は {N}です。',                 'This is {EN}.'],
+      ['{N}が すき です。',                 'I like {EN}.'],
+      ['{N}が あります。',                  'I have {EN}.'],
+    ],
+  },
+  /* Verbs — dictionary form slotted into frames that don't require us
+     to know whether the verb is godan, ichidan, or irregular. */
+  v: [
+    ['{N}のが すき です。',                 'I like to {EN}.'],
+    ['{N}つもり です。',                   'I plan to {EN}.'],
+    ['{N}ことが できます。',                'I can {EN}.'],
+    ['{N}かもしれません。',                 'I might {EN}.'],
+  ],
+  /* i-adjectives — end in い in their plain form. */
+  adj: [
+    ['とても {N} です。',                  'It is very {EN}.'],
+    ['きょう は {N} ですね。',              "Today is {EN}, isn't it?"],
+    ['{N} もの が すき です。',             'I like {EN} things.'],
+    ['あまり {N} くない です。',             "It's not very {EN}."],
+  ],
+  /* na-adjectives — need な before a noun. */
+  'adj-na': [
+    ['とても {N} です。',                  'It is very {EN}.'],
+    ['{N} な ひと が すき です。',          'I like {EN} people.'],
+    ['ここ は {N} です。',                 'This place is {EN}.'],
+    ['きのう は {N} でした。',              'Yesterday it was {EN}.'],
+  ],
+  adv: [
+    ['{N} やります。',                    'I do it {EN}.'],
+    ['{N} はなします。',                   'I speak {EN}.'],
+    ['{N} たべます。',                     'I eat {EN}.'],
+  ],
+  expr: [
+    ['「{N}」と いいました。',             'I said "{EN}".'],
+    ['まいにち 「{N}」と いいます。',        'I say "{EN}" every day.'],
+    ['{N}',                              '{EN}'],
+  ],
+  pron: [
+    ['{N} です。',                        "It's {EN}."],
+    ['{N} を つかいます。',                'I use "{EN}".'],
+    ['{N} が すき です。',                 'I like {EN}.'],
+  ],
+  part: [
+    ['「{N}」を つかいます。',              'I use "{EN}".'],
+    ['これ は 「{N}」の れい です。',        'This is an example of "{EN}".'],
+  ],
+  conj: [
+    ['ねます。{N}、おきます。',             "I'll sleep. {EN}, I'll wake up."],
+    ['「{N}」を おぼえました。',            'I memorized "{EN}".'],
+  ],
+  num: [
+    ['{N}つ ください。',                  '{EN}, please.'],
+    ['{N}かい いきました。',               'I went {EN} times.'],
+    ['{N}じ です。',                       "It's {EN} o'clock."],
+  ],
+  _default: [
+    ['これ は {N}です。',                 'This is {EN}.'],
+    ['{N}が すき です。',                  'I like {EN}.'],
+  ],
+};
+
 function focusSentencesFor(w){
-  if(!w || w.pos !== 'n') return [];
-  const out = [];
-  for(const g of BUILD_VARIATION_GROUPS){
-    if(!buildWordFitsCfg(w, g) || !g.ways || !g.ways.length) continue;
-    const way = g.ways[g.ways.length - 1];          /* richest / most-extended framing */
-    out.push({ jp: way.jp.replace(/\{N\}/g, w.jp), en: g.en.replace(/\{N\}/g, w.en || '') });
-    if(out.length >= 3) return out;
+  if(!w) return [];
+  let pool;
+  if(w.pos === 'n'){
+    let key = w.theme || '_default';
+    if(key === 'food' && FOCUS_DRINK_ROMAJI.has((w.romaji||'').toLowerCase())) key = 'drink';
+    pool = FOCUS_SENTENCE_BANK.noun[key] || FOCUS_SENTENCE_BANK.noun._default;
+  } else {
+    pool = FOCUS_SENTENCE_BANK[w.pos] || FOCUS_SENTENCE_BANK._default;
   }
-  for(const t of BUILD_QA_TEMPLATES){
-    if(!buildWordFitsCfg(w, t)) continue;
-    out.push({ jp: t.question_jp.replace(/\{N\}/g, w.jp) + '？', en: t.question_en.replace(/\{N\}/g, w.en || '') });
-    if(out.length >= 3) return out;
-  }
-  return out;
+  const slot = w.jp;
+  const en   = w.en || '';
+  return pool.slice(0, 4).map(([jpTpl, enTpl]) => ({
+    jp: jpTpl.replace(/\{N\}/g, slot),
+    en: enTpl.replace(/\{EN\}/g, en).replace(/\{N\}/g, slot),
+  }));
 }
 
-/* Drill the whole basket as a sentence-construction Build session: per
-   word a recall card, then (when a vetted generator fits it) a variation
-   step and a Q&A step — both EN→JP production, i.e. building a sentence
-   that USES the word. real_word_ids feeds SM-2 credit on completion. */
+/* v7.35 — Drill the whole basket as direct EN→JP sentence production.
+   For each focus word: one cold-recall card, then every sentence from
+   the bank (focusSentencesFor) becomes its own `build` step — user is
+   prompted with the EN, produces the JP out loud, reveals to compare,
+   self-grades. No more generic Build Mode templates; the drill is the
+   workshop the user asked for. */
 function buildFocusLesson(){
   const pool = focusBasketWords().slice(0, 14);
   if(pool.length < 1) throw new Error('Your Focus basket is empty — add some words first.');
@@ -3063,10 +3253,10 @@ function buildFocusLesson(){
   const steps = [];
   for(const w of pool){
     steps.push({ type:'recall', word_id:w.id });
-    const v = buildGenerateVariationStep(state.words, w);
-    if(v) steps.push(v);
-    const q = buildGenerateQaStep(state.words, w);
-    if(q) steps.push(q);
+    const sents = focusSentencesFor(w);
+    for(const s of sents){
+      steps.push({ type:'build', sentence_jp:s.jp, sentence_en:s.en, word_id:w.id });
+    }
   }
   return {
     id:'Gfoc_' + Date.now().toString(36),
@@ -3210,9 +3400,7 @@ function renderFocus(){
               <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(f.jp)}')" title="Listen">🔊</button>
             </div>`).join('')}
          </div>`
-      : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">${w.pos === 'v'
-            ? 'Verb — its shape changes with conjugation, so it lives best inside a real sentence. Tap “Drill all in sentences” below to build with it (and see Form drills).'
-            : 'No ready-made sentence for this one yet — “Drill all in sentences” below will work it into generated sentences.'}</div>`;
+      : `<div class="muted" style="font-size:12px;margin-top:8px;line-height:1.5">Drill below will work this one into sentences.</div>`;
     return `<div class="card" style="padding:12px;margin-bottom:8px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
         <div style="flex:1;min-width:0">
@@ -4100,7 +4288,9 @@ const FORMS = [
    ========================================================================= */
 
 const MODULES = [
-  { num:1, id:'m1', name:'Greetings & Verbs',     emoji:'👋', themes:['greetings'],                          includeAllVerbs:true },
+  /* v7.35 — verbs route by theme now (was: all verbs → M1). M1 is greetings-only.
+     M11 lost 'daily' (re-themed in v7.34); keeps verbpairs/grammar/etc as catchAll. */
+  { num:1, id:'m1', name:'Greetings',             emoji:'👋', themes:['greetings'] },
   { num:2, id:'m2', name:'Food & Numbers',        emoji:'🍱', themes:['food','numbers','counters'] },
   { num:3, id:'m3', name:'Family & People',       emoji:'👨‍👩‍👧', themes:['family','people'] },
   { num:4, id:'m4', name:'Time & Travel',         emoji:'⏰', themes:['time','travel'] },
@@ -4110,17 +4300,16 @@ const MODULES = [
   { num:8, id:'m11', name:'Adjectives',           emoji:'🔤', themes:['adjectives'] },
   { num:9, id:'m7', name:'Colors & Clothing',     emoji:'🎨', themes:['colors','clothing'] },
   { num:10, id:'m8', name:'Work, School & Tech',  emoji:'💼', themes:['work','school','tech'] },
-  { num:11, id:'m9', name:'Feelings & Daily',     emoji:'💭', themes:['feelings','daily','grammar','adverbs','onomatope','phrases','verbpairs'], catchAll:true }
+  { num:11, id:'m9', name:'Feelings & Expressions', emoji:'💭', themes:['feelings','grammar','adverbs','onomatope','phrases','verbpairs'], catchAll:true }
 ];
 const MODULE_UNLOCK_PCT = 80;
 const MODULE_MIN_TO_UNLOCK = 5;  /* don't auto-unlock when current module has fewer than 5 words (avoids unlock-everything-instantly on tiny decks) */
 
 function moduleForWord(w){
   if(!w) return MODULES[MODULES.length - 1];
-  if(w.pos === 'v'){
-    const m1 = MODULES.find(m => m.includeAllVerbs);
-    if(m1) return m1;
-  }
+  /* v7.35 — purely theme-based routing. Verbs go to their topic module
+     (a "to eat" verb belongs in Food, not Greetings) per user direction:
+     "the modules must have words relative to the topic". */
   for(const m of MODULES){
     if(m.themes && m.themes.includes(w.theme)) return m;
   }
@@ -13720,9 +13909,8 @@ function renderModules(){
     const unlocked = moduleIsUnlocked(m.id);
     const current = moduleIsCurrent(m.id);
     const themeList = m.themes ? m.themes.join(' · ') : '—';
-    const verbNote = m.includeAllVerbs ? ' · all verbs' : '';
     const bar = `<div class="mastery-strip" style="margin-top:8px;height:8px;background:var(--card)"><div style="height:100%;width:${prog.pct}%;background:${prog.pct >= MODULE_UNLOCK_PCT ? 'var(--blue)' : 'var(--green)'};border-radius:4px"></div></div>`;
-    const meta = `<div class="muted" style="font-size:12px;margin-top:4px">${esc(themeList)}${esc(verbNote)} · ${prog.total} words</div>`;
+    const meta = `<div class="muted" style="font-size:12px;margin-top:4px">${esc(themeList)} · ${prog.total} words</div>`;
     let footer;
     if(!enabled){
       footer = `<div class="muted" style="font-size:12px;margin-top:8px">Modules are off — every word is currently drillable.</div>`;
