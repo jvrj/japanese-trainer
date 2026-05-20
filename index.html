@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.35';
+const APP_VERSION = '7.36';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3283,12 +3283,19 @@ window.startFocusDrill = startFocusDrill;
 
 /* Fresh-batch chooser — surface words worth sentence work (learning >
    new > mature, basket/mastered/suspended excluded) and let the user
-   tick which to pull into the basket. This is the re-pick step. */
+   tick which to pull into the basket. This is the re-pick step.
+   v7.36 — content-words only. User: "good words to use not bloody
+   itterashai". Set-phrases (expr), particles, conjunctions, pronouns,
+   and bare numerals can't really be "built sentences with" — you say
+   them, you don't construct around them. So the chooser only surfaces
+   nouns, verbs, i-adjectives, na-adjectives, and adverbs. */
+const FOCUS_CHOOSABLE_POS = new Set(['n','v','adj','adj-na','adv']);
 function focusFreshBatch(){
   const inBasket   = new Set(state.settings.focusWords   || []);
   const masteredS  = new Set(state.settings.masteredWords  || []);
   const suspendedS = new Set(state.settings.suspendedWords || []);
   const pool = getActiveWords().filter(w =>
+    FOCUS_CHOOSABLE_POS.has(w.pos) &&
     !inBasket.has(w.id) && !masteredS.has(w.id) && !suspendedS.has(w.id));
   if(!pool.length){
     if(typeof showToast === 'function') showToast('No more words available to add.', {tone:'info', duration:3000});
