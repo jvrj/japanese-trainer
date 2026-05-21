@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.40';
+const APP_VERSION = '7.41';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2873,6 +2873,12 @@ function getDrillableWords(){
      module gating. Suspended is still respected. */
   if(activeVocabSection().mode === 'mastered'){
     return active.filter(w => !suspended.has(w.id));
+  }
+  /* v7.40 — a collection is an explicit hand-picked scope, so bypass module
+     gating (otherwise locked-module words silently drop out). Suspended +
+     mastered are still respected; vocabSectionFilter narrows to members. */
+  if(activeVocabSection().isCollection){
+    return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id));
   }
   return active.filter(w =>
     !suspended.has(w.id) &&
@@ -14560,10 +14566,14 @@ function renderHome(){
     const total = reviewsLabel + newsLabel;
     const est = Math.max(2, Math.round(total * 5 / 60));
     heroEyebrow = 'TODAY · SESSION';
-    heroTitle = cur ? `Module ${moduleDisplayNum(cur.id) || ''} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`);
+    /* A collection is an explicit scope the user picked — show it over the
+       module label so tapping a collection chip visibly takes effect. */
+    heroTitle = sec.isCollection
+      ? `${sec.emoji} ${sec.name}`
+      : (cur ? `Module ${moduleDisplayNum(cur.id) || ''} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`));
     const overdue = bc.overdue > targetR ? ` · +${bc.overdue-targetR} overdue` : '';
     heroMeta = `${reviewsLabel} due · ${newsLabel} new${overdue} · ~${est} min`;
-    heroDeco = cur ? cur.emoji : (sec.emoji || '心');
+    heroDeco = sec.isCollection ? (sec.emoji || '心') : (cur ? cur.emoji : (sec.emoji || '心'));
     /* When voice mode is on, route Begin Session to Build Mode (audio-led,
        voice-native) instead of typed Vocab Blitz. The user wants hands-free
        drilling and Build Mode is the shape that handles voice cleanly. */
