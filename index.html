@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.39';
+const APP_VERSION = '7.40';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3881,6 +3881,7 @@ function _focusChipMatches(w, key){
   if(key === 'verbs') return w.pos === 'v';
   if(key === 'adjs')  return w.pos === 'adj' || w.pos === 'adj-na';
   if(key === 'advs')  return w.pos === 'adv';
+  if(isCollectionId(key)) return collectionHasWord(key, w.id);
   return w.theme === key;
 }
 function focusFreshBatch(filterKey){
@@ -3962,10 +3963,10 @@ function renderFocus(){
     }).join('');
     const nSel = ui.batch.filter(id => ui.checked[id]).length;
     const active = ui.batchFilter || 'all';
-    const chipsHtml = FOCUS_CHIPS.map(c => {
-      const on = c.key === active;
-      return `<button class="btn" style="font-size:12px;padding:5px 11px;border-radius:999px;background:${on ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${on ? '#fff' : 'var(--text)'};border:1px solid ${on ? 'var(--blue)' : 'var(--border)'};white-space:nowrap" onclick="focusFilterChip('${c.key}')">${esc(c.label)}</button>`;
-    }).join('');
+    const focusChipBtn = (key, label, on) =>
+      `<button class="btn" style="font-size:12px;padding:5px 11px;border-radius:999px;background:${on ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${on ? '#fff' : 'var(--text)'};border:1px solid ${on ? 'var(--blue)' : 'var(--border)'};white-space:nowrap" onclick="focusFilterChip('${key}')">${esc(label)}</button>`;
+    const chipsHtml = FOCUS_CHIPS.map(c => focusChipBtn(c.key, c.label, c.key === active)).join('')
+      + getCollections().map(col => focusChipBtn(col.id, `${col.emoji} ${col.name}`, col.id === active)).join('');
     return `
       <div class="card">
         <h2 style="margin-top:0">Fresh batch</h2>
@@ -4928,6 +4929,72 @@ const MODULES = [
 const MODULE_UNLOCK_PCT = 80;
 const MODULE_MIN_TO_UNLOCK = 5;  /* don't auto-unlock when current module has fewer than 5 words (avoids unlock-everything-instantly on tiny decks) */
 
+/* ============================================================
+   MODULE ORDER + VISIBILITY (v7.40)
+   The unlock chain follows module *order*, so a user re-order has
+   to flow through every progression function. moduleOrderList()
+   is the canonical user order (includes hidden modules so nothing
+   is lost); orderedModules() is the visible subset that drives the
+   guided path. Hidden modules' words stay fully in scope — hiding
+   only collapses a module from the path, never removes vocabulary.
+   ============================================================ */
+function moduleOrderList(){
+  const order = state.settings.moduleOrder || [];
+  const byId = new Map(MODULES.map(m => [m.id, m]));
+  const out = [];
+  for(const id of order){ if(byId.has(id)){ out.push(byId.get(id)); byId.delete(id); } }
+  /* Modules shipped after the saved order append in their natural order. */
+  for(const m of MODULES){ if(byId.has(m.id)) out.push(m); }
+  return out;
+}
+function moduleIsHidden(id){ return (state.settings.hiddenModules || []).includes(id); }
+function orderedModules(){ return moduleOrderList().filter(m => !moduleIsHidden(m.id)); }
+function firstModule(){ return orderedModules()[0] || moduleOrderList()[0] || MODULES[0]; }
+function moduleDisplayNum(id){
+  const i = orderedModules().findIndex(m => m.id === id);
+  return i >= 0 ? i + 1 : null;
+}
+function moduleMove(id, dir){
+  const list = moduleOrderList();
+  const i = list.findIndex(m => m.id === id);
+  if(i < 0) return;
+  const j = i + dir;
+  if(j < 0 || j >= list.length) return;
+  const tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+  state.settings.moduleOrder = list.map(m => m.id);
+  save();
+}
+function moduleToggleHidden(id){
+  const hidden = state.settings.hiddenModules = state.settings.hiddenModules || [];
+  if(hidden.includes(id)){
+    state.settings.hiddenModules = hidden.filter(x => x !== id);
+  } else {
+    /* Never hide the last visible module — the path needs a starter. */
+    if(orderedModules().length <= 1){
+      if(typeof showToast === 'function') showToast('Keep at least one module visible.', {tone:'warn', duration:3000});
+      return;
+    }
+    hidden.push(id);
+    /* If the hidden module was current, hand current to the first visible one. */
+    if(state.settings.currentModuleId === id) state.settings.currentModuleId = firstModule().id;
+  }
+  save();
+  render();
+}
+window.moduleMove = moduleMove;
+window.moduleToggleHidden = moduleToggleHidden;
+function moduleResetOrder(){
+  state.settings.moduleOrder = MODULES.map(m => m.id);
+  state.settings.hiddenModules = [];
+  save();
+  render();
+}
+window.moduleResetOrder = moduleResetOrder;
+function moduleMoveUp(id){ moduleMove(id, -1); render(); }
+function moduleMoveDown(id){ moduleMove(id, 1); render(); }
+window.moduleMoveUp = moduleMoveUp;
+window.moduleMoveDown = moduleMoveDown;
+
 function moduleForWord(w){
   if(!w) return MODULES[MODULES.length - 1];
   /* v7.35 — purely theme-based routing. Verbs go to their topic module
@@ -4994,25 +5061,27 @@ function moduleProgress(moduleId){
 function moduleIsUnlocked(moduleId){
   const s = state.settings;
   if(!s.modulesEnabled) return true;
-  if(moduleId === MODULES[0].id) return true;
+  if(moduleIsHidden(moduleId)) return true;        /* hidden = always available, never gated */
+  if(moduleId === firstModule().id) return true;
   const unlocked = s.unlockedModules || [];
   const bypassed = s.unlockBypassed || [];
   return unlocked.includes(moduleId) || bypassed.includes(moduleId);
 }
 
 function moduleIsCurrent(moduleId){
-  return (state.settings.currentModuleId || MODULES[0].id) === moduleId;
+  return (state.settings.currentModuleId || firstModule().id) === moduleId;
 }
 
 /* Returns Set of word IDs in the user's current module + every unlocked
-   module. Returns null if modules are disabled — selectors treat null as
-   "no filter" so the whole deck is fair game. */
+   module. Hidden modules' words are always included so hiding never removes
+   vocabulary from drills. Returns null if modules are disabled — selectors
+   treat null as "no filter" so the whole deck is fair game. */
 function activeModuleWordIdSet(){
   const s = state.settings;
   if(!s.modulesEnabled) return null;
   const ids = new Set();
-  for(const m of MODULES){
-    if(moduleIsUnlocked(m.id)){
+  for(const m of moduleOrderList()){
+    if(moduleIsHidden(m.id) || moduleIsUnlocked(m.id)){
       for(const w of moduleWords(m.id)) ids.add(w.id);
     }
   }
@@ -5022,11 +5091,13 @@ function activeModuleWordIdSet(){
 function modulesUnlockBackfill(){
   const s = state.settings;
   if(!s.modulesEnabled) return;
+  const chain = orderedModules();           /* visible modules drive the path */
+  if(!chain.length) return;
   s.unlockedModules = s.unlockedModules || [];
-  if(!s.unlockedModules.includes(MODULES[0].id)) s.unlockedModules.unshift(MODULES[0].id);
-  for(let i = 0; i < MODULES.length - 1; i++){
-    const cur = MODULES[i];
-    const next = MODULES[i+1];
+  if(!s.unlockedModules.includes(chain[0].id)) s.unlockedModules.unshift(chain[0].id);
+  for(let i = 0; i < chain.length - 1; i++){
+    const cur = chain[i];
+    const next = chain[i+1];
     const prog = moduleProgress(cur.id);
     if(prog.total >= MODULE_MIN_TO_UNLOCK && prog.pct >= MODULE_UNLOCK_PCT){
       if(!s.unlockedModules.includes(next.id)) s.unlockedModules.push(next.id);
@@ -5034,25 +5105,26 @@ function modulesUnlockBackfill(){
       break;  /* halt at first non-mastered module — no skipping */
     }
   }
-  if(!s.currentModuleId) s.currentModuleId = MODULES[0].id;
+  if(!s.currentModuleId) s.currentModuleId = chain[0].id;
 }
 
 /* Called after a word graduates / is mastered. Toasts on transition. */
 function modulesMaybeUnlockNext(){
   const s = state.settings;
   if(!s.modulesEnabled) return;
-  const curId = s.currentModuleId || MODULES[0].id;
-  const idx = MODULES.findIndex(m => m.id === curId);
-  if(idx < 0 || idx >= MODULES.length - 1) return;
-  const cur = MODULES[idx];
-  const next = MODULES[idx + 1];
+  const chain = orderedModules();
+  const curId = s.currentModuleId || (chain[0] && chain[0].id);
+  const idx = chain.findIndex(m => m.id === curId);
+  if(idx < 0 || idx >= chain.length - 1) return;
+  const cur = chain[idx];
+  const next = chain[idx + 1];
   const prog = moduleProgress(cur.id);
   if(prog.pct >= MODULE_UNLOCK_PCT && !(s.unlockedModules || []).includes(next.id)){
     s.unlockedModules = s.unlockedModules || [];
     s.unlockedModules.push(next.id);
     save();
     if(typeof showToast === 'function'){
-      showToast(`🎉 Module ${next.num} unlocked: ${next.emoji} ${next.name}`, {tone:'info', duration:5000});
+      showToast(`🎉 Module ${moduleDisplayNum(next.id)} unlocked: ${next.emoji} ${next.name}`, {tone:'info', duration:5000});
     }
   }
 }
@@ -5115,6 +5187,11 @@ const VERB_SECTIONS = [
 function verbSectionById(id){ return VERB_SECTIONS.find(s => s.id === id) || VERB_SECTIONS[0]; }
 function activeVerbSection(){
   const id = state.settings?.formSection || 'all';
+  if(isCollectionId(id)){
+    const col = collectionById(id);
+    if(col) return { id:col.id, name:col.name, emoji:col.emoji, members:null, _colId:col.id };
+    return VERB_SECTIONS[0];  /* deleted collection — fall back to All */
+  }
   return verbSectionById(id);
 }
 
@@ -5147,6 +5224,11 @@ const VOCAB_SECTIONS = [
 function vocabSectionById(id){ return VOCAB_SECTIONS.find(s => s.id === id) || VOCAB_SECTIONS[0]; }
 function activeVocabSection(){
   const id = state.settings?.vocabSection || 'all';
+  if(isCollectionId(id)){
+    const col = collectionById(id);
+    if(col) return { id:col.id, name:col.name, emoji:col.emoji, themes:null, isCollection:true };
+    return VOCAB_SECTIONS[0];  /* deleted collection — fall back to All */
+  }
   return vocabSectionById(id);
 }
 /* Apply the active section as a filter on a word list. "all" returns the list
@@ -5164,9 +5246,94 @@ function vocabSectionFilter(words){
       return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN;
     });
   }
+  if(sec.isCollection) return collectionFilter(words, sec.id);
   if(!sec.themes) return words;
   const set = new Set(sec.themes);
   return words.filter(w => set.has(w.theme));
+}
+
+/* ============================================================
+   COLLECTIONS (v7.40) — user-owned word groups.
+   A general organising layer: name any set of words, then study
+   just that set as a scope across Vocab Blitz, Form Drills, and
+   Focus — sitting right beside the built-in sections. Stored in
+   settings.collections; ids are prefixed 'col_' so every selector
+   can tell a collection apart from a built-in section by id alone.
+   ============================================================ */
+function getCollections(){
+  const list = state.settings.collections || [];
+  return list.slice().sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+}
+function collectionById(id){
+  return (state.settings.collections || []).find(c => c.id === id) || null;
+}
+function isCollectionId(id){ return typeof id === 'string' && id.startsWith('col_'); }
+function collectionCreate(name, emoji){
+  const list = state.settings.collections = state.settings.collections || [];
+  const id = 'col_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const order = list.length ? Math.max(...list.map(c => c.order ?? 0)) + 1 : 0;
+  list.push({ id, name:(name || 'My list').trim().slice(0,40) || 'My list', emoji: emoji || '⭐', wordIds:[], order });
+  save();
+  return id;
+}
+function collectionRename(id, name){
+  const c = collectionById(id); if(!c) return;
+  const n = (name || '').trim().slice(0,40);
+  if(n) c.name = n;
+  save();
+}
+function collectionSetEmoji(id, emoji){
+  const c = collectionById(id); if(!c) return;
+  if(emoji) c.emoji = emoji;
+  save();
+}
+function collectionDelete(id){
+  state.settings.collections = (state.settings.collections || []).filter(c => c.id !== id);
+  /* If a deleted collection was the active scope anywhere, fall back to All. */
+  if(state.settings.vocabSection === id) state.settings.vocabSection = 'all';
+  if(state.settings.formSection === id) state.settings.formSection = 'all';
+  if(state.settings.focusFilter === id) state.settings.focusFilter = 'all';
+  save();
+}
+function collectionMove(id, dir){
+  const list = getCollections();
+  const i = list.findIndex(c => c.id === id);
+  if(i < 0) return;
+  const j = i + dir;
+  if(j < 0 || j >= list.length) return;
+  const a = list[i], b = list[j];
+  const ao = a.order ?? 0, bo = b.order ?? 0;
+  a.order = bo; b.order = ao;
+  save();
+}
+function collectionToggleWord(id, wordId){
+  const c = collectionById(id); if(!c) return;
+  c.wordIds = c.wordIds || [];
+  if(c.wordIds.includes(wordId)) c.wordIds = c.wordIds.filter(x => x !== wordId);
+  else c.wordIds.push(wordId);
+  save();
+}
+function collectionHasWord(id, wordId){
+  const c = collectionById(id);
+  return !!(c && (c.wordIds || []).includes(wordId));
+}
+function collectionSeedFromTheme(id, themeKey){
+  const c = collectionById(id); if(!c) return;
+  const set = new Set(c.wordIds || []);
+  for(const w of getActiveWords()){ if(w.theme === themeKey) set.add(w.id); }
+  c.wordIds = [...set];
+  save();
+}
+function collectionWordObjs(id){
+  const c = collectionById(id); if(!c) return [];
+  const byId = new Map(getActiveWords().map(w => [w.id, w]));
+  return (c.wordIds || []).map(wid => byId.get(wid)).filter(Boolean);
+}
+/* Restrict a word list to a collection's members (by word id). */
+function collectionFilter(words, id){
+  const c = collectionById(id); if(!c) return words;
+  const set = new Set(c.wordIds || []);
+  return words.filter(w => set.has(w.id));
 }
 
 function formEligibleVerbs(){
@@ -5178,13 +5345,21 @@ function formEligibleVerbs(){
      (typed), Form Spam, and Build Mode's folded form_drill steps all flow
      through this function so the filter applies uniformly. */
   const section = activeVerbSection();
-  const memberSet = section.members ? new Set(section.members) : null;
+  /* Collections store word ids; built-in sections store jp strings. */
+  let memberFilter;
+  if(section._colId){
+    const colSet = new Set((collectionById(section._colId)?.wordIds) || []);
+    memberFilter = w => colSet.has(w.id);
+  } else {
+    const memberSet = section.members ? new Set(section.members) : null;
+    memberFilter = w => !memberSet || memberSet.has(w.jp);
+  }
   return getActiveWords().filter(w =>
     w.pos === 'v' &&
     !masteredSet.has(w.id) &&
     !suspendedSet.has(w.id) &&
     (!moduleIds || moduleIds.has(w.id)) &&
-    (!memberSet || memberSet.has(w.jp))
+    memberFilter(w)
   );
 }
 
@@ -6043,9 +6218,32 @@ function renderForms(){
       ${esc(sec.emoji)} ${esc(sec.name)} <span class="muted" style="font-size:10px;${isActive?'color:#fff':''}">(${count})</span>
     </button>`;
   }).join('');
+  /* v7.40 — user collections join the scope row. A collection's verbs become
+     the drill scope; count is members that are verbs surviving the filters. */
+  const colMasteredSet = new Set(state.settings.masteredWords || []);
+  const colSuspendedSet = new Set(state.settings.suspendedWords || []);
+  const colModuleIds = activeModuleWordIdSet();
+  const collectionChips = getCollections().map(c => {
+    const memberSet = new Set(c.wordIds || []);
+    const count = getActiveWords().filter(w =>
+      w.pos === 'v' &&
+      memberSet.has(w.id) &&
+      !colMasteredSet.has(w.id) &&
+      !colSuspendedSet.has(w.id) &&
+      (!colModuleIds || colModuleIds.has(w.id))
+    ).length;
+    const isActive = activeSec === c.id;
+    const disabled = count === 0;
+    const bg = isActive ? 'background:var(--blue);color:#fff;border-color:var(--blue)' : '';
+    const op = disabled ? 'opacity:0.4;cursor:not-allowed' : '';
+    return `<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;${bg};${op}"
+      ${disabled ? 'disabled' : `onclick="setFormSection('${c.id}')"`}>
+      ${esc(c.emoji)} ${esc(c.name)} <span class="muted" style="font-size:10px;${isActive?'color:#fff':''}">(${count})</span>
+    </button>`;
+  }).join('');
   const sectionRow = `<div class="card">
     <div class="muted" style="font-size:12px;margin-bottom:6px">Drill scope — applies to all forms below + Spam in Build Mode</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">${sectionChips}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${sectionChips}${collectionChips}</div>
   </div>`;
 
   return `${sectionRow}${blitzCard}<div class="card">
@@ -6056,7 +6254,8 @@ function renderForms(){
 /* v6.32 — section setter. Persists choice + re-renders the picker so the
    chip + verb counts on each form card refresh. */
 function setFormSection(id){
-  if(!verbSectionById(id)) return;
+  if(isCollectionId(id)){ if(!collectionById(id)) return; }
+  else if(!VERB_SECTIONS.find(s => s.id === id)) return;
   state.settings.formSection = id;
   save();
   render();
@@ -6066,7 +6265,8 @@ window.setFormSection = setFormSection;
 /* v6.33 — vocab section setter. Persists choice + re-renders home so the
    chip row + due/new counts on the Vocab Blitz card refresh. */
 function setVocabSection(id){
-  if(!vocabSectionById(id)) return;
+  if(isCollectionId(id)){ if(!collectionById(id)) return; }
+  else if(!VOCAB_SECTIONS.find(s => s.id === id)) return;
   state.settings.vocabSection = id;
   save();
   render();
@@ -14240,7 +14440,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -14257,7 +14457,7 @@ function renderTopbar(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -14356,11 +14556,11 @@ function renderHome(){
     heroAction = 'startBlitz()';
   } else {
     const enabled = state.settings.modulesEnabled;
-    const cur = enabled ? (moduleById(state.settings.currentModuleId || MODULES[0].id) || MODULES[0]) : null;
+    const cur = enabled ? (moduleById(state.settings.currentModuleId || firstModule().id) || firstModule()) : null;
     const total = reviewsLabel + newsLabel;
     const est = Math.max(2, Math.round(total * 5 / 60));
     heroEyebrow = 'TODAY · SESSION';
-    heroTitle = cur ? `Module ${cur.num} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`);
+    heroTitle = cur ? `Module ${moduleDisplayNum(cur.id) || ''} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`);
     const overdue = bc.overdue > targetR ? ` · +${bc.overdue-targetR} overdue` : '';
     heroMeta = `${reviewsLabel} due · ${newsLabel} new${overdue} · ~${est} min`;
     heroDeco = cur ? cur.emoji : (sec.emoji || '心');
@@ -14449,9 +14649,15 @@ function renderHome(){
        ever saw Module 1 with no way to see/unlock the other 8. */
     { emoji:'🧩', title:'Module path',
       meta: state.settings.modulesEnabled
-        ? `${MODULES.filter(m => moduleIsUnlocked(m.id)).length}/${MODULES.length} unlocked · browse & unlock`
-        : `gating off · all ${MODULES.length} modules open`,
+        ? `${orderedModules().filter(m => moduleIsUnlocked(m.id)).length}/${orderedModules().length} unlocked · browse, reorder & unlock`
+        : `gating off · all ${orderedModules().length} modules open`,
       click:`nav('modules')` },
+    /* Collections — user-owned word groups, usable as a scope everywhere. */
+    { emoji:'🗂️', title:'Collections',
+      meta: (state.settings.collections||[]).length
+        ? `${(state.settings.collections||[]).length} list${(state.settings.collections||[]).length===1?'':'s'} · organise your own word groups`
+        : 'Make your own word groups · study them anywhere',
+      click:`nav('collections')` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
       ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
@@ -14520,10 +14726,28 @@ function renderHome(){
       </div>
     </div>`;
 
+  /* v7.40 — Vocab Blitz scope chips (re-introduced): built-in sections + your
+     own collections. Tapping a chip narrows the hero session to that scope. */
+  const vSec = state.settings.vocabSection || 'all';
+  const scopeChipHtml = (id, emoji, name, count, isActive) =>
+    `<button class="scope-chip${isActive ? ' active' : ''}" onclick="setVocabSection('${id}')">${esc(emoji)} ${esc(name)}${count != null ? `<span class="ct">${count}</span>` : ''}</button>`;
+  const vocabChips = VOCAB_SECTIONS.map(s => {
+    let count;
+    if(s.mode === 'mastered') count = masteredReady;
+    else if(!s.themes) count = active.length;
+    else { const set = new Set(s.themes); count = active.filter(w => set.has(w.theme)).length; }
+    return scopeChipHtml(s.id, s.emoji, s.name, count, vSec === s.id);
+  }).join('');
+  const colChips = getCollections().map(c =>
+    scopeChipHtml(c.id, c.emoji, c.name, (c.wordIds || []).length, vSec === c.id)
+  ).join('');
+  const scopeRow = `<div class="scope-row">${vocabChips}${colChips}</div>`;
+
   return `
     <div class="home-v8">
       ${topBar}
       ${heroCard}
+      ${scopeRow}
       ${upNext}
       ${statsRow}
     </div>
@@ -14537,15 +14761,23 @@ function renderHome(){
 
 function renderModules(){
   const enabled = state.settings.modulesEnabled;
-  const cards = MODULES.map(m => {
+  const visible = orderedModules();
+  const cardFor = (m, idx, isHidden) => {
     const prog = moduleProgress(m.id);
     const unlocked = moduleIsUnlocked(m.id);
-    const current = moduleIsCurrent(m.id);
+    const current = !isHidden && moduleIsCurrent(m.id);
     const themeList = m.themes ? m.themes.join(' · ') : '—';
     const bar = `<div class="mastery-strip" style="margin-top:8px;height:8px;background:var(--card)"><div style="height:100%;width:${prog.pct}%;background:${prog.pct >= MODULE_UNLOCK_PCT ? 'var(--blue)' : 'var(--green)'};border-radius:4px"></div></div>`;
     const meta = `<div class="muted" style="font-size:12px;margin-top:4px">${esc(themeList)} · ${prog.total} words</div>`;
+    /* Reorder + hide controls (only meaningful for visible modules). */
+    const orderCtrls = isHidden ? '' : `
+      <button class="btn btn-secondary" style="padding:4px 8px;font-size:13px" ${idx===0?'disabled':''} onclick="moduleMoveUp('${m.id}')">▲</button>
+      <button class="btn btn-secondary" style="padding:4px 8px;font-size:13px" ${idx===visible.length-1?'disabled':''} onclick="moduleMoveDown('${m.id}')">▼</button>`;
+    const hideBtn = `<button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;white-space:nowrap" onclick="moduleToggleHidden('${m.id}')">${isHidden ? 'Show' : 'Hide'}</button>`;
     let footer;
-    if(!enabled){
+    if(isHidden){
+      footer = `<div class="muted" style="font-size:12px;margin-top:8px">Hidden from the path. Its words still appear in drills — only the guided unlock step is skipped.</div>`;
+    } else if(!enabled){
       footer = `<div class="muted" style="font-size:12px;margin-top:8px">Modules are off — every word is currently drillable.</div>`;
     } else if(current){
       footer = `<div style="margin-top:8px;padding:8px 10px;background:rgba(34,197,94,0.12);border-radius:6px;font-size:13px;color:var(--green)">● Current — Vocab Blitz, Build Mode and Form Drills pull from here + earlier modules.</div>`;
@@ -14556,17 +14788,29 @@ function renderModules(){
         <div class="spacer"></div>
         <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="unlockModuleAnyway('${m.id}')">Unlock anyway</button>`;
     }
-    return `<div class="card" style="${current ? 'border:2px solid var(--green)' : (unlocked ? '' : 'opacity:0.7')}">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-        <h3 style="margin:0">${m.emoji} Module ${m.num} — ${esc(m.name)}</h3>
-        <span class="muted" style="font-size:12px">${prog.pct}%</span>
+    const heading = isHidden ? `${m.emoji} ${esc(m.name)}` : `${m.emoji} Module ${idx+1} — ${esc(m.name)}`;
+    return `<div class="card" style="${current ? 'border:2px solid var(--green)' : (unlocked && !isHidden ? '' : 'opacity:0.7')}">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <h3 style="margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${heading}</h3>
+        ${orderCtrls}${hideBtn}
       </div>
       ${bar}
-      <div class="muted" style="font-size:11px;margin-top:6px">${prog.masteredCount} mastered · ${prog.startedCount}/${prog.total} words touched</div>
+      <div class="muted" style="font-size:11px;margin-top:6px">${prog.masteredCount} mastered · ${prog.startedCount}/${prog.total} words touched · ${prog.pct}%</div>
       ${meta}
       ${footer}
     </div>`;
-  }).join('');
+  };
+  const cards = visible.map((m, idx) => cardFor(m, idx, false)).join('');
+  const hiddenList = moduleOrderList().filter(m => moduleIsHidden(m.id));
+  const hiddenCards = hiddenList.length ? `
+    <div class="section-head" style="margin-top:18px">Hidden modules</div>
+    ${hiddenList.map(m => cardFor(m, -1, true)).join('')}` : '';
+
+  const orderHint = `<div class="card">
+    <div class="muted" style="font-size:12px">Reorder with ▲▼ — the unlock chain follows this order, so the top module is your starting point. Hidden modules drop out of the path but their words still show in drills.</div>
+    <div class="spacer"></div>
+    <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="moduleResetOrder()">↺ Reset to default order</button>
+  </div>`;
 
   const toggle = `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -14580,7 +14824,177 @@ function renderModules(){
     </div>
   </div>`;
 
-  return toggle + cards;
+  return toggle + orderHint + cards + hiddenCards;
+}
+
+/* ---------- COLLECTIONS (v7.40) ----------
+   User-owned word groups. Create, rename, reorder, fill from a
+   searchable deck picker or seed from a theme, then study just that
+   set anywhere the scope chips appear (Vocab Blitz, Forms, Focus). */
+const COLLECTION_EMOJI = ['⭐','🔥','📚','🍱','🚶','💬','🤲','🧠','💼','🔄','🏠','🚆','🌳','👕','💭','🎯','❤️','✅','🎌','🗣️'];
+
+function colUi(){ return state._colUi = state._colUi || { openId:null, search:'' }; }
+
+function colCreate(){
+  const name = prompt('Name this collection (e.g. "My weak verbs", "Trip words"):', '');
+  if(name === null) return;            /* cancelled */
+  const id = collectionCreate(name || 'My list', '⭐');
+  colUi().openId = id;                 /* open its picker right away */
+  colUi().search = '';
+  render();
+}
+window.colCreate = colCreate;
+
+function colRename(id){
+  const c = collectionById(id); if(!c) return;
+  const name = prompt('Rename collection:', c.name);
+  if(name === null) return;
+  collectionRename(id, name);
+  render();
+}
+window.colRename = colRename;
+
+function colDelete(id){
+  const c = collectionById(id); if(!c) return;
+  if(!confirm(`Delete "${c.name}"? The words stay in your deck — only this grouping is removed.`)) return;
+  collectionDelete(id);
+  render();
+}
+window.colDelete = colDelete;
+
+function colMoveUp(id){ collectionMove(id, -1); render(); }
+function colMoveDown(id){ collectionMove(id, 1); render(); }
+window.colMoveUp = colMoveUp;
+window.colMoveDown = colMoveDown;
+
+function colSetEmoji(id, e){ collectionSetEmoji(id, e); render(); }
+window.colSetEmoji = colSetEmoji;
+
+function colTogglePicker(id){
+  const u = colUi();
+  u.openId = (u.openId === id) ? null : id;
+  u.search = '';
+  render();
+}
+window.colTogglePicker = colTogglePicker;
+
+function colSearchInput(){
+  const v = $('#colSearch')?.value || '';
+  colUi().search = v;
+  const list = $('#colPickList');
+  if(list && colUi().openId) list.innerHTML = colPickListHtml(colUi().openId, v);
+}
+window.colSearchInput = colSearchInput;
+
+function colToggleWord(id, wordId){
+  collectionToggleWord(id, wordId);
+  /* List-only refresh so the search box keeps its text + keyboard. */
+  const list = $('#colPickList');
+  if(list) list.innerHTML = colPickListHtml(id, colUi().search);
+  const cnt = $('#colCount_' + id);
+  if(cnt){ const n = (collectionById(id)?.wordIds || []).length; cnt.textContent = `${n} word${n===1?'':'s'}`; }
+}
+window.colToggleWord = colToggleWord;
+
+function colSeedTheme(id, theme){
+  if(!theme) return;
+  collectionSeedFromTheme(id, theme);
+  render();
+}
+window.colSeedTheme = colSeedTheme;
+
+function colDeckThemes(){
+  const set = new Set();
+  for(const w of getActiveWords()){ if(w.theme) set.add(w.theme); }
+  return [...set].sort();
+}
+
+function colPickListHtml(id, search){
+  const c = collectionById(id);
+  if(!c) return '';
+  const member = new Set(c.wordIds || []);
+  const q = (search || '').trim().toLowerCase();
+  const all = getActiveWords();
+  const matches = all.filter(w => {
+    if(!q) return true;
+    return (w.jp || '').toLowerCase().includes(q)
+      || (w.romaji || '').toLowerCase().includes(q)
+      || (w.en || '').toLowerCase().includes(q);
+  });
+  const CAP = 150;
+  const shown = matches.slice(0, CAP);
+  const rows = shown.map(w => {
+    const on = member.has(w.id);
+    return `<button class="btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;border:1px solid ${on?'var(--blue)':'var(--border)'};background:${on?'rgba(100,150,255,0.12)':'transparent'}"
+        onclick="colToggleWord('${id}','${w.id}')">
+      <span style="font-size:15px;width:18px;flex-shrink:0">${on?'✓':'+'}</span>
+      <span style="flex:1"><b>${esc(w.jp)}</b> <span class="muted" style="font-size:12px">${esc(w.romaji||'')}</span><br><span class="muted" style="font-size:12px">${esc(w.en||'')}</span></span>
+    </button>`;
+  }).join('');
+  const more = matches.length > CAP ? `<div class="muted" style="font-size:12px;text-align:center;padding:6px">+${matches.length - CAP} more — keep typing to narrow</div>` : '';
+  const empty = matches.length === 0 ? `<div class="muted" style="font-size:13px;padding:10px">No words match "${esc(search)}".</div>` : '';
+  return rows + more + empty;
+}
+
+function renderCollections(){
+  const cols = getCollections();
+  const intro = `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <h3 style="margin:0 0 4px 0">Collections</h3>
+        <div class="muted" style="font-size:12.5px">Your own word groups. Build one, then pick it as the scope in Vocab Blitz, Form Drills or Focus to study just those words.</div>
+      </div>
+      <button class="btn btn-primary" style="white-space:nowrap" onclick="colCreate()">＋ New</button>
+    </div>
+  </div>`;
+
+  if(!cols.length){
+    return intro + `<div class="card"><div class="muted" style="font-size:13px">No collections yet. Tap <b>＋ New</b> to make one — name it, then tick words from your deck or seed it from a theme.</div></div>`;
+  }
+
+  const themeOpts = colDeckThemes().map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  const openId = colUi().openId;
+
+  const cards = cols.map((c, idx) => {
+    const n = (c.wordIds || []).length;
+    const isOpen = openId === c.id;
+    const emojiRow = COLLECTION_EMOJI.map(e =>
+      `<button class="btn" style="padding:4px 7px;font-size:16px;border:1px solid ${c.emoji===e?'var(--blue)':'var(--border)'};background:${c.emoji===e?'rgba(100,150,255,0.12)':'transparent'}" onclick="colSetEmoji('${c.id}','${e}')">${e}</button>`
+    ).join('');
+    const picker = isOpen ? `
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <div class="muted" style="font-size:11px;margin-bottom:6px">Icon</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">${emojiRow}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+          <select onchange="colSeedTheme('${c.id}', this.value)" class="btn btn-secondary" style="flex:1;font-size:12px;padding:7px">
+            <option value="">＋ Seed from a theme…</option>
+            ${themeOpts}
+          </select>
+        </div>
+        <input id="colSearch" type="text" placeholder="Search words to add (jp / romaji / english)…" oninput="colSearchInput()" value="${esc(colUi().search)}"
+          style="width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:inherit;font-size:13px;margin-bottom:8px">
+        <div id="colPickList" style="max-height:340px;overflow-y:auto">${colPickListHtml(c.id, colUi().search)}</div>
+      </div>` : '';
+    return `<div class="card" style="${isOpen?'border:1px solid var(--blue)':''}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:20px">${esc(c.emoji)}</span>
+        <div style="flex:1;min-width:0">
+          <h3 style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</h3>
+          <div class="muted" id="colCount_${c.id}" style="font-size:12px">${n} word${n===1?'':'s'}</div>
+        </div>
+        <button class="btn btn-secondary" style="padding:4px 8px;font-size:13px" ${idx===0?'disabled':''} onclick="colMoveUp('${c.id}')">▲</button>
+        <button class="btn btn-secondary" style="padding:4px 8px;font-size:13px" ${idx===cols.length-1?'disabled':''} onclick="colMoveDown('${c.id}')">▼</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn ${isOpen?'btn-primary':'btn-secondary'}" style="flex:1;font-size:12px" onclick="colTogglePicker('${c.id}')">${isOpen?'Done editing':'Edit words'}</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="colRename('${c.id}')">Rename</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="colDelete('${c.id}')">Delete</button>
+      </div>
+      ${picker}
+    </div>`;
+  }).join('');
+
+  return intro + cards;
 }
 
 /* ---------- LIBRARY (v6.10) ----------
