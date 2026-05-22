@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.42';
+const APP_VERSION = '7.43';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3959,6 +3959,41 @@ function focusGenClearCache(){
 }
 window.focusGenClearCache = focusGenClearCache;
 
+/* v7.43 — inline conjugation strip on the Focus card. Shows the everyday
+   variations right where you study the word, using the existing conjugation
+   engine (toNai/toTa/toMashita/toNakatta/toTe for verbs; toKunai/toKatta for
+   i-adjectives). Tap any form to hear it. Kana only. */
+function focusFormsStrip(w){
+  if(!w || !w.jp) return '';
+  const jp = w.jp;
+  let rows;
+  if(w.pos === 'v'){
+    rows = [
+      ['negative',  toNai(jp)],
+      ['past',      toTa(jp) + ' / ' + toMashita(jp)],
+      ['past neg.', toNakatta(jp)],
+      ['て-form',   toTe(jp)]
+    ];
+  } else if(w.pos === 'adj'){
+    rows = [
+      ['negative',  toKunai(jp)],
+      ['past',      toKatta(jp)],
+      ['past neg.', toKunai(jp).replace(/くない$/, 'くなかった')]
+    ];
+  } else {
+    return '';
+  }
+  const pill = (label, form) =>
+    `<div onclick="event.stopPropagation();speakJP('${jsEsc(form)}')" title="Listen" style="cursor:pointer;display:flex;flex-direction:column;gap:1px;padding:5px 9px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:7px">
+       <span class="muted" style="font-size:9px;text-transform:uppercase;letter-spacing:0.05em">${esc(label)}</span>
+       <span class="jp" style="font-size:14px;color:var(--text)">${esc(form)} 🔊</span>
+     </div>`;
+  return `<div style="margin-top:8px">
+    <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Forms</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${rows.map(r => pill(r[0], r[1])).join('')}</div>
+  </div>`;
+}
+
 function focusSentencesFor(w, max){
   if(!w) return [];
   max = max == null ? 6 : max;
@@ -4258,6 +4293,7 @@ function renderFocus(){
         <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:var(--muted);white-space:nowrap" onclick="focusDrop('${jsEsc(w.id)}')">✕ drop</button>
       </div>
       ${w.note ? `<div style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(245,158,11,0.10);border-left:3px solid #f59e0b;border-radius:4px;line-height:1.5"><b style="font-size:10px;letter-spacing:0.06em">NUANCE</b><br>${esc(w.note)}</div>` : ''}
+      ${focusFormsStrip(w)}
       ${framesHtml}
       ${hasKey ? `<button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:12px;color:${genLoading ? 'var(--muted)' : '#a78bfa'};border:1px solid ${genLoading ? 'var(--border)' : 'rgba(167,139,250,0.4)'}" onclick="focusGenWord('${jsEsc(w.id)}')" ${genLoading ? 'disabled' : ''}>${genLoading ? '✨ Generating…' : (isGen ? '🔄 Regenerate (AI)' : '✨ Generate natural sentences')}</button>` : ''}
     </div>`;
