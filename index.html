@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.41';
+const APP_VERSION = '7.42';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1927,6 +1927,70 @@ const N5_PACK = [
   {jp:"エアコン",romaji:"eakon",en:"air conditioner",pos:"n",theme:"home",register:"neutral",jlpt:5,note:"Clipped 'air conditioner'. The cooling/heating functions are れいぼう / だんぼう."}
 ];
 
+/* ===================== ADVANCED PACK (N4/N3) =====================
+   v7.42 — a ~50-word step-up pack of genuinely less-familiar vocabulary
+   so Focus has harder material than the N5 deck. ALL hiragana/katakana,
+   NO kanji (the learner cannot read kanji). Every entry carries a real
+   usage-nuance note, not just a gloss. Loaded with ids adv_<i> when
+   state.settings.advPackEnabled is on. */
+const ADV_PACK = [
+  /* --- na-adjectives --- */
+  {jp:"あいまい",romaji:"aimai",en:"vague / ambiguous",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:3,note:"Non-committal, unclear. あいまい な へんじ = a wishy-washy answer. Usually mildly negative — implies dodging clarity."},
+  {jp:"めんどう",romaji:"mendou",en:"troublesome / a hassle",pos:"adj-na",theme:"home",register:"neutral",jlpt:4,note:"A bother to do. めんどう な しごと = a tedious chore. BUT めんどう を みる = to look after someone (different sense). Casual = めんどくさい."},
+  {jp:"じみ",romaji:"jimi",en:"plain / understated",pos:"adj-na",theme:"clothing",register:"neutral",jlpt:3,note:"Sober, low-key (looks, clothes). Opposite of はで. Can praise (tasteful) or knock (drab) depending on tone."},
+  {jp:"はで",romaji:"hade",en:"flashy / showy",pos:"adj-na",theme:"clothing",register:"neutral",jlpt:3,note:"Loud, gaudy. はで な ふく = flashy clothes. Neutral-to-negative; the opposite of じみ."},
+  {jp:"すなお",romaji:"sunao",en:"frank / obedient / takes it well",pos:"adj-na",theme:"people",register:"neutral",jlpt:3,note:"Honest and unresisting. すなお に あやまる = apologize without excuses. Almost always a compliment."},
+  {jp:"ふくざつ",romaji:"fukuzatsu",en:"complicated",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:4,note:"Complex/tangled. Also ふくざつ な きもち = mixed, conflicted feelings — not only 'complex structure'."},
+  {jp:"ざんねん",romaji:"zannen",en:"too bad / a shame",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:4,note:"Regret about an outcome. ざんねん ながら = regrettably. Said about results/events, never about a person's character."},
+  {jp:"とくい",romaji:"tokui",en:"one's forte / good at",pos:"adj-na",theme:"school",register:"neutral",jlpt:4,note:"Strong point. すうがく が とくい = good at maths. Takes が. Also とくい げ = looking smug/pleased with oneself."},
+  {jp:"にがて",romaji:"nigate",en:"weak point / not good with",pos:"adj-na",theme:"school",register:"neutral",jlpt:4,note:"Softer than きらい. Can mean 'bad at' OR 'find a person hard to deal with'. Takes が."},
+  {jp:"たいくつ",romaji:"taikutsu",en:"boring / bored",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:4,note:"たいくつ な えいが = a dull film; たいくつ する = to be bored. Covers both the boring thing and the bored person."},
+  {jp:"しんけん",romaji:"shinken",en:"serious / in earnest",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:3,note:"Sincere effort. しんけん に かんがえる = think hard about. NOT 'grave/dire' — that's ふかこく. It's about earnestness."},
+  {jp:"ていねい",romaji:"teinei",en:"polite / careful / thorough",pos:"adj-na",theme:"people",register:"neutral",jlpt:4,note:"ていねい な ことば = polite speech; ていねい に かく = write neatly. Praise for the care taken."},
+  {jp:"むだ",romaji:"muda",en:"wasteful / pointless",pos:"adj-na",theme:"work",register:"neutral",jlpt:4,note:"No value. むだ な じかん = wasted time; むだ づかい = wasteful spending. Strong 'for nothing' nuance."},
+  /* --- i-adjectives --- */
+  {jp:"なつかしい",romaji:"natsukashii",en:"nostalgic",pos:"adj",theme:"feelings",register:"neutral",jlpt:3,note:"The warm ache of missing the past. Said ABOUT the thing: この うた、なつかしい = this song takes me back."},
+  {jp:"ずうずうしい",romaji:"zuuzuushii",en:"shameless / pushy / cheeky",pos:"adj",theme:"people",register:"neutral",jlpt:3,note:"No restraint (the opposite of えんりょ). ずうずうしい おねがい = a brazen request. Clearly negative."},
+  {jp:"もったいない",romaji:"mottainai",en:"too good to waste / what a waste",pos:"adj",theme:"home",register:"neutral",jlpt:3,note:"すてる の は もったいない = it'd be a waste to bin it. Also a humble 'this is too good for me'."},
+  {jp:"うらやましい",romaji:"urayamashii",en:"envious (the good-natured kind)",pos:"adj",theme:"feelings",register:"neutral",jlpt:3,note:"'Lucky you!' — wishing you had it, without spite. Compare ねたましい = bitter, resentful envy."},
+  {jp:"はずかしい",romaji:"hazukashii",en:"embarrassing / shy / ashamed",pos:"adj",theme:"feelings",register:"neutral",jlpt:4,note:"はずかしい はなし = an embarrassing story. Covers both bashful ('I'm shy') and 'I'm ashamed'."},
+  {jp:"さびしい",romaji:"sabishii",en:"lonely / forlorn",pos:"adj",theme:"feelings",register:"neutral",jlpt:4,note:"Felt absence — softer and sadder than just ひとり. Also さびしい みち = a desolate street."},
+  {jp:"きびしい",romaji:"kibishii",en:"strict / harsh / tough",pos:"adj",theme:"work",register:"neutral",jlpt:4,note:"きびしい せんせい = a strict teacher; きびしい じょうきょう = a tough situation. Applies to people AND conditions."},
+  {jp:"めずらしい",romaji:"mezurashii",en:"rare / unusual",pos:"adj",theme:"nature",register:"neutral",jlpt:4,note:"めずらしい ね = that's a first! Often carries pleasant surprise — 'how unexpected of you'."},
+  {jp:"やわらかい",romaji:"yawarakai",en:"soft / tender / supple",pos:"adj",theme:"food",register:"neutral",jlpt:4,note:"やわらかい にく = tender meat. Also あたま が やわらかい = flexible-minded. Opposite of かたい."},
+  {jp:"おそろしい",romaji:"osoroshii",en:"terrifying / dreadful",pos:"adj",theme:"feelings",register:"neutral",jlpt:3,note:"Stronger than こわい. おそろしい はやさ = a frightening speed — can mean 'awful in scale', not only 'scary'."},
+  /* --- verbs --- */
+  {jp:"あきらめる",romaji:"akirameru",en:"give up / resign oneself",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Ichidan. ゆめ を あきらめる = give up a dream. Letting go because it's hopeless — not casually quitting (=やめる)."},
+  {jp:"かんがえなおす",romaji:"kangaenaosu",en:"reconsider / rethink",pos:"v",theme:"work",register:"neutral",jlpt:3,note:"Godan. かんがえる + なおす ('redo'). The なおす suffix = 'do over' — also みなおす, やりなおす."},
+  {jp:"まよう",romaji:"mayou",en:"get lost / be unable to decide",pos:"v",theme:"travel",register:"neutral",jlpt:4,note:"Godan. みち に まよう = lose your way; どれ に する か まよう = can't pick. Takes に."},
+  {jp:"なやむ",romaji:"nayamu",en:"agonize / be troubled over",pos:"v",theme:"feelings",register:"neutral",jlpt:3,note:"Godan. Deeper and longer than こまる — an inner struggle. なやみ = a worry (noun)."},
+  {jp:"きがつく",romaji:"ki ga tsuku",en:"notice / realize",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Set phrase き が つく (き = awareness). Sudden noticing; also 'come to / regain consciousness'. Takes に."},
+  {jp:"まにあう",romaji:"maniau",en:"be in time / make it",pos:"v",theme:"time",register:"neutral",jlpt:4,note:"Godan. でんしゃ に まにあう = make the train. Takes に. Also 'that'll do / be enough'."},
+  {jp:"あやまる",romaji:"ayamaru",en:"apologize",pos:"v",theme:"people",register:"neutral",jlpt:4,note:"Godan. すなお に あやまる. The spoken act of apology (cf. formal/written しゃざい). Takes に for the person."},
+  {jp:"えらぶ",romaji:"erabu",en:"choose / select",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Godan. Deliberate picking from options (cf. きめる = decide/settle). Takes を for the choice."},
+  {jp:"くらべる",romaji:"kuraberu",en:"compare",pos:"v",theme:"school",register:"neutral",jlpt:4,note:"Ichidan. A と B を くらべる. The form ～に くらべて = 'compared to'."},
+  {jp:"なれる",romaji:"nareru",en:"get used to / become accustomed",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Ichidan. しごと に なれる = get used to the job. Takes に. A state that builds over time."},
+  {jp:"すすめる",romaji:"susumeru",en:"recommend / urge",pos:"v",theme:"work",register:"neutral",jlpt:3,note:"Ichidan. ほん を すすめる = recommend a book. (Homophone すすめる = move/advance something forward.)"},
+  {jp:"ことわる",romaji:"kotowaru",en:"refuse / decline (politely)",pos:"v",theme:"people",register:"neutral",jlpt:3,note:"Godan. Declining with notice — softer than blunt きょひ. Also 'ask permission in advance'."},
+  {jp:"たしかめる",romaji:"tashikameru",en:"make sure / verify",pos:"v",theme:"work",register:"neutral",jlpt:3,note:"Ichidan. From たしか (certain). よやく を たしかめる = confirm a booking. Checking something for yourself."},
+  {jp:"かたづける",romaji:"katazukeru",en:"tidy up / put away",pos:"v",theme:"home",register:"neutral",jlpt:4,note:"Ichidan. へや を かたづける = tidy the room. Also 'settle / deal with' a task."},
+  {jp:"おちつく",romaji:"ochitsuku",en:"calm down / settle",pos:"v",theme:"feelings",register:"neutral",jlpt:3,note:"Godan. き が おちつく = feel settled. Also おちついた ふんいき = a relaxed atmosphere."},
+  {jp:"がまんする",romaji:"gaman suru",en:"endure / put up with / hold back",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Suru-verb. いたみ を がまん する = bear the pain. Enduring silently — a prized cultural virtue."},
+  {jp:"やくにたつ",romaji:"yaku ni tatsu",en:"be useful / come in handy",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Set phrase やく に たつ (やく = use/role). Takes に for whom it helps. Treat as a unit, not free words."},
+  /* --- nouns --- */
+  {jp:"きぶん",romaji:"kibun",en:"mood / how you feel now",pos:"n",theme:"feelings",register:"neutral",jlpt:4,note:"きぶん が いい = feeling good. TEMPORARY — contrast きもち (emotion) and せいかく (lasting nature)."},
+  {jp:"りゆう",romaji:"riyuu",en:"reason / grounds",pos:"n",theme:"school",register:"neutral",jlpt:4,note:"りゆう を おしえて = tell me why. More formal and explicit than わけ. Used with の: ～の りゆう."},
+  {jp:"きかい",romaji:"kikai",en:"opportunity / chance",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"The NEUTRAL word for chance. いい きかい = a good opportunity. cf. チャンス, which always means a GOOD break."},
+  {jp:"やくそく",romaji:"yakusoku",en:"promise / appointment / plans",pos:"n",theme:"people",register:"neutral",jlpt:4,note:"やくそく を まもる = keep a promise; やくそく が ある = have plans. やくそく する = to promise."},
+  {jp:"せいかく",romaji:"seikaku",en:"personality / character",pos:"n",theme:"people",register:"neutral",jlpt:3,note:"あかるい せいかく = a cheerful nature. LASTING who-you-are — not your current mood (=きぶん)."},
+  {jp:"つごう",romaji:"tsugou",en:"circumstances / convenience / availability",pos:"n",theme:"time",register:"neutral",jlpt:3,note:"つごう が いい = it works for me; つごう が わるい = a bad time. The scheduling word."},
+  {jp:"けいけん",romaji:"keiken",en:"experience (lived, accumulated)",pos:"n",theme:"work",register:"neutral",jlpt:3,note:"けいけん が ある = have experience. けいけん する = to experience. cf. たいけん = a single one-off experience."},
+  /* --- adverbs --- */
+  {jp:"やっぱり",romaji:"yappari",en:"as expected / after all / I knew it",pos:"adv",theme:"feelings",register:"casual",jlpt:4,note:"Casual form of やはり. Confirms a hunch — or marks a change of mind: やっぱり やめる = on second thought, I'll pass."},
+  {jp:"なるべく",romaji:"narubeku",en:"as much as possible / if you can",pos:"adv",theme:"work",register:"neutral",jlpt:3,note:"なるべく はやく = as soon as you can. A soft request (cf. forceful ぜったい). Near-synonym できるだけ."},
+  {jp:"だいたい",romaji:"daitai",en:"roughly / about / for the most part",pos:"adv",theme:"time",register:"neutral",jlpt:4,note:"だいたい わかった = I mostly get it. Approximation/'generally' — not exactness (cf. ちょうど = exactly)."}
+];
+
 /* ===================== SENTENCE TEMPLATES ===================== */
 
 /* ===================== PARTICLE DRILLS ===================== */
@@ -2287,6 +2351,9 @@ const DEFAULT_SETTINGS = {
   enVoiceName:'',
   enTtsOn:true,
   n5PackEnabled:true,
+  advPackEnabled:true,        // v7.42 — N4/N3 step-up pack (ids adv_<i>), kana-only, nuance-rich
+  focusGenModel:'claude-haiku-4-5-20251001', // v7.42 — model used to generate Focus sentences (always Haiku, separate from chat model)
+  focusGenCache:{},           // v7.42 — { [romaji]: [[jp,en,note],...] } generated-then-cached natural sentences
   removedWords:[],            // word IDs manually removed from active pool — nuclear option, hides word everywhere
   suspendedWords:[],          // v6.10 — Library: temp-paused from Vocab Blitz drilling. Other modes still use the word as content.
   focusWords:[],              // v6.10 — Library: user-boosted; priority slot in every Vocab Blitz pool. v7.31: user-owned (no auto-clear).
@@ -2656,7 +2723,9 @@ function load(){
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
-    state.words = [...packed, ...userWords];
+    const advPack = state.settings.advPackEnabled !== false ? ADV_PACK : [];
+    const advPacked = advPack.map((w,i)=>({...w, id:'adv_'+i, source:'adv', verified:true}));
+    state.words = [...packed, ...advPacked, ...userWords];
     /* v6.16 — backfill module unlocks from existing mastery so returning users
        don't lose progress when modules ship. */
     if(typeof modulesUnlockBackfill === 'function') modulesUnlockBackfill();
@@ -3252,10 +3321,10 @@ const FOCUS_SENTENCE_BANK = {
      give us correct negative/past/adverbial forms without literal い+くない. */
   adj: [
     ['とても {A} です。',                       'It is very {EN}.',                                'とても = very. i-adj + です stays as-is.'],
-    ['きょう は {A} ですね。',                   "Today is {EN}, isn't it?",                       '〜ね = soft confirmation tag.'],
+    ['これ は ほんとう に {A} です。',           'This one is really {EN}.',                       'ほんとう に = really/truly. これ gives the adjective a concrete subject.'],
     ['{A} もの が すき です。',                  'I like {EN} things.',                            'i-adj before a noun stays in dictionary form.'],
     ['あまり {Aneg} です。',                    "It's not very {EN}.",                            'i-adj negative: drop final い, add くない. Then + です = polite.'],
-    ['きのう は {Apast} です。',                 'Yesterday was {EN}.',                            'i-adj past: drop final い, add かった. Then + です = polite.'],
+    ['それ は {Apast} です。',                   'That one was {EN}.',                             'i-adj past: drop final い, add かった. それ は … です = "that was …".'],
     ['{Aadv} なりました。',                      'It became {EN}.',                                'i-adj adverbial: drop い, add く. Then + なる = become.'],
     ['{A} と おもいます。',                      'I think it is {EN}.',                            'と おもう = think that. Plain adjective before と.'],
   ],
@@ -3758,6 +3827,138 @@ function focusGlossLine(jp, focusJp){
   return parts;
 }
 
+/* ===================== AI FOCUS SENTENCES (v7.42) =====================
+   On-demand: when the user taps "Generate", we ask the user's own Anthropic
+   key (stored locally, never sent anywhere but Anthropic) to write natural,
+   nuance-rich example sentences for ONE focus word. The result is validated
+   client-side to be kanji-free, then cached forever in settings.focusGenCache
+   so it works offline from then on and never regenerates unasked. Falls back
+   to curated → templates when there's no key / offline / on error. */
+const KANJI_RE = /[㐀-䶿一-鿿豈-﫿]/;
+function hasKanji(s){ return !!s && KANJI_RE.test(s); }
+
+function focusGenCacheGet(romaji){
+  const key = (romaji || '').toLowerCase();
+  const c = (state.settings.focusGenCache || {})[key];
+  return (Array.isArray(c) && c.length) ? c : null;
+}
+
+const POS_LABEL = { 'v':'verb', 'adj':'i-adjective', 'adj-na':'na-adjective', 'n':'noun', 'adv':'adverb', 'expr':'expression/phrase', 'pron':'pronoun', 'part':'particle' };
+
+function focusGenPrompt(w, retryNote){
+  const romaji = w.romaji || kanaToRomaji(w.jp) || '';
+  const posLabel = POS_LABEL[w.pos] || w.pos || 'word';
+  return [
+    'You are a Japanese teacher writing example sentences for a beginner who CANNOT read kanji at all.',
+    '',
+    'Word to teach: ' + w.jp + ' (' + romaji + ') = "' + (w.en || '') + '"  [' + posLabel + ']',
+    (w.note ? 'Known nuance: ' + w.note : ''),
+    '',
+    'Write exactly 4 short, natural, everyday sentences that a real Japanese speaker would actually say, each USING this word in a context where it genuinely fits (never a generic fill-in frame). Order them easy → harder.',
+    '',
+    'ABSOLUTE RULES:',
+    '- Write ALL Japanese in hiragana and katakana ONLY. NEVER use a single kanji character — the learner literally cannot read kanji. (Numbers/punctuation are fine.)',
+    '- Put a space between every word and particle so it can be parsed, e.g.: わたし は がっこう に いきます。',
+    '- Keep grammar at beginner level (roughly N5/N4).',
+    '- Each sentence must respect the word\'s real meaning, collocations, transitivity and register, and the "note" field should surface a concrete usage nuance (formality, transitive/intransitive, a false-friend trap, state-vs-event, what particle it takes), NOT just restate the meaning.',
+    (retryNote || ''),
+    '',
+    'Return ONLY a JSON array (no prose, no code fences) of exactly 4 objects, each: {"jp":"…","en":"…","note":"short English nuance/grammar tip"}'
+  ].filter(Boolean).join('\n');
+}
+
+function focusGenParse(text){
+  if(!text) return [];
+  let t = String(text).trim();
+  t = t.replace(/^```(?:json)?/i, '').replace(/```$/,'').trim();
+  const a = t.indexOf('['), b = t.lastIndexOf(']');
+  if(a !== -1 && b !== -1 && b > a) t = t.slice(a, b + 1);
+  let arr;
+  try { arr = JSON.parse(t); } catch(e){ return []; }
+  if(!Array.isArray(arr)) return [];
+  return arr.filter(o => o && typeof o.jp === 'string' && typeof o.en === 'string')
+            .map(o => ({ jp:o.jp.trim(), en:o.en.trim(), note:(o.note||'').trim() }));
+}
+
+async function focusGenCall(w, retryNote){
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key) throw new Error('No API key — add one in Settings → AI Focus sentences.');
+  const model = state.settings.focusGenModel || 'claude-haiku-4-5-20251001';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key': key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages:[{ role:'user', content: focusGenPrompt(w, retryNote) }]
+    })
+  });
+  if(!res.ok){
+    let msg = 'API error ' + res.status;
+    try { const j = await res.json(); if(j && j.error && j.error.message) msg = j.error.message; } catch(e){}
+    if(res.status === 401) msg = 'Key rejected (401). Check the key in Settings.';
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const text = (data && data.content && data.content[0] && data.content[0].text) || '';
+  return focusGenParse(text);
+}
+
+/* Returns up to 4 validated kanji-free {jp,en,note}. Throws on failure. */
+async function focusGenSentences(w){
+  let items = await focusGenCall(w, '');
+  let clean = items.filter(o => !hasKanji(o.jp));
+  if(clean.length < 3){
+    /* one retry if the model leaked kanji or returned too few */
+    const more = await focusGenCall(w, '- Your previous attempt used kanji or gave too few — this time use ZERO kanji, hiragana/katakana only.');
+    const moreClean = more.filter(o => !hasKanji(o.jp));
+    if(moreClean.length > clean.length) clean = moreClean;
+  }
+  if(!clean.length) throw new Error('Could not get a kanji-free result. Try again.');
+  return clean.slice(0, 4);
+}
+
+async function focusGenWord(id){
+  const w = (state.words || []).find(x => x.id === id);
+  if(!w) return;
+  const romaji = (w.romaji || kanaToRomaji(w.jp) || '').toLowerCase();
+  if(!romaji){ if(typeof showToast==='function') showToast('Can\'t key this word for caching.', {tone:'warn'}); return; }
+  state._focusGen = state._focusGen || {};
+  if(state._focusGen[id] === 'loading') return;
+  state._focusGen[id] = 'loading';
+  render();
+  try {
+    const sents = await focusGenSentences(w);
+    state.settings.focusGenCache = state.settings.focusGenCache || {};
+    state.settings.focusGenCache[romaji] = sents.map(s => [s.jp, s.en, s.note]);
+    save();
+    if(typeof showToast === 'function') showToast('✨ ' + sents.length + ' natural sentences cached for ' + w.jp, {tone:'success', duration:2600});
+  } catch(e){
+    if(typeof showToast === 'function') showToast('Generation failed: ' + (e && e.message ? e.message : e), {tone:'warn', duration:5000});
+    log('focus_gen_err', { id, err:String(e && e.message || e) });
+  } finally {
+    if(state._focusGen) delete state._focusGen[id];
+    render();
+  }
+}
+window.focusGenWord = focusGenWord;
+
+function focusGenClearCache(){
+  const n = Object.keys(state.settings.focusGenCache || {}).length;
+  if(!n){ if(typeof showToast==='function') showToast('No cached AI sentences to clear.', {tone:'info'}); return; }
+  if(!confirm('Clear all ' + n + ' cached AI sentence set' + (n===1?'':'s') + '? Words will fall back to templates until regenerated.')) return;
+  state.settings.focusGenCache = {};
+  save();
+  if(typeof showToast==='function') showToast('Cleared ' + n + ' cached set' + (n===1?'':'s') + '.', {tone:'info'});
+  render();
+}
+window.focusGenClearCache = focusGenClearCache;
+
 function focusSentencesFor(w, max){
   if(!w) return [];
   max = max == null ? 6 : max;
@@ -3775,6 +3976,18 @@ function focusSentencesFor(w, max){
   }
   const fill = s => s.replace(/\{(\w+)\}/g, (_, k) => ctx[k] != null ? ctx[k] : ('{'+k+'}'));
   const out = [];
+  /* v7.42 — AI-generated, cached-forever sentences win over everything.
+     These are the "smart" natural ones; once generated they behave exactly
+     like the curated bank (instant + offline). */
+  const gen = focusGenCacheGet(w.romaji);
+  if(gen){
+    for(const tuple of gen){
+      if(out.length >= max) break;
+      const [jpTpl, enTpl, noteTpl] = tuple;
+      out.push({ jp: jpTpl, en: enTpl, note: noteTpl || '' });
+    }
+    return out; /* generated word: show only its cached sentences, never dilute with templates */
+  }
   /* v7.39 — try hand-curated per-word sentences first (FOCUS_WORD_SENTENCES).
      These are nuance-specific (apples get peeled, mandarins are eaten at the
      kotatsu, soba at year-end). Fall back to bucket templates only if the
@@ -4006,12 +4219,15 @@ function renderFocus(){
       </div>`;
   }
 
+  const hasKey = !!(state.settings.anthropicKey || '').trim();
   const cards = words.map(w => {
     const romaji = w.romaji || kanaToRomaji(w.jp) || '';
     const sents = focusSentencesFor(w);
+    const isGen = !!focusGenCacheGet(w.romaji);
+    const genLoading = !!(state._focusGen && state._focusGen[w.id] === 'loading');
     const framesHtml = sents.length
       ? `<div style="margin-top:8px">
-           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">In a sentence</div>
+           <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">In a sentence${isGen ? ' <span style="color:#a78bfa">· ✨ AI</span>' : ''}</div>
            ${sents.map(f => {
              const gloss = focusGlossLine(f.jp, w.jp);
              const glossHtml = gloss.length
@@ -4043,6 +4259,7 @@ function renderFocus(){
       </div>
       ${w.note ? `<div style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(245,158,11,0.10);border-left:3px solid #f59e0b;border-radius:4px;line-height:1.5"><b style="font-size:10px;letter-spacing:0.06em">NUANCE</b><br>${esc(w.note)}</div>` : ''}
       ${framesHtml}
+      ${hasKey ? `<button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:12px;color:${genLoading ? 'var(--muted)' : '#a78bfa'};border:1px solid ${genLoading ? 'var(--border)' : 'rgba(167,139,250,0.4)'}" onclick="focusGenWord('${jsEsc(w.id)}')" ${genLoading ? 'disabled' : ''}>${genLoading ? '✨ Generating…' : (isGen ? '🔄 Regenerate (AI)' : '✨ Generate natural sentences')}</button>` : ''}
     </div>`;
   }).join('');
 
@@ -4053,6 +4270,7 @@ function renderFocus(){
         <span class="muted" style="font-size:13px">${words.length} word${words.length===1?'':'s'}</span>
       </div>
       <div class="muted" style="font-size:13px;margin-top:6px">See how each word slots into a sentence, then drill the whole set as guided EN→JP construction.</div>
+      ${hasKey ? '' : `<div class="muted" style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(167,139,250,0.10);border-left:3px solid #a78bfa;border-radius:4px;line-height:1.5">✨ <b>Want natural AI sentences?</b> The examples below are templates. Add your Anthropic API key in <a href="#" onclick="nav('settings')();return false" style="color:#a78bfa">Settings → AI Focus sentences</a> to generate real, nuance-rich sentences per word (cached offline after).</div>`}
     </div>
     ${cards}
     <div class="card" style="position:sticky;bottom:8px">
@@ -15710,10 +15928,24 @@ function renderSettings(){
       <h3>Preferences</h3>
       <label class="word-row"><div class="word-main"><div class="word-jp">N5 pack enabled</div><div class="word-en">${N5_PACK.length} words</div></div>
         <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Advanced pack (N4/N3)</div><div class="word-en">${ADV_PACK.length} step-up words — vague, troublesome, give up, reconsider… all hiragana/katakana, with nuance notes. Great fresh material for Focus.</div></div>
+        <input type="checkbox" ${s.advPackEnabled!==false?'checked':''} onchange="toggleSetting('advPackEnabled')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'}</div></div>
         <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
+    </div>
+
+    <div class="card">
+      <h3>✨ AI Focus sentences</h3>
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">
+        In <b>Focus</b>, the default example sentences are templates and can read oddly. With an Anthropic API key set, the <b>✨ Generate</b> button on each word writes genuinely natural, nuance-rich sentences — kanji-free, then <b>cached on this device forever</b> (works offline after, never regenerates unasked). Always uses <b>Claude Haiku 4.5</b> (fast, ~a tenth of a cent per word) regardless of the chat model below.
+      </div>
+      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.anthropicKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${(s.anthropicKey||'').trim() ? '#22c55e' : '#a78bfa'};line-height:1.5">
+        ${(s.anthropicKey||'').trim() ? '✅ API key is set — the ✨ Generate button is live in Focus.' : '⚠️ No API key yet. Add one in the <b>Anthropic API key</b> card below (shared with the 🤖 chat bubble) to unlock generation.'}
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
+      <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
     </div>
 
     <div class="card">
