@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.43';
+const APP_VERSION = '7.44';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2338,7 +2338,8 @@ const LS = {
   phraseStats:'jp4_phrase_stats',
   particleStats:'jp4_particle_stats',
   variationStats:'jp4_variation_stats',
-  similarStats:'jp4_similar_stats'
+  similarStats:'jp4_similar_stats',
+  snapshots:'jp4_snapshots'        // v7.44 — weekly progress snapshots for the Progress screen
 };
 
 const DEFAULT_SETTINGS = {
@@ -2656,6 +2657,7 @@ function save(){
     localStorage.setItem(LS.particleStats, JSON.stringify(state.particleStats || {}));
     localStorage.setItem(LS.variationStats, JSON.stringify(state.variationStats || {}));
     localStorage.setItem(LS.similarStats, JSON.stringify(state.similarStats || {}));
+    localStorage.setItem(LS.snapshots, JSON.stringify(state.snapshots || []));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -2720,6 +2722,7 @@ function load(){
     state.particleStats = JSON.parse(localStorage.getItem(LS.particleStats)||'{}');
     state.variationStats = JSON.parse(localStorage.getItem(LS.variationStats)||'{}');
     state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
+    state.snapshots = JSON.parse(localStorage.getItem(LS.snapshots)||'[]');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -14700,7 +14703,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -14715,9 +14718,296 @@ function renderTopbar(){
   </div>`;
 }
 
+/* ===================== PROGRESS (v7.44) =====================
+   Goal anchor: "hold a basic conversation". The headline Conversational
+   Core blends words you can produce + verbs you can fully conjugate +
+   sentences drilled. Backward history is RECONSTRUCTED from per-word
+   attempt timestamps (uncapped); forward history is captured as one
+   snapshot per week from now on. */
+const PROG_CORE_FORMS = ['nai','ta','te','nakatta'];
+const PROG_FORM_NAME = { nai:'negative', ta:'past', te:'て-form', nakatta:'past-neg' };
+const PROG_TARGETS = { producible:300, verbsAllForms:40, sentences:100 }; /* "conversational core" denominators */
+const PROG_WEIGHTS = { producible:0.5, verbsAllForms:0.3, sentences:0.2 };
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function weekStart(ts){
+  const d = new Date(ts); d.setHours(0,0,0,0);
+  const dow = (d.getDay() + 6) % 7;          /* 0 = Monday */
+  d.setDate(d.getDate() - dow);
+  return d.getTime();
+}
+function weekLabel(ts){ const d = new Date(weekStart(ts)); return (d.getMonth()+1) + '/' + d.getDate(); }
+
+function progStageCounts(){
+  const c = { new:0, learning:0, mature:0, mastered:0, suspended:0, total:0 };
+  for(const w of getActiveWords()){
+    const s = libraryWordStatus(w); c.total++;
+    if(c[s] !== undefined) c[s]++;
+  }
+  return c;
+}
+function progWordsProducible(){ const c = progStageCounts(); return c.mature + c.mastered; }
+
+function progVerbFormStats(){
+  const verbs = getActiveWords().filter(w => w.pos === 'v');
+  let solid = 0;
+  const agg = {}; PROG_CORE_FORMS.forEach(f => agg[f] = { att:0, mature:0 });
+  for(const w of verbs){
+    const fs = state.formStats[w.id] || {};
+    let allCore = true;
+    for(const fid of PROG_CORE_FORMS){
+      const e = fs[fid];
+      const mature = e && e.smInterval >= FORM_BLITZ_MATURE_MIN;
+      if(!mature) allCore = false;
+      if(e && (e.reviewCount || 0) > 0){ agg[fid].att++; if(mature) agg[fid].mature++; }
+    }
+    if(allCore) solid++;
+  }
+  let weakest = null, weakestRate = 2;
+  for(const fid of PROG_CORE_FORMS){
+    const a = agg[fid];
+    if(a.att > 0){ const r = a.mature / a.att; if(r < weakestRate){ weakestRate = r; weakest = fid; } }
+  }
+  return { solid, totalVerbs: verbs.length, agg, weakest };
+}
+function progSentencesDrilled(){
+  return Object.keys(state.sentenceStats || {}).length + Object.keys(state.phraseStats || {}).length;
+}
+function progAccuracy(){
+  let cAll = 0, tAll = 0, cMat = 0, tMat = 0;
+  const matureSet = new Set(getActiveWords()
+    .filter(w => { const s = libraryWordStatus(w); return s === 'mature' || s === 'mastered'; })
+    .map(w => w.id));
+  for(const [id, st] of Object.entries(state.stats || {})){
+    if(!st || !st.attempts) continue;
+    for(const a of st.attempts){ tAll++; if(a.correct) cAll++; if(matureSet.has(id)){ tMat++; if(a.correct) cMat++; } }
+  }
+  return { all: tAll ? cAll/tAll : 0, mature: tMat ? cMat/tMat : 0, totalAttempts: tAll };
+}
+
+/* Reconstruct a weekly series from every word's attempt log. */
+function reconstructWeekly(){
+  const weeks = {}; const firstSeen = {};
+  for(const [id, st] of Object.entries(state.stats || {})){
+    if(!st || !st.attempts || !st.attempts.length) continue;
+    let fs = Infinity;
+    for(const a of st.attempts){
+      const ts = a.ts || 0; if(!ts) continue;
+      const wk = weekStart(ts);
+      const b = weeks[wk] = weeks[wk] || { att:0, correct:0, newWords:0 };
+      b.att++; if(a.correct) b.correct++;
+      if(ts < fs) fs = ts;
+    }
+    if(fs < Infinity) firstSeen[id] = fs;
+  }
+  for(const ts of Object.values(firstSeen)){
+    const wk = weekStart(ts);
+    (weeks[wk] = weeks[wk] || { att:0, correct:0, newWords:0 }).newWords++;
+  }
+  const wks = Object.keys(weeks).map(Number).sort((a,b) => a-b);
+  let cum = 0;
+  return wks.map(wk => { const b = weeks[wk]; cum += b.newWords;
+    return { wk, label: weekLabel(wk), att:b.att, correct:b.correct,
+             acc: b.att ? b.correct/b.att : 0, newWords:b.newWords, cumWords:cum }; });
+}
+
+function progSnapshotData(wk){
+  const c = progStageCounts(); const acc = progAccuracy(); const vf = progVerbFormStats();
+  return { wk, ts: now(), label: weekLabel(wk),
+    seen: c.learning + c.mature + c.mastered, learning:c.learning, mature:c.mature, mastered:c.mastered,
+    producible: c.mature + c.mastered, verbsAllForms: vf.solid, sentences: progSentencesDrilled(),
+    accAll: Math.round(acc.all*100), accMature: Math.round(acc.mature*100),
+    streak: (state.streak && state.streak.current) || 0 };
+}
+/* One snapshot per ISO-ish week; refresh the current week's in place. */
+function progSnapshotMaybe(){
+  try {
+    state.snapshots = state.snapshots || [];
+    const wk = weekStart(now());
+    const last = state.snapshots[state.snapshots.length - 1];
+    if(last && last.wk === wk){ Object.assign(last, progSnapshotData(wk)); }
+    else { state.snapshots.push(progSnapshotData(wk)); }
+    if(state.snapshots.length > 110) state.snapshots = state.snapshots.slice(-110);
+    localStorage.setItem(LS.snapshots, JSON.stringify(state.snapshots));
+  } catch(e){ /* fail safe — progress is non-critical */ }
+}
+
+function progConversationalCore(){
+  const producible = progWordsProducible();
+  const vf = progVerbFormStats();
+  const sentences = progSentencesDrilled();
+  const part = (v, t) => Math.min(1, t ? v/t : 0);
+  const pct = Math.round(100 * (
+    PROG_WEIGHTS.producible    * part(producible, PROG_TARGETS.producible) +
+    PROG_WEIGHTS.verbsAllForms * part(vf.solid,    PROG_TARGETS.verbsAllForms) +
+    PROG_WEIGHTS.sentences     * part(sentences,   PROG_TARGETS.sentences)));
+  return { pct, producible, verbsAllForms: vf.solid, sentences, vf };
+}
+
+/* Milestone ladders toward conversation. */
+const PROG_LADDERS = [
+  { key:'producible', emoji:'🗣️', label:'Words you can produce', tiers:[25,75,150,300,500] },
+  { key:'verbsAllForms', emoji:'🔀', label:'Verbs in all forms',   tiers:[5,15,30,50] },
+  { key:'sentences', emoji:'📝', label:'Sentences drilled',         tiers:[20,50,100,200] },
+  { key:'streak', emoji:'🔥', label:'Day streak',                   tiers:[3,7,14,30] }
+];
+function progLadderValues(){
+  const core = progConversationalCore();
+  return {
+    producible: core.producible,
+    verbsAllForms: core.verbsAllForms,
+    sentences: core.sentences,
+    streak: (state.streak && state.streak.current) || 0
+  };
+}
+
+function bar(pct, color){
+  pct = Math.max(0, Math.min(100, Math.round(pct)));
+  return `<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:${pct}%;background:${color||'var(--blue)'};border-radius:999px"></div></div>`;
+}
+
+function renderProgress(){
+  const core = progConversationalCore();
+  const c = progStageCounts();
+  const acc = progAccuracy();
+  const series = reconstructWeekly();
+  const vals = progLadderValues();
+  const longest = (state.streak && state.streak.longest) || 0;
+
+  /* headline */
+  const subBars = [
+    ['🗣️ Words you can produce', core.producible, PROG_TARGETS.producible, 'var(--blue)'],
+    ['🔀 Verbs in all forms',     core.verbsAllForms, PROG_TARGETS.verbsAllForms, '#a78bfa'],
+    ['📝 Sentences drilled',      core.sentences, PROG_TARGETS.sentences, '#22c55e']
+  ].map(([lab,v,t,col]) => `
+    <div style="margin-top:10px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${lab}</span><span class="muted">${v} / ${t}</span></div>
+      ${bar(100*v/t, col)}
+    </div>`).join('');
+
+  const headline = `
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <h2 style="margin:0">💬 Conversational core</h2>
+        <span style="font-size:28px;font-weight:800;color:var(--blue)">${core.pct}%</span>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation — words you can produce, verbs you can fully conjugate, and sentences you've drilled.</div>
+      ${subBars}
+    </div>`;
+
+  /* since you started (reconstructed) */
+  let sinceCard = '';
+  if(series.length){
+    const first = series[0];
+    const nowWk = series[series.length - 1];
+    const weeksSpan = series.length;
+    const totalAttempts = series.reduce((s,w) => s + w.att, 0);
+    /* compare to ~4 weeks ago (or the earliest we have) */
+    const backIdx = Math.max(0, series.length - 5);
+    const back = series[backIdx];
+    const accNow = Math.round(acc.all * 100);
+    const compare = (lab, then, now2, suffix) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px">${lab}</span>
+        <span style="font-size:13px"><span class="muted">${then}${suffix||''}</span> &nbsp;→&nbsp; <b>${now2}${suffix||''}</b></span>
+      </div>`;
+    sinceCard = `
+      <div class="card">
+        <h3 style="margin-top:0">📈 Since you started</h3>
+        <div class="muted" style="font-size:11px;margin-bottom:6px">Reconstructed from your actual practice history (${weeksSpan} week${weeksSpan===1?'':'s'} of data, ${totalAttempts} attempts logged).</div>
+        ${compare('Words encountered', back.cumWords, nowWk.cumWords, '')}
+        ${compare('Accuracy (that week → recent)', Math.round(back.acc*100), accNow, '%')}
+        ${compare('First practiced', first.label, nowWk.label, '')}
+      </div>`;
+  }
+
+  /* weekly charts — new words/week + accuracy/week */
+  let chartCard = '';
+  if(series.length){
+    const recent = series.slice(-12);
+    const maxNew = Math.max(1, ...recent.map(w => w.newWords));
+    const newBars = recent.map(w => {
+      const h = Math.round(6 + 46 * w.newWords / maxNew);
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0">
+        <div title="${w.newWords} new" style="width:70%;height:${h}px;background:var(--blue);border-radius:3px 3px 0 0"></div>
+        <div class="muted" style="font-size:8px;white-space:nowrap">${w.label}</div>
+      </div>`; }).join('');
+    const accBars = recent.map(w => {
+      const a = Math.round(w.acc * 100);
+      const col = a >= 80 ? '#22c55e' : a >= 60 ? '#f59e0b' : '#ef4444';
+      const h = Math.round(6 + 46 * w.acc);
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0">
+        <div title="${a}% (${w.att} attempts)" style="width:70%;height:${h}px;background:${col};border-radius:3px 3px 0 0"></div>
+        <div class="muted" style="font-size:8px;white-space:nowrap">${w.label}</div>
+      </div>`; }).join('');
+    chartCard = `
+      <div class="card">
+        <h3 style="margin-top:0">New words per week</h3>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:6px">${newBars}</div>
+        <h3 style="margin-top:16px">Accuracy per week</h3>
+        <div class="muted" style="font-size:11px;margin-bottom:4px">Green ≥80% · amber ≥60% · red below.</div>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:60px">${accBars}</div>
+      </div>`;
+  }
+
+  /* mastery distribution + consistency + conjugation */
+  const curWeek = series.length ? series[series.length - 1] : { att:0 };
+  const vf = core.vf;
+  const statusCard = `
+    <div class="card">
+      <h3 style="margin-top:0">Where the deck stands</h3>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        ${[['new',c.new,'#64748b'],['learning',c.learning,'#f59e0b'],['mature',c.mature,'#3b82f6'],['mastered',c.mastered,'#22c55e']]
+          .map(([lab,v,col]) => `<div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
+      </div>
+      <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words · overall accuracy ${Math.round(acc.all*100)}% · on mature words ${Math.round(acc.mature*100)}%</div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🔥 Consistency</h3>
+      <div style="display:flex;gap:6px">
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">CURRENT STREAK</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${longest}</div><div class="muted" style="font-size:10px">LONGEST</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${curWeek.att}</div><div class="muted" style="font-size:10px">REVIEWS THIS WK</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">🔀 Conjugation</h3>
+      <div class="muted" style="font-size:13px"><b>${vf.solid}</b> of ${vf.totalVerbs} verbs solid in all four everyday forms (negative, past, past-neg, て-form).</div>
+      ${vf.weakest ? `<div class="muted" style="font-size:12px;margin-top:6px">Weakest form right now: <b>${PROG_FORM_NAME[vf.weakest]}</b> — worth a Form Drill pass.</div>` : `<div class="muted" style="font-size:12px;margin-top:6px">Drill verb forms to start tracking this.</div>`}
+    </div>`;
+
+  /* milestone ladder with next-target + projection */
+  const avgNew = series.length ? (series.slice(-4).reduce((s,w)=>s+w.newWords,0) / Math.min(4, series.length)) : 0;
+  const ladderCards = PROG_LADDERS.map(L => {
+    const v = vals[L.key];
+    const done = L.tiers.filter(t => v >= t);
+    const next = L.tiers.find(t => v < t);
+    const tierRow = L.tiers.map(t => `<span style="font-size:11px;padding:2px 7px;border-radius:999px;${v>=t ? 'background:rgba(34,197,94,0.18);color:#22c55e' : 'background:rgba(255,255,255,0.05);color:var(--muted)'}">${v>=t?'✓ ':''}${t}</span>`).join(' ');
+    let proj = '';
+    if(next && L.key === 'producible' && avgNew > 0.3){
+      const wks = Math.ceil((next - v) / avgNew);
+      proj = `<div class="muted" style="font-size:11px;margin-top:4px">At ~${avgNew.toFixed(1)} new words/week → next target (${next}) in ~${wks} week${wks===1?'':'s'}.</div>`;
+    }
+    return `<div style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${L.emoji} ${L.label}</span><span class="muted">${v}${next?(' / '+next):' · maxed 🎉'}</span></div>
+      ${next ? bar(100*v/next, '#a78bfa') : bar(100, '#22c55e')}
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${tierRow}</div>
+      ${proj}
+    </div>`; }).join('');
+  const ladderCard = `
+    <div class="card">
+      <h3 style="margin-top:0">🎯 Milestones</h3>
+      ${ladderCards}
+    </div>`;
+
+  const forwardNote = `<div class="card" style="background:rgba(167,139,250,0.08)"><div class="muted" style="font-size:12px;line-height:1.5">📸 A weekly snapshot is now being saved. Your mature / producible curve was reconstructed from practice history above and becomes <b>exact</b> from this week forward — check back in 2-4 weeks to watch it move.</div></div>`;
+
+  return headline + sinceCard + chartCard + statusCard + ladderCard + forwardNote;
+}
+
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -14922,6 +15212,10 @@ function renderHome(){
         ? `${(state.settings.collections||[]).length} list${(state.settings.collections||[]).length===1?'':'s'} · organise your own word groups`
         : 'Make your own word groups · study them anywhere',
       click:`nav('collections')` },
+    /* Progress — milestones + reconstructed history toward holding a conversation. */
+    { emoji:'📈', title:'Progress',
+      meta: `Conversational core ${progConversationalCore().pct}% · milestones, trends & where you started`,
+      click:`nav('progress')` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
       ? { emoji:'🏆', title:'Mastered review', meta:`${masteredReady} ready · sprint mode`, click:`setVocabSection('mastered')` }
@@ -16550,6 +16844,7 @@ function bindScreen(){
 /* ---------- INIT ---------- */
 function init(){
   load();
+  progSnapshotMaybe();   /* v7.44 — capture/refresh this week's progress snapshot once at startup */
   /* SW registration */
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
