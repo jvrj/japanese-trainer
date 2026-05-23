@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.44';
+const APP_VERSION = '7.45';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5881,13 +5881,32 @@ window.blitzToggleDir = blitzToggleDir;
 let blitzAdvanceTimer = null;
 function clearBlitzAdvanceTimer(){ if(blitzAdvanceTimer){ clearTimeout(blitzAdvanceTimer); blitzAdvanceTimer = null; } }
 
+/* v7.45 — Unified per-word attempt logger. Before this, only Vocab Blitz and
+   the voice/build flow pushed to state.stats[id].attempts[]; Form Drill, Form
+   Blitz, lesson credit, and Variation Blitz updated SRS counters silently. The
+   Progress screen's backward-history reconstruction reads attempts[], so any
+   grading path that doesn't route here is invisible to the trend charts.
+   `mode` tags the source ('blitz' | 'speak' | 'formDrill' | 'formBlitz' |
+   'lesson' | 'variation'). `extras` lets a caller stash legacy flags
+   ({voice:true, blitz:true}) without forcing a schema migration. */
+function recordAttempt(wordId, correct, mode, extras){
+  if(!wordId) return null;
+  const st = smStatFor(wordId);
+  st.attempts = st.attempts || [];
+  const row = { ts: now(), correct: !!correct };
+  if(mode) row.mode = mode;
+  if(extras) Object.assign(row, extras);
+  st.attempts.push(row);
+  if(correct && !st.firstCorrect) st.firstCorrect = now();
+  st.lastSeen = now();
+  return row;
+}
+window.recordAttempt = recordAttempt;
+
 function blitzRecordAnswer(w, poolItem, isCorrect){
   updateStreak(isCorrect);
   const st = smStatFor(w.id);
-  st.attempts = st.attempts || [];
-  st.attempts.push({ts: now(), correct: isCorrect, voice: false, blitz: true});
-  if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
-  st.lastSeen = now();
+  recordAttempt(w.id, isCorrect, 'blitz', { voice: false, blitz: true });
   poolItem.answers++;
   state.blitz.totalAnswers++;
   state.blitz.recent = [...(state.blitz.recent || []), poolItem.id].slice(-8);
@@ -6662,6 +6681,9 @@ function formDrillGrade(grade){
   updateStreak(grade !== 'again');
   const fst = formStatFor(w.id, state.formDrill.formId);
   smGrade(fst, grade);
+  /* v7.45 — also log a word-level attempt so the Progress screen counts
+     verb-form drilling as production of the parent word. */
+  recordAttempt(w.id, grade !== 'again', 'formDrill', { form: state.formDrill.formId });
   /* v6.29 — record this verb-form pair as recently served so the next
      queue build deprioritizes it. Independent from SM-2 scheduling — even
      if smNext puts it back in the "due" bucket tomorrow, we'll prefer
@@ -7016,6 +7038,9 @@ function formBlitzRecord(pair, isCorrect){
   fst.lastReviewed = now();
   if(isCorrect){ fst.correctCount = (fst.correctCount || 0) + 1; }
   else { fst.wrongCount = (fst.wrongCount || 0) + 1; }
+  /* v7.45 — word-level attempt log so Form Blitz contributes to the
+     Progress backward-history reconstruction. */
+  recordAttempt(pair.verbId, isCorrect, 'formBlitz', { form: pair.formId });
   pair.answers++;
   state.formBlitz.totalAnswers++;
   state.formBlitz.recent = [...(state.formBlitz.recent || []), fbKey(pair.verbId, pair.formId)].slice(-4);
@@ -8888,6 +8913,8 @@ function variationBlitzSubmit(){
     st.streak = 0;
     state.variationBlitz.tally.wrong++;
   }
+  /* v7.45 — word-level attempt log (drill.id is the parent wordId). */
+  recordAttempt(drill.id, correct, 'variation', { variantIdx: matchedIdx });
   save();
   render();
   setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
@@ -8906,6 +8933,8 @@ function variationBlitzReveal(){
   st.lastSeen = now();
   st.wrongCount++;
   state.variationBlitz.tally.wrong++;
+  /* v7.45 — log the give-up as a wrong attempt against the parent word. */
+  recordAttempt(drill.id, false, 'variation', { variantIdx: -1, revealed: true });
   save();
   render();
   setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
@@ -11826,11 +11855,8 @@ function _buildVoiceListenStep(step){
     if(wid){
       const isCorrect = (res.verdict !== 'wrong');
       const st = smStatFor(wid);
-      st.attempts = st.attempts || [];
-      st.attempts.push({ts: now(), correct: isCorrect, voice: true});
+      recordAttempt(wid, isCorrect, 'speak', { voice: true });
       attemptIdx = st.attempts.length - 1;
-      if(isCorrect && !st.firstCorrect) st.firstCorrect = now();
-      st.lastSeen = now();
     }
     /* Stash heard text + reverse lookup so the reveal panel can show
        "you said X (means Y)" — and on wrong, the verdict TTS can name the
@@ -12679,6 +12705,9 @@ function buildOnComplete(){
         } else {
           smGrade(st, 'good');
         }
+        /* v7.45 — also push a per-attempt row so the Progress screen
+           backward-history reconstruction credits the lesson. */
+        recordAttempt(wid, !missed.has(wid), 'lesson');
       }
       if(realIds.length) save();
       if(missedCount > 0){
@@ -14738,15 +14767,28 @@ function weekStart(ts){
 }
 function weekLabel(ts){ const d = new Date(weekStart(ts)); return (d.getMonth()+1) + '/' + d.getDate(); }
 
+/* v7.45 — "solid" is a softer tier than SM-2 mature. A word counts as solid
+   once you've answered it correctly at least 3 times with ≥70% accuracy on
+   attempts[], even if its interval hasn't hit the 7-day mature bar yet. This
+   makes the Conversational Core % move meaningfully during the first month
+   rather than waiting on the strict SRS clock. */
+function progIsSolid(st){
+  if(!st) return false;
+  const c = st.correctCount || 0;
+  const w = st.wrongCount || 0;
+  if(c < 3) return false;
+  return c / Math.max(1, c + w) >= 0.7;
+}
 function progStageCounts(){
-  const c = { new:0, learning:0, mature:0, mastered:0, suspended:0, total:0 };
+  const c = { new:0, learning:0, solid:0, mature:0, mastered:0, suspended:0, total:0 };
   for(const w of getActiveWords()){
     const s = libraryWordStatus(w); c.total++;
+    if(s === 'learning' && progIsSolid(state.stats[w.id])){ c.solid++; continue; }
     if(c[s] !== undefined) c[s]++;
   }
   return c;
 }
-function progWordsProducible(){ const c = progStageCounts(); return c.mature + c.mastered; }
+function progWordsProducible(){ const c = progStageCounts(); return c.mature + c.mastered + c.solid; }
 
 function progVerbFormStats(){
   const verbs = getActiveWords().filter(w => w.pos === 'v');
@@ -14814,11 +14856,59 @@ function reconstructWeekly(){
 function progSnapshotData(wk){
   const c = progStageCounts(); const acc = progAccuracy(); const vf = progVerbFormStats();
   return { wk, ts: now(), label: weekLabel(wk),
-    seen: c.learning + c.mature + c.mastered, learning:c.learning, mature:c.mature, mastered:c.mastered,
-    producible: c.mature + c.mastered, verbsAllForms: vf.solid, sentences: progSentencesDrilled(),
+    seen: c.learning + c.solid + c.mature + c.mastered,
+    learning:c.learning, solid:c.solid, mature:c.mature, mastered:c.mastered,
+    producible: c.solid + c.mature + c.mastered, verbsAllForms: vf.solid, sentences: progSentencesDrilled(),
     accAll: Math.round(acc.all*100), accMature: Math.round(acc.mature*100),
     streak: (state.streak && state.streak.current) || 0 };
 }
+/* v7.45 — One-time migration: before v7.45 only Vocab Blitz and voice/Build
+   wrote to attempts[]. Words drilled through Form Drill, Form Blitz, lessons,
+   and Variations only updated SRS counters, leaving attempts[] empty even
+   when correctCount/reviewCount were high. This synthesizes plausible attempt
+   rows for those words so the Progress backward-history chart shows
+   activity instead of a blank canvas. Each synthetic row is tagged
+   {mode:'backfill', synthesized:true} so it can be distinguished from real
+   live-logged attempts. Gated by state.settings._attemptsBackfilledV745. */
+function progBackfillAttempts(){
+  if(state.settings._attemptsBackfilledV745) return 0;
+  const HOUR = 60*60*1000;
+  const DAY = 24*HOUR;
+  let touched = 0;
+  for(const [wid, st] of Object.entries(state.stats || {})){
+    if(!st) continue;
+    if(st.attempts && st.attempts.length) continue;
+    const c = st.correctCount || 0;
+    const wrong = st.wrongCount || 0;
+    if(c === 0 && wrong === 0) continue;
+    const end = st.lastReviewed || st.lastSeen || now();
+    const start = st.firstCorrect || (end - 14*DAY);
+    const span = Math.max(HOUR, end - start);
+    /* Cap synthesized rows to keep storage bounded on heavily-drilled words. */
+    const correctRows = Math.min(c, 20);
+    const wrongRows = Math.min(wrong, 10);
+    const total = correctRows + wrongRows;
+    if(total === 0) continue;
+    st.attempts = st.attempts || [];
+    const events = [];
+    for(let i = 0; i < correctRows; i++) events.push({ correct: true });
+    for(let i = 0; i < wrongRows; i++)  events.push({ correct: false });
+    /* Spread across span (oldest → newest); slight jitter to avoid identical ts. */
+    events.sort(() => Math.random() - 0.5);
+    for(let i = 0; i < events.length; i++){
+      const t = Math.round(start + span * ((i + 0.5) / events.length));
+      st.attempts.push({ ts: t, correct: events[i].correct, mode: 'backfill', synthesized: true });
+    }
+    if(!st.firstCorrect && correctRows > 0) st.firstCorrect = Math.round(start + span * 0.3);
+    if(!st.lastSeen) st.lastSeen = end;
+    touched++;
+  }
+  state.settings._attemptsBackfilledV745 = true;
+  state.settings._attemptsBackfilledV745At = now();
+  try { save(); } catch(e){}
+  return touched;
+}
+
 /* One snapshot per ISO-ish week; refresh the current week's in place. */
 function progSnapshotMaybe(){
   try {
@@ -14891,7 +14981,7 @@ function renderProgress(){
         <h2 style="margin:0">💬 Conversational core</h2>
         <span style="font-size:28px;font-weight:800;color:var(--blue)">${core.pct}%</span>
       </div>
-      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation — words you can produce, verbs you can fully conjugate, and sentences you've drilled.</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation. "Producible" = words you've got right at least 3× with ≥70% accuracy (solid), plus SRS-mature & mastered.</div>
       ${subBars}
     </div>`;
 
@@ -14956,11 +15046,12 @@ function renderProgress(){
   const statusCard = `
     <div class="card">
       <h3 style="margin-top:0">Where the deck stands</h3>
-      <div style="display:flex;gap:6px;margin-top:6px">
-        ${[['new',c.new,'#64748b'],['learning',c.learning,'#f59e0b'],['mature',c.mature,'#3b82f6'],['mastered',c.mastered,'#22c55e']]
-          .map(([lab,v,col]) => `<div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
+      <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+        ${[['new',c.new,'#64748b'],['learning',c.learning,'#f59e0b'],['solid',c.solid,'#a78bfa'],['mature',c.mature,'#3b82f6'],['mastered',c.mastered,'#22c55e']]
+          .map(([lab,v,col]) => `<div style="flex:1;min-width:54px;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
       </div>
       <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words · overall accuracy ${Math.round(acc.all*100)}% · on mature words ${Math.round(acc.mature*100)}%</div>
+      <div class="muted" style="font-size:11px;margin-top:4px">Solid = 3+ correct & ≥70% accuracy (counts toward producible before SRS-mature).</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0">🔥 Consistency</h3>
@@ -16844,6 +16935,10 @@ function bindScreen(){
 /* ---------- INIT ---------- */
 function init(){
   load();
+  try{
+    const n = progBackfillAttempts();  /* v7.45 — one-time synth of attempts[] from SRS counters */
+    if(n > 0) log('attempts_backfilled', { words: n });
+  }catch(e){ log('attempts_backfill_err', { err: String(e) }); }
   progSnapshotMaybe();   /* v7.44 — capture/refresh this week's progress snapshot once at startup */
   /* SW registration */
   if('serviceWorker' in navigator){
