@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.45';
+const APP_VERSION = '7.46';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2362,6 +2362,8 @@ const DEFAULT_SETTINGS = {
   masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
   anthropicModel:'claude-haiku-4-5-20251001',
+  openaiKey:'',               // v7.46 — OpenAI API key for Whisper STT (voice recognition). localStorage only.
+  voiceSttEngine:'auto',      // v7.46 — 'auto' = Whisper when key+online, else Web Speech fallback; 'webspeech' = always browser STT
   blitzReviews:20,            // Vocab Blitz target review count per session
   blitzNew:10,                // Vocab Blitz target new-word count per session
   blitzDirection:'jp-en',     // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
@@ -4778,6 +4780,179 @@ function _voiceScoreJa(targetJp, alts){
   if(ratio <= 0.5) return Object.assign({verdict:'close'}, out);
   if(scope >= 6 && ratio <= 0.65) return Object.assign({verdict:'close'}, out);
   return Object.assign({verdict:'wrong'}, out);
+}
+
+/* =========================================================================
+   v7.46 — WHISPER STT ENGINE
+   Browser Web Speech (above) clips audio onset, mishears rare vocab, and
+   biases to common words. Whisper (OpenAI) is best-in-class for Japanese
+   STT, biased via the `prompt` parameter toward the target word so it
+   favours the deck word over a more common homophone. Output is fed
+   through the same _voiceScoreJa scorer so verdict logic stays unified.
+   Falls back to Web Speech on offline / API failure.
+   ========================================================================= */
+function whisperKey(){ return (state.settings.openaiKey || '').trim(); }
+function whisperAvailable(){
+  if(state.settings.voiceSttEngine === 'webspeech') return false;
+  if(!whisperKey()) return false;
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+  if(typeof MediaRecorder === 'undefined') return false;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+  return true;
+}
+
+/* Record audio with simple voice-activity-detection cutoff: start recording
+   immediately, watch the analyser's frequency energy, stop after sustained
+   silence following detected speech (or hit the hard max). Returns a
+   Blob containing audio, or null on no-audio. */
+function _whisperRecord(maxMs){
+  return new Promise((resolve, reject) => {
+    let stream = null, recorder = null, ctx = null, analyser = null;
+    const cleanup = () => {
+      try { if(stream) stream.getTracks().forEach(t => t.stop()); } catch(e){}
+      try { if(ctx) ctx.close(); } catch(e){}
+    };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+      stream = s;
+      /* MediaRecorder format: let the browser pick — Chrome defaults to
+         audio/webm;codecs=opus, Safari to audio/mp4. Whisper accepts both. */
+      try { recorder = new MediaRecorder(stream); }
+      catch(e){ cleanup(); reject(e); return; }
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const mime = (chunks[0] && chunks[0].type) || recorder.mimeType || 'audio/webm';
+        cleanup();
+        if(!chunks.length){ resolve(null); return; }
+        resolve(new Blob(chunks, { type: mime }));
+      };
+      recorder.onerror = (e) => { cleanup(); reject(e.error || e); };
+      try {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = ctx.createMediaStreamSource(stream);
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        src.connect(analyser);
+      } catch(e){ /* VAD is optional — without it we just hit the hard timeout */ }
+      const SPEECH_THRESHOLD = 14;      /* avg byte energy (0-255) above mic floor */
+      const SILENCE_AFTER_MS = 800;     /* hang time after last speech sample */
+      const PRE_SPEECH_TIMEOUT_MS = 3500; /* give up if nothing detected by here */
+      let started = false, lastSpeechAt = 0, startedAt = Date.now();
+      const buf = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
+      recorder.start();
+      const hardTimer = setTimeout(() => { try{ recorder.stop(); }catch(e){} }, maxMs);
+      const tick = () => {
+        if(!recorder || recorder.state !== 'recording') return;
+        if(buf && analyser){
+          analyser.getByteFrequencyData(buf);
+          let sum = 0; for(let i = 0; i < buf.length; i++) sum += buf[i];
+          const avg = sum / buf.length;
+          const nowMs = Date.now();
+          if(avg > SPEECH_THRESHOLD){ started = true; lastSpeechAt = nowMs; }
+          if(started && (nowMs - lastSpeechAt) > SILENCE_AFTER_MS){
+            clearTimeout(hardTimer);
+            try{ recorder.stop(); }catch(e){}
+            return;
+          }
+          if(!started && (nowMs - startedAt) > PRE_SPEECH_TIMEOUT_MS){
+            clearTimeout(hardTimer);
+            try{ recorder.stop(); }catch(e){}
+            return;
+          }
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }).catch(err => { cleanup(); reject(err); });
+  });
+}
+
+/* POST audio blob to Whisper. `hint` becomes the `prompt` parameter, which
+   biases the model toward the target word — crucial because Whisper has
+   strong language priors and will otherwise prefer common homophones over
+   the rarer word in your prompt. */
+async function _whisperTranscribe(blob, hint){
+  const fd = new FormData();
+  const filename = 'audio.' + ((blob.type || '').includes('mp4') ? 'mp4' : 'webm');
+  fd.append('file', blob, filename);
+  fd.append('model', 'whisper-1');
+  fd.append('language', 'ja');
+  if(hint) fd.append('prompt', 'Japanese vocabulary practice. Word: ' + hint);
+  fd.append('response_format', 'json');
+  fd.append('temperature', '0');
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + whisperKey() },
+    body: fd
+  });
+  if(!res.ok){
+    const errText = await res.text().catch(() => '');
+    throw new Error('whisper http ' + res.status + ': ' + errText.slice(0, 200));
+  }
+  const data = await res.json();
+  return ((data && data.text) || '').trim();
+}
+
+/* Drop-in replacement for _buildVoiceListenWebSpeech contract: same
+   (target, onVerdict) signature; same verdict shape. Sets a transient
+   b._whisperPhase ('recording'|'transcribing') so the listen panel can
+   render a spinner during the API round-trip. */
+async function _whisperVoiceListen(target, onVerdict){
+  const b = state.buildMode;
+  if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
+  const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
+  const maxMs = listenSec * 1000;
+  b._sttActive = true;
+  b._whisperPhase = 'recording';
+  _buildSetPhase('listen', maxMs + 2500);
+  let blob = null;
+  try {
+    blob = await _whisperRecord(maxMs);
+  } catch(e){
+    log('whisper_rec_err', { err: String(e && e.message || e) });
+    b._sttActive = false; b._whisperPhase = null;
+    /* If we can't even record, fall back to Web Speech for this attempt. */
+    log('whisper_fallback', { reason: 'rec_err' });
+    return _buildVoiceListenWebSpeech(target, onVerdict);
+  }
+  if(!blob || blob.size < 200){
+    b._sttActive = false; b._whisperPhase = null;
+    onVerdict({verdict:'nostt'});
+    return;
+  }
+  b._whisperPhase = 'transcribing';
+  /* Direct DOM swap on the phase label — calling render() here would tear
+     down the live countdown bar mid-animation. */
+  try {
+    const lbl = document.querySelector('.build-phase-label');
+    if(lbl) lbl.textContent = '⏳ Whisper transcribing…';
+  } catch(e){}
+  const hint = Array.isArray(target) ? target[0] : (target || '');
+  let text = '';
+  try {
+    text = await _whisperTranscribe(blob, hint);
+  } catch(e){
+    log('whisper_api_err', { err: String(e && e.message || e) });
+    b._sttActive = false; b._whisperPhase = null;
+    if(typeof showToast === 'function'){
+      showToast('Whisper failed — falling back to browser STT.', { tone: 'warn', duration: 2500 });
+    }
+    return _buildVoiceListenWebSpeech(target, onVerdict);
+  }
+  b._sttActive = false; b._whisperPhase = null;
+  if(!text){ onVerdict({verdict:'nostt'}); return; }
+  const alts = [{ transcript: text, conf: 1, whisper: true }];
+  log('whisper_result', { text, target: hint });
+  const targets = Array.isArray(target) ? target : [target];
+  let best = { verdict: 'wrong', heard: '', dist: Infinity };
+  for(const t of targets){
+    const r = _voiceScoreJa(t, alts);
+    if(r.verdict === 'correct'){ best = r; break; }
+    if(r.dist < best.dist) best = r;
+  }
+  best.alts = alts;
+  best.engine = 'whisper';
+  onVerdict(best);
 }
 
 /* Look up what the user actually said against the active deck. Returns the
@@ -11750,7 +11925,18 @@ function _buildVoiceShouldListen(step){
   if(step.type === 'qa') return false; // AI path or scripted reveal owns qa
   return _buildVoiceTargetForStep(step) != null;
 }
+/* v7.46 — Voice-listen dispatcher. Routes to Whisper when configured and
+   online; otherwise to the original Web Speech path below. Both share the
+   same (target, onVerdict) contract so callers don't care which engine ran. */
 function _buildVoiceListen(target, onVerdict){
+  if(whisperAvailable()){
+    _whisperVoiceListen(target, onVerdict);
+    return;
+  }
+  _buildVoiceListenWebSpeech(target, onVerdict);
+}
+
+function _buildVoiceListenWebSpeech(target, onVerdict){
   const b = state.buildMode;
   if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
@@ -11855,7 +12041,10 @@ function _buildVoiceListenStep(step){
     if(wid){
       const isCorrect = (res.verdict !== 'wrong');
       const st = smStatFor(wid);
-      recordAttempt(wid, isCorrect, 'speak', { voice: true });
+      /* v7.46 — tag with STT engine so we can later split "Whisper said
+         correct" from "Web Speech said correct" in Progress (different
+         confidence). res.engine is set by the Whisper path; absent → webspeech. */
+      recordAttempt(wid, isCorrect, 'speak', { voice: true, stt: res.engine || 'webspeech' });
       attemptIdx = st.attempts.length - 1;
     }
     /* Stash heard text + reverse lookup so the reveal panel can show
@@ -11874,6 +12063,7 @@ function _buildVoiceListenStep(step){
       wid,        /* for override-button SRS update */
       attemptIdx, /* index into st.attempts so override can flip the right one */
       alts: (res.alts || []).slice(0, 20), /* for "show all heard" diagnostic */
+      engine: res.engine || 'webspeech', /* v7.46 — which STT produced this verdict */
     };
     _buildSayVerdictWithMiss(res.verdict, heardWord, () => {
       if(state.buildMode === b && !b._paused) buildAutoReveal();
@@ -12119,11 +12309,19 @@ function _buildSetPhase(phase, durMs){
   }
   const label = document.querySelector('.build-phase-label');
   if(label){
+    /* v7.46 — surface which STT engine is active during listen + a
+       distinct line during the Whisper API round-trip so the user
+       isn't staring at "listening" while we're actually transcribing. */
+    const wp = state.buildMode && state.buildMode._whisperPhase;
+    let listenLabel = '🎤 listening — speak Japanese';
+    if(wp === 'recording')      listenLabel = '🎤 Whisper recording — speak now';
+    else if(wp === 'transcribing') listenLabel = '⏳ Whisper transcribing…';
+    else if(whisperAvailable()) listenLabel = '🎤 listening (Whisper) — speak Japanese';
     label.textContent = phase === 'prompt' ? '🔊 listen…'
                       : phase === 'answer' ? '🔊 answer…'
                       : phase === 'think' ? 'your turn — say it aloud'
                       : phase === 'linger' ? 'next step incoming…'
-                      : phase === 'listen' ? '🎤 listening — speak Japanese'
+                      : phase === 'listen' ? listenLabel
                       : phase === 'aithink' ? '🤖 Claude is replying…'
                       : '';
   }
@@ -14466,11 +14664,16 @@ function _buildRenderHeard(){
          ${lv.alts.map(a => `<div>· ${esc((a.joined?'[joined] ':'') + (a.transcript||''))}</div>`).join('')}
        </div>`
     : '';
+  /* v7.46 — small badge so the user always knows which engine judged this
+     attempt. Whisper = paid, accurate; Web Speech = browser, flaky. Helps
+     diagnose mysterious verdicts ("ah, that was Web Speech fallback"). */
+  const engineBadge = `<div class="muted" style="font-size:10px;margin-top:4px;text-align:right;opacity:0.7">${lv.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech'}</div>`;
   return `
     <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
       ${label}: <b>${esc(display)}</b>${meaning}
       ${override}
       ${altsBlock}
+      ${engineBadge}
     </div>`;
 }
 
@@ -16449,6 +16652,23 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>🎤 Voice recognition (Whisper)</h3>
+      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.openaiKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)'};border-left:3px solid ${(s.openaiKey||'').trim() ? '#22c55e' : '#f59e0b'};line-height:1.5">
+        ${(s.openaiKey||'').trim()
+          ? '✅ Whisper is active — voice mode uses OpenAI Whisper for transcription (vastly more accurate than the browser).'
+          : '⚠️ No OpenAI key yet — voice mode currently uses your browser\'s built-in recognizer, which is the source of the clipped / misheard verdicts. Add a key to switch to Whisper.'}
+      </div>
+      <div class="muted" style="font-size:12px;margin:10px 0 8px">Why this matters: the browser\'s Web Speech API often clips the front of words (you say <b>いそがしい</b>, it hears <b>いい</b>). Whisper is OpenAI\'s speech model — best-in-class for Japanese, doesn\'t clip, and we tell it your deck words so it favours them. ~$0.006/min audio, roughly <b>$1-3/month</b> for daily practice. Round-trip latency ~1-2 sec per attempt. Falls back to the browser recognizer when offline.</div>
+      <input class="input" id="openaiKeyInput" type="password" placeholder="sk-..." value="${esc(s.openaiKey||'')}">
+      <div class="spacer"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveOpenaiKey()">Save key</button>
+        <button class="btn btn-ghost" onclick="clearOpenaiKey()">Clear</button>
+      </div>
+      <div class="muted" style="font-size:11px;margin-top:6px">Get a key: platform.openai.com → API keys. Key stays in this device\'s localStorage; audio is sent directly to api.openai.com.</div>
+    </div>
+
+    <div class="card">
       <h3>Data</h3>
       <button class="btn btn-blue" onclick="exportJSON()">⬇ Export all data (JSON)</button>
       <button class="btn btn-secondary" onclick="importJSON()">⬆ Import JSON</button>
@@ -16510,6 +16730,20 @@ function clearAnthropicKey(){
 function setAnthropicModel(m){
   state.settings.anthropicModel = m;
   save();
+}
+/* v7.46 — OpenAI key handlers (Whisper STT). Mirror the Anthropic flow. */
+function saveOpenaiKey(){
+  const raw = ($('#openaiKeyInput')?.value || '');
+  const v = raw.replace(/\s+/g,'').trim();
+  state.settings.openaiKey = v;
+  save();
+  const looksValid = /^sk-/.test(v);
+  alert(v ? (looksValid ? 'Key saved. Voice mode will now use Whisper.' : 'Saved, but this does not look like an OpenAI key (expected sk-...). Double-check.') : 'Key cleared.');
+  render();
+}
+function clearOpenaiKey(){
+  state.settings.openaiKey = '';
+  save(); render();
 }
 function setVoiceName(key, name){
   state.settings[key] = name || '';
@@ -16581,6 +16815,8 @@ window.setBuildEnTtsRate = setBuildEnTtsRate;
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
 function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
 window.saveAnthropicKey = saveAnthropicKey;
+window.saveOpenaiKey = saveOpenaiKey;
+window.clearOpenaiKey = clearOpenaiKey;
 window.clearAnthropicKey = clearAnthropicKey;
 window.setAnthropicModel = setAnthropicModel;
 window.setVoiceName = setVoiceName;
