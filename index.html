@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.47';
+const APP_VERSION = '7.48';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2339,7 +2339,8 @@ const LS = {
   particleStats:'jp4_particle_stats',
   variationStats:'jp4_variation_stats',
   similarStats:'jp4_similar_stats',
-  snapshots:'jp4_snapshots'        // v7.44 — weekly progress snapshots for the Progress screen
+  snapshots:'jp4_snapshots',       // v7.44 — weekly progress snapshots for the Progress screen
+  openaiKey:'jp4_openai_key'       // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
 };
 
 const DEFAULT_SETTINGS = {
@@ -2666,6 +2667,20 @@ function save(){
 function load(){
   try{
     state.settings = {...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS.settings)||'{}'))};
+    /* v7.48 — restore OpenAI key from its dedicated LS entry. Takes
+       precedence over the settings-blob copy because the dedicated entry
+       is the source of truth (settings blob is just a mirror for in-memory
+       reads). Without this, any partial-write of the settings blob would
+       silently nuke the user's key on next launch. */
+    try {
+      const dedicated = localStorage.getItem(LS.openaiKey);
+      if(dedicated) state.settings.openaiKey = dedicated;
+      else if(state.settings.openaiKey){
+        /* Migrate: blob has key but dedicated slot doesn't — mirror it
+           out so the dedicated entry becomes the durable copy going forward. */
+        localStorage.setItem(LS.openaiKey, state.settings.openaiKey);
+      }
+    } catch(e){ log('openai_key_restore_err', { err: String(e) }); }
     if([0.9, 0.85, 0.8].includes(state.settings.ttsRate)) state.settings.ttsRate = 0.75;
     // v5.9 — bump Build Mode pacing defaults forward for users still on v5.8 values.
     if(state.settings.buildThinkSec === 4) state.settings.buildThinkSec = 5;
@@ -4832,6 +4847,23 @@ function _whisperIsHallucination(text){
   return WHISPER_HALLUCINATIONS.some(re => re.test(t));
 }
 
+/* v7.48 — Returns true if the string contains ANY hiragana or katakana
+   codepoint. Used to gate Whisper output: with language=ja, a legitimate
+   transcription should contain Japanese characters. A pure-English /
+   pure-symbols response is almost certainly a hallucination
+   ("call ended", "thanks for watching", "[music]") and gets rejected.
+   Hiragana U+3040-309F, katakana U+30A0-30FF. Kanji is intentionally
+   NOT in this range — the user's deck is hiragana/katakana only. */
+function _hasJapaneseKana(s){
+  if(!s) return false;
+  for(let i = 0; i < s.length; i++){
+    const c = s.charCodeAt(i);
+    if(c >= 0x3040 && c <= 0x309F) return true; /* hiragana */
+    if(c >= 0x30A0 && c <= 0x30FF) return true; /* katakana */
+  }
+  return false;
+}
+
 /* Record audio with voice-activity detection. v7.47 — now reports a
    `speechDetected` flag so the caller can skip the Whisper round-trip
    when nothing was said (eliminating silent-blob hallucinations like
@@ -4941,7 +4973,16 @@ async function _whisperTranscribe(blob, hint){
   const text = ((data && data.text) || '').trim();
   /* v7.47 — drop the response entirely if it's a known hallucination. */
   if(_whisperIsHallucination(text)){
-    log('whisper_halluc_drop', { text });
+    log('whisper_halluc_drop', { text, reason: 'known-phrase' });
+    return '';
+  }
+  /* v7.48 — nuclear: language=ja, so legitimate output should contain at
+     least one hiragana or katakana character. A pure-English or
+     pure-symbols response is a hallucination by definition for our use
+     case. Catches variants the regex list misses ("Call has ended.",
+     "Calling ended", "Thanks!", "[silence]", random English fragments). */
+  if(!_hasJapaneseKana(text)){
+    log('whisper_halluc_drop', { text, reason: 'no-japanese-kana' });
     return '';
   }
   return text;
@@ -15011,9 +15052,15 @@ function renderTopbar(){
     const f = FORMS.find(x => x.id === state._navData);
     title = f ? `Form drill · ${f.name}` : 'Form drill';
   }
-  return `<div class="topbar">
+  /* v7.48 — persistent version + STT engine indicator. Lets the user
+     verify what they're running without digging into Settings. Green
+     dot = Whisper active; amber = Web Speech fallback. */
+  const whisperOn = whisperAvailable();
+  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;padding:2px 6px;border-radius:6px;background:${whisperOn ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)'};color:${whisperOn ? '#22c55e' : '#f59e0b'};white-space:nowrap;margin-left:6px">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
+  return `<div class="topbar" style="display:flex;align-items:center;gap:6px">
     <button class="topbar-back" onclick="goBack()" title="Back">←</button>
-    <div class="topbar-title">${esc(title)}</div>
+    <div class="topbar-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div>
+    ${sttBadge}
   </div>`;
 }
 
@@ -15489,6 +15536,12 @@ function renderHome(){
   }
 
   /* Top bar — settings icon · wordmark · streak */
+  /* v7.48 — version + STT engine indicator below the wordmark. Lets the
+     user verify at a glance that (a) the new version actually loaded after
+     a deploy, and (b) Whisper is active vs Web Speech fallback. Tap to
+     jump to Settings → Whisper card so the key state is one tap away. */
+  const whisperOn = whisperAvailable();
+  const sttBadge = `<div onclick="nav('settings')" title="${whisperOn ? 'Whisper STT active' : 'Web Speech fallback — add an OpenAI key in Settings for accurate voice'}" style="text-align:center;margin:-2px 0 8px;font-size:10px;letter-spacing:0.04em;cursor:pointer;color:${whisperOn ? '#22c55e' : '#f59e0b'}"><span style="padding:2px 8px;border-radius:6px;background:${whisperOn ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)'}">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web Speech'}</span></div>`;
   const topBar = `
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
@@ -15496,7 +15549,8 @@ function renderHome(){
       ${streak > 0
         ? `<span class="h8-streak">🔥 ${streak}</span>`
         : `<button class="h8-icon-btn" onclick="nav('library')" title="Library">📚</button>`}
-    </div>`;
+    </div>
+    ${sttBadge}`;
 
   /* Hero card — the centerpiece */
   const decoIsKanji = /^[぀-ヿ一-鿿]$/.test(heroDeco);
@@ -16798,11 +16852,18 @@ function setAnthropicModel(m){
   state.settings.anthropicModel = m;
   save();
 }
-/* v7.46 — OpenAI key handlers (Whisper STT). Mirror the Anthropic flow. */
+/* v7.46 — OpenAI key handlers (Whisper STT). Mirror the Anthropic flow.
+   v7.48 — Key is now ALSO written to its own dedicated localStorage entry
+   (LS.openaiKey), independent of the settings JSON blob. This shields it
+   from partial-writes, settings-schema corruption, and iOS PWA storage
+   eviction quirks that were wiping it between sessions. Belt-and-braces:
+   we keep state.settings.openaiKey in sync so existing readers
+   (whisperKey, settings card UI) keep working. */
 function saveOpenaiKey(){
   const raw = ($('#openaiKeyInput')?.value || '');
   const v = raw.replace(/\s+/g,'').trim();
   state.settings.openaiKey = v;
+  try { v ? localStorage.setItem(LS.openaiKey, v) : localStorage.removeItem(LS.openaiKey); } catch(e){}
   save();
   const looksValid = /^sk-/.test(v);
   alert(v ? (looksValid ? 'Key saved. Voice mode will now use Whisper.' : 'Saved, but this does not look like an OpenAI key (expected sk-...). Double-check.') : 'Key cleared.');
@@ -16810,6 +16871,7 @@ function saveOpenaiKey(){
 }
 function clearOpenaiKey(){
   state.settings.openaiKey = '';
+  try { localStorage.removeItem(LS.openaiKey); } catch(e){}
   save(); render();
 }
 function setVoiceName(key, name){
