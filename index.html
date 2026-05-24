@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.48';
+const APP_VERSION = '7.49';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -15536,12 +15536,13 @@ function renderHome(){
   }
 
   /* Top bar — settings icon · wordmark · streak */
-  /* v7.48 — version + STT engine indicator below the wordmark. Lets the
-     user verify at a glance that (a) the new version actually loaded after
-     a deploy, and (b) Whisper is active vs Web Speech fallback. Tap to
-     jump to Settings → Whisper card so the key state is one tap away. */
+  /* v7.48 — version + STT engine indicator below the wordmark.
+     v7.49 — also shows 🔒 when the browser has granted persistent
+     storage, so the user can verify their key won't be evicted. */
   const whisperOn = whisperAvailable();
-  const sttBadge = `<div onclick="nav('settings')" title="${whisperOn ? 'Whisper STT active' : 'Web Speech fallback — add an OpenAI key in Settings for accurate voice'}" style="text-align:center;margin:-2px 0 8px;font-size:10px;letter-spacing:0.04em;cursor:pointer;color:${whisperOn ? '#22c55e' : '#f59e0b'}"><span style="padding:2px 8px;border-radius:6px;background:${whisperOn ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)'}">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web Speech'}</span></div>`;
+  const persistent = !!state._storagePersistent;
+  const lock = persistent ? ' 🔒' : '';
+  const sttBadge = `<div onclick="nav('settings')" title="${whisperOn ? 'Whisper STT active' : 'Web Speech fallback — add an OpenAI key in Settings for accurate voice'}${persistent ? ' · storage marked persistent' : ' · storage NOT marked persistent (may be evicted)'}" style="text-align:center;margin:-2px 0 8px;font-size:10px;letter-spacing:0.04em;cursor:pointer;color:${whisperOn ? '#22c55e' : '#f59e0b'}"><span style="padding:2px 8px;border-radius:6px;background:${whisperOn ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)'}">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web Speech'}${lock}</span></div>`;
   const topBar = `
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
@@ -17300,6 +17301,27 @@ function bindScreen(){
 /* ---------- INIT ---------- */
 function init(){
   load();
+  /* v7.49 — Request persistent storage so the browser doesn't auto-evict
+     our localStorage (where the OpenAI key and all SRS data live) under
+     storage pressure or after periods of non-use. On Android Chrome PWAs
+     added to home screen this is usually granted automatically without a
+     prompt. On iOS it's a no-op (API exists but the platform ignores it).
+     On desktop browsers it may show a prompt — fine, user can decide.
+     If granted: storage will only be cleared by explicit user action.
+     If denied: nothing breaks, we just remain evictable like before. */
+  try {
+    if(navigator.storage && navigator.storage.persist){
+      navigator.storage.persist().then(granted => {
+        state._storagePersistent = !!granted;
+        log('storage_persist', { granted });
+      }).catch(e => log('storage_persist_err', { err: String(e) }));
+      if(navigator.storage.persisted){
+        navigator.storage.persisted().then(p => {
+          state._storagePersistent = !!p;
+        }).catch(()=>{});
+      }
+    }
+  } catch(e){ log('storage_persist_throw', { err: String(e) }); }
   try{
     const n = progBackfillAttempts();  /* v7.45 — one-time synth of attempts[] from SRS counters */
     if(n > 0) log('attempts_backfilled', { words: n });
