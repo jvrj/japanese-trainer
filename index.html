@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.46';
+const APP_VERSION = '7.47';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4801,10 +4801,42 @@ function whisperAvailable(){
   return true;
 }
 
-/* Record audio with simple voice-activity-detection cutoff: start recording
-   immediately, watch the analyser's frequency energy, stop after sustained
-   silence following detected speech (or hit the hard max). Returns a
-   Blob containing audio, or null on no-audio. */
+/* v7.47 — Known Whisper hallucinations. The model was trained heavily on
+   YouTube / podcast / Zoom audio and on silence-or-noise inputs it
+   confidently outputs common training-data phrases (most famously
+   "call ended" from Zoom, "thanks for watching" from YouTube outros).
+   We filter these out client-side; if the transcript reduces to nothing,
+   we treat it as no-speech (verdict: 'nostt') instead of feeding
+   garbage to the scorer. The match is on the trimmed transcript so we
+   reject the WHOLE response only when it IS the hallucination, not when
+   the hallucination happens to be a substring of real speech. */
+const WHISPER_HALLUCINATIONS = [
+  /^call ended[.!]?$/i,
+  /^thanks? for (watching|listening)[.!]?$/i,
+  /^thank you( for watching| for listening| very much| so much)?[.!]?$/i,
+  /^(please )?(don'?t forget to )?subscribe( to (the|my) channel)?[.!]?$/i,
+  /^(bye|goodbye|bye[\s,!.]*bye)[.!]?$/i,
+  /^you[.!]?$/i, /^the[.!]?$/i,
+  /^see you (next time|later)[.!]?$/i,
+  /^(music|applause|silence|pause)$/i,
+  /^[♪♬].*[♪♬]$/,                      /* music symbols */
+  /^\[(music|applause|silence|noise|inaudible)\]$/i,
+  /* JP "thanks for watching" hallucination (ごしちょう…) deliberately
+     omitted — adding it would require kanji literals in source. Add back
+     via \u escapes if Whisper ever returns the JP variant in practice. */
+];
+function _whisperIsHallucination(text){
+  const t = (text || '').trim();
+  if(!t) return true;
+  if(t.length < 1) return true;
+  return WHISPER_HALLUCINATIONS.some(re => re.test(t));
+}
+
+/* Record audio with voice-activity detection. v7.47 — now reports a
+   `speechDetected` flag so the caller can skip the Whisper round-trip
+   when nothing was said (eliminating silent-blob hallucinations like
+   "call ended"). Tightened VAD: requires N consecutive above-threshold
+   samples before flagging speech, so brief noise spikes don't trigger. */
 function _whisperRecord(maxMs){
   return new Promise((resolve, reject) => {
     let stream = null, recorder = null, ctx = null, analyser = null;
@@ -4819,12 +4851,16 @@ function _whisperRecord(maxMs){
       try { recorder = new MediaRecorder(stream); }
       catch(e){ cleanup(); reject(e); return; }
       const chunks = [];
+      let speechDetected = false;
+      let durationMs = 0;
+      const startTs = Date.now();
       recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
       recorder.onstop = () => {
         const mime = (chunks[0] && chunks[0].type) || recorder.mimeType || 'audio/webm';
+        durationMs = Date.now() - startTs;
         cleanup();
-        if(!chunks.length){ resolve(null); return; }
-        resolve(new Blob(chunks, { type: mime }));
+        if(!chunks.length){ resolve({ blob: null, speechDetected, durationMs }); return; }
+        resolve({ blob: new Blob(chunks, { type: mime }), speechDetected, durationMs });
       };
       recorder.onerror = (e) => { cleanup(); reject(e.error || e); };
       try {
@@ -4834,10 +4870,12 @@ function _whisperRecord(maxMs){
         analyser.fftSize = 512;
         src.connect(analyser);
       } catch(e){ /* VAD is optional — without it we just hit the hard timeout */ }
-      const SPEECH_THRESHOLD = 14;      /* avg byte energy (0-255) above mic floor */
-      const SILENCE_AFTER_MS = 800;     /* hang time after last speech sample */
-      const PRE_SPEECH_TIMEOUT_MS = 3500; /* give up if nothing detected by here */
-      let started = false, lastSpeechAt = 0, startedAt = Date.now();
+      const SPEECH_THRESHOLD = 16;          /* avg byte energy (0-255) above mic floor — slight bump vs v7.46 */
+      const SPEECH_RUN_FRAMES = 4;          /* consecutive frames above threshold to call it speech (~70ms @ rAF) */
+      const SILENCE_AFTER_MS = 800;         /* hang time after last speech sample */
+      const PRE_SPEECH_TIMEOUT_MS = 3500;   /* give up if nothing detected by here */
+      let lastSpeechAt = 0, startedAt = Date.now();
+      let speechRun = 0;
       const buf = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
       recorder.start();
       const hardTimer = setTimeout(() => { try{ recorder.stop(); }catch(e){} }, maxMs);
@@ -4848,13 +4886,21 @@ function _whisperRecord(maxMs){
           let sum = 0; for(let i = 0; i < buf.length; i++) sum += buf[i];
           const avg = sum / buf.length;
           const nowMs = Date.now();
-          if(avg > SPEECH_THRESHOLD){ started = true; lastSpeechAt = nowMs; }
-          if(started && (nowMs - lastSpeechAt) > SILENCE_AFTER_MS){
+          if(avg > SPEECH_THRESHOLD){
+            speechRun++;
+            if(speechRun >= SPEECH_RUN_FRAMES){
+              speechDetected = true;
+              lastSpeechAt = nowMs;
+            }
+          } else {
+            speechRun = 0;
+          }
+          if(speechDetected && (nowMs - lastSpeechAt) > SILENCE_AFTER_MS){
             clearTimeout(hardTimer);
             try{ recorder.stop(); }catch(e){}
             return;
           }
-          if(!started && (nowMs - startedAt) > PRE_SPEECH_TIMEOUT_MS){
+          if(!speechDetected && (nowMs - startedAt) > PRE_SPEECH_TIMEOUT_MS){
             clearTimeout(hardTimer);
             try{ recorder.stop(); }catch(e){}
             return;
@@ -4867,17 +4913,19 @@ function _whisperRecord(maxMs){
   });
 }
 
-/* POST audio blob to Whisper. `hint` becomes the `prompt` parameter, which
-   biases the model toward the target word — crucial because Whisper has
-   strong language priors and will otherwise prefer common homophones over
-   the rarer word in your prompt. */
+/* POST audio blob to Whisper. v7.47 — `prompt` is now Japanese-only (just
+   the target hiragana) to keep Whisper in Japanese-output mode. Previous
+   English prompt "Japanese vocabulary practice. Word: X" was biasing the
+   model toward English hallucinations on unclear audio. */
 async function _whisperTranscribe(blob, hint){
   const fd = new FormData();
   const filename = 'audio.' + ((blob.type || '').includes('mp4') ? 'mp4' : 'webm');
   fd.append('file', blob, filename);
   fd.append('model', 'whisper-1');
   fd.append('language', 'ja');
-  if(hint) fd.append('prompt', 'Japanese vocabulary practice. Word: ' + hint);
+  /* Prompt is a single hiragana word — keeps Whisper in Japanese mode and
+     gently biases toward the target without dragging it back to English. */
+  if(hint) fd.append('prompt', hint);
   fd.append('response_format', 'json');
   fd.append('temperature', '0');
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -4890,7 +4938,13 @@ async function _whisperTranscribe(blob, hint){
     throw new Error('whisper http ' + res.status + ': ' + errText.slice(0, 200));
   }
   const data = await res.json();
-  return ((data && data.text) || '').trim();
+  const text = ((data && data.text) || '').trim();
+  /* v7.47 — drop the response entirely if it's a known hallucination. */
+  if(_whisperIsHallucination(text)){
+    log('whisper_halluc_drop', { text });
+    return '';
+  }
+  return text;
 }
 
 /* Drop-in replacement for _buildVoiceListenWebSpeech contract: same
@@ -4905,9 +4959,9 @@ async function _whisperVoiceListen(target, onVerdict){
   b._sttActive = true;
   b._whisperPhase = 'recording';
   _buildSetPhase('listen', maxMs + 2500);
-  let blob = null;
+  let rec = null;
   try {
-    blob = await _whisperRecord(maxMs);
+    rec = await _whisperRecord(maxMs);
   } catch(e){
     log('whisper_rec_err', { err: String(e && e.message || e) });
     b._sttActive = false; b._whisperPhase = null;
@@ -4915,7 +4969,20 @@ async function _whisperVoiceListen(target, onVerdict){
     log('whisper_fallback', { reason: 'rec_err' });
     return _buildVoiceListenWebSpeech(target, onVerdict);
   }
-  if(!blob || blob.size < 200){
+  const blob = rec && rec.blob;
+  /* v7.47 — if VAD never detected speech, skip the Whisper round-trip
+     entirely. Sending silent audio to Whisper produces hallucinations
+     like "call ended" / "thanks for watching" and burns API credit. */
+  if(!rec || !rec.speechDetected){
+    log('whisper_skip_silence', { durationMs: rec && rec.durationMs, blobSize: blob && blob.size });
+    b._sttActive = false; b._whisperPhase = null;
+    onVerdict({verdict:'nostt'});
+    return;
+  }
+  /* v7.47 — bumped from 200 → 2000. Sub-second audio (~250ms) is well
+     below this and almost always a noise spike or VAD false positive. */
+  if(!blob || blob.size < 2000){
+    log('whisper_skip_tiny', { blobSize: blob && blob.size });
     b._sttActive = false; b._whisperPhase = null;
     onVerdict({verdict:'nostt'});
     return;
