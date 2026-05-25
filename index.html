@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.49';
+const APP_VERSION = '7.50';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2369,6 +2369,7 @@ const DEFAULT_SETTINGS = {
   blitzNew:10,                // Vocab Blitz target new-word count per session
   blitzDirection:'jp-en',     // Vocab Blitz direction — jp-en (default) | en-jp | mixed (resolved per-card into currentDir)
   formBlitzDirection:'jp-en', // Form Blitz direction — independent from Vocab Blitz; same tri-state cycle
+  formDrillDirection:'en-jp', // v7.50 — Form Drill direction. Default en-jp matches the legacy "show dict+EN, produce JP form" flow. jp-en flips to "show conjugated form, recall EN meaning" (acceptor-graded like Form Blitz).
   includeKatakana:true,       // v7.x — default ON. Katakana is part of the learner's allowed script (only kanji is restricted) and many essential modern words are katakana-only. When false, katakana-containing words are excluded from Vocab Blitz / Form Blitz / Sentence drill. Kana Blitz unaffected.
   buildAutoAdvance:true,      // v5.8 — Build Mode: auto-reveal + auto-advance like Paul Noble (no Reveal/Next tapping)
   buildWriteMode:false,       // v6.25 — Build Mode: type the JP instead of speaking. Suppresses TTS on prompt + waits for input on build/substitute/callback steps. Auto-advance still applies after a correct answer.
@@ -6161,6 +6162,29 @@ function blitzToggleDir(){
 }
 window.blitzToggleDir = blitzToggleDir;
 
+/* v7.50 — Form Drill direction toggle. Mirrors blitzToggleDir tri-state cycle.
+   en-jp = legacy flow (dict+EN → produce JP form). jp-en = show conjugated form
+   → recall EN meaning (acceptor-graded via f.accept like Form Blitz). mixed =
+   resolved per-card. Persists in settings.formDrillDirection. */
+function formDrillToggleDir(){
+  if(!state.formDrill) return;
+  const next = {'jp-en':'en-jp', 'en-jp':'mixed', 'mixed':'jp-en'};
+  state.formDrill.direction = next[state.formDrill.direction] || 'en-jp';
+  state.formDrill.currentDir = resolveFormDrillDir(state.formDrill.direction);
+  state.settings.formDrillDirection = state.formDrill.direction;
+  state.formDrill.submitted = false;
+  state.formDrill.input = '';
+  state.formDrill.autoCorrect = null;
+  save();
+  render();
+  setTimeout(() => $('#formInput')?.focus(), 30);
+}
+window.formDrillToggleDir = formDrillToggleDir;
+function resolveFormDrillDir(dir){
+  if(dir === 'mixed') return Math.random() < 0.5 ? 'jp-en' : 'en-jp';
+  return dir === 'jp-en' ? 'jp-en' : 'en-jp';
+}
+
 let blitzAdvanceTimer = null;
 function clearBlitzAdvanceTimer(){ if(blitzAdvanceTimer){ clearTimeout(blitzAdvanceTimer); blitzAdvanceTimer = null; } }
 
@@ -6916,9 +6940,12 @@ function startFormDrill(formId){
     alert(`No verbs ready for ${f.name} drill right now. All scheduled for later.`);
     return;
   }
+  const direction = state.settings.formDrillDirection || 'en-jp';
   state.formDrill = {
     active:true, complete:false, formId, queue:q, idx:0,
     submitted:false, input:'', autoCorrect:null,
+    direction,                              // v7.50 — persisted tri-state ('jp-en'|'en-jp'|'mixed')
+    currentDir:resolveFormDrillDir(direction), // v7.50 — resolved per-card ('jp-en'|'en-jp')
     tally:{again:0, good:0, easy:0, total:q.length}
   };
   clearNextTimer();
@@ -6938,11 +6965,27 @@ function formDrillSubmit(){
   const f = FORMS.find(x => x.id === state.formDrill.formId);
   const inp = $('#formInput');
   state.formDrill.input = inp?.value || '';
-  const expected = f.conj(w.jp);
-  state.formDrill.autoCorrect = normJP(state.formDrill.input) === normJP(expected);
+  /* v7.50 — direction-aware grading. en-jp produces the JP conjugated form
+     (legacy path, JP exact match). jp-en is recall: user types/voices the
+     English meaning, graded against the form's lenient acceptor set —
+     same as Form Blitz so "eat", "eat and", "and eat" all pass for te. */
+  const dir = state.formDrill.currentDir || 'en-jp';
+  if(dir === 'jp-en'){
+    const got = normEN(state.formDrill.input);
+    state.formDrill.autoCorrect = got ? formBlitzAcceptSet(w, f).has(got) : false;
+  } else {
+    const expected = f.conj(w.jp);
+    state.formDrill.autoCorrect = normJP(state.formDrill.input) === normJP(expected);
+  }
   state.formDrill.submitted = true;
   render();
   setTimeout(() => $('#formGradeGood')?.focus(), 30);
+  /* v7.50 — voice mode: on a miss, speak the correct conjugated form and
+     auto-advance with "again" so the user never has to tap. Mirrors the
+     equivalent path in Vocab Blitz (_blitzVoiceMaybeAutoAdvanceAfterWrong). */
+  if(!state.formDrill.autoCorrect && typeof _formDrillVoiceMaybeAutoAdvanceAfterWrong === 'function'){
+    _formDrillVoiceMaybeAutoAdvanceAfterWrong();
+  }
 }
 window.formDrillSubmit = formDrillSubmit;
 
@@ -6977,6 +7020,8 @@ function formDrillGrade(grade){
   state.formDrill.submitted = false;
   state.formDrill.input = '';
   state.formDrill.autoCorrect = null;
+  /* v7.50 — re-resolve direction so 'mixed' actually shuffles per card. */
+  state.formDrill.currentDir = resolveFormDrillDir(state.formDrill.direction || 'en-jp');
   save();
   if(state.formDrill.idx >= state.formDrill.queue.length){
     state.formDrill.active = false;
@@ -6993,6 +7038,8 @@ function formDrillSkip(){
   state.formDrill.submitted = false;
   state.formDrill.input = '';
   state.formDrill.autoCorrect = null;
+  /* v7.50 — re-resolve direction so 'mixed' shuffles per card. */
+  state.formDrill.currentDir = resolveFormDrillDir(state.formDrill.direction || 'en-jp');
   if(state.formDrill.idx >= state.formDrill.queue.length){
     state.formDrill.active = false;
     state.formDrill.complete = true;
@@ -7007,6 +7054,163 @@ function formDrillEnd(){
   nav('forms');
 }
 window.formDrillEnd = formDrillEnd;
+
+/* =========================================================================
+   v7.50 — VOICE FORM DRILL
+   Mirror of _blitzVoiceListen / blitzToggleVoiceMode but pointed at the active
+   Form Drill session. Same global flag (state.settings.buildVoiceMode) drives
+   it, so toggling voice anywhere lights it up here too.
+
+   Direction-aware:
+     en-jp — listen in Japanese (user produces conjugated form)
+     jp-en — speak the conjugated form aloud first, then listen in English
+
+   Native Web Speech only for v7.50 (matches Vocab Blitz). The Whisper path
+   is buildMode-coupled; refactoring it can come in a follow-up if native STT
+   proves flaky on short conjugations.
+   ========================================================================= */
+let _formDrillVoiceTimer = null;
+function _formDrillVoiceClear(){
+  if(_formDrillVoiceTimer){ clearTimeout(_formDrillVoiceTimer); _formDrillVoiceTimer = null; }
+  if(state.voiceListening){ try{ stopVoice(); }catch(e){} }
+}
+function _formDrillSetListenLabel(text){
+  const el = document.getElementById('formDrillVoiceLabel');
+  if(el) el.textContent = text;
+}
+function _formDrillVoiceListen(manual){
+  const d = state.formDrill;
+  if(!d){ _formDrillSetListenLabel('— no session'); return; }
+  if(d.complete){ _formDrillSetListenLabel('— drill complete'); return; }
+  if(d.submitted){ _formDrillSetListenLabel('— card already submitted'); return; }
+  if(!_buildVoiceModeActive()){
+    _formDrillSetListenLabel(voiceSupported() ? '— voice mode is OFF' : '— STT unsupported in this browser');
+    return;
+  }
+  if(state.screen !== 'formDrill'){ _formDrillSetListenLabel('— not on form drill screen'); return; }
+  const w = formDrillCurrent();
+  const f = FORMS.find(x => x.id === d.formId);
+  if(!w || !f){ _formDrillSetListenLabel('— no current card'); return; }
+  const cur = d.currentDir || 'en-jp';
+  /* jp-en: app speaks the conjugated form, user says English meaning.
+     en-jp: no JP TTS (user is producing JP from the visible English prompt),
+     listen in Japanese. Matches Vocab Blitz convention. */
+  const lang = cur === 'jp-en' ? 'en-US' : 'ja-JP';
+  const sayLangLabel = cur === 'jp-en' ? 'English' : 'Japanese';
+  const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
+
+  const startListen = () => {
+    if(state.screen !== 'formDrill' || !state.formDrill || state.formDrill.submitted){
+      _formDrillSetListenLabel('— state changed before listen could start');
+      return;
+    }
+    _formDrillSetListenLabel(`🎤 LISTENING — say it in ${sayLangLabel}`);
+    let alts = [];
+    let started = false;
+    try{
+      startVoice(
+        (results) => { alts = results || []; if(alts.length) _formDrillSetListenLabel(`📝 heard partial: "${alts[0].transcript}"`); },
+        (err) => {
+          if(state.screen !== 'formDrill' || !state.formDrill || state.formDrill.submitted) return;
+          if(err){
+            const code = err && err.error;
+            if(code === 'not-allowed' || code === 'service-not-allowed'){
+              _formDrillSetListenLabel('🚫 MIC BLOCKED — allow in browser, then re-toggle');
+              if(typeof showToast === 'function') showToast('Microphone permission is blocked. Allow it in your browser site settings, then re-toggle voice mode.', {tone:'warn', duration:7000});
+              state.settings.buildVoiceMode = false;
+              save();
+              render();
+              return;
+            }
+            if(code === 'language-not-supported' || code === 'bad-grammar'){
+              _formDrillSetListenLabel(`🚫 STT language ${lang} unsupported here`);
+              if(typeof showToast === 'function') showToast(`Speech recognition for ${lang} not available in this browser.`, {tone:'warn', duration:5000});
+              return;
+            }
+            if(code === 'no-speech'){
+              _formDrillSetListenLabel('🤔 no speech detected — revealing');
+              if(typeof formDrillReveal === 'function') formDrillReveal();
+              return;
+            }
+            _formDrillSetListenLabel(`🚫 STT error: ${code || 'unknown'}`);
+          }
+          if(!alts.length){
+            _formDrillSetListenLabel('🤔 nothing captured — revealing the answer');
+            if(typeof formDrillReveal === 'function') formDrillReveal();
+            return;
+          }
+          const best = alts.slice().sort((a,c) => (c.conf||0) - (a.conf||0))[0];
+          const heard = (best.transcript || '').trim();
+          _formDrillSetListenLabel(`✓ heard: "${heard}" — submitting`);
+          const inp = $('#formInput');
+          if(inp){ inp.value = heard; }
+          formDrillSubmit();
+        },
+        lang
+      );
+      started = true;
+    } catch(e){
+      _formDrillSetListenLabel(`🚫 startVoice threw: ${String(e && e.message || e)}`);
+      return;
+    }
+    if(!started) return;
+    _formDrillVoiceTimer = setTimeout(() => {
+      if(state.voiceListening){ try{ stopVoice(); }catch(e){} }
+    }, listenSec * 1000 + 2500);
+  };
+
+  if(cur === 'jp-en'){
+    /* Speak the conjugated JP form, then listen in English. */
+    const spoken = f.conj(w.jp);
+    _formDrillSetListenLabel('🔊 speaking the JP prompt…');
+    _buildSpeakJP(spoken, () => {
+      _formDrillSetListenLabel('🎙 prompt done — listen starting');
+      _formDrillVoiceTimer = setTimeout(startListen, 200);
+    });
+  } else {
+    _formDrillSetListenLabel('🎙 voice mode armed — listen starting');
+    _formDrillVoiceTimer = setTimeout(startListen, manual ? 50 : 250);
+  }
+}
+window._formDrillVoiceListen = _formDrillVoiceListen;
+
+/* Voice-mode toggle — same global flag as Vocab Blitz; just renders a
+   formDrill-context toast so the user knows it's active here. */
+function formDrillToggleVoiceMode(){
+  if(!voiceSupported()){
+    if(typeof showToast === 'function') showToast('Speech recognition not supported in this browser.', {tone:'warn', duration:4000});
+    return;
+  }
+  const turningOn = !state.settings.buildVoiceMode;
+  if(turningOn) _formDrillVoiceClear();
+  state.settings.buildVoiceMode = turningOn;
+  save();
+  log('voice_mode_toggle', {on: state.settings.buildVoiceMode, from:'formDrill'});
+  render();
+  if(typeof showToast === 'function'){
+    showToast(state.settings.buildVoiceMode
+      ? '🎙️ Voice mode ON — speak the answer'
+      : 'Voice mode off', {tone:'info', duration:2500});
+  }
+}
+window.formDrillToggleVoiceMode = formDrillToggleVoiceMode;
+
+/* Mirror of _blitzVoiceMaybeAutoAdvanceAfterWrong — in voice mode, speak
+   the correct conjugated form once after a miss, then auto-advance with
+   a default "again" grade so the user never has to tap. */
+function _formDrillVoiceMaybeAutoAdvanceAfterWrong(){
+  if(!_buildVoiceModeActive()) return;
+  const d = state.formDrill;
+  if(!d || !d.submitted || d.autoCorrect) return;
+  const w = formDrillCurrent();
+  const f = FORMS.find(x => x.id === d.formId);
+  if(w && f){ try{ speakJP(f.conj(w.jp)); }catch(e){} }
+  _formDrillVoiceClear();
+  _formDrillVoiceTimer = setTimeout(() => {
+    if(state.screen !== 'formDrill' || !state.formDrill || !state.formDrill.submitted) return;
+    formDrillGrade('again');
+  }, 3000);
+}
 
 /* v6.16 — ★ Master from inside a Form Drill. Flags the verb mastered and
    advances to the next card. */
@@ -7073,11 +7277,20 @@ function renderFormDrill(){
   const curInterval = fst?.smInterval != null ? smIntervalLabel(fst.smInterval) : 'new';
   const total = d.queue.length;
   const pos = d.idx + 1;
+  /* v7.50 — direction chip + voice toggle, mirroring Vocab Blitz layout. */
+  const dirRaw = d.direction || 'en-jp';
+  const dirNow = d.currentDir || resolveFormDrillDir(dirRaw);
+  const dirLabel = dirRaw === 'mixed' ? `mixed (${dirNow})` : dirRaw;
+  const dirChip = `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="formDrillToggleDir()" title="Cycle direction: jp-en → en-jp → mixed">↔ ${esc(dirLabel)}</button>`;
+  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="formDrillToggleVoiceMode()" title="Hands-free voice mode — speak the answer">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
 
   const head = `<div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <span class="muted" style="font-size:13px">Card ${pos} / ${total}</span>
-      <span class="muted" style="font-size:12px">${esc(f.name)} · ${esc(curInterval)} · ease ${ease}</span>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+        ${dirChip}${voicePill}
+        <span class="muted" style="font-size:12px">${esc(f.name)} · ${esc(curInterval)} · ease ${ease}</span>
+      </div>
     </div>
     ${f.rule ? `<details style="margin-top:6px">
       <summary style="cursor:pointer;font-size:12px;color:var(--muted)">📖 Rule for ${esc(f.name)}</summary>
@@ -7086,11 +7299,40 @@ function renderFormDrill(){
   </div>`;
 
   if(!d.submitted){
+    const voiceOn = state.settings.buildVoiceMode && voiceSupported();
+    /* Auto-listen on render — mirrors Vocab Blitz line ~6435. Self-aborts in
+       _formDrillVoiceListen if voice mode is off or session changed. */
+    if(voiceOn && typeof _formDrillVoiceListen === 'function') setTimeout(_formDrillVoiceListen, 80);
+    const voiceLabel = voiceOn
+      ? `<div id="formDrillVoiceLabel" class="muted" style="font-size:12px;text-align:center;margin:8px 0">🎙 voice mode armed — listen starting</div>`
+      : '';
+
+    if(dirNow === 'jp-en'){
+      /* v7.50 — RECALL direction: show the conjugated form, ask for English. */
+      const enPlaceholder = `type/say the English meaning of ${esc(f.name)} form`;
+      return head + `<div class="card">
+        <div class="muted" style="font-size:12px;margin-bottom:6px">${esc(f.name)} form (recall the meaning)</div>
+        <div style="font-size:34px;text-align:center;padding:10px 0 4px">${esc(expected)}</div>
+        <div style="text-align:center;font-size:13px;margin-bottom:14px;color:var(--muted)">from <b>${esc(w.jp)}</b> · ${esc(group.label)}</div>
+        ${voiceLabel}
+        <input id="formInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="${enPlaceholder}" onkeydown="if(event.key==='Enter'){event.preventDefault();formDrillSubmit();}">
+        <div class="spacer"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="formDrillReveal()">Reveal</button>
+          <button class="btn btn-primary" onclick="formDrillSubmit()">Submit</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="formDrillSkip()">Skip card</button>
+      </div>`;
+    }
+
+    /* en-jp (default, legacy): show dict + English, ask for JP conjugated form. */
     return head + `<div class="card">
       <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
       <div style="font-size:30px;text-align:center;padding:8px 0 4px">${esc(w.jp)}</div>
       <div style="text-align:center;font-size:17px;margin-bottom:14px;color:var(--text)"><b>${esc(stripTo(w.en))}</b></div>
       <div style="text-align:center;font-size:14px;margin-bottom:10px">→ <b>${esc(f.name)}</b> form</div>
+      ${voiceLabel}
       <input id="formInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type ${esc(f.name)} form in hiragana" onkeydown="if(event.key==='Enter'){event.preventDefault();formDrillSubmit();}">
       <div class="spacer"></div>
       <div class="btn-row">
@@ -7109,7 +7351,11 @@ function renderFormDrill(){
   const correctBadge = d.autoCorrect
     ? `<span style="color:var(--green);font-size:13px">● correct</span>`
     : `<span style="color:var(--orange);font-size:13px">● miss</span>`;
-  const userShown = d.input ? esc(d.input) : '<span class="muted">(nothing typed)</span>';
+  const userShown = d.input ? esc(d.input) : '<span class="muted">(nothing answered)</span>';
+  /* v7.50 — show both the JP and EN "ideal" lines so review is the same for
+     either direction; just bold the side the user was being graded on. */
+  const dirReview = d.currentDir || 'en-jp';
+  const enIdeal = (typeof f.en === 'function') ? f.en(w) : stripTo(w.en);
 
   return head + `<div class="card">
     <div class="muted" style="font-size:12px;margin-bottom:6px">Dictionary form</div>
@@ -7117,7 +7363,7 @@ function renderFormDrill(){
     <div style="text-align:center;font-size:16px;color:var(--text)"><b>${esc(stripTo(w.en))}</b> <span class="muted" style="font-size:13px">· ${esc(group.label)}</span></div>
     <div class="divider"></div>
     <div style="font-size:13px;margin-top:8px"><span class="muted">Your answer:</span> ${userShown} ${correctBadge}</div>
-    <div style="font-size:13px;margin-top:4px"><span class="muted">Correct ${esc(f.name)}:</span> <b style="font-size:18px">${esc(expected)}</b></div>
+    <div style="font-size:13px;margin-top:4px"><span class="muted">Correct ${esc(f.name)}:</span> ${dirReview === 'jp-en' ? `<span style="font-size:15px">${esc(expected)}</span> <span class="muted">·</span> <b style="font-size:16px">${esc(enIdeal)}</b>` : `<b style="font-size:18px">${esc(expected)}</b> <span class="muted">·</span> <span style="font-size:14px">${esc(enIdeal)}</span>`}</div>
     ${f.rule ? `<details ${d.autoCorrect ? '' : 'open'} style="margin-top:10px;padding:8px 10px;background:var(--bg-soft, rgba(0,0,0,0.04));border-radius:6px;font-size:12.5px;line-height:1.5">
       <summary style="cursor:pointer;color:var(--muted);font-size:12px">Why? — ${esc(f.name)} rule${d.autoCorrect ? ' (tap to expand)' : ''}</summary>
       <div style="margin-top:6px"><b>${esc(group.label)}</b> · ${esc(f.rule)}</div>
