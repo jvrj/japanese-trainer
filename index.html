@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.50';
+const APP_VERSION = '7.51';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -13713,23 +13713,59 @@ const CONTRAST_SETS = [
    from the existing FORMS infrastructure — gives us irregulars for free
    (くる→きた, する→した, いく→いって for te-form, etc).
    Verbs flagged `skipNai` have irregular negatives we don't want auto-derived. */
+/* v7.51 — pool expanded from 16 → 40 verbs after user fed back that the drill
+   was hitting the same handful (たべない / しない / たべなかった) on repeat.
+   Curated for diversity: every godan ending represented (う/つ/る/ぬ/ぶ/む/く/ぐ/す),
+   both ichidan stem types, and verbs that actually come up in conversation. */
 const CONJUGATION_DRILL_VERBS = [
+  /* Give / receive — the original give/receive cluster */
   { jp: 'あげる',  en: 'give (outward)',         hint: 'ichidan' },
-  { jp: 'もらう',  en: 'receive',                hint: 'godan'   },
+  { jp: 'もらう',  en: 'receive',                hint: 'godan · う' },
   { jp: 'くれる',  en: 'give (inward to me)',    hint: 'ichidan' },
+  /* Irregulars + 'looks ichidan but isn't' traps */
   { jp: 'いく',    en: 'go',                     hint: 'godan · te-form irregular' },
   { jp: 'くる',    en: 'come',                   hint: 'irregular' },
   { jp: 'する',    en: 'do',                     hint: 'irregular' },
-  { jp: 'わかる',  en: 'understand',             hint: 'godan'   },
-  { jp: 'しる',    en: 'know / find out',        hint: 'godan'   },
-  { jp: 'なる',    en: 'become',                 hint: 'godan'   },
+  { jp: 'しる',    en: 'know / find out',        hint: 'godan · ends in る but godan' },
+  { jp: 'はしる',  en: 'run',                    hint: 'godan · ends in る but godan' },
+  { jp: 'はいる',  en: 'enter',                  hint: 'godan · ends in る but godan' },
+  { jp: 'かえる',  en: 'go home',                hint: 'godan · ends in る but godan' },
+  /* Motion */
+  { jp: 'あるく',  en: 'walk',                   hint: 'godan · く' },
+  { jp: 'およぐ',  en: 'swim',                   hint: 'godan · ぐ' },
+  { jp: 'でる',    en: 'exit / leave',           hint: 'ichidan' },
+  { jp: 'まつ',    en: 'wait',                   hint: 'godan · つ' },
+  { jp: 'たつ',    en: 'stand up',               hint: 'godan · つ' },
+  { jp: 'すわる',  en: 'sit down',               hint: 'godan · る' },
+  { jp: 'もどる',  en: 'return (not home)',      hint: 'godan · る' },
+  { jp: 'なる',    en: 'become',                 hint: 'godan · る' },
+  /* Communication */
+  { jp: 'いう',    en: 'say',                    hint: 'godan · う' },
+  { jp: 'はなす',  en: 'speak',                  hint: 'godan · す' },
+  { jp: 'おしえる',en: 'teach',                  hint: 'ichidan' },
+  { jp: 'ならう',  en: 'learn',                  hint: 'godan · う' },
+  { jp: 'よむ',    en: 'read',                   hint: 'godan · む' },
+  { jp: 'かく',    en: 'write',                  hint: 'godan · く' },
+  { jp: 'きく',    en: 'listen / hear / ask',    hint: 'godan · く' },
+  /* Daily action */
   { jp: 'たべる',  en: 'eat',                    hint: 'ichidan' },
-  { jp: 'のむ',    en: 'drink',                  hint: 'godan'   },
+  { jp: 'のむ',    en: 'drink',                  hint: 'godan · む' },
   { jp: 'みる',    en: 'see / watch',            hint: 'ichidan' },
-  { jp: 'きく',    en: 'listen / hear / ask',    hint: 'godan'   },
-  { jp: 'もどる',  en: 'return (not home)',      hint: 'godan'   },
-  { jp: 'かえる',  en: 'go home',                hint: 'godan'   },
-  { jp: 'はなす',  en: 'speak',                  hint: 'godan'   }
+  { jp: 'ねる',    en: 'sleep',                  hint: 'ichidan' },
+  { jp: 'おきる',  en: 'wake up',                hint: 'ichidan' },
+  { jp: 'つくる',  en: 'make',                   hint: 'godan · る' },
+  { jp: 'つかう',  en: 'use',                    hint: 'godan · う' },
+  { jp: 'とる',    en: 'take',                   hint: 'godan · る' },
+  { jp: 'もつ',    en: 'hold / have',            hint: 'godan · つ' },
+  /* Social / mental */
+  { jp: 'かう',    en: 'buy',                    hint: 'godan · う' },
+  { jp: 'あう',    en: 'meet',                   hint: 'godan · う' },
+  { jp: 'あそぶ',  en: 'play / hang out',        hint: 'godan · ぶ' },
+  { jp: 'おもう',  en: 'think',                  hint: 'godan · う' },
+  { jp: 'わかる',  en: 'understand',             hint: 'godan · る' },
+  { jp: 'わすれる',en: 'forget',                 hint: 'ichidan' },
+  { jp: 'はじめる',en: 'begin',                  hint: 'ichidan' },
+  { jp: 'おわる',  en: 'end / finish',           hint: 'godan · る' }
 ];
 
 /* The 6 forms we drill — chosen as the most useful for early-stage learners.
@@ -14064,16 +14100,13 @@ function drillStartListening(){
     if(!s.listening) return; /* already finalized by early-accept */
     s.listening = false;
     const alts = s._lastAlts || [];
-    const heardSomething = alts.some(a => a && a.transcript);
-    /* Nothing heard at all: usually a no-speech/abort hiccup, not a wrong
-       answer. In hands-free mode silently re-arm the mic instead of marking
-       it wrong and dead-ending. */
-    if(!heardSomething && !s._manualStop && s.autoMode && (s._retries || 0) < 2){
-      s._retries = (s._retries || 0) + 1;
-      s._t = s._t || {};
-      s._t.rearm = setTimeout(() => { drillStartListening(); }, 350);
-      return;
-    }
+    /* v7.51 — drop the 2x silent re-arm. User feedback: when they don't
+       answer at all, the drill takes ~22s to advance (7s listen × up to 3
+       arms + delays). Vocab Blitz's voice mode — which the user calls
+       "pretty perfect" — finalises immediately on no-speech with no retry.
+       Match that: one listen window, then move on. If hands-free turns out
+       to genuinely need a retry for STT init hiccups, we re-add ONE (not 2)
+       behind a stricter "rec failed to start" check, not blanket silence. */
     s._retries = 0;
     _drillFinalize(p, alts);
   };
@@ -14088,8 +14121,12 @@ function drillStartListening(){
     }
   };
   tryStart(0);
-  /* Hard cut after 7s if the early-accept matcher never gets confident. */
-  s._t.cut = setTimeout(() => { s._manualStop = true; try{ stopVoice(); }catch(e){} }, 7000);
+  /* v7.51 — hard-cut window now driven by the same voiceListenSec setting
+     Vocab Blitz uses (default 6s + 2.5s buffer ≈ 8.5s). Was hard-coded at 7s,
+     which combined with the silent re-arm loop made unanswered prompts feel
+     glacial vs the rest of the app. */
+  const drillCutMs = Math.max(3, Math.min(15, state.settings.voiceListenSec || 6)) * 1000 + 2500;
+  s._t.cut = setTimeout(() => { s._manualStop = true; try{ stopVoice(); }catch(e){} }, drillCutMs);
 }
 window.drillStartListening = drillStartListening;
 
