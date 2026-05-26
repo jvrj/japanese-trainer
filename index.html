@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.53';
+const APP_VERSION = '7.54';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -16020,9 +16020,12 @@ function renderHome(){
     pc.total > 0
       ? { emoji:'💬', title:'Phrases', meta:`${pc.retired}/${pc.total} mastered`, click:`nav('phrases')` }
       : null,
-    /* Sentences */
+    /* Sentences — v7.54: route the home tile to Sentence Spam (audio-led,
+       hands-free) instead of straight typed Blitz. Matches the blueprint
+       (one tap, voice/random). Typed Sentence Blitz still callable via
+       startSentenceBlitz() if surfaced elsewhere later. */
     scc.total > 0
-      ? { emoji:'📜', title:'Sentence Blitz', meta:`${scc.retired}/${scc.total} mastered`, click:`startSentenceBlitz()` }
+      ? { emoji:'📜', title:'Sentence Spam', meta:`${scc.retired}/${scc.total} mastered · audio-led · hands-free`, click:`startBuildModeSentenceSpam()` }
       : null,
     /* Particles — always available */
     { emoji:'🔗', title:'Particles', meta:'Drill は · が · に · で · を', click:`nav('particles')` },
