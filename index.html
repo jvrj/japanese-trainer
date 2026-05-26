@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.54';
+const APP_VERSION = '7.55';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2950,29 +2950,49 @@ function getActiveWords(){
   });
 }
 
+/* v7.55 — Particles + bound-morpheme counters don't drill well as Vocab
+   Blitz flashcards. Particles (pos:'part') are abstract grammar markers
+   already covered by the dedicated Particles mode; bound counters (romaji
+   begins with '~', e.g. '~mai' = '~ flat thin things') are reference
+   morphemes that only make sense in worked examples like いちまい / にまい.
+   This helper is the single source of truth for "is this a word the user
+   should see in Vocab Blitz / Random Drill prompts?" Other modes (Phrases,
+   Sentences, Form Drill, Build Mode lessons) don't use this filter and so
+   are unaffected. */
+function _isVocabDrillSurface(w){
+  if(!w) return false;
+  if(w.pos === 'part') return false;
+  if(typeof w.romaji === 'string' && w.romaji.charAt(0) === '~') return false;
+  return true;
+}
+
 /* v6.10 — Library: drilling-only filter. Removes Suspended + Mastered from
    Vocab Blitz pool while keeping the word available to Build Mode / Sentence
    Blitz / Phrases as composition content. Focus words are not filtered out
-   here — they're boosted via libraryFocusedActiveWords() in pool selection. */
+   here — they're boosted via libraryFocusedActiveWords() in pool selection.
+   v7.55 — also strip particles + bound counters via _isVocabDrillSurface. */
 function getDrillableWords(){
   const active = getActiveWords();
   const suspended = new Set(state.settings.suspendedWords || []);
   const mastered = new Set(state.settings.masteredWords || []);
   const moduleIds = activeModuleWordIdSet();
   /* v6.37 — Mastered review section: include ★mastered words, bypass
-     module gating. Suspended is still respected. */
+     module gating. Suspended is still respected. v7.55 — also strip
+     non-drill-surface words (particles + bound counters). */
   if(activeVocabSection().mode === 'mastered'){
-    return active.filter(w => !suspended.has(w.id));
+    return active.filter(w => !suspended.has(w.id) && _isVocabDrillSurface(w));
   }
   /* v7.40 — a collection is an explicit hand-picked scope, so bypass module
      gating (otherwise locked-module words silently drop out). Suspended +
-     mastered are still respected; vocabSectionFilter narrows to members. */
+     mastered are still respected; vocabSectionFilter narrows to members.
+     v7.55 — non-drill-surface filter applies here too. */
   if(activeVocabSection().isCollection){
-    return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id));
+    return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id) && _isVocabDrillSurface(w));
   }
   return active.filter(w =>
     !suspended.has(w.id) &&
     !mastered.has(w.id) &&
+    _isVocabDrillSurface(w) &&  /* v7.55 — hide particles + bound counters from Vocab Blitz */
     (!moduleIds || moduleIds.has(w.id))
   );
 }
@@ -11998,8 +12018,9 @@ function startRandomDrill(opts){
     const masteredSet = new Set(state.settings.masteredWords || []);
     /* Mastered = "I know this forever" — honor it here too, not just in
        Vocab Blitz. A word the user retired should never resurface in the
-       daily random drill. */
-    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id));
+       daily random drill. v7.55 — also skip particles + bound counters
+       (~mai, ~dai, etc.) — they're reference morphemes, not flashcards. */
+    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id) && _isVocabDrillSurface(w));
     if(pool.length < 1){
       showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
       return;
