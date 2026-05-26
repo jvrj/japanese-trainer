@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.55';
+const APP_VERSION = '7.56';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -512,6 +512,9 @@ const N5_PACK = [
   {jp:"じゃあ",romaji:"jaa",en:"well then",pos:"conj",theme:"grammar",register:"casual",jlpt:5},
   {jp:"しかし",romaji:"shikashi",en:"however",pos:"conj",theme:"grammar",register:"polite",jlpt:5},
   {jp:"だから",romaji:"dakara",en:"so/therefore",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  /* v7.56 — semantic reason connectors. ので is softer/more objective than から (from a cause-and-effect feel rather than personal justification); なので is the sentence-initial version ('so' / 'that's why'). */
+  {jp:"ので",romaji:"node",en:"because/since",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Softer/more objective than から. Attaches mid-clause: あついので, まどを あけた = 'It's hot, so I opened the window.' Polite-friendly."},
+  {jp:"なので",romaji:"nanode",en:"so / that's why",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Sentence-initial version of ので. Use after a noun/state sentence: ねむい。 なので、 ねます = 'I'm sleepy. So I'll sleep.'"},
 
   /* Pronouns & demonstratives */
   {jp:"わたし",romaji:"watashi",en:"I/me",pos:"pron",theme:"people",register:"neutral",jlpt:5},
@@ -2958,10 +2961,15 @@ function getActiveWords(){
    This helper is the single source of truth for "is this a word the user
    should see in Vocab Blitz / Random Drill prompts?" Other modes (Phrases,
    Sentences, Form Drill, Build Mode lessons) don't use this filter and so
-   are unaffected. */
+   are unaffected.
+   v7.56 — Allowlist exemption per user's principle: particles that carry
+   concrete semantic meaning (まで = 'until', から = 'from/because') count
+   as words and should drill. Pure markers (は/が/を/に/で/か/ね/よ) stay
+   hidden. Extend PARTICLE_KEEP as more semantic particles get called out. */
+const PARTICLE_KEEP = new Set(['まで','から']);
 function _isVocabDrillSurface(w){
   if(!w) return false;
-  if(w.pos === 'part') return false;
+  if(w.pos === 'part' && !PARTICLE_KEEP.has(w.jp)) return false;
   if(typeof w.romaji === 'string' && w.romaji.charAt(0) === '~') return false;
   return true;
 }
