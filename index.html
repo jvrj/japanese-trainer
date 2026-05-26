@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.52';
+const APP_VERSION = '7.53';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6734,13 +6734,19 @@ function renderForms(){
     </div>`;
   }
   const totalPairs = available * FORMS.length;
-  const blitzCard = `<div class="card" style="border:1px solid var(--border)">
+  /* v7.53 — Voice-first headline. Form Mix (v7.52) is the blueprint match:
+     random verb x random primary form from the curated 42-verb pool, no
+     gating, no form-picker, hands-free under Voice Mode. The typed Mixed
+     Form Blitz (cross-SRS recall) collapses to a chip below. */
+  const blitzCard = `<div class="card" style="border:1px solid var(--blue)">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-      <h3 style="margin:0">⚡ Mixed Form Blitz</h3>
-      <span class="muted" style="font-size:12px">${totalPairs} pairs</span>
+      <h3 style="margin:0">🎙️ Form Mix</h3>
+      <span class="muted" style="font-size:12px">~30 · curated</span>
     </div>
-    <div class="muted" style="font-size:13px;margin:4px 0 10px">Recall drill across all forms. JP form shown → type the English meaning. Same rhythm as Vocab Blitz.</div>
-    <button class="btn btn-primary" style="width:100%" onclick="startFormBlitz()">▶ Start mixed form blitz</button>
+    <div class="muted" style="font-size:13px;margin:4px 0 10px">Random verb x random form, audio-led, hands-free. Works without any SRS graduation. Voice Mode grades you out loud.</div>
+    <button class="btn btn-primary" style="width:100%" onclick="startBuildModeFormMix()">🎙️ Begin Form Mix (~30, hands-free)</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startFormBlitz()">⌨ Typed Mixed Form Blitz · ${totalPairs} pairs</button>
   </div>`;
   /* v6.15 — pick a deck verb to use as the worked example. Prefer a regular
      ichidan/godan with a short dictionary form so the example reads cleanly. */
@@ -6772,12 +6778,12 @@ function renderForms(){
         <div style="font-size:13px;line-height:1.5;margin-top:6px;padding:0 2px">${esc(f.rule || '')}</div>
         ${exampleBlock}
       </details>
-      <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startFormDrill('${f.id}')">
-        ${ready ? '▶ Drill this form (typed)' : 'No eligible verbs yet'}
+      <button class="btn ${ready?'btn-primary':'btn-secondary'}" style="width:100%" ${ready?'':'disabled'} onclick="startBuildModeFormSpam('${f.id}')">
+        ${ready ? '🎙️ Spam this form (~50, hands-free)' : 'No eligible verbs yet'}
       </button>
       <div style="height:6px"></div>
-      <button class="btn btn-blue" style="width:100%" ${ready?'':'disabled'} onclick="startBuildModeFormSpam('${f.id}')">
-        🎲 Spam in Build Mode (audio, out loud)
+      <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" ${ready?'':'disabled'} onclick="startFormDrill('${f.id}')">
+        ⌨ Typed drill this form
       </button>
     </div>`;
   }).join('');
@@ -8949,9 +8955,9 @@ function renderPhrases(){
         <div class="stat-box"><div class="stat-num">${counts.total}</div><div class="stat-label">Total</div></div>
       </div>
       <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startPhraseBlitz('all')">▶ Drill all categories</button>
+      <button class="btn btn-primary" style="width:100%" onclick="startBuildModePhraseSpam('all')">🎙️ Spam all categories (~30, hands-free)</button>
       <div style="height:6px"></div>
-      <button class="btn btn-blue" style="width:100%" onclick="startBuildModePhraseSpam('all')">🎲 Spam in Build Mode (audio, out loud)</button>
+      <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startPhraseBlitz('all')">⌨ Typed drill all categories</button>
     </div>
   `;
 
@@ -8971,9 +8977,9 @@ function renderPhrases(){
           <h3 style="margin:0">${esc(c.label)}</h3>
           <span class="muted" style="font-size:12px">${cc.retired} / ${cc.total} mastered</span>
         </div>
-        <button class="btn btn-primary" style="width:100%;font-size:14px;padding:10px" onclick="startPhraseBlitz('${c.key}')">Drill ${esc(c.label.toLowerCase())}</button>
+        <button class="btn btn-primary" style="width:100%;font-size:14px;padding:10px" onclick="startBuildModePhraseSpam('${c.key}')">🎙️ Spam ${esc(c.label.toLowerCase())} (hands-free)</button>
         <div style="height:4px"></div>
-        <button class="btn btn-blue" style="width:100%;font-size:13px;padding:8px" onclick="startBuildModePhraseSpam('${c.key}')">🎲 Spam ${esc(c.label.toLowerCase())} in Build Mode</button>
+        <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startPhraseBlitz('${c.key}')">⌨ Typed drill ${esc(c.label.toLowerCase())}</button>
         <div class="collapsible" id="phr_${c.key}" style="margin-top:8px">
           <div class="collapsible-head" onclick="document.getElementById('phr_${c.key}').classList.toggle('open')">
             <span class="muted" style="font-size:13px">Browse phrases</span>
@@ -9538,9 +9544,9 @@ function renderVariations(){
         <div class="stat-box"><div class="stat-num">${counts.totalDrills}</div><div class="stat-label">Intents</div></div>
       </div>
       <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startVariationBlitz()">▶ Drill variations</button>
+      <button class="btn btn-primary" style="width:100%" onclick="startBuildModeVariationSpam()">🎙️ Spam variations (~30, hands-free)</button>
       <div style="height:6px"></div>
-      <button class="btn btn-blue" style="width:100%" onclick="startBuildModeVariationSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
+      <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startVariationBlitz()">⌨ Typed drill variations</button>
     </div>
     <div class="card">
       <h3 style="margin-top:0">Browse all intents</h3>
@@ -10054,9 +10060,9 @@ function renderSimilar(){
           <div class="stat-box"><div class="stat-num">${counts.totalSets}</div><div class="stat-label">Sets</div></div>
         </div>
         <div class="spacer"></div>
-        <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">▶ Start similar drill</button>
+        <button class="btn btn-primary" style="width:100%" onclick="startBuildModeSimilarSpam()">🎙️ Spam similar (~30, hands-free)</button>
         <div style="height:6px"></div>
-        <button class="btn btn-blue" style="width:100%" onclick="startBuildModeSimilarSpam()">🎲 Spam in Build Mode (audio, out loud)</button>
+        <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startSimilar()">⌨ Typed multi-choice drill</button>
       </div>
       <div class="card">
         <h3 style="margin-top:0">Browse all sets</h3>
