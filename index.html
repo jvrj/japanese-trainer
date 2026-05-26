@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.51';
+const APP_VERSION = '7.52';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -11851,6 +11851,72 @@ function startBuildModeFormSpam(formId){
 }
 window.startBuildModeFormSpam = startBuildModeFormSpam;
 
+/* v7.52 — Form Mix: blueprint-shaped Form Spam twin. Random verb x random
+   primary FORM from the curated CONJUGATION_DRILL_VERBS pool. No SRS gating,
+   no form-picker - one tap, hands-free, mirrors Random Drill / Variation Spam
+   / Phrase Spam exactly. Existing per-form Form Spam stays for deep single-
+   form drilling; Form Mix becomes the gateless "just start" entry. Emits
+   `build` steps (sentence-shaped) so Voice Mode grades them natively. */
+function buildGenerateFormMixLesson(opts){
+  const want = (opts && opts.count) || 30;
+  if(!Array.isArray(CONJUGATION_DRILL_VERBS) || CONJUGATION_DRILL_VERBS.length === 0) throw new Error('No verbs defined.');
+  if(!Array.isArray(FORMS) || FORMS.length === 0) throw new Error('No forms defined.');
+  const PRIMARY_FORMS = ['masu','mashita','masen','te','ta','nai','tai','teiru'];
+  const formPool = FORMS.filter(f => PRIMARY_FORMS.includes(f.id));
+  if(formPool.length === 0) throw new Error('No primary forms available.');
+  /* Verb pool: shuffle once then index sequentially so every verb appears
+     before any repeats - matches Random Drill / Variation Spam pattern. */
+  const verbPool = shuffleFY(CONJUGATION_DRILL_VERBS.slice());
+  const safeConj = (f, jp) => { try { return f.conj(jp) || ''; } catch(e){ return ''; } };
+  const safeEn = (f, w) => {
+    try {
+      if(typeof f.en === 'function'){
+        const v = f.en({ jp: w.jp, en: w.en });
+        if(v && typeof v === 'string') return v;
+      }
+    } catch(e){}
+    return w.en;
+  };
+  const steps = [];
+  let i = 0, safety = 0;
+  while(steps.length < want && safety < want * 4){
+    safety++;
+    const v = verbPool[i % verbPool.length];
+    const f = formPool[Math.floor(Math.random() * formPool.length)];
+    const conjJp = safeConj(f, v.jp);
+    if(conjJp){
+      steps.push({
+        type: 'build',
+        sentence_jp: conjJp,
+        sentence_en: safeEn(f, v)
+      });
+    }
+    i++;
+  }
+  if(steps.length < 1) throw new Error('Form Mix could not generate any steps.');
+  return {
+    id: 'Gfm_' + Date.now().toString(36),
+    title: 'Form Mix',
+    duration_mins: Math.max(3, Math.round(steps.length * 0.5)),
+    new_words: [],
+    carryover_words: [],
+    cycles: [{ id: 'mix', name: 'Forms - random mix', steps }],
+    _meta: { mode: 'formMix' }
+  };
+}
+function startBuildModeFormMix(){
+  try {
+    const lesson = buildGenerateFormMixLesson();
+    state.buildMode = buildMakeSession(lesson);
+    state.buildMode._origin = 'forms';
+    _buildWakeLockSync();
+    nav('buildMode');
+  } catch(e){
+    showToast("Can't start Form Mix - " + (e.message || e), {tone:'warn', duration:5000});
+  }
+}
+window.startBuildModeFormMix = startBuildModeFormMix;
+
 /* v6.33 — Spam variants for the rest of the drill screens. Same Build-Mode-
    shaped lesson rhythm as Form Spam (audio-led, single cycle, no SRS write-
    back), each scoped to its drill mode's content pool. The corresponding
@@ -12062,36 +12128,53 @@ function startBuildModeVariationSpam(){
 }
 window.startBuildModeVariationSpam = startBuildModeVariationSpam;
 
-/* Similar Spam — sample SIMILAR_SETS and emit similar-discrimination steps
-   across multiple sets. v6.33.1 — bumped to 30 steps; loops over sets in
-   shuffled order, taking every item per set, then re-shuffles and loops
-   again if needed so a small set count still fills a long session. */
+/* Similar Spam — sample SIMILAR_SETS and emit voice-graded callback steps.
+   v7.52: reshaped from tap-driven `similar` multi-choice to `callback` steps
+   so the lesson runs hands-free under Voice Mode (speaks EN, listens for the
+   JP item). Discrimination practice now comes from proximity rather than
+   forced multi-choice — hearing みる, みえる, みつかる back-to-back in one
+   session still trains the contrast, without breaking the no-tap blueprint.
+   Steps cycle through every item of every set, then re-shuffle, until `want`
+   is filled. The legacy `similar` multi-choice step type stays for curated
+   Build Mode lessons (_buildGenerateSimilarSteps), unaffected. */
 function buildGenerateSimilarSpamLesson(opts){
   const want = (opts && opts.count) || 30;
   if(!Array.isArray(SIMILAR_SETS) || SIMILAR_SETS.length === 0) throw new Error('No similar sets defined.');
+  /* Strip parenthetical kanji from item JP so the spoken target is the
+     plain-kana form (matches Vocab Blitz behavior and stays inside the
+     learner's allowed script). */
+  const stripParen = (s) => String(s || '').replace(/\s*[（(].*?[)）]/g, '').trim();
+  const flat = [];
+  for(const set of SIMILAR_SETS){
+    if(!Array.isArray(set.items)) continue;
+    for(const it of set.items){
+      const jp = stripParen(it.jp);
+      if(!jp || !it.en) continue;
+      flat.push({ jp, en: it.en, set_id: set.id });
+    }
+  }
+  if(flat.length < 1) throw new Error('Similar sets are empty — none could be drilled.');
   const steps = [];
   let safety = 0;
   while(steps.length < want && safety < 8){
     safety++;
-    const sets = shuffleFY(SIMILAR_SETS.slice());
-    for(const set of sets){
+    for(const it of shuffleFY(flat.slice())){
       if(steps.length >= want) break;
-      const perSet = set.items?.length || 0;
-      const itemSteps = _buildGenerateSimilarSteps(set, perSet);
-      for(const s of itemSteps){
-        if(steps.length >= want) break;
-        steps.push(s);
-      }
+      steps.push({
+        type: 'callback',
+        sentence_jp: it.jp,
+        sentence_en: it.en,
+        note: 'similar-set discrimination'
+      });
     }
   }
-  if(steps.length < 1) throw new Error('Similar sets are empty — none could be drilled.');
   return {
     id: 'Gm_' + Date.now().toString(36),
     title: 'Similar Spam',
     duration_mins: Math.max(3, Math.round(steps.length * 0.4)),
     new_words: [],
     carryover_words: [],
-    cycles: [{ id:'spam', name:'Similar', steps }],
+    cycles: [{ id:'spam', name:'Similar - voice', steps }],
     _meta: { mode:'similarSpam' }
   };
 }
