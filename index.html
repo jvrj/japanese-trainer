@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.56';
+const APP_VERSION = '7.57';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1927,7 +1927,119 @@ const N5_PACK = [
   {jp:"ペース",romaji:"peesu",en:"pace",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"マイペース = at one's own pace — can imply 'oblivious to others' (mildly negative)."},
   {jp:"アドバイス",romaji:"adobaisu",en:"advice",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"アドバイス する = to advise. More casual than じょげん."},
   {jp:"パート",romaji:"paato",en:"part-time work",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"Often older/married part-timers; アルバイト skews to students. Both = part-time."},
-  {jp:"エアコン",romaji:"eakon",en:"air conditioner",pos:"n",theme:"home",register:"neutral",jlpt:5,note:"Clipped 'air conditioner'. The cooling/heating functions are れいぼう / だんぼう."}
+  {jp:"エアコン",romaji:"eakon",en:"air conditioner",pos:"n",theme:"home",register:"neutral",jlpt:5,note:"Clipped 'air conditioner'. The cooling/heating functions are れいぼう / だんぼう."},
+  {jp:"この～",romaji:"kono",en:"this ~, this ~ here",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"その～",romaji:"sono",en:"that ~, that ~ there",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あの～",romaji:"ano",en:"that ~, that ~ over there",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"てちょう",romaji:"techou",en:"pocket notebook",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"カード",romaji:"kaado",en:"card",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ボールペン",romaji:"boorupen",en:"ballpoint pen",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"シャープペンシル",romaji:"shaapupenshiru",en:"mechanical pencil",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"CD",romaji:"CD",en:"CD, compact disc",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"コンピューター",romaji:"konpyuutaa",en:"computer",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"おみやげ",romaji:"omiyage",en:"souvenir, present",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"～ご～",romaji:"go",en:"~ language",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あのう",romaji:"anou",en:"Er..., well (used to show hesitation)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"えっ",romaji:"e",en:"Oh? What! (used when hearing something unexpected)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"どうぞ。",romaji:"douzo",en:"Please, Here you are (when offering someone something)",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"そうですか。",romaji:"soudesuka",en:"I see.",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ちがいます。",romaji:"chigaimasu",en:"No, it isn't. / You are wrong.",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あ",romaji:"a",en:"Oh! (used when becoming aware of something)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"これから おせわになります。",romaji:"korekara osewaninarimasu",en:"Thank you in advance for your kindness.",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"こちらこそよろしく。",romaji:"kochirakosoyoroshiku",en:"I am pleased to meet you",pos:"expr",theme:"mnn",register:"neutral",jlpt:5,note:"［どうぞ］ optional; ［おねがいします］ optional"},
+  {jp:"わかります",romaji:"wakarimasu",en:"understand",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あります",romaji:"arimasu",en:"have",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"やきゅう",romaji:"yakyuu",en:"baseball",pos:"n",theme:"mnn",register:"neutral",jlpt:5,note:"～を します = play baseball"},
+  {jp:"ダンス",romaji:"dansu",en:"dance",pos:"n",theme:"mnn",register:"neutral",jlpt:5,note:"～を します = dance"},
+  {jp:"おんがく",romaji:"ongaku",en:"music",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"うた",romaji:"uta",en:"song",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"クラシック",romaji:"kurashikku",en:"classical music",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ジャズ",romaji:"jazu",en:"jazz",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"カラオケ",romaji:"karaoke",en:"karaoke",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"かぶき",romaji:"kabuki",en:"Kabuki (traditional Japanese musical drama)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"え",romaji:"e",en:"picture, drawing",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"かんじ",romaji:"kanji",en:"Chinese characters",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ひらがな",romaji:"hiragana",en:"Hiragana script",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"かたかな",romaji:"katakana",en:"Katakana script",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ローマじ",romaji:"roomaji",en:"the Roman alphabet",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"こまかい おかね",romaji:"komakai okane",en:"small change",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ようじ",romaji:"youji",en:"something to do, errand",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ごしゅじん",romaji:"goshujin",en:"(someone else's) husband",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"おっと/しゅじん",romaji:"otto/shujin",en:"(my) husband",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"つま/かない",romaji:"tsuma/kanai",en:"(my) wife",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"だいたい",romaji:"daitai",en:"mostly, roughly",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"～から",romaji:"kara",en:"because ~",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"かして ください。",romaji:"kashite kudasai",en:"Please lend(it to me).",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"いいですよ。",romaji:"iidesuyo",en:"Sure./ Certainly.",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ざんねんです",romaji:"zannendesu",en:"I'm sorry , unfortunately",pos:"n",theme:"mnn",register:"neutral",jlpt:5,note:"［が］ optional; but"},
+  {jp:"いっしょに いかがですか。",romaji:"isshoni ikagadesuka",en:"Won't you join me (us)?",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"ちょっと ・・・・・・。",romaji:"chotto",en:"is a bit difficult. (a euphemism used when declining an invitation)",pos:"expr",theme:"mnn",register:"neutral",jlpt:5,note:"used with ～は; ~"},
+  {jp:"だめですか。",romaji:"damedesuka",en:"So you cannot (come)?",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"また こんど おねがいします。",romaji:"mata kondo onegaishimasu",en:"Please ask me again some other time. (used when refusing an invitation indirectly, considering someone's feelings)",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"つけます",romaji:"tsukemasu",en:"turn on",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"けします",romaji:"keshimasu",en:"turn off",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あけます",romaji:"akemasu",en:"open",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"しめます",romaji:"shimemasu",en:"close, shut",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"いそぎます",romaji:"isogimasu",en:"hurry",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"まちます",romaji:"machimasu",en:"wait",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"もちます",romaji:"mochimasu",en:"hold",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"とります",romaji:"torimasu",en:"take, pass",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"てつだいます",romaji:"tetsudaimasu",en:"help (with a task)",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"よびます",romaji:"yobimasu",en:"call",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"はなします",romaji:"hanashimasu",en:"speak, talk",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"つかいます",romaji:"tsukaimasu",en:"use",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"とめます",romaji:"tomemasu",en:"stop, park",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"みせます",romaji:"misemasu",en:"show",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"おしえます",romaji:"oshiemasu",en:"tell",pos:"v",theme:"mnn",register:"neutral",jlpt:5,note:"used with じゅうしょを～; an address"},
+  {jp:"すわります",romaji:"suwarimasu",en:"sit down",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"たちます",romaji:"tachimasu",en:"stand up",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"はいります",romaji:"hairimasu",en:"enter",pos:"v",theme:"mnn",register:"neutral",jlpt:5,note:"used with きっさてんに～; a café"},
+  {jp:"でます",romaji:"demasu",en:"go out",pos:"v",theme:"mnn",register:"neutral",jlpt:5,note:"used with きっさてんを～; of a café"},
+  {jp:"ふります",romaji:"furimasu",en:"rain",pos:"v",theme:"mnn",register:"neutral",jlpt:5,note:"used with あめが～"},
+  {jp:"コピーします",romaji:"kopiishimasu",en:"copy",pos:"v",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"じゅうしょ",romaji:"juusho",en:"address",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"よみかた",romaji:"yomikata",en:"how to read, way of reading",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"～かた",romaji:"kata",en:"how to ~, way of ~ing",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あとで",romaji:"atode",en:"later",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"もうすこし",romaji:"mousukoshi",en:"a little more",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"もう～",romaji:"mou",en:"～more, another～",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"さあ",romaji:"saa",en:"right (used when encouraging some course of action)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"あれ？",romaji:"are",en:"Oh! Eh? (in surprise or wonder)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"しんごうをみぎへまがってください。",romaji:"shingouomigihemagattekudasai",en:"Turn right at the traffic lights",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"まっすぐ",romaji:"massugu",en:"straight",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"これでおねがいします。",romaji:"koredeonegaishimasu",en:"I'd like to pay with this.",pos:"expr",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"おつり",romaji:"otsuri",en:"change (money)",pos:"n",theme:"mnn",register:"neutral",jlpt:5},
+  {jp:"うれます",romaji:"uremasu",en:"sell, be sold",pos:"v",theme:"mnn",register:"neutral",jlpt:4,note:"used with パンが～; bread"},
+  {jp:"おどります",romaji:"odorimasu",en:"dance",pos:"v",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"かみます",romaji:"kamimasu",en:"chew, bite",pos:"v",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"えらびます",romaji:"erabimasu",en:"choose",pos:"v",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"かよいます",romaji:"kayoimasu",en:"go to and from",pos:"v",theme:"mnn",register:"neutral",jlpt:4,note:"used with だいがくに～; university"},
+  {jp:"メモします",romaji:"memoshimasu",en:"take a memo",pos:"v",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ねっしん",romaji:"nesshin",en:"earnest",pos:"adj-na",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"えらい",romaji:"erai",en:"great, admirable",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ちょうど いい",romaji:"choudo ii",en:"proper, just right",pos:"expr",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"けしき",romaji:"keshiki",en:"scenery, view",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"びよういん",romaji:"biyouin",en:"hair salon",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"にんき",romaji:"ninki",en:"popularity",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"かたち",romaji:"katachi",en:"form, shape",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ガム",romaji:"gamu",en:"chewing gum",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"しなもの",romaji:"shinamono",en:"goods",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ねだん",romaji:"nedan",en:"price",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ばんぐみ",romaji:"bangumi",en:"program",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ドラマ",romaji:"dorama",en:"drama",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"かしゅ",romaji:"kashu",en:"singer",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"しょうせつ",romaji:"shousetsu",en:"novel",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"しょうせつか",romaji:"shousetsuka",en:"novelist",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"～か",romaji:"ka",en:"-er, -ist, etc. (e.g. painter, novelist)",pos:"expr",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"～き",romaji:"ki",en:"~ machine",pos:"expr",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"むすこさん",romaji:"musukosan",en:"(someone else's) son",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"むすめさん",romaji:"musumesan",en:"(someone else's) daughter",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"じぶん",romaji:"jibun",en:"oneself",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"しばらく",romaji:"shibaraku",en:"a little while",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"たいてい",romaji:"taitei",en:"usually, mostly",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"ちょっと おねがいが あるんですが。",romaji:"chotto onegaiga arundesuga",en:"I have a favor to ask",pos:"expr",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"じつは",romaji:"jitsuha",en:"as a matter of fact",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
+  {jp:"うーん",romaji:"uun",en:"well, let me see, hmm...",pos:"n",theme:"mnn",register:"neutral",jlpt:4},
 ];
 
 /* ===================== ADVANCED PACK (N4/N3) =====================
@@ -2753,6 +2865,7 @@ function load(){
     /* v6.16 — backfill module unlocks from existing mastery so returning users
        don't lose progress when modules ship. */
     if(typeof modulesUnlockBackfill === 'function') modulesUnlockBackfill();
+    if(typeof melCollectionsSeed === 'function') melCollectionsSeed();
   }catch(e){ log('load_err',{err:String(e)}); }
 }
 
@@ -5909,6 +6022,30 @@ function collectionFilter(words, id){
   const c = collectionById(id); if(!c) return words;
   const set = new Set(c.wordIds || []);
   return words.filter(w => set.has(w.id));
+}
+
+/* v7.57 — seed one collection per Minna no Nihongo lesson (Mel's Quizlet sets),
+   so each lesson's ~50 terms is a tappable scope chip. Idempotent: only adds a
+   lesson whose collection id is missing, so it never clobbers user edits and
+   future lessons drop in on the next load. wordIds reference existing n5_* ids
+   (shared words) plus the lesson's net-new appended entries. */
+function melCollectionsSeed(){
+  const SEED = [
+    {id:'col_mel_l02',name:'みんな L02',wordIds:["n5_66","n5_67","n5_68","n5_1324","n5_1325","n5_1326","n5_239","n5_775","n5_241","n5_240","n5_736","n5_1327","n5_876","n5_1328","n5_351","n5_1329","n5_1330","n5_238","n5_325","n5_326","n5_276","n5_1331","n5_242","n5_243","n5_359","n5_1332","n5_268","n5_234","n5_233","n5_544","n5_197","n5_1333","n5_347","n5_348","n5_1334","n5_1250","n5_35","n5_1335","n5_1336","n5_1337","n5_8","n5_1338","n5_1339","n5_1340","n5_1341","n5_1342"]},
+    {id:'col_mel_l09',name:'みんな L09',wordIds:["n5_1343","n5_1344","n5_485","n5_486","n5_488","n5_489","n5_192","n5_217","n5_563","n5_1345","n5_1346","n5_275","n5_1347","n5_1348","n5_1349","n5_1350","n5_566","n5_1351","n5_1352","n5_1353","n5_349","n5_1354","n5_1355","n5_1356","n5_1357","n5_1358","n5_546","n5_140","n5_1359","n5_708","n5_570","n5_1360","n5_1361","n5_969","n5_1362","n5_175","n5_499","n5_1363","n5_497","n5_495","n5_502","n5_509","n5_1364","n5_83","n5_1365","n5_1366","n5_1367","n5_1240","n5_1368","n5_1369","n5_1370","n5_1371"]},
+    {id:'col_mel_l14',name:'みんな L14',wordIds:["n5_1372","n5_1373","n5_1374","n5_1375","n5_1376","n5_1377","n5_1378","n5_1379","n5_1380","n5_1381","n5_1382","n5_1383","n5_1384","n5_1385","n5_1386","n5_1387","n5_1388","n5_1389","n5_1390","n5_1391","n5_1392","n5_237","n5_559","n5_547","n5_190","n5_1393","n5_274","n5_221","n5_220","n5_711","n5_710","n5_1394","n5_1395","n5_510","n5_504","n5_507","n5_1396","n5_1397","n5_1398","n5_1399","n5_1400","n5_1401","n5_1402","n5_1403","n5_1404"]},
+    {id:'col_mel_l28',name:'みんな L28',wordIds:["n5_1405","n5_1406","n5_1407","n5_1408","n5_1409","n5_1410","n5_957","n5_1411","n5_1412","n5_1413","n5_1414","n5_1415","n5_717","n5_1294","n5_1416","n5_1417","n5_327","n5_1299","n5_1418","n5_1419","n5_1420","n5_872","n5_873","n5_562","n5_1421","n5_1422","n5_1423","n5_1424","n5_1425","n5_1426","n5_1427","n5_176","n5_1428","n5_177","n5_1429","n5_1430","n5_721","n5_1431","n5_1432","n5_690","n5_55","n5_1433","n5_1434","n5_722","n5_1435"]},
+  ];
+  const list = state.settings.collections = state.settings.collections || [];
+  const have = new Set(list.map(c => c.id));
+  let order = list.length ? Math.max(...list.map(c => c.order ?? 0)) + 1 : 0;
+  let added = 0;
+  for(const s of SEED){
+    if(have.has(s.id)) continue;
+    list.push({ id:s.id, name:s.name, emoji:'📘', wordIds:s.wordIds.slice(), order:order++ });
+    added++;
+  }
+  if(added) save();
 }
 
 function formEligibleVerbs(){
@@ -16462,6 +16599,7 @@ const THEME_META = {
   verbpairs:{label:'Verb pairs',emoji:'🔁'},
   onomatope:{label:'Onomatopoeia',emoji:'💥'},
   grammar:{label:'Grammar',emoji:'🔤'},
+  mnn:{label:'みんな',emoji:'📘'},
 };
 const THEME_ORDER = ['greetings','phrases','daily','people','family','body','health','feelings','food','home','clothing','objects','animals','nature','weather','colors','numbers','counters','time','places','travel','school','work','tech','adjectives','adverbs','verbpairs','onomatope','grammar'];
 function themeMeta(t){
