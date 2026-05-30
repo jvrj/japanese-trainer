@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.59';
+const APP_VERSION = '7.60';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6353,6 +6353,7 @@ function collectionFilter(words, id){
    (shared words) plus the lesson's net-new appended entries. */
 function melCollectionsSeed(){
   const SEED = [
+    {id:'col_mel_book1',name:'みんな Book 1',emoji:'📚',wordIds:["n5_66","n5_67","n5_68","n5_1324","n5_1325","n5_1326","n5_239","n5_775","n5_241","n5_240","n5_736","n5_1327","n5_876","n5_1328","n5_351","n5_1329","n5_1330","n5_238","n5_325","n5_326","n5_276","n5_1331","n5_242","n5_243","n5_359","n5_1332","n5_268","n5_234","n5_233","n5_544","n5_197","n5_1333","n5_347","n5_348","n5_1334","n5_1250","n5_35","n5_1335","n5_1336","n5_1337","n5_8","n5_1338","n5_1339","n5_1340","n5_1341","n5_1342","n5_1343","n5_1344","n5_485","n5_486","n5_488","n5_489","n5_192","n5_217","n5_563","n5_1345","n5_1346","n5_275","n5_1347","n5_1348","n5_1349","n5_1350","n5_566","n5_1351","n5_1352","n5_1353","n5_349","n5_1354","n5_1355","n5_1356","n5_1357","n5_1358","n5_546","n5_140","n5_1359","n5_708","n5_570","n5_1360","n5_1361","n5_969","n5_1362","n5_175","n5_499","n5_1363","n5_497","n5_495","n5_502","n5_509","n5_1364","n5_83","n5_1365","n5_1366","n5_1367","n5_1240","n5_1368","n5_1369","n5_1370","n5_1371","n5_1372","n5_1373","n5_1374","n5_1375","n5_1376","n5_1377","n5_1378","n5_1379","n5_1380","n5_1381","n5_1382","n5_1383","n5_1384","n5_1385","n5_1386","n5_1387","n5_1388","n5_1389","n5_1390","n5_1391","n5_1392","n5_237","n5_559","n5_547","n5_190","n5_1393","n5_274","n5_221","n5_220","n5_711","n5_710","n5_1394","n5_1395","n5_510","n5_504","n5_507","n5_1396","n5_1397","n5_1398","n5_1399","n5_1400","n5_1401","n5_1402","n5_1403","n5_1404"]},
     {id:'col_mel_l02',name:'みんな L02',wordIds:["n5_66","n5_67","n5_68","n5_1324","n5_1325","n5_1326","n5_239","n5_775","n5_241","n5_240","n5_736","n5_1327","n5_876","n5_1328","n5_351","n5_1329","n5_1330","n5_238","n5_325","n5_326","n5_276","n5_1331","n5_242","n5_243","n5_359","n5_1332","n5_268","n5_234","n5_233","n5_544","n5_197","n5_1333","n5_347","n5_348","n5_1334","n5_1250","n5_35","n5_1335","n5_1336","n5_1337","n5_8","n5_1338","n5_1339","n5_1340","n5_1341","n5_1342"]},
     {id:'col_mel_l09',name:'みんな L09',wordIds:["n5_1343","n5_1344","n5_485","n5_486","n5_488","n5_489","n5_192","n5_217","n5_563","n5_1345","n5_1346","n5_275","n5_1347","n5_1348","n5_1349","n5_1350","n5_566","n5_1351","n5_1352","n5_1353","n5_349","n5_1354","n5_1355","n5_1356","n5_1357","n5_1358","n5_546","n5_140","n5_1359","n5_708","n5_570","n5_1360","n5_1361","n5_969","n5_1362","n5_175","n5_499","n5_1363","n5_497","n5_495","n5_502","n5_509","n5_1364","n5_83","n5_1365","n5_1366","n5_1367","n5_1240","n5_1368","n5_1369","n5_1370","n5_1371"]},
     {id:'col_mel_l14',name:'みんな L14',wordIds:["n5_1372","n5_1373","n5_1374","n5_1375","n5_1376","n5_1377","n5_1378","n5_1379","n5_1380","n5_1381","n5_1382","n5_1383","n5_1384","n5_1385","n5_1386","n5_1387","n5_1388","n5_1389","n5_1390","n5_1391","n5_1392","n5_237","n5_559","n5_547","n5_190","n5_1393","n5_274","n5_221","n5_220","n5_711","n5_710","n5_1394","n5_1395","n5_510","n5_504","n5_507","n5_1396","n5_1397","n5_1398","n5_1399","n5_1400","n5_1401","n5_1402","n5_1403","n5_1404"]},
@@ -6374,7 +6375,7 @@ function melCollectionsSeed(){
   let added = 0;
   for(const s of SEED){
     if(have.has(s.id)) continue;
-    list.push({ id:s.id, name:s.name, emoji:'📘', wordIds:s.wordIds.slice(), order:order++ });
+    list.push({ id:s.id, name:s.name, emoji:s.emoji || '📘', wordIds:s.wordIds.slice(), order:order++ });
     added++;
   }
   if(added) save();
@@ -16585,10 +16586,16 @@ function renderHome(){
     else { const set = new Set(s.themes); count = active.filter(w => set.has(w.theme)).length; }
     return scopeChipHtml(s.id, s.emoji, s.name, count, vSec === s.id);
   }).join('');
-  const colChips = getCollections().map(c =>
+  const allCols = getCollections();
+  const featured = allCols.find(c => c.id === 'col_mel_book1');
+  const otherCols = allCols.filter(c => c.id !== 'col_mel_book1');
+  const featuredChip = featured
+    ? scopeChipHtml(featured.id, featured.emoji, featured.name, (featured.wordIds || []).length, vSec === featured.id)
+    : '';
+  const colChips = otherCols.map(c =>
     scopeChipHtml(c.id, c.emoji, c.name, (c.wordIds || []).length, vSec === c.id)
   ).join('');
-  const scopeRow = `<div class="scope-row">${vocabChips}${colChips}</div>`;
+  const scopeRow = `<div class="scope-row">${featuredChip}${vocabChips}${colChips}</div>`;
 
   return `
     <div class="home-v8">
