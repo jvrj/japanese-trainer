@@ -444,7 +444,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.62';
+const APP_VERSION = '7.63';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -16578,16 +16578,6 @@ function renderHome(){
        startSentenceBlitz() if surfaced elsewhere later. */
     scc.total > 0
       ? { emoji:'📜', title:'Sentence Spam', meta:`${scc.retired}/${scc.total} mastered · audio-led · hands-free`, click:`startBuildModeSentenceSpam()` }
-      : null,
-    /* Particles — always available */
-    { emoji:'🔗', title:'Particles', meta:'Drill は · が · に · で · を', click:`nav('particles')` },
-    /* Variations */
-    vc.totalDrills > 0
-      ? { emoji:'🔀', title:'Variations', meta:`${vc.drillsDone}/${vc.totalDrills} drills done`, click:`nav('variations')` }
-      : null,
-    /* Similar */
-    simC.totalSets > 0
-      ? { emoji:'🔍', title:'Similar words', meta:`${simC.setsDone}/${simC.totalSets} sets done`, click:`nav('similar')` }
       : null,
     /* Build Mode — always */
     { emoji:'🎯', title:'Build Mode', meta:'Audio sentence construction', click:`startBuildMode()` },
