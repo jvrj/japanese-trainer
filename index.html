@@ -413,6 +413,37 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 .h8-stat-num.flame{color:#fbbf24}
 .h8-stat-num.accent{color:var(--red)}
 .h8-stat-label{font-size:9px;letter-spacing:2px;color:var(--faint);margin-top:7px;text-transform:uppercase;font-weight:800}
+
+/* ===== Aurora home theme (v7.64) — frosted glass on a purple-blue gradient ===== */
+body:has(.home-v8){background:linear-gradient(160deg,#1a0d2e 0%,#16213e 50%,#0f1f4e 100%) fixed}
+.home-v8 .h8-hero{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);box-shadow:none;min-height:200px}
+.home-v8 .h8-hero::before,.home-v8 .h8-hero::after{display:none}
+.home-v8 .h8-hero-deco{color:rgba(255,255,255,.04)}
+.home-v8 .h8-hero-eyebrow{background:linear-gradient(90deg,#a5b4fc,#f0abfc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.home-v8 .h8-hero-title{color:#fff}
+.home-v8 .h8-hero-meta{color:#c4b5fd;opacity:.85}
+.home-v8 .h8-hero-cta{background:linear-gradient(90deg,#a5b4fc,#f0abfc);color:#1a0d2e;border-radius:22px;box-shadow:0 6px 18px rgba(165,180,252,.25)}
+.home-v8 .h8-hero-cta:hover{box-shadow:0 8px 24px rgba(165,180,252,.35)}
+.home-v8 .h8-hero-cta:disabled{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);box-shadow:none}
+.home-v8 .h8-section{color:#c4b5fd;opacity:.8}
+.home-v8 .h8-list{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.home-v8 .h8-row{background:transparent;border-bottom:1px solid rgba(255,255,255,.05);color:#fff}
+.home-v8 .h8-row:last-child{border-bottom:none}
+.home-v8 .h8-row:hover,.home-v8 .h8-row:active{background:rgba(255,255,255,.06)}
+.home-v8 .h8-row-emoji{display:none}
+.home-v8 .h8-row-title{color:#fff}
+.home-v8 .h8-row-meta{color:#a5b4fc;opacity:.75}
+.home-v8 .h8-row-arrow{color:rgba(255,255,255,.3)}
+.home-v8 .h8-stats{background:transparent;border:1px solid rgba(255,255,255,.08)}
+.home-v8 .h8-stat{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.home-v8 .h8-stat-num{font-family:-apple-system,'Inter',sans-serif;font-weight:700;font-size:22px;letter-spacing:-.3px;color:#fff}
+.home-v8 .h8-stat-num.accent{background:linear-gradient(90deg,#a5b4fc,#f0abfc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.home-v8 .h8-stat-num.flame{color:#fbbf24}
+.home-v8 .h8-stat-label{color:#a5b4fc;opacity:.7}
+body:has(.home-v8) .scope-chip{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);color:#c4b5fd}
+body:has(.home-v8) .scope-chip.active{background:linear-gradient(90deg,#a5b4fc,#f0abfc);color:#1a0d2e;border-color:transparent}
+body:has(.home-v8) .header h1{color:#fff}
+body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 </style>
 </head>
 <body>
@@ -444,7 +475,7 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 
 'use strict';
 
-const APP_VERSION = '7.63';
+const APP_VERSION = '7.64';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
