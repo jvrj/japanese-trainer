@@ -475,7 +475,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.64';
+const APP_VERSION = '7.65';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -852,10 +852,10 @@ const N5_PACK = [
   {jp:"しろ",romaji:"shiro",en:"white",pos:"n",theme:"colors",register:"neutral",jlpt:5},
   {jp:"くろ",romaji:"kuro",en:"black",pos:"n",theme:"colors",register:"neutral",jlpt:5},
   {jp:"ちゃいろ",romaji:"chairo",en:"brown",pos:"n",theme:"colors",register:"neutral",jlpt:5},
-  {jp:"あかい",romaji:"akai",en:"red (adj)",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
-  {jp:"あおい",romaji:"aoi",en:"blue (adj)",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
-  {jp:"しろい",romaji:"shiroi",en:"white (adj)",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
-  {jp:"くろい",romaji:"kuroi",en:"black (adj)",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"あかい",romaji:"akai",en:"red",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"あおい",romaji:"aoi",en:"blue",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"しろい",romaji:"shiroi",en:"white",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"くろい",romaji:"kuroi",en:"black",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
 
   /* School & work */
   {jp:"せんせい",romaji:"sensei",en:"teacher",pos:"n",theme:"school",register:"neutral",jlpt:5},
@@ -1164,7 +1164,7 @@ const N5_PACK = [
      surfaces real variety. All hiragana, conjugate cleanly via classifyVerb
      (ichidan/godan/する-compound/irregulars). */
   {jp:"ふく",romaji:"fuku",en:"to wipe",pos:"v",theme:"home",register:"neutral",jlpt:5},
-  {jp:"なくす",romaji:"nakusu",en:"to lose (something)",pos:"v",theme:"work",register:"neutral",jlpt:5},
+  {jp:"なくす",romaji:"nakusu",en:"to lose",pos:"v",theme:"work",register:"neutral",jlpt:5},
   {jp:"おとす",romaji:"otosu",en:"to drop",pos:"v",theme:"body",register:"neutral",jlpt:5},
   {jp:"でかける",romaji:"dekakeru",en:"to go out",pos:"v",theme:"travel",register:"neutral",jlpt:5},
   {jp:"ひっこす",romaji:"hikkosu",en:"to move house",pos:"v",theme:"travel",register:"neutral",jlpt:5},
@@ -1320,7 +1320,7 @@ const N5_PACK = [
   {jp:"むらさき",romaji:"murasaki",en:"purple",pos:"n",theme:"colors",register:"neutral",jlpt:5},
   {jp:"オレンジ",romaji:"orenji",en:"orange (color)",pos:"n",theme:"colors",register:"neutral",jlpt:5},
   {jp:"はいいろ",romaji:"haiiro",en:"gray",pos:"n",theme:"colors",register:"neutral",jlpt:5},
-  {jp:"きいろい",romaji:"kiiroi",en:"yellow (adj)",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
+  {jp:"きいろい",romaji:"kiiroi",en:"yellow",pos:"adj",theme:"colors",register:"neutral",jlpt:5},
   {jp:"きん",romaji:"kin",en:"gold",pos:"n",theme:"colors",register:"neutral",jlpt:5},
   {jp:"ぎん",romaji:"gin",en:"silver",pos:"n",theme:"colors",register:"neutral",jlpt:5},
 
@@ -1642,27 +1642,27 @@ const N5_PACK = [
   {jp:"おちる",romaji:"ochiru",en:"to fall / drop (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が おちる, it falls on its own. Its tr partner is おとす (someone drops it: ～を おとす)."},
   {jp:"きえる",romaji:"kieru",en:"to go out / vanish",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: でんき が きえた = the light went off by itself. Tr partner けす = someone turns it off (～を けす)."},
   {jp:"われる",romaji:"wareru",en:"to break / crack (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for glass/plates: コップ が われた. Tr partner わる = someone breaks it (～を わる)."},
-  {jp:"わる",romaji:"waru",en:"to break / split (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を わる. Pairs with われる. Also 'to divide' in maths."},
+  {jp:"わる",romaji:"waru",en:"to break / split",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を わる. Pairs with われる. Also 'to divide' in maths."},
   {jp:"こわれる",romaji:"kowareru",en:"to break down (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for machines: パソコン が こわれた. Tr partner こわす = someone breaks it."},
-  {jp:"こわす",romaji:"kowasu",en:"to break (sth) on purpose/by accident",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を こわす. Use こわれた (not こわした) if no one is at fault."},
+  {jp:"こわす",romaji:"kowasu",en:"to break (on purpose or by accident)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を こわす. Use こわれた (not こわした) if no one is at fault."},
   {jp:"おれる",romaji:"oreru",en:"to snap (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for long thin things: えんぴつ が おれた. Tr partner おる."},
-  {jp:"おる",romaji:"oru",en:"to snap / fold (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を おる. Also 'to fold' paper (おりがみ)."},
+  {jp:"おる",romaji:"oru",en:"to snap / fold",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を おる. Also 'to fold' paper (おりがみ)."},
   {jp:"やぶれる",romaji:"yabureru",en:"to tear (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, paper/cloth: かみ が やぶれた. Tr partner やぶる."},
-  {jp:"やぶる",romaji:"yaburu",en:"to tear (sth) / break (a rule)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を やぶる. Also やくそく を やぶる = break a promise."},
+  {jp:"やぶる",romaji:"yaburu",en:"to tear / break (a rule)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を やぶる. Also やくそく を やぶる = break a promise."},
   {jp:"もえる",romaji:"moeru",en:"to burn (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: かみ が もえる. Tr partner もやす. ('burnable trash' = もえる ごみ)."},
-  {jp:"もやす",romaji:"moyasu",en:"to burn (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を もやす. Pairs with もえる."},
+  {jp:"もやす",romaji:"moyasu",en:"to burn",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を もやす. Pairs with もえる."},
   {jp:"とける",romaji:"tokeru",en:"to melt / dissolve (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: こおり が とける. Tr partner とかす. Also 'a problem gets solved'."},
-  {jp:"とかす",romaji:"tokasu",en:"to melt / dissolve (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を とかす. Pairs with とける."},
+  {jp:"とかす",romaji:"tokasu",en:"to melt / dissolve",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を とかす. Pairs with とける."},
   {jp:"まわる",romaji:"mawaru",en:"to turn / go around (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が まわる. Tr partner まわす (spin/pass it around)."},
-  {jp:"まわす",romaji:"mawasu",en:"to spin / pass (sth) around",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を まわす. Pairs with まわる."},
+  {jp:"まわす",romaji:"mawasu",en:"to spin / pass around",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を まわす. Pairs with まわる."},
   {jp:"ならぶ",romaji:"narabu",en:"to line up / be in a row",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ひと が ならぶ (people queue). Tr partner ならべる."},
-  {jp:"ならべる",romaji:"naraberu",en:"to arrange / line (sth) up",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を ならべる (set things out in a row). Pairs with ならぶ."},
+  {jp:"ならべる",romaji:"naraberu",en:"to arrange / line up",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を ならべる (set things out in a row). Pairs with ならぶ."},
   {jp:"あつまる",romaji:"atsumaru",en:"to gather (people/things come together)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が あつまる. Tr partner あつめる (collect them)."},
-  {jp:"あつめる",romaji:"atsumeru",en:"to collect / gather (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を あつめる. Pairs with あつまる."},
+  {jp:"あつめる",romaji:"atsumeru",en:"to collect / gather",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を あつめる. Pairs with あつまる."},
   {jp:"みつかる",romaji:"mitsukaru",en:"to be found / turn up",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: かぎ が みつかった = the keys turned up. Tr partner みつける (someone finds them)."},
   {jp:"うごく",romaji:"ugoku",en:"to move / work (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が うごく. Also 'a machine runs/works'. Tr partner うごかす."},
-  {jp:"うごかす",romaji:"ugokasu",en:"to move / operate (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を うごかす. Pairs with うごく."},
-  {jp:"たてる",romaji:"tateru",en:"to stand (sth) up / build",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を たてる. Intransitive partner is たつ (to stand). Also 'build a house'."},
+  {jp:"うごかす",romaji:"ugokasu",en:"to move / operate",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を うごかす. Pairs with うごく."},
+  {jp:"たてる",romaji:"tateru",en:"to stand up / build",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を たてる. Intransitive partner is たつ (to stand). Also 'build a house'."},
   {jp:"つたわる",romaji:"tsutawaru",en:"to be conveyed / get across",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: きもち が つたわる = the feeling gets across. Tr partner つたえる."},
   {jp:"きこえる",romaji:"kikoeru",en:"to be audible / can hear",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Spontaneous potential: おと が きこえる = a sound reaches my ears (not effort). Contrast きく = actively listen."},
   {jp:"そだつ",romaji:"sodatsu",en:"to grow up (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: こども が そだつ. Tr partner そだてる (raise/bring up)."},
@@ -1673,7 +1673,7 @@ const N5_PACK = [
   {jp:"かたづける",romaji:"katazukeru",en:"to tidy up / put away",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を かたづける. Intransitive partner かたづく (gets tidied)."},
   {jp:"よごれる",romaji:"yogoreru",en:"to get dirty",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ふく が よごれた. Tr partner よごす (make it dirty)."},
   {jp:"かくれる",romaji:"kakureru",en:"to hide (oneself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が かくれる (you hide). Tr partner かくす (hide an object)."},
-  {jp:"かくす",romaji:"kakusu",en:"to hide (sth)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を かくす. Pairs with かくれる."},
+  {jp:"かくす",romaji:"kakusu",en:"to hide",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を かくす. Pairs with かくれる."},
   {jp:"たすかる",romaji:"tasukaru",en:"to be saved / be a big help",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: たすかりました = 'that helped me a lot' (set thanks). Tr partner たすける."},
 
   /* ===== Expansion: more everyday verbs ===== */
@@ -1685,7 +1685,7 @@ const N5_PACK = [
   {jp:"まにあう",romaji:"maniau",en:"to be in time / make it",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"～に まにあう = make it in time for. Also 'be enough/sufficient'."},
   {jp:"たりる",romaji:"tariru",en:"to be enough",pos:"v",theme:"school",register:"neutral",jlpt:5,note:"おかね が たりない = not enough money. Subject takes が."},
   {jp:"のこる",romaji:"nokoru",en:"to remain / be left",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive: ～が のこる. Tr counterpart のこす (leave sth behind)."},
-  {jp:"のこす",romaji:"nokosu",en:"to leave (sth) behind",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を のこす. Pairs with のこる."},
+  {jp:"のこす",romaji:"nokosu",en:"to leave behind",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を のこす. Pairs with のこる."},
   {jp:"しゃべる",romaji:"shaberu",en:"to chat / talk (casually)",pos:"v",theme:"people",register:"casual",jlpt:5,note:"Casual chatter. はなす is the neutral 'speak'; しゃべる sounds informal/chatty."},
   {jp:"さけぶ",romaji:"sakebu",en:"to shout / scream",pos:"v",theme:"people",register:"neutral",jlpt:5,note:"Loud cry. よぶ = to call (summon) — different verb."},
   {jp:"だまる",romaji:"damaru",en:"to fall silent",pos:"v",theme:"people",register:"neutral",jlpt:5,note:"だまって = 'be quiet / without saying anything'. Curt as a command."},
@@ -1892,7 +1892,7 @@ const N5_PACK = [
   {jp:"ねつ",romaji:"netsu",en:"fever",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"ねつ が ある = to have a fever. はかる = to take it."},
   {jp:"せき",romaji:"seki",en:"a cough",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"せき が でる = to have a cough (でる, not する). Homophone with せき 'seat'."},
   {jp:"くしゃみ",romaji:"kushami",en:"a sneeze",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"くしゃみ が でる = to sneeze."},
-  {jp:"いたみ",romaji:"itami",en:"pain (noun)",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"The noun. In speech you usually just say いたい (adj). いたみどめ = painkiller."},
+  {jp:"いたみ",romaji:"itami",en:"pain",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"The noun. In speech you usually just say いたい (adj). いたみどめ = painkiller."},
   {jp:"ずつう",romaji:"zutsuu",en:"headache",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"Clinical. Everyday speech: あたま が いたい."},
   {jp:"くすり",romaji:"kusuri",en:"medicine",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"くすり を のむ = take medicine — のむ ('drink') even for pills/powder."},
   {jp:"いしゃ",romaji:"isha",en:"doctor",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"The person; politer おいしゃさん. The place/clinic is びょういん."},
@@ -5771,6 +5771,139 @@ function toNakatta(jp){
   return nai + 'かった';
 }
 
+/* v6.23 — extended conjugation helpers for the 70-form Transformation Drill. */
+const GODAN_E_MAP = {'う':'え','く':'け','ぐ':'げ','す':'せ','つ':'て','ぬ':'ね','ぶ':'べ','む':'め','る':'れ'};
+const GODAN_O_MAP = {'う':'お','く':'こ','ぐ':'ご','す':'そ','つ':'と','ぬ':'の','ぶ':'ぼ','む':'も','る':'ろ'};
+
+/* e-row stem: used for G1 potential/ba/imperative. G2: drop る. する→すれ. くる→くれ. */
+function eStem(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1);
+  if(cls === 'v-irr-suru') return 'すれ';
+  if(cls === 'v-irr-kuru') return 'くれ';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'すれ';
+  const last = jp.slice(-1);
+  const m = GODAN_E_MAP[last];
+  return m ? jp.slice(0,-1) + m : jp;
+}
+
+/* o-row stem (plus よ for G2/irregular) for plain volitional. */
+function oStem(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'よ';
+  if(cls === 'v-irr-suru') return 'しよ';
+  if(cls === 'v-irr-kuru') return 'こよ';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'しよ';
+  const last = jp.slice(-1);
+  const m = GODAN_O_MAP[last];
+  return m ? jp.slice(0,-1) + m : jp;
+}
+
+/* Tier 1 */
+function toMasendeshita(jp){ return iStem(jp) + 'ませんでした'; }
+
+/* Tier 2 */
+function toNakute(jp){ const n = toNai(jp); return n.endsWith('ない') ? n.slice(0,-2) + 'なくて' : n + 'くて'; }
+function toNaide(jp){ return toNai(jp) + 'で'; }
+function toTeita(jp){ return toTe(jp) + 'いた'; }
+function toTeinai(jp){ return toTe(jp) + 'いない'; }
+function toTekudasai(jp){ return toTe(jp) + 'ください'; }
+function toTakunai(jp){ return iStem(jp) + 'たくない'; }
+function toTakatta(jp){ return iStem(jp) + 'たかった'; }
+function toTakunakatta(jp){ return iStem(jp) + 'たくなかった'; }
+function toToki(jp){ return jp + 'とき'; }
+
+/* Tier 3 */
+function toMashouka(jp){ return iStem(jp) + 'ましょうか'; }
+function toOu(jp){ return oStem(jp) + 'う'; }
+function toTehaikenai(jp){ return toTe(jp) + 'は いけない'; }
+function toTemiru(jp){ return toTe(jp) + 'みる'; }
+function toTeoku(jp){ return toTe(jp) + 'おく'; }
+function toTearu(jp){ return toTe(jp) + 'ある'; }
+function toTeiku(jp){ return toTe(jp) + 'いく'; }
+function toTekuru(jp){ return toTe(jp) + 'くる'; }
+function toNiPurpose(jp){ return iStem(jp) + 'に'; }
+function toNagara(jp){ return iStem(jp) + 'ながら'; }
+
+/* Tier 4 */
+function toBa(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'れば';
+  return eStem(jp) + 'ば';
+}
+function toTara(jp){ return toTa(jp) + 'ら'; }
+function toNara(jp){ return jp + 'なら'; }
+function toToCond(jp){ return jp + 'と'; }
+function toPotential(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-irr-suru') return 'できる';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'できる';
+  if(cls === 'v-irr-kuru') return 'こられる';
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'られる';
+  return eStem(jp) + 'る';
+}
+function toPotentialNai(jp){ return toPotential(jp).slice(0,-1) + 'ない'; }
+function toPotentialTa(jp){ return toPotential(jp).slice(0,-1) + 'た'; }
+function toPotentialNakatta(jp){ return toPotential(jp).slice(0,-1) + 'なかった'; }
+function toNaihougaii(jp){ return toNai(jp) + 'ほうが いい'; }
+function toNakutemoii(jp){ const n = toNai(jp); return n.endsWith('ない') ? n.slice(0,-2) + 'なくても いい' : n + 'くても いい'; }
+
+/* Tier 5a — voices */
+function toPassive(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-irr-suru') return 'される';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'される';
+  if(cls === 'v-irr-kuru') return 'こられる';
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'られる';
+  return aStem(jp) + 'れる';
+}
+function toPassiveTa(jp){ return toPassive(jp).slice(0,-1) + 'た'; }
+function toPassiveNai(jp){ return toPassive(jp).slice(0,-1) + 'ない'; }
+function toCausative(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-irr-suru') return 'させる';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'させる';
+  if(cls === 'v-irr-kuru') return 'こさせる';
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'させる';
+  return aStem(jp) + 'せる';
+}
+function toCausativeTa(jp){ return toCausative(jp).slice(0,-1) + 'た'; }
+function toCausativeNai(jp){ return toCausative(jp).slice(0,-1) + 'ない'; }
+function toCausPass(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-u') return aStem(jp) + 'される';
+  return toCausative(jp).slice(0,-1) + 'られる';
+}
+
+/* Tier 5b — imperatives */
+function toImperative(jp){
+  const cls = classifyVerb(jp);
+  if(cls === 'v-irr-suru') return 'しろ';
+  if(cls === 'v-compound-suru') return jp.slice(0,-2) + 'しろ';
+  if(cls === 'v-irr-kuru') return 'こい';
+  if(cls === 'v-ru') return jp.slice(0,-1) + 'ろ';
+  return eStem(jp);
+}
+function toImperativeNeg(jp){ return jp + 'な'; }
+function toNasai(jp){ return iStem(jp) + 'なさい'; }
+
+/* Tier 5c — obligation compounds */
+function toNakerebanaranai(jp){ const n = toNai(jp); return n.endsWith('ない') ? n.slice(0,-2) + 'なければ ならない' : n + 'ければ ならない'; }
+function toNakutehaikenai(jp){ const n = toNai(jp); return n.endsWith('ない') ? n.slice(0,-2) + 'なくては いけない' : n + 'くては いけない'; }
+function toNakucha(jp){ const n = toNai(jp); return n.endsWith('ない') ? n.slice(0,-2) + 'なくちゃ' : n + 'くちゃ'; }
+
+/* Tier 5d — stem modifiers */
+function toSugiru(jp){ return iStem(jp) + 'すぎる'; }
+function toYasui(jp){ return iStem(jp) + 'やすい'; }
+function toNikui(jp){ return iStem(jp) + 'にくい'; }
+function toKata(jp){ return iStem(jp) + 'かた'; }
+function toSou(jp){ return iStem(jp) + 'そう'; }
+function toHajimeru(jp){ return iStem(jp) + 'はじめる'; }
+function toOwaru(jp){ return iStem(jp) + 'おわる'; }
+function toTsudukeru(jp){ return iStem(jp) + 'つづける'; }
+function toTagaru(jp){ return iStem(jp) + 'たがる'; }
+function toKakeru(jp){ return iStem(jp) + 'かける'; }
+
 function verbGroupInfo(jp){
   const cls = classifyVerb(jp);
   if(cls === 'v-u') return {group:1, label:'Group 1 · u-verb (godan)'};
@@ -5939,8 +6072,266 @@ const FORMS = [
   {id:'nakatta',    name:'なかった',         hint:'Plain past negative',               conj:toNakatta,
     rule:'Plain negative stem (drop ない) + なかった. たべない→たべなかった; のまない→のまなかった. Casual past negative.',
     en:w=>baseVerbAlts(w).map(b=>"didn't "+b).join(' / '),
-    accept:w=>baseVerbAlts(w).flatMap(b=>["didn't "+b,'did not '+b,'didnt '+b,'have not '+b,"haven't "+b])}
+    accept:w=>baseVerbAlts(w).flatMap(b=>["didn't "+b,'did not '+b,'didnt '+b,'have not '+b,"haven't "+b])},
+
+  /* v6.23 — Transformation Drill expansion. 52 additional forms to complete the
+     70-form set documented in study_notes/CONJUGATION_KEY.md. Each en() returns
+     a short crystal-clear gloss; accept() lists lenient alternates for STT/typed. */
+
+  /* === Tier 1 (1 new) === */
+  {id:'masendeshita', name:'ませんでした', hint:'Polite past negative', conj:toMasendeshita,
+    rule:'masu stem + ませんでした. のむ→のみませんでした.',
+    en:w=>baseVerbAlts(w).map(b=>"didn't "+b).join(' / ')+' (polite past)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>["didn't "+b,'did not '+b,"haven't "+b,'have not '+b,"didn't "+b+' (polite)'])},
+
+  /* === Tier 2 (8 new — te-family + want-family) === */
+  {id:'nakute', name:'なくて', hint:'Negative te (and not)', conj:toNakute,
+    rule:'nai stem + なくて. のまない→のまなくて. Connects "not X, and Y" / "not X, so Y".',
+    en:w=>baseVerbAlts(w).map(b=>'not '+b+', and').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['not '+b,'not '+b+' and',"didn't "+b+' and','not '+b+' so'])},
+  {id:'naide', name:'ないで', hint:'Without doing', conj:toNaide,
+    rule:'nai-form + で. のまない→のまないで. "Without [V-ing]" or "instead of [V-ing]".',
+    en:w=>baseVerbAlts(w).map(b=>'without '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['without '+i,'instead of '+i,'not '+b+' and','without '+b];})},
+  {id:'teita', name:'ていた', hint:'Past progressive (was doing)', conj:toTeita,
+    rule:'te-form + いた. のんでいた; たべていた. Casual drops い: たべてた.',
+    en:w=>baseVerbAlts(w).map(b=>'was '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['was '+i,'were '+i,'i was '+i,'had been '+i];})},
+  {id:'teinai', name:'ていない', hint:'Progressive negative (not doing)', conj:toTeinai,
+    rule:'te-form + いない. のんでいない. "Not currently [V-ing]" / "haven\'t [V-ed] yet".',
+    en:w=>baseVerbAlts(w).map(b=>'not '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['not '+i,"isn't "+i,"hasn't "+enPast(b)+' yet',"haven't "+enPast(b)+' yet'];})},
+  {id:'tekudasai', name:'てください', hint:'Please do (polite request)', conj:toTekudasai,
+    rule:'te-form + ください. のんで→のんでください. The standard polite request.',
+    en:w=>baseVerbAlts(w).map(b=>'please '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['please '+b,'please '+b+' it','could you '+b,'would you '+b])},
+  {id:'takunai', name:'たくない', hint:"Don't want to", conj:toTakunai,
+    rule:'masu stem + たくない. のみたくない; たべたくない.',
+    en:w=>baseVerbAlts(w).map(b=>"don't want to "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't want to "+b,'do not want to '+b,"i don't want to "+b,'no want '+b])},
+  {id:'takatta', name:'たかった', hint:'Wanted to', conj:toTakatta,
+    rule:'masu stem + たかった. のみたかった; たべたかった.',
+    en:w=>baseVerbAlts(w).map(b=>'wanted to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['wanted to '+b,'i wanted to '+b,'wanted '+b])},
+  {id:'takunakatta', name:'たくなかった', hint:"Didn't want to", conj:toTakunakatta,
+    rule:'masu stem + たくなかった. のみたくなかった; たべたくなかった.',
+    en:w=>baseVerbAlts(w).map(b=>"didn't want to "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["didn't want to "+b,'did not want to '+b,"i didn't want to "+b])},
+  {id:'toki', name:'とき', hint:'When (time anchor)', conj:toToki,
+    rule:'Dictionary + とき. のむとき = "when [V]ing". Marks the previous clause as a time anchor.',
+    en:w=>baseVerbAlts(w).map(b=>'when '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['when '+i,'when i '+b,'at the time of '+i,'while '+i];})},
+
+  /* === Tier 3 (12 new — suggesting/inviting/te-helpers/motion) === */
+  {id:'mashouka', name:'ましょうか', hint:'Shall we?', conj:toMashouka,
+    rule:'masu stem + ましょうか. のみましょうか = "shall we drink?". Polite open suggestion.',
+    en:w=>baseVerbAlts(w).map(b=>'shall we '+b).join(' / ')+'?',
+    accept:w=>baseVerbAlts(w).flatMap(b=>['shall we '+b,'should we '+b,"let's "+b])},
+  {id:'ou', name:'おう / よう', hint:"Plain volitional (let's)", conj:toOu,
+    rule:'G1: u→o + う (のむ→のもう). G2: drop る + よう (たべる→たべよう). する→しよう, くる→こよう.',
+    en:w=>baseVerbAlts(w).map(b=>"let's "+b+" / I'll "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["let's "+b,'lets '+b,'i will '+b,"i'll "+b,'i shall '+b])},
+  {id:'tehaikenai', name:'ては いけない', hint:'Must not (prohibition)', conj:toTehaikenai,
+    rule:'te-form + は いけない. のんではいけない = "must not drink".',
+    en:w=>baseVerbAlts(w).map(b=>'must not '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['must not '+b,'cannot '+b,"can't "+b,'not allowed to '+b,'forbidden to '+b])},
+  {id:'temiru', name:'てみる', hint:'Try doing', conj:toTemiru,
+    rule:'te-form + みる. のんでみる = "try drinking". Tentative or experimental action.',
+    en:w=>baseVerbAlts(w).map(b=>'try '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['try '+i,'try to '+b,'give '+b+' a try','attempt '+b];})},
+  {id:'teoku', name:'ておく', hint:'Do in advance / for later', conj:toTeoku,
+    rule:'te-form + おく. のんでおく = "drink in preparation". Casual contracts to ~とく (のんどく).',
+    en:w=>baseVerbAlts(w).map(b=>b+' in advance').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b+' in advance',b+' beforehand',b+' ahead','prepare to '+b,b+' ahead of time'])},
+  {id:'tearu', name:'てある', hint:'Has been done (state)', conj:toTearu,
+    rule:'te-form + ある. のんである = "has been drunk" (the resulting state). Only transitive verbs.',
+    en:w=>baseVerbAlts(w).map(b=>'has been '+enPast(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return['has been '+p,'have been '+p,'is '+p,'already '+p];})},
+  {id:'teiku', name:'ていく', hint:'Do and go (away)', conj:toTeiku,
+    rule:'te-form + いく. のんでいく = "drink and then go". Action then motion away.',
+    en:w=>baseVerbAlts(w).map(b=>b+' and go').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b+' and go',b+' then go','go after '+enIng(b)])},
+  {id:'tekuru', name:'てくる', hint:'Do and come back', conj:toTekuru,
+    rule:'te-form + くる. のんでくる = "drink and come back". Action then motion return.',
+    en:w=>baseVerbAlts(w).map(b=>b+' and come back').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b+' and come back',b+' and return','come back after '+enIng(b)])},
+  {id:'nipurpose', name:'に (purpose)', hint:'In order to (with motion verb)', conj:toNiPurpose,
+    rule:'masu stem + に. のみに(いく) = "go in order to drink". Usually paired with いく/くる.',
+    en:w=>baseVerbAlts(w).map(b=>'in order to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['in order to '+b,'to '+b,'for '+enIng(b),'so as to '+b])},
+  {id:'nagara', name:'ながら', hint:'While doing (simultaneous)', conj:toNagara,
+    rule:'masu stem + ながら. のみながら はなす = "talk while drinking". Two simultaneous actions.',
+    en:w=>baseVerbAlts(w).map(b=>'while '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['while '+i,'as '+i,'during '+i];})},
+
+  /* === Tier 4 (12 new — conditionals/potential/advice) === */
+  {id:'ba', name:'ば', hint:'If conditional', conj:toBa,
+    rule:'G1: u→e + ば (のむ→のめば). G2: drop る + れば (たべる→たべれば). する→すれば, くる→くれば.',
+    en:w=>baseVerbAlts(w).map(b=>'if '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['if '+b,'if i '+b,'if you '+b,'when '+b])},
+  {id:'tara', name:'たら', hint:'If / when (sequential)', conj:toTara,
+    rule:'ta-form + ら. のんだら; たべたら. Most common conditional in casual speech.',
+    en:w=>baseVerbAlts(w).map(b=>'if '+b+' / when '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['if '+b,'when '+b,'once '+b,'after '+enIng(b)])},
+  {id:'nara', name:'なら', hint:"If it's that (topic-conditional)", conj:toNara,
+    rule:'Dictionary + なら. のむなら = "if it\'s drinking [we\'re talking about]". Conditional on a topic.',
+    en:w=>baseVerbAlts(w).map(b=>"if it's "+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return["if it's "+i,'if you mean '+i,'as for '+i+', if so'];})},
+  {id:'tocond', name:'と', hint:'Whenever / automatic result', conj:toToCond,
+    rule:'Dictionary + と. のむと = "whenever I drink (this automatically happens)". Iron-law conditional.',
+    en:w=>baseVerbAlts(w).map(b=>'whenever '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['whenever '+b,'when '+b,'every time '+b,'if '+b+' then'])},
+  {id:'potential', name:'れる / られる (potential)', hint:'Can do', conj:toPotential,
+    rule:'G1: u→e + る (のむ→のめる). G2: stem + られる (たべる→たべられる). する→できる. くる→こられる.',
+    en:w=>baseVerbAlts(w).map(b=>'can '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['can '+b,'able to '+b,'is able to '+b,'i can '+b])},
+  {id:'potentialnai', name:'えない / られない', hint:"Can't do", conj:toPotentialNai,
+    rule:'Potential stem (drop る) + ない. のめない; たべられない.',
+    en:w=>baseVerbAlts(w).map(b=>"can't "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["can't "+b,'cannot '+b,'not able to '+b,'unable to '+b])},
+  {id:'potentialta', name:'えた / られた', hint:'Could do (past)', conj:toPotentialTa,
+    rule:'Potential stem (drop る) + た. のめた; たべられた.',
+    en:w=>baseVerbAlts(w).map(b=>'could '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['could '+b,'was able to '+b,'managed to '+b])},
+  {id:'potentialnakatta', name:'えなかった / られなかった', hint:"Couldn't do (past neg)", conj:toPotentialNakatta,
+    rule:'Potential nai stem + なかった. のめなかった; たべられなかった.',
+    en:w=>baseVerbAlts(w).map(b=>"couldn't "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["couldn't "+b,'could not '+b,'was not able to '+b])},
+  {id:'naihougaii', name:'ないほうが いい', hint:"Shouldn't (advice)", conj:toNaihougaii,
+    rule:'nai-form + ほうが いい. のまないほうがいい = "shouldn\'t drink".',
+    en:w=>baseVerbAlts(w).map(b=>"shouldn't "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["shouldn't "+b,'should not '+b,'better not '+b,'ought not to '+b])},
+  {id:'nakutemoii', name:'なくても いい', hint:"Don't have to", conj:toNakutemoii,
+    rule:'nai stem + なくても いい. のまなくてもいい = "don\'t have to drink".',
+    en:w=>baseVerbAlts(w).map(b=>"don't have to "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't have to "+b,"don't need to "+b,'do not have to '+b,"not necessary to "+b])},
+
+  /* === Tier 5a — voices (7 new) === */
+  {id:'passive', name:'れる / られる (passive)', hint:'Is done (by someone)', conj:toPassive,
+    rule:'G1: u→a + れる (のむ→のまれる). G2: stem + られる (same shape as potential — context decides). する→される. くる→こられる.',
+    en:w=>baseVerbAlts(w).map(b=>'is '+enPast(b)).join(' / ')+' (by someone)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return['is '+p,'gets '+p,'being '+p,'gets '+p+' by','is '+p+' by'];})},
+  {id:'passiveta', name:'れた / られた', hint:'Was done (passive past)', conj:toPassiveTa,
+    rule:'Passive stem (drop る) + た. のまれた; たべられた.',
+    en:w=>baseVerbAlts(w).map(b=>'was '+enPast(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return['was '+p,'got '+p,'has been '+p,'were '+p];})},
+  {id:'passivenai', name:'れない / られない', hint:"Isn't done (passive neg)", conj:toPassiveNai,
+    rule:'Passive stem (drop る) + ない. のまれない.',
+    en:w=>baseVerbAlts(w).map(b=>"isn't "+enPast(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const p=enPast(b);return["isn't "+p,"not "+p,"doesn't get "+p,'is not '+p];})},
+  {id:'causative', name:'せる / させる', hint:'Make / let do', conj:toCausative,
+    rule:'G1: u→a + せる (のむ→のませる). G2: stem + させる (たべる→たべさせる). する→させる. くる→こさせる.',
+    en:w=>baseVerbAlts(w).map(b=>'make/let '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['make '+b,'let '+b,'make someone '+b,'let someone '+b,'have someone '+b])},
+  {id:'causativeta', name:'せた / させた', hint:'Made / let do (past)', conj:toCausativeTa,
+    rule:'Causative stem (drop る) + た. のませた; たべさせた.',
+    en:w=>baseVerbAlts(w).map(b=>'made/let '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['made '+b,'let '+b,'made someone '+b,'let someone '+b,'had someone '+b])},
+  {id:'causativenai', name:'せない / させない', hint:"Doesn't make/let do", conj:toCausativeNai,
+    rule:'Causative stem (drop る) + ない. のませない.',
+    en:w=>baseVerbAlts(w).map(b=>"doesn't make/let "+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["doesn't make "+b,"doesn't let "+b,"won't let "+b,'not make '+b])},
+  {id:'causpass', name:'させられる', hint:'Be made to do', conj:toCausPass,
+    rule:'G1 short: aStem + される (のまされる). Long form (all groups): causative stem + られる (たべさせられる, させられる).',
+    en:w=>baseVerbAlts(w).map(b=>'be made to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['be made to '+b,'was made to '+b,'forced to '+b,'made to '+b,'had to '+b])},
+
+  /* === Tier 5b — imperatives (3 new) === */
+  {id:'imperative', name:'ろ / え (command)', hint:'Plain command', conj:toImperative,
+    rule:'G1: u→e (のむ→のめ). G2: drop る + ろ (たべる→たべろ). する→しろ, くる→こい. BLUNT — used in anger, instructions, signs.',
+    en:w=>baseVerbAlts(w).map(b=>b+'!').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b,b+'!','just '+b,'go '+b])},
+  {id:'imperativeneg', name:'な (don\'t)', hint:'Negative command', conj:toImperativeNeg,
+    rule:'Dictionary + な. のむな = "don\'t drink!". BLUNT.',
+    en:w=>baseVerbAlts(w).map(b=>"don't "+b+'!').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>["don't "+b,'do not '+b,'no '+enIng(b),'stop '+enIng(b)])},
+  {id:'nasai', name:'なさい', hint:'Soft command (parent-to-child)', conj:toNasai,
+    rule:'masu stem + なさい. のみなさい. Softer than imperative — what a parent says to a child.',
+    en:w=>baseVerbAlts(w).map(b=>b+' (please do)').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b,'please '+b,'do '+b,'go '+b])},
+
+  /* === Tier 5c — obligation compounds (3 new) === */
+  {id:'nakerebanaranai', name:'なければ ならない', hint:'Must do', conj:toNakerebanaranai,
+    rule:'nai stem + なければ ならない. のまなければならない = "must drink".',
+    en:w=>baseVerbAlts(w).map(b=>'must '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['must '+b,'have to '+b,'need to '+b,'i have to '+b,'have to be '+enIng(b)])},
+  {id:'nakutehaikenai', name:'なくては いけない', hint:'Must do (alt)', conj:toNakutehaikenai,
+    rule:'nai stem + なくては いけない. のまなくてはいけない = "must drink".',
+    en:w=>baseVerbAlts(w).map(b=>'must '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['must '+b,'have to '+b,'need to '+b,'gotta '+b])},
+  {id:'nakucha', name:'なくちゃ', hint:'Gotta (casual must)', conj:toNakucha,
+    rule:'nai stem + なくちゃ. Contraction of なくては. のまなくちゃ.',
+    en:w=>baseVerbAlts(w).map(b=>'gotta '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['gotta '+b,'have to '+b,'must '+b,'i gotta '+b,'need to '+b])},
+
+  /* === Tier 5d — stem modifiers (10 new) === */
+  {id:'sugiru', name:'すぎる', hint:'Too much', conj:toSugiru,
+    rule:'masu stem + すぎる. のみすぎる = "drink too much".',
+    en:w=>baseVerbAlts(w).map(b=>b+' too much').join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>[b+' too much','over '+b,b+' excessively'])},
+  {id:'yasui', name:'やすい', hint:'Easy to do', conj:toYasui,
+    rule:'masu stem + やすい. のみやすい = "easy to drink".',
+    en:w=>baseVerbAlts(w).map(b=>'easy to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['easy to '+b,'simple to '+b,b+' is easy'])},
+  {id:'nikui', name:'にくい', hint:'Hard to do', conj:toNikui,
+    rule:'masu stem + にくい. のみにくい = "hard to drink".',
+    en:w=>baseVerbAlts(w).map(b=>'hard to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['hard to '+b,'difficult to '+b,b+' is hard'])},
+  {id:'kata', name:'かた (way / how to)', hint:'How to do', conj:toKata,
+    rule:'masu stem + かた. のみかた = "how to drink" / "the way of drinking". A noun.',
+    en:w=>baseVerbAlts(w).map(b=>'how to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['how to '+b,'way of '+enIng(b),'way to '+b,'method of '+enIng(b)])},
+  {id:'sou', name:'そう (looks-about-to)', hint:'Looks about to / looks like', conj:toSou,
+    rule:'masu stem + そう. のみそう = "looks about to drink". Visual conjecture.',
+    en:w=>baseVerbAlts(w).map(b=>'looks about to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['looks about to '+b,'seems about to '+b,'looks like '+enIng(b),'about to '+b])},
+  {id:'hajimeru', name:'はじめる', hint:'Start doing', conj:toHajimeru,
+    rule:'masu stem + はじめる. のみはじめる = "start drinking".',
+    en:w=>baseVerbAlts(w).map(b=>'start '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['start '+i,'begin '+i,'start to '+b];})},
+  {id:'owaru', name:'おわる', hint:'Finish doing', conj:toOwaru,
+    rule:'masu stem + おわる. のみおわる = "finish drinking".',
+    en:w=>baseVerbAlts(w).map(b=>'finish '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['finish '+i,'done '+i,'end '+i];})},
+  {id:'tsudukeru', name:'つづける', hint:'Keep doing', conj:toTsudukeru,
+    rule:'masu stem + つづける. のみつづける = "keep drinking".',
+    en:w=>baseVerbAlts(w).map(b=>'keep '+enIng(b)).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>{const i=enIng(b);return['keep '+i,'continue '+i,'continue to '+b];})},
+  {id:'tagaru', name:'たがる', hint:'Wants to (3rd person)', conj:toTagaru,
+    rule:'masu stem + たがる. のみたがる = "[he/she] wants to drink". Used for 3rd-party desire (not yourself).',
+    en:w=>baseVerbAlts(w).map(b=>'wants to '+b).join(' / ')+' (someone else)',
+    accept:w=>baseVerbAlts(w).flatMap(b=>['wants to '+b,'he wants to '+b,'she wants to '+b,'they want to '+b])},
+  {id:'kakeru', name:'かける', hint:'About to do / start to', conj:toKakeru,
+    rule:'masu stem + かける. のみかける = "about to drink" / "start to drink (and not finish)".',
+    en:w=>baseVerbAlts(w).map(b=>'about to '+b).join(' / '),
+    accept:w=>baseVerbAlts(w).flatMap(b=>['about to '+b,'start to '+b,'beginning to '+b,'on the verge of '+enIng(b)])}
 ];
+
+/* v6.23 — Tier map for the Transformation Drill. Determines which forms appear
+   in Form Mix at each progression level. See study_notes/CONJUGATION_KEY.md. */
+const FORM_TIER = {
+  /* Tier 1 — basics */
+  masu:1, masen:1, mashita:1, masendeshita:1, nai:1, ta:1, nakatta:1,
+  /* Tier 2 — te-family + want + toki */
+  te:2, nakute:2, naide:2, teiru:2, teita:2, teinai:2, tekudasai:2,
+  tai:2, takunai:2, takatta:2, takunakatta:2, toki:2,
+  /* Tier 3 — suggesting, inviting, te-helpers, motion */
+  mashou:3, mashouka:3, masenka:3, ou:3,
+  temoii:3, tehaikenai:3, chatta:3, temiru:3, teoku:3, tearu:3,
+  teiku:3, tekuru:3, nipurpose:3, nagara:3,
+  /* Tier 4 — conditionals, potential, experience, advice */
+  ba:4, tara:4, nara:4, tocond:4,
+  potential:4, potentialnai:4, potentialta:4, potentialnakatta:4,
+  takotogaaru:4, tahougaii:4, naihougaii:4, nakutemoii:4,
+  /* Tier 5 — voices, imperatives, obligation, stem modifiers */
+  passive:5, passiveta:5, passivenai:5,
+  causative:5, causativeta:5, causativenai:5, causpass:5,
+  imperative:5, imperativeneg:5, nasai:5,
+  nakerebanaranai:5, nakutehaikenai:5, nakya:5, nakucha:5,
+  sugiru:5, yasui:5, nikui:5, kata:5, sou:5,
+  hajimeru:5, owaru:5, tsudukeru:5, tagaru:5, kakeru:5
+};
+function formTier(id){ return FORM_TIER[id] || 5; }
 
 /* =========================================================================
    MODULES (v6.16) — themed progression with linear unlock.
@@ -7270,11 +7661,19 @@ function renderForms(){
      Form Blitz (cross-SRS recall) collapses to a chip below. */
   const blitzCard = `<div class="card" style="border:1px solid var(--blue)">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-      <h3 style="margin:0">🎙️ Form Mix</h3>
-      <span class="muted" style="font-size:12px">~30 · curated</span>
+      <h3 style="margin:0">🎙️ Form Mix · 70 transformations</h3>
+      <span class="muted" style="font-size:12px">~30 · all tiers</span>
     </div>
-    <div class="muted" style="font-size:13px;margin:4px 0 10px">Random verb x random form, audio-led, hands-free. Works without any SRS graduation. Voice Mode grades you out loud.</div>
-    <button class="btn btn-primary" style="width:100%" onclick="startBuildModeFormMix()">🎙️ Begin Form Mix (~30, hands-free)</button>
+    <div class="muted" style="font-size:13px;margin:4px 0 10px">Random verb × random transformation, audio-led, hands-free. Pick a tier to scope (basics → advanced) or hit "All" for the full 70-form spread.</div>
+    <button class="btn btn-primary" style="width:100%" onclick="startBuildModeFormMix()">🎙️ Begin Form Mix — all tiers (~30, hands-free)</button>
+    <div style="height:8px"></div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+      <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[1]})" title="Basics: dict/nai/ta/masu family">T1</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[2]})" title="te-form, want, toki">T2</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[3]})" title="Suggest, invite, te-helpers">T3</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[4]})" title="Conditionals, potential, advice">T4</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[5]})" title="Voices, imperatives, must, stem mods">T5</button>
+    </div>
     <div style="height:8px"></div>
     <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startFormBlitz()">⌨ Typed Mixed Form Blitz · ${totalPairs} pairs</button>
   </div>`;
@@ -12449,9 +12848,20 @@ function buildGenerateFormMixLesson(opts){
   const want = (opts && opts.count) || 30;
   if(!Array.isArray(CONJUGATION_DRILL_VERBS) || CONJUGATION_DRILL_VERBS.length === 0) throw new Error('No verbs defined.');
   if(!Array.isArray(FORMS) || FORMS.length === 0) throw new Error('No forms defined.');
-  const PRIMARY_FORMS = ['masu','mashita','masen','te','ta','nai','tai','teiru'];
-  const formPool = FORMS.filter(f => PRIMARY_FORMS.includes(f.id));
-  if(formPool.length === 0) throw new Error('No primary forms available.');
+  /* v6.23 — Transformation Drill: now draws from ALL 70 forms by default.
+     Pass opts.tiers = [1] for basics-only, [1,2] for basics + te-family, etc.
+     Legacy behaviour: pass opts.primaryOnly = true for the original 8-form pool. */
+  let formPool;
+  if(opts && opts.primaryOnly){
+    const PRIMARY_FORMS = ['masu','mashita','masen','te','ta','nai','tai','teiru'];
+    formPool = FORMS.filter(f => PRIMARY_FORMS.includes(f.id));
+  } else if(opts && Array.isArray(opts.tiers) && opts.tiers.length){
+    const tierSet = new Set(opts.tiers);
+    formPool = FORMS.filter(f => tierSet.has(formTier(f.id)));
+  } else {
+    formPool = FORMS.slice();
+  }
+  if(formPool.length === 0) throw new Error('No forms in selected tier.');
   /* Verb pool: shuffle once then index sequentially so every verb appears
      before any repeats - matches Random Drill / Variation Spam pattern. */
   const verbPool = shuffleFY(CONJUGATION_DRILL_VERBS.slice());
@@ -12492,9 +12902,12 @@ function buildGenerateFormMixLesson(opts){
     _meta: { mode: 'formMix' }
   };
 }
-function startBuildModeFormMix(){
+function startBuildModeFormMix(opts){
   try {
-    const lesson = buildGenerateFormMixLesson();
+    const lesson = buildGenerateFormMixLesson(opts);
+    if(opts && Array.isArray(opts.tiers) && opts.tiers.length){
+      lesson.title = 'Form Mix — Tier ' + opts.tiers.join(',');
+    }
     state.buildMode = buildMakeSession(lesson);
     state.buildMode._origin = 'forms';
     _buildWakeLockSync();
