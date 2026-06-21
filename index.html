@@ -475,7 +475,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.66';
+const APP_VERSION = '7.67';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -16954,7 +16954,11 @@ function renderHome(){
        drilling and Build Mode is the shape that handles voice cleanly. */
     const voiceOn = state.settings.buildVoiceMode && voiceSupported();
     heroCta = voiceOn ? '🎙️ Begin session (hands-free)' : '⚡ Begin session';
-    heroAction = voiceOn ? 'startRandomDrill()' : 'startBlitz()';
+    /* v7.67 — hands-free Begin must HONOR the selected scope (e.g. Clothing).
+       Was startRandomDrill() which ignores section + pulls full-deck random,
+       so picking a topic then Begin gave random words. Vocab Spam honors the
+       section (and transparently widens with a toast if the section is thin). */
+    heroAction = voiceOn ? 'startBuildModeVocabSpam()' : 'startBlitz()';
     if(voiceOn) heroMeta = `${heroMeta} · audio-led, voice-scored`;
   }
 
