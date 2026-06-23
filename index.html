@@ -475,7 +475,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.67';
+const APP_VERSION = '7.68';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3461,6 +3461,17 @@ function getDrillableWords(){
      mastered are still respected; vocabSectionFilter narrows to members.
      v7.55 — non-drill-surface filter applies here too. */
   if(activeVocabSection().isCollection){
+    return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id) && _isVocabDrillSurface(w));
+  }
+  /* v7.68 — an explicit topic scope (clothing, food, …) is the user saying
+     "study THIS subject now", so bypass guided-module gating exactly like a
+     collection. Previously the chosen theme was intersected with the unlocked
+     modules; a learner still on the intro module then got an EMPTY pool for any
+     other topic — which surfaced as "No words due" (keyboard) or full-deck
+     RANDOM words (hands-free). 'all' keeps module gating so the guided path is
+     unchanged. */
+  const _sec = activeVocabSection();
+  if(_sec.themes && _sec.id !== 'all'){
     return active.filter(w => !suspended.has(w.id) && !mastered.has(w.id) && _isVocabDrillSurface(w));
   }
   return active.filter(w =>
