@@ -15,13 +15,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#0a0a0a; --card:#161616; --card2:#1f1f1f; --border:#2a2a2a;
-  --text:#e8e8e8; --dim:#888; --faint:#555;
-  --red:#ef4444; --red-d:#7f1d1d;
-  --green:#22c55e; --green-d:#14532d;
+  /* v7.72 — Vibrant Grape (light) theme. Neutrals flipped to warm-white/ink;
+     brand accent = grape→pink. Semantic red/green/orange + their dark -d
+     variants kept (errors, success banners, colored badges). */
+  --bg:#fbf7ff; --card:#ffffff; --card2:#f4eefc; --border:#ebe3f5;
+  --text:#241b33; --dim:#7a6e8c; --faint:#a99cbd;
+  --red:#e23a55; --red-d:#7f1d2b;
+  --green:#16a34a; --green-d:#14532d;
   --orange:#f97316; --orange-d:#7c2d12;
-  --blue:#3b82f6; --purple:#a855f7; --teal:#14b8a6; --yellow:#eab308;
-  --accent:#ef4444;
+  --blue:#6d5cf0; --purple:#7c3aed; --teal:#0d9488; --yellow:#d97706;
+  --accent:#7c3aed;
+  --grape:#7c3aed; --grape2:#9d5cff; --pink:#ff5d9e; --shadow:rgba(124,58,237,.12);
 }
 html,body{background:var(--bg);color:var(--text);min-height:100dvh}
 body{font-family:'Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;padding-bottom:100px}
@@ -43,7 +47,7 @@ body{font-family:'Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webk
 /* Buttons */
 .btn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .1s,opacity .1s;text-align:center;margin-bottom:7px;color:#fff}
 .btn:active{transform:scale(.97);opacity:.9}
-.btn-primary{background:var(--red)}
+.btn-primary{background:var(--grape)}
 .btn-orange{background:var(--orange)}
 .btn-blue{background:var(--blue)}
 .btn-teal{background:var(--teal)}
@@ -58,9 +62,9 @@ body{font-family:'Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webk
 /* Tags / pills */
 .tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
 .tag{padding:6px 11px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);cursor:pointer;font-family:inherit;background:var(--card);color:var(--dim);transition:all .1s}
-.tag.active{background:var(--red);color:#fff;border-color:var(--red)}
+.tag.active{background:var(--grape);color:#fff;border-color:var(--grape)}
 .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.pill-new{background:#333;color:#bbb}
+.pill-new{background:#ece4f5;color:#8a7ca3}
 .pill-learning{background:#7c2d12;color:#fed7aa}
 .pill-apprentice{background:#713f12;color:#fde68a}
 .pill-guru{background:#14532d;color:#bbf7d0}
@@ -102,7 +106,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .voice-heard b{color:var(--text)}
 
 /* Feedback card */
-.feedback-card{border-radius:20px;padding:20px;text-align:center;margin-bottom:12px;border:2px solid}
+.feedback-card{border-radius:20px;padding:20px;text-align:center;margin-bottom:12px;border:2px solid;color:#fbf7ff}
 .feedback-card.correct{background:var(--green-d);border-color:var(--green)}
 .feedback-card.wrong{background:var(--red-d);border-color:var(--red)}
 .feedback-card.partial{background:var(--orange-d);border-color:var(--orange)}
@@ -127,10 +131,10 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .word-meta{text-align:right;font-size:10px;color:var(--faint)}
 
 /* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,10,10,.95);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:10px 0 calc(10px + env(safe-area-inset-bottom));z-index:50}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);box-shadow:0 -6px 20px var(--shadow);display:flex;justify-content:space-around;padding:10px 0 calc(10px + env(safe-area-inset-bottom));z-index:50}
 .nav-btn{background:none;border:none;color:var(--faint);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .nav-btn .nav-ico{font-size:20px;line-height:1}
-.nav-btn.active{color:var(--red)}
+.nav-btn.active{color:var(--grape)}
 
 /* Floating FABs */
 .notes-fab{position:fixed;right:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--purple);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 6px 20px rgba(168,85,247,.45);display:flex;align-items:center;justify-content:center}
@@ -424,36 +428,41 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 .h8-stat-num.accent{color:var(--red)}
 .h8-stat-label{font-size:9px;letter-spacing:2px;color:var(--faint);margin-top:7px;text-transform:uppercase;font-weight:800}
 
-/* ===== Aurora home theme (v7.64) — frosted glass on a purple-blue gradient ===== */
-body:has(.home-v8){background:linear-gradient(160deg,#1a0d2e 0%,#16213e 50%,#0f1f4e 100%) fixed}
-.home-v8 .h8-hero{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.12);box-shadow:none;min-height:200px}
+/* ===== Vibrant Grape home theme (v7.72) — light, rounded, grape→pink ===== */
+body:has(.home-v8){background:var(--bg)}
+.home-v8 .h8-icon-btn{border-radius:14px;box-shadow:0 4px 14px var(--shadow);color:var(--grape)}
+.home-v8 .h8-mark{color:var(--grape)}
+.home-v8 .h8-streak{background:#fff5e6;border:none;box-shadow:0 4px 14px rgba(245,158,11,.18);color:#f59e0b}
+.home-v8 .h8-hero{background:linear-gradient(140deg,#8b3dff 0%,#b056ff 55%,#ff5d9e 120%);border:none;border-radius:28px;box-shadow:0 18px 40px rgba(124,58,237,.4);min-height:0;padding:28px 24px}
 .home-v8 .h8-hero::before,.home-v8 .h8-hero::after{display:none}
-.home-v8 .h8-hero-deco{color:rgba(255,255,255,.04)}
-.home-v8 .h8-hero-eyebrow{background:linear-gradient(90deg,#a5b4fc,#f0abfc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.home-v8 .h8-hero-title{color:#fff}
-.home-v8 .h8-hero-meta{color:#c4b5fd;opacity:.85}
-.home-v8 .h8-hero-cta{background:linear-gradient(90deg,#a5b4fc,#f0abfc);color:#1a0d2e;border-radius:22px;box-shadow:0 6px 18px rgba(165,180,252,.25)}
-.home-v8 .h8-hero-cta:hover{box-shadow:0 8px 24px rgba(165,180,252,.35)}
-.home-v8 .h8-hero-cta:disabled{background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);box-shadow:none}
-.home-v8 .h8-section{color:#c4b5fd;opacity:.8}
-.home-v8 .h8-list{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
-.home-v8 .h8-row{background:transparent;border-bottom:1px solid rgba(255,255,255,.05);color:#fff}
+.home-v8 .h8-hero-deco{color:rgba(255,255,255,.16)}
+.home-v8 .h8-hero-eyebrow{background:none;-webkit-text-fill-color:#fff;color:#fff;opacity:.92;letter-spacing:2px;font-size:11px}
+.home-v8 .h8-hero-title{color:#fff;font-weight:800}
+.home-v8 .h8-hero-meta{color:#fff;opacity:.92;font-weight:600}
+.home-v8 .h8-hero-cta{background:#fff;color:var(--grape);border-radius:18px;font-weight:800;box-shadow:0 10px 22px rgba(0,0,0,.18)}
+.home-v8 .h8-hero-cta:hover{box-shadow:0 12px 28px rgba(0,0,0,.22)}
+.home-v8 .h8-hero-cta:disabled{background:rgba(255,255,255,.5);color:rgba(124,58,237,.45);box-shadow:none}
+.home-v8 .h8-section{color:var(--dim);opacity:1}
+.home-v8 .h8-list{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 14px var(--shadow)}
+.home-v8 .h8-row{background:transparent;border-bottom:1px solid var(--border);color:var(--text)}
 .home-v8 .h8-row:last-child{border-bottom:none}
-.home-v8 .h8-row:hover,.home-v8 .h8-row:active{background:rgba(255,255,255,.06)}
+.home-v8 .h8-row:hover,.home-v8 .h8-row:active{background:var(--card2)}
 .home-v8 .h8-row-emoji{display:none}
-.home-v8 .h8-row-title{color:#fff}
-.home-v8 .h8-row-meta{color:#a5b4fc;opacity:.75}
-.home-v8 .h8-row-arrow{color:rgba(255,255,255,.3)}
-.home-v8 .h8-stats{background:transparent;border:1px solid rgba(255,255,255,.08)}
-.home-v8 .h8-stat{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
-.home-v8 .h8-stat-num{font-family:-apple-system,'Inter',sans-serif;font-weight:700;font-size:22px;letter-spacing:-.3px;color:#fff}
-.home-v8 .h8-stat-num.accent{background:linear-gradient(90deg,#a5b4fc,#f0abfc);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.home-v8 .h8-stat-num.flame{color:#fbbf24}
-.home-v8 .h8-stat-label{color:#a5b4fc;opacity:.7}
-body:has(.home-v8) .scope-chip{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);color:#c4b5fd}
-body:has(.home-v8) .scope-chip.active{background:linear-gradient(90deg,#a5b4fc,#f0abfc);color:#1a0d2e;border-color:transparent}
-body:has(.home-v8) .header h1{color:#fff}
-body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
+.home-v8 .h8-row-title{color:var(--text)}
+.home-v8 .h8-row-meta{color:var(--faint);opacity:1}
+.home-v8 .h8-row-arrow{color:var(--faint)}
+.home-v8 .h8-stats{background:transparent;border:none;gap:11px;grid-template-columns:1fr 1fr 1fr;display:grid}
+.home-v8 .h8-stat{background:#fff;border-radius:20px;box-shadow:0 4px 14px var(--shadow)}
+.home-v8 .h8-stat-num{font-family:'Nunito',-apple-system,sans-serif;font-weight:900;font-size:26px;letter-spacing:-1px;color:var(--text)}
+.home-v8 .h8-stat-num.accent{background:none;-webkit-text-fill-color:var(--grape);color:var(--grape)}
+.home-v8 .h8-stat-num.flame{color:#f59e0b}
+.home-v8 .h8-stat-label{color:var(--faint);opacity:1}
+body:has(.home-v8) .scope-chip{background:#fff;border:1px solid var(--border);color:var(--text);box-shadow:0 4px 14px var(--shadow);border-radius:16px;padding:11px 16px;font-weight:700}
+body:has(.home-v8) .scope-chip .ct{color:var(--faint)}
+body:has(.home-v8) .scope-chip.active{background:linear-gradient(120deg,var(--grape),var(--pink));color:#fff;border-color:transparent;box-shadow:0 8px 20px rgba(124,58,237,.35)}
+body:has(.home-v8) .scope-chip.active .ct{color:rgba(255,255,255,.8)}
+body:has(.home-v8) .header h1{color:var(--text)}
+body:has(.home-v8) .header .sub{color:var(--faint);opacity:1}
 </style>
 </head>
 <body>
@@ -485,7 +494,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.71';
+const APP_VERSION = '7.72';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17035,7 +17044,7 @@ function renderHome(){
      the CTA so the driver sees it before tapping start. */
   const voiceModeOn = state.settings.buildVoiceMode === true && voiceSupported();
   const voiceToggle = voiceSupported() ? `
-    <button onclick="homeToggleVoiceMode()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:12px 16px;border-radius:14px;font-size:14px;font-weight:600;border:2px solid ${voiceModeOn ? 'var(--blue)' : 'var(--border)'};background:${voiceModeOn ? 'rgba(100,150,255,0.1)' : 'transparent'};color:${voiceModeOn ? 'var(--blue)' : 'var(--text)'};cursor:pointer">
+    <button onclick="homeToggleVoiceMode()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;padding:14px 16px;border-radius:16px;font-size:14px;font-weight:700;border:2px solid rgba(255,255,255,${voiceModeOn ? '0.95' : '0.45'});background:rgba(255,255,255,${voiceModeOn ? '0.24' : '0.12'});color:#fff;cursor:pointer">
       <span style="font-size:18px">${voiceModeOn ? '🎙️' : '🎙'}</span>
       <span>${voiceModeOn ? 'Voice Mode ON · hands-free drills' : 'Voice Mode OFF · tap for hands-free'}</span>
     </button>` : '';
