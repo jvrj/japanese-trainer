@@ -485,7 +485,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.70';
+const APP_VERSION = '7.71';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6670,14 +6670,21 @@ const VOCAB_SECTIONS = [
   { id:'food',     name:'Food & drink',       emoji:'🍱', themes:['food'] },
   { id:'body',     name:'Body parts',         emoji:'🫀', themes:['body'] },
   { id:'family',   name:'Family & people',    emoji:'👨‍👩‍👧', themes:['family','people'] },
-  { id:'home',     name:'Home & objects',     emoji:'🏠', themes:['home','objects'] },
+  /* v7.71 — oversized bundles split into single-subject topics (user: ~100
+     words per topic, good for rotation). Home/Objects, School/Work/Tech and
+     Greetings/Feelings are now separate chips. 'daily' dropped (0 words). */
+  { id:'home',     name:'Home',               emoji:'🏠', themes:['home'] },
+  { id:'objects',  name:'Objects',            emoji:'📦', themes:['objects'] },
   { id:'places',   name:'Places',             emoji:'🏪', themes:['places'] },
   { id:'travel',   name:'Travel',             emoji:'🚆', themes:['travel'] },
   { id:'nature',   name:'Nature & animals',   emoji:'🌳', themes:['nature','animals','weather'] },
   { id:'clothing', name:'Clothing & colors',  emoji:'👕', themes:['clothing','colors'] },
-  { id:'school',   name:'School & work',      emoji:'📚', themes:['school','work','tech'] },
+  { id:'school',   name:'School',             emoji:'📚', themes:['school'] },
+  { id:'work',     name:'Work',               emoji:'💼', themes:['work'] },
+  { id:'tech',     name:'Tech',               emoji:'💻', themes:['tech'] },
   { id:'numbers',  name:'Numbers',            emoji:'🔢', themes:['numbers'] },
-  { id:'greetings',name:'Greetings & daily',  emoji:'👋', themes:['greetings','daily','feelings'] },
+  { id:'greetings',name:'Greetings',          emoji:'👋', themes:['greetings'] },
+  { id:'feelings', name:'Feelings',           emoji:'😊', themes:['feelings'] },
   /* v6.37 — boom-boom-boom recall sprint over everything you know cold.
      Pool = ★mastered + SM-2 mature words. Bypasses module gating, bypasses
      mastered-exclusion, bypasses SM-2 throttling. Just rotates so the
