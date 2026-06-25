@@ -466,6 +466,59 @@ body:has(.home-v8) .scope-chip.active{background:linear-gradient(120deg,var(--gr
 body:has(.home-v8) .scope-chip.active .ct{color:rgba(255,255,255,.8)}
 body:has(.home-v8) .header h1{color:var(--text)}
 body:has(.home-v8) .header .sub{color:var(--faint);opacity:1}
+
+/* ============================================================
+   v7.74 — PREMIUM POLISH: type rhythm · tactile motion · feedback
+   ============================================================ */
+
+/* 6 · type rhythm */
+body{letter-spacing:-.005em}
+.h8-section{font-size:11px;letter-spacing:3px;font-weight:800}
+.h8-row-title{font-weight:800}
+.drill-prompt{letter-spacing:-.3px}
+
+/* 10 · tactile press feedback (springy) */
+.scope-chip,.tag,.h8-row,.nav-btn,.btn,.h8-icon-btn,.h8-hero-cta,.audio-btn,.tile{transition:transform .14s cubic-bezier(.34,1.56,.64,1),background .15s,box-shadow .2s,border-color .15s}
+.scope-chip:active,.tag:active,.nav-btn:active,.h8-row:active,.tile:active{transform:scale(.94)}
+.h8-hero-cta:active{transform:scale(.96)}
+
+/* 11 · staggered card entrance on home (replaces the single container rise) */
+@keyframes riseIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:none}}
+.home-v8{animation:none}
+.home-v8>*{animation:riseIn .5s cubic-bezier(.16,1,.3,1) both}
+.home-v8>*:nth-child(1){animation-delay:.02s}
+.home-v8>*:nth-child(2){animation-delay:.06s}
+.home-v8>*:nth-child(3){animation-delay:.10s}
+.home-v8>*:nth-child(4){animation-delay:.14s}
+.home-v8>*:nth-child(5){animation-delay:.18s}
+.home-v8>*:nth-child(6){animation-delay:.22s}
+.home-v8>*:nth-child(n+7){animation-delay:.26s}
+.drill-card{animation:riseIn .42s cubic-bezier(.16,1,.3,1) both}
+@media (prefers-reduced-motion:reduce){.home-v8>*,.drill-card{animation:none}}
+
+/* 13 · answer feedback motion */
+@keyframes popIn{0%{transform:scale(.92);opacity:.5}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+@keyframes shakeX{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+.feedback-card.correct{animation:popIn .35s ease-out}
+.feedback-card.wrong{animation:shakeX .42s ease-out}
+.drill-answer.ok{animation:popIn .35s ease-out;display:inline-block}
+
+/* 18 · bottom-nav active indicator */
+.nav-btn{position:relative}
+.nav-btn.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:24px;height:3px;border-radius:0 0 3px 3px;background:var(--grape)}
+.nav-btn .nav-ico{transition:transform .15s}
+.nav-btn.active .nav-ico{transform:translateY(1px) scale(1.1)}
+
+/* 20 · wordmark lockup + de-dupe brand (home owns its own h8-bar wordmark) */
+body:has(.home-v8) .header{display:none}
+.header{align-items:baseline}
+.header h1{font-family:'Noto Serif JP',serif;font-weight:500;letter-spacing:3px;color:var(--grape)}
+.header .sub{font-weight:800;letter-spacing:2px;color:var(--faint)}
+
+/* 15 · drill / sub-screen header tidy */
+.topbar{border-bottom:1px solid var(--border);padding-bottom:14px}
+.topbar-title{font-weight:800;font-size:18px;letter-spacing:-.3px;color:var(--text)}
+.topbar-back{border-radius:50%;box-shadow:0 2px 8px var(--shadow)}
 </style>
 </head>
 <body>
@@ -497,7 +550,7 @@ body:has(.home-v8) .header .sub{color:var(--faint);opacity:1}
 
 'use strict';
 
-const APP_VERSION = '7.73';
+const APP_VERSION = '7.74';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -16529,7 +16582,7 @@ function renderTopbar(){
      verify what they're running without digging into Settings. Green
      dot = Whisper active; amber = Web Speech fallback. */
   const whisperOn = whisperAvailable();
-  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;padding:2px 6px;border-radius:6px;background:${whisperOn ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)'};color:${whisperOn ? '#22c55e' : '#f59e0b'};white-space:nowrap;margin-left:6px">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
+  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:${whisperOn ? 'rgba(22,163,74,0.10)' : 'rgba(124,58,237,0.07)'};color:${whisperOn ? '#16a34a' : 'var(--faint)'};white-space:nowrap;margin-left:6px">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
   return `<div class="topbar" style="display:flex;align-items:center;gap:6px">
     <button class="topbar-back" onclick="goBack()" title="Back">←</button>
     <div class="topbar-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div>
