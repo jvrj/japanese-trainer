@@ -314,6 +314,11 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .scope-chip:disabled{opacity:0.35;cursor:not-allowed}
 .scope-chip .ct{opacity:0.6;font-size:10px;margin-left:3px}
 .scope-chip.active .ct{opacity:0.85}
+.textbook-sets{margin:0 0 12px}
+.textbook-sets>summary{cursor:pointer;font-size:12px;color:var(--dim);padding:6px 14px;list-style:none;font-weight:600}
+.textbook-sets>summary::-webkit-details-marker{display:none}
+.textbook-sets>summary::before{content:'▸ ';color:var(--blue)}
+.textbook-sets[open]>summary::before{content:'▾ '}
 
 /* Section heading inside home (Drills / Practice / Stats) */
 .section-head{font-size:11px;letter-spacing:2.2px;color:var(--dim);text-transform:uppercase;margin:18px 0 10px;padding-left:2px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
@@ -475,7 +480,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.68';
+const APP_VERSION = '7.69';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2852,7 +2857,7 @@ const DEFAULT_SETTINGS = {
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
   voiceListenSec:6,           // Voice Mode: how long to listen on each step before timing out
   /* v6.16 — Modules: themed progression with linear unlock. */
-  modulesEnabled:true,        // master switch — flip off in Settings to access all words at once
+  modulesEnabled:false,       // v7.69 — topics-first: guided unlock path OFF by default; every topic is always open. Re-enableable in Settings.
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
   currentModuleId:null,       // user's current focus module — Vocab Blitz/Build pull from here + earlier modules
   unlockBypassed:[]           // module ids the user manually unlocked via "Unlock anyway"
@@ -3195,6 +3200,16 @@ function load(){
          (≥5) are left alone. Paired with the BUILD_MIN_THINK_MS 3→5s floor. */
       if((state.settings.buildThinkSec || 0) < 5) state.settings.buildThinkSec = 5;
       state.settings._pacingV5 = true;
+    }
+    if(!state.settings._topicsFirstV1){
+      /* v7.69 — Topics-first. The guided module-unlock path locked most topics
+         behind earlier ones and was the source of the "random words" confusion
+         (picking a topic then drilling intersected to an empty/locked pool).
+         The user wants to tap any subject and drill it immediately, so force the
+         guided path OFF once. Still re-enableable in Settings for anyone who
+         wants the ordered path back. */
+      state.settings.modulesEnabled = false;
+      state.settings._topicsFirstV1 = true;
     }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
@@ -17052,14 +17067,15 @@ function renderHome(){
        Picks the right word from a small group given a situation, or speaks
        the requested verb form. Constrained-vocab matcher = high accuracy. */
     { emoji:'🗣️', title:'Speak drills', meta:'Contrast pairs · verb forms · nuance-first · all speech', click:`nav('speakDrills')` },
-    /* Module path — themed progression browser. Was unreachable: the screen
-       existed and was registered, but nothing navigated to it, so users only
-       ever saw Module 1 with no way to see/unlock the other 8. */
-    { emoji:'🧩', title:'Module path',
-      meta: state.settings.modulesEnabled
-        ? `${orderedModules().filter(m => moduleIsUnlocked(m.id)).length}/${orderedModules().length} unlocked · browse, reorder & unlock`
-        : `gating off · all ${orderedModules().length} modules open`,
-      click:`nav('modules')` },
+    /* v7.69 — Topics-first: the guided "Module path" tile is hidden while the
+       unlock path is off (the default now). Only surface it if the user has
+       deliberately turned modules back on in Settings, so the home list stays
+       focused on tap-a-topic-and-drill. */
+    state.settings.modulesEnabled
+      ? { emoji:'🧩', title:'Module path',
+          meta: `${orderedModules().filter(m => moduleIsUnlocked(m.id)).length}/${orderedModules().length} unlocked · browse, reorder & unlock`,
+          click:`nav('modules')` }
+      : null,
     /* Collections — user-owned word groups, usable as a scope everywhere. */
     { emoji:'🗂️', title:'Collections',
       meta: (state.settings.collections||[]).length
@@ -17158,7 +17174,15 @@ function renderHome(){
   const chipFor = c => scopeChipHtml(c.id, c.emoji, c.name, (c.wordIds || []).length, vSec === c.id);
   const melChips = melCols.map(chipFor).join('');
   const colChips = userCols.map(chipFor).join('');
-  const scopeRow = `<div class="scope-row">${melChips}${vocabChips}${colChips}</div>`;
+  /* v7.69 — Topics-first layout. Real subjects (and your own collections) lead
+     the scope row. The みんな (Minna no Nihongo) lesson sets are tucked into a
+     collapsed "Textbook lessons" disclosure below so they no longer clutter the
+     topic picker — still one tap away if you want lesson-by-lesson study. No
+     vocabulary is removed; every word is reachable by its topic. */
+  const textbookBlock = melChips
+    ? `<details class="textbook-sets"><summary>📘 Textbook lessons (みんな) · ${melCols.length}</summary><div class="scope-row" style="padding-bottom:4px">${melChips}</div></details>`
+    : '';
+  const scopeRow = `<div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
   return `
     <div class="home-v8">
