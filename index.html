@@ -319,6 +319,11 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .textbook-sets>summary::-webkit-details-marker{display:none}
 .textbook-sets>summary::before{content:'▸ ';color:var(--blue)}
 .textbook-sets[open]>summary::before{content:'▾ '}
+.more-modes{margin:18px 0 4px}
+.more-modes>summary{cursor:pointer;font-size:13px;color:var(--dim);padding:8px 0;list-style:none;font-weight:700;letter-spacing:.02em}
+.more-modes>summary::-webkit-details-marker{display:none}
+.more-modes>summary::before{content:'▸ ';color:var(--blue)}
+.more-modes[open]>summary::before{content:'▾ '}
 
 /* Section heading inside home (Drills / Practice / Stats) */
 .section-head{font-size:11px;letter-spacing:2.2px;color:var(--dim);text-transform:uppercase;margin:18px 0 10px;padding-left:2px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
@@ -480,7 +485,7 @@ body:has(.home-v8) .header .sub{color:#a5b4fc;opacity:.7}
 
 'use strict';
 
-const APP_VERSION = '7.69';
+const APP_VERSION = '7.70';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17115,9 +17120,14 @@ function renderHome(){
     { emoji:'あ', title:'Kana Blitz', meta:'Hiragana · Katakana · Mix', click:`startKanaBlitz('all')` }
   ].filter(Boolean);
 
+  /* v7.70 — Topics-first declutter. The user only uses the hero + topic picker
+     ("that's the crux of the app"); the long mode list was noise. Tuck it into a
+     collapsed disclosure so the home is just hero + topics by default, with
+     every other mode still one tap away. */
   const upNext = `
-    <div class="h8-section">More to do</div>
-    <div class="h8-list">
+    <details class="more-modes">
+      <summary>More practice modes</summary>
+      <div class="h8-list" style="margin-top:8px">
       ${upNextRows.map(r => `
         <button class="h8-row" onclick="${r.click}">
           <div class="h8-row-emoji">${esc(r.emoji)}</div>
@@ -17128,7 +17138,8 @@ function renderHome(){
           <div class="h8-row-arrow">›</div>
         </button>
       `).join('')}
-    </div>`;
+      </div>
+    </details>`;
 
   /* Stats footer */
   const statsRow = `
