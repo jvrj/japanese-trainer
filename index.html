@@ -18,21 +18,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
-  /* v7.72 — Vibrant Grape (light) theme. Neutrals flipped to warm-white/ink;
-     brand accent = grape→pink. Semantic red/green/orange + their dark -d
-     variants kept (errors, success banners, colored badges). */
-  --bg:#fbf7ff; --card:#ffffff; --card2:#f4eefc; --border:#ebe3f5;
-  --text:#241b33; --dim:#7a6e8c; --faint:#a99cbd;
-  --red:#e23a55; --red-d:#7f1d2b;
-  --green:#16a34a; --green-d:#14532d;
-  --orange:#f97316; --orange-d:#7c2d12;
-  --blue:#6d5cf0; --purple:#7c3aed; --teal:#0d9488; --yellow:#d97706;
-  --accent:#7c3aed;
-  --grape:#7c3aed; --grape2:#9d5cff; --pink:#ff5d9e; --shadow:rgba(124,58,237,.12);
+  /* v7.77 — Dark Aurora theme. Deep indigo-black canvas, glassy translucent
+     surfaces, grape→pink as the luminous accent. Semantic colors brightened
+     for contrast on dark; their dark -d variants kept for feedback fills. */
+  --bg:#0f0a1a; --bg2:#120c20;
+  --card:rgba(255,255,255,0.05); --card2:rgba(255,255,255,0.08); --border:rgba(255,255,255,0.11);
+  --text:#f5f2ff; --dim:#a99fc7; --faint:#8a80a8;
+  --red:#fb7185; --red-d:#7f1d2b;
+  --green:#34d399; --green-d:#14532d;
+  --orange:#fb923c; --orange-d:#7c2d12;
+  --blue:#8b7bff; --purple:#a855f7; --teal:#2dd4bf; --yellow:#fbbf24;
+  --accent:#9d5cff;
+  --grape:#9d5cff; --grape2:#b97bff; --pink:#ff5d9e; --shadow:rgba(0,0,0,.5);
 }
 html,body{background:var(--bg);color:var(--text);min-height:100dvh}
+/* v7.77 — fixed aurora haze: grape/pink/indigo glows concentrated up top. */
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:
+  radial-gradient(120% 55% at 80% -6%, rgba(255,93,158,0.18), rgba(255,93,158,0) 55%),
+  radial-gradient(110% 50% at 16% 0%, rgba(157,92,255,0.24), rgba(157,92,255,0) 58%),
+  radial-gradient(140% 48% at 50% -10%, rgba(120,80,220,0.15), rgba(120,80,220,0) 60%)}
 body{font-family:'Nunito','Noto Sans JP',-apple-system,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;padding-bottom:100px}
-.app{max-width:480px;margin:0 auto;padding:0 14px 120px;min-height:100dvh;position:relative}
+.app{max-width:480px;margin:0 auto;padding:0 14px 120px;min-height:100dvh;position:relative;z-index:1}
 
 /* Header — compact app title bar (v6.34: shrunk from 56px sword to 22px brand-row) */
 .header{display:flex;align-items:center;justify-content:space-between;padding:14px 4px 10px;gap:12px}
@@ -67,7 +73,7 @@ body{font-family:'Nunito','Noto Sans JP',-apple-system,sans-serif;overflow-x:hid
 .tag{padding:6px 11px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);cursor:pointer;font-family:inherit;background:var(--card);color:var(--dim);transition:all .1s}
 .tag.active{background:var(--grape);color:#fff;border-color:var(--grape)}
 .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
-.pill-new{background:#ece4f5;color:#8a7ca3}
+.pill-new{background:rgba(157,92,255,.16);color:#c9b3ff}
 .pill-learning{background:#7c2d12;color:#fed7aa}
 .pill-apprentice{background:#713f12;color:#fde68a}
 .pill-guru{background:#14532d;color:#bbf7d0}
@@ -134,7 +140,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .word-meta{text-align:right;font-size:10px;color:var(--faint)}
 
 /* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);box-shadow:0 -6px 20px var(--shadow);display:flex;justify-content:space-around;padding:10px 0 calc(10px + env(safe-area-inset-bottom));z-index:50}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(18,12,32,.72);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid rgba(255,255,255,.08);box-shadow:0 -6px 20px rgba(0,0,0,.4);display:flex;justify-content:space-around;padding:10px 0 calc(10px + env(safe-area-inset-bottom));z-index:50}
 .nav-btn{background:none;border:none;color:var(--faint);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .nav-btn .nav-ico{font-size:20px;line-height:1}
 .nav-btn.active{color:var(--grape)}
@@ -431,39 +437,41 @@ body[data-screen="home"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 .h8-stat-num.accent{color:var(--red)}
 .h8-stat-label{font-size:9px;letter-spacing:2px;color:var(--faint);margin-top:7px;text-transform:uppercase;font-weight:800}
 
-/* ===== Vibrant Grape home theme (v7.72) — light, rounded, grape→pink ===== */
+/* ===== Dark Aurora home theme (v7.77) — glassy surfaces, grape→pink glow ===== */
 body:has(.home-v8){background:var(--bg)}
-.home-v8 .h8-icon-btn{border-radius:14px;box-shadow:0 4px 14px var(--shadow);color:var(--grape)}
-.home-v8 .h8-mark{color:var(--grape)}
-.home-v8 .h8-streak{background:#fff5e6;border:none;box-shadow:0 4px 14px rgba(245,158,11,.18);color:#f59e0b}
-.home-v8 .h8-hero{background:linear-gradient(140deg,#8b3dff 0%,#b056ff 55%,#ff5d9e 120%);border:none;border-radius:28px;box-shadow:0 18px 40px rgba(124,58,237,.4);min-height:0;padding:28px 24px}
-.home-v8 .h8-hero::before,.home-v8 .h8-hero::after{display:none}
-.home-v8 .h8-hero-deco{color:rgba(255,255,255,.16)}
-.home-v8 .h8-hero-eyebrow{background:none;-webkit-text-fill-color:#fff;color:#fff;opacity:.9;letter-spacing:2.5px;font-size:11px;font-weight:800;margin-bottom:14px}
-.home-v8 .h8-hero-title{color:#fff;font-weight:900;font-size:31px;letter-spacing:-1px;line-height:1.08;margin-bottom:10px}
-.home-v8 .h8-hero-meta{color:#fff;opacity:.9;font-weight:600;font-size:14px}
-.home-v8 .h8-hero-cta{background:#fff;color:var(--grape);border-radius:18px;font-weight:800;box-shadow:0 10px 22px rgba(0,0,0,.18)}
-.home-v8 .h8-hero-cta:hover{box-shadow:0 12px 28px rgba(0,0,0,.22)}
-.home-v8 .h8-hero-cta:disabled{background:rgba(255,255,255,.5);color:rgba(124,58,237,.45);box-shadow:none}
+.home-v8 .h8-icon-btn{border-radius:14px;background:var(--card);border:1px solid var(--border);color:var(--text);box-shadow:none}
+.home-v8 .h8-mark{background:linear-gradient(120deg,#f5f2ff,#d9c9ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#f5f2ff}
+.home-v8 .h8-streak{background:rgba(255,93,158,.10);border:1px solid rgba(255,93,158,.28);box-shadow:0 0 18px rgba(255,93,158,.12);color:#ffd0e2}
+.home-v8 .h8-hero{background:linear-gradient(160deg,rgba(157,92,255,.16),rgba(255,93,158,.07) 60%,rgba(255,255,255,.02)),var(--card);border:1px solid rgba(255,255,255,.12);border-radius:28px;box-shadow:0 20px 50px rgba(80,30,160,.30),inset 0 1px 0 rgba(255,255,255,.07);min-height:0;padding:24px 22px;position:relative;overflow:hidden}
+.home-v8 .h8-hero::after{display:none}
+.home-v8 .h8-hero::before{content:'';display:block;position:absolute;top:-60px;right:-40px;width:220px;height:220px;background:radial-gradient(circle,rgba(255,93,158,.30),rgba(255,93,158,0) 70%);filter:blur(8px);pointer-events:none;z-index:0}
+.home-v8 .h8-hero-deco,.home-v8 .h8-hero-eyebrow,.home-v8 .h8-hero-title,.home-v8 .h8-hero-meta,.home-v8 .h8-hero-cta,.home-v8 .h8-hero>button{position:relative;z-index:1}
+.home-v8 .h8-hero-deco{color:rgba(255,255,255,.10)}
+.home-v8 .h8-hero-eyebrow{background:none;-webkit-text-fill-color:var(--pink);color:var(--pink);opacity:1;letter-spacing:2.5px;font-size:11px;font-weight:800;margin-bottom:12px}
+.home-v8 .h8-hero-title{color:#fff;font-weight:800;font-size:30px;letter-spacing:-.5px;line-height:1.1;margin-bottom:8px}
+.home-v8 .h8-hero-meta{color:var(--dim);opacity:1;font-weight:500;font-size:14px}
+.home-v8 .h8-hero-cta{background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;border-radius:20px;font-weight:700;box-shadow:0 12px 34px rgba(255,93,158,.40),inset 0 0 0 1px rgba(255,255,255,.10),0 0 30px rgba(157,92,255,.30)}
+.home-v8 .h8-hero-cta:hover{box-shadow:0 14px 40px rgba(255,93,158,.5),0 0 36px rgba(157,92,255,.4)}
+.home-v8 .h8-hero-cta:disabled{background:rgba(255,255,255,.08);color:rgba(245,242,255,.4);box-shadow:none}
 .home-v8 .h8-section{color:var(--dim);opacity:1}
-.home-v8 .h8-list{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 4px 14px var(--shadow)}
+.home-v8 .h8-list{background:var(--card);border:1px solid var(--border);border-radius:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .home-v8 .h8-row{background:transparent;border-bottom:1px solid var(--border);color:var(--text)}
 .home-v8 .h8-row:last-child{border-bottom:none}
-.home-v8 .h8-row:hover,.home-v8 .h8-row:active{background:var(--card2)}
+.home-v8 .h8-row:hover,.home-v8 .h8-row:active{background:rgba(255,255,255,.04)}
 .home-v8 .h8-row-emoji{display:none}
 .home-v8 .h8-row-title{color:var(--text)}
 .home-v8 .h8-row-meta{color:var(--faint);opacity:1}
 .home-v8 .h8-row-arrow{color:var(--faint)}
-.home-v8 .h8-stats{background:transparent;border:none;gap:11px;grid-template-columns:1fr 1fr 1fr;display:grid}
-.home-v8 .h8-stat{background:#fff;border-radius:20px;box-shadow:0 4px 14px var(--shadow)}
-.home-v8 .h8-stat-num{font-family:'Nunito',-apple-system,sans-serif;font-weight:900;font-size:26px;letter-spacing:-1px;color:var(--text)}
-.home-v8 .h8-stat-num.accent{background:none;-webkit-text-fill-color:var(--grape);color:var(--grape)}
-.home-v8 .h8-stat-num.flame{color:#f59e0b}
+.home-v8 .h8-stats{background:transparent;border:none;gap:10px;grid-template-columns:1fr 1fr 1fr;display:grid}
+.home-v8 .h8-stat{background:var(--card);border:1px solid var(--border);border-radius:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.home-v8 .h8-stat-num{font-family:'Nunito',-apple-system,sans-serif;font-weight:800;font-size:24px;letter-spacing:-.5px;background:linear-gradient(120deg,#f5f2ff,#c9b3ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#f5f2ff}
+.home-v8 .h8-stat-num.accent{background:linear-gradient(120deg,#c9b3ff,#ff9ec6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--grape)}
+.home-v8 .h8-stat-num.flame{background:none;-webkit-text-fill-color:#fbbf24;color:#fbbf24}
 .home-v8 .h8-stat-label{color:var(--faint);opacity:1}
-body:has(.home-v8) .scope-chip{background:#fff;border:1px solid var(--border);color:var(--text);box-shadow:0 4px 14px var(--shadow);border-radius:16px;padding:11px 16px;font-weight:700}
+body:has(.home-v8) .scope-chip{background:var(--card);border:1px solid var(--border);color:var(--text);box-shadow:none;border-radius:16px;padding:11px 16px;font-weight:600}
 body:has(.home-v8) .scope-chip .ct{color:var(--faint)}
-body:has(.home-v8) .scope-chip.active{background:linear-gradient(120deg,var(--grape),var(--pink));color:#fff;border-color:transparent;box-shadow:0 8px 20px rgba(124,58,237,.35)}
-body:has(.home-v8) .scope-chip.active .ct{color:rgba(255,255,255,.8)}
+body:has(.home-v8) .scope-chip.active{background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(255,93,158,.35),0 0 22px rgba(157,92,255,.30)}
+body:has(.home-v8) .scope-chip.active .ct{color:#fff;background:rgba(255,255,255,.25)}
 body:has(.home-v8) .header h1{color:var(--text)}
 body:has(.home-v8) .header .sub{color:var(--faint);opacity:1}
 
@@ -593,7 +601,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.76';
+const APP_VERSION = '7.77';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17258,7 +17266,7 @@ function renderHome(){
   const upNext = `
     <div class="h8-list" style="margin-top:6px">
       <button class="h8-row" onclick="startKanaBlitz('all')">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--grape)">あ</div>
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
         <div class="h8-row-body">
           <div class="h8-row-title">Learn Kana</div>
           <div class="h8-row-meta">Hiragana · Katakana · Mix</div>
