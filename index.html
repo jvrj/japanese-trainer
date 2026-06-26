@@ -577,8 +577,6 @@ body:has(.home-v8) .header{display:none}
 
 <nav class="bottom-nav">
   <button class="nav-btn" data-screen="home"><span class="nav-ico">🏠</span>Home</button>
-  <button class="nav-btn" data-screen="blitz"><span class="nav-ico">⚡</span>Blitz</button>
-  <button class="nav-btn" data-screen="library"><span class="nav-ico">📚</span>Library</button>
   <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>Settings</button>
 </nav>
 
@@ -595,7 +593,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.75';
+const APP_VERSION = '7.76';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17129,19 +17127,17 @@ function renderHome(){
   /* v7.48 — version + STT engine indicator below the wordmark.
      v7.49 — also shows 🔒 when the browser has granted persistent
      storage, so the user can verify their key won't be evicted. */
-  const whisperOn = whisperAvailable();
-  const persistent = !!state._storagePersistent;
-  const lock = persistent ? ' 🔒' : '';
-  const sttBadge = `<div onclick="nav('settings')" title="${whisperOn ? 'Whisper STT active' : 'Web Speech fallback — add an OpenAI key in Settings for accurate voice'}${persistent ? ' · storage marked persistent' : ' · storage NOT marked persistent (may be evicted)'}" style="text-align:center;margin:-2px 0 10px;font-size:10px;letter-spacing:0.06em;font-weight:700;cursor:pointer;color:${whisperOn ? '#16a34a' : 'var(--faint)'}"><span style="padding:3px 10px;border-radius:999px;background:${whisperOn ? 'rgba(22,163,74,0.10)' : 'rgba(124,58,237,0.07)'}">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web Speech'}${lock}</span></div>`;
+  /* v7.76 — declutter: STT engine badge + Library button removed from the
+     top bar. Whisper status now lives only in Settings; the home bar is just
+     the brand + streak (+ a settings cog). */
   const topBar = `
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
       <div class="h8-mark">一心<span class="r">Isshin</span></div>
       ${streak > 0
         ? `<span class="h8-streak">🔥 ${streak}</span>`
-        : `<button class="h8-icon-btn" onclick="nav('library')" title="Library">📚</button>`}
-    </div>
-    ${sttBadge}`;
+        : `<span style="width:38px"></span>`}
+    </div>`;
 
   /* Hero card — the centerpiece */
   const decoIsKanji = /^[぀-ヿ一-鿿]$/.test(heroDeco);
@@ -17252,26 +17248,24 @@ function renderHome(){
     { emoji:'あ', title:'Kana Blitz', meta:'Hiragana · Katakana · Mix', click:`startKanaBlitz('all')` }
   ].filter(Boolean);
 
-  /* v7.70 — Topics-first declutter. The user only uses the hero + topic picker
-     ("that's the crux of the app"); the long mode list was noise. Tuck it into a
-     collapsed disclosure so the home is just hero + topics by default, with
-     every other mode still one tap away. */
+  /* v7.76 — single-purpose home. The whole "More practice modes" list is
+     removed from the UI per the scope mandate (main voice loop + kana only).
+     Every other mode's code is retained in the file (a parts bin to rebuild
+     better later) — just no longer surfaced here. The one foundational
+     on-ramp we keep alongside the main loop is the kana trainer.
+     `upNextRows` above is intentionally left computed-but-unrendered so the
+     ideas stay one edit away. */
   const upNext = `
-    <details class="more-modes">
-      <summary>More practice modes</summary>
-      <div class="h8-list" style="margin-top:8px">
-      ${upNextRows.map(r => `
-        <button class="h8-row" onclick="${r.click}">
-          <div class="h8-row-emoji">${esc(r.emoji)}</div>
-          <div class="h8-row-body">
-            <div class="h8-row-title">${esc(r.title)}</div>
-            <div class="h8-row-meta">${esc(r.meta)}</div>
-          </div>
-          <div class="h8-row-arrow">›</div>
-        </button>
-      `).join('')}
-      </div>
-    </details>`;
+    <div class="h8-list" style="margin-top:6px">
+      <button class="h8-row" onclick="startKanaBlitz('all')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--grape)">あ</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Learn Kana</div>
+          <div class="h8-row-meta">Hiragana · Katakana · Mix</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+    </div>`;
 
   /* Stats footer */
   const statsRow = `
