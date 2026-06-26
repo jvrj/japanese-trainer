@@ -519,6 +519,51 @@ body:has(.home-v8) .header{display:none}
 .topbar{border-bottom:1px solid var(--border);padding-bottom:14px}
 .topbar-title{font-weight:800;font-size:18px;letter-spacing:-.3px;color:var(--text)}
 .topbar-back{border-radius:50%;box-shadow:0 2px 8px var(--shadow)}
+
+/* ============================================================
+   v7.75 — Settings toggles + blitz progress ring
+   ============================================================ */
+
+/* 17 · iOS-style toggle switches (scoped to settings word-rows) */
+.settings-v2 .word-row input[type="checkbox"]{
+  -webkit-appearance:none;appearance:none;position:relative;flex:0 0 auto;
+  width:46px;height:28px;border-radius:999px;margin-left:12px;cursor:pointer;
+  background:var(--card2);border:1px solid var(--border);
+  transition:background .22s ease,border-color .22s ease}
+.settings-v2 .word-row input[type="checkbox"]::after{
+  content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:#fff;box-shadow:0 2px 5px rgba(36,27,51,.22);
+  transition:transform .24s cubic-bezier(.34,1.56,.64,1),width .15s ease}
+.settings-v2 .word-row input[type="checkbox"]:checked{
+  background:linear-gradient(120deg,var(--grape),var(--pink));border-color:transparent}
+.settings-v2 .word-row input[type="checkbox"]:checked::after{transform:translateX(18px)}
+.settings-v2 .word-row input[type="checkbox"]:active::after{width:26px}
+.settings-v2 .word-row{align-items:center}
+.settings-v2 .word-row .word-jp{font-size:14px}
+/* 17 · grouped card rhythm + accented section headers */
+.settings-v2 .card{margin-bottom:12px;border-radius:18px}
+.settings-v2 .card h3{display:flex;align-items:center;gap:8px;color:var(--grape);
+  font-size:11px;letter-spacing:2px}
+.settings-v2 .card h3::before{content:'';width:3px;height:13px;border-radius:2px;
+  background:linear-gradient(var(--grape),var(--pink));flex:0 0 auto}
+
+/* 27 · blitz progress ring */
+.blitz-head{display:flex;align-items:center;gap:12px;padding:12px}
+.bring{position:relative;width:48px;height:48px;flex:0 0 auto}
+.bring-svg{width:48px;height:48px;transform:rotate(-90deg)}
+.bring-track{fill:none;stroke:var(--card2);stroke-width:4}
+.bring-fill{fill:none;stroke-width:4;stroke-linecap:round;
+  transition:stroke-dashoffset .55s cubic-bezier(.16,1,.3,1)}
+.bring-center{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;line-height:1}
+.bring-num{font-weight:900;font-size:16px;color:var(--text);letter-spacing:-.5px}
+.bring-lbl{font-size:7px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);
+  font-weight:800;margin-top:1px}
+.blitz-head-mid{flex:1;min-width:0}
+.blitz-head-streak{font-weight:800;font-size:13px;color:var(--text);letter-spacing:-.2px}
+.blitz-head-done{font-size:11px;color:var(--faint);margin-top:2px}
+.blitz-head-btns{display:flex;gap:6px;flex-shrink:0}
+@media (prefers-reduced-motion:reduce){.bring-fill{transition:none}}
 </style>
 </head>
 <body>
@@ -550,7 +595,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.74';
+const APP_VERSION = '7.75';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -7470,17 +7515,32 @@ function renderBlitz(){
   const streakLabel = poolItem.mature
     ? `Mature · confirm 1×`
     : `Streak ${poolItem.streak}/${poolItem.required}`;
-  const progressLabel = `${b.tally.graduated}/${b.tally.total} graduated · pool ${b.pool.length}`;
+  // 27 · progress ring — words still to graduate this session.
+  const _done = b.tally.graduated;
+  const _toGo = b.pool.length;
+  const _denom = Math.max(1, _done + _toGo);
+  const _circ = 119.38;                 // 2πr, r=19
+  const _off = (_circ * (1 - _done / _denom)).toFixed(1);
 
   const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="blitzToggleVoiceMode()" title="Hands-free voice mode — listens for your spoken answer">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
-  const head = `<div class="card" style="padding:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap">
-      <span class="muted" style="font-size:13px">${esc(progressLabel)}</span>
-      <span class="muted" style="font-size:12px">${esc(streakLabel)}</span>
-      <div style="display:flex;gap:6px">
-        ${voicePill}
-        <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
-      </div>
+  const head = `<div class="card blitz-head">
+    <div class="bring">
+      <svg class="bring-svg" viewBox="0 0 44 44">
+        <defs><linearGradient id="bringGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="var(--grape)"/><stop offset="1" stop-color="var(--pink)"/>
+        </linearGradient></defs>
+        <circle class="bring-track" cx="22" cy="22" r="19"/>
+        <circle class="bring-fill" cx="22" cy="22" r="19" stroke="url(#bringGrad)" stroke-dasharray="${_circ}" stroke-dashoffset="${_off}"/>
+      </svg>
+      <div class="bring-center"><span class="bring-num">${_toGo}</span><span class="bring-lbl">to go</span></div>
+    </div>
+    <div class="blitz-head-mid">
+      <div class="blitz-head-streak">${esc(streakLabel)}</div>
+      <div class="blitz-head-done">${_done} graduated · pool ${b.pool.length}</div>
+    </div>
+    <div class="blitz-head-btns">
+      ${voicePill}
+      <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onclick="blitzToggleDir()">${esc(dirLabel)} ⇄</button>
     </div>
   </div>`;
 
@@ -18204,6 +18264,7 @@ function renderSettings(){
   const regList = ['casual','neutral','polite'];
 
   return `
+    <div class="settings-v2">
     <div class="card">
       <h3>Study filters</h3>
       <div class="muted" style="margin-bottom:10px">Themes — tap to include (empty = all)</div>
@@ -18375,6 +18436,7 @@ function renderSettings(){
         ${state.logs.length} events logged<br>
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
       </div>
+    </div>
     </div>
   `;
 }
