@@ -592,6 +592,28 @@ body:has(.home-v8) .header{display:none}
 .blitz-head-done{font-size:11px;color:var(--faint);margin-top:2px}
 .blitz-head-btns{display:flex;gap:6px;flex-shrink:0}
 @media (prefers-reduced-motion:reduce){.bring-fill{transition:none}}
+/* ===== Ship 6 — Home = Topics + Today path tab ===== */
+.path-strip{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin:0 0 13px;cursor:pointer}
+.path-dots{display:flex;gap:3px;margin-top:5px}
+.path-dots i{width:14px;height:5px;border-radius:3px;background:rgba(255,255,255,.16)}
+.path-dots i.done{background:linear-gradient(90deg,#9d5cff,#ff5d9e)}
+.topic-search{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 14px;margin-bottom:14px}
+.topic-search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-weight:600;font-size:14px}
+.cont-card{display:flex;align-items:center;gap:13px;border-radius:20px;padding:14px;background:linear-gradient(150deg,rgba(157,92,255,.26),rgba(255,93,158,.12));border:1px solid rgba(255,255,255,.18);box-shadow:0 14px 34px rgba(255,93,158,.28);margin-bottom:15px;cursor:pointer}
+.cont-go{width:42px;height:42px;flex-shrink:0;border-radius:50%;background:#fff;border:none;color:#c0317a;font-size:14px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.cont-go:disabled{opacity:.4;cursor:not-allowed}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.cat-tile{position:relative;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px 8px 11px;text-align:center;cursor:pointer}
+.cat-tile:active{transform:scale(.96)}
+.cat-tile.active{border-color:rgba(157,92,255,.55);background:rgba(157,92,255,.12)}
+.cat-em{font-size:22px}
+.cat-nm{font-weight:800;font-size:11.5px;margin-top:6px;color:var(--text)}
+.cat-ct{font-weight:700;font-size:9.5px;color:var(--faint);margin-top:1px}
+.cat-tile-play{position:absolute;top:7px;right:7px;width:21px;height:21px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;padding-left:1px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#ff5d9e;cursor:pointer}
+.cat-tile-play.on{background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;border-color:transparent}
+.cat-tile-play:disabled{opacity:.3;cursor:not-allowed;color:var(--faint)}
+.cat-group{margin-bottom:16px}
+.cat-group-label{font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);margin:0 4px 9px}
 </style>
 </head>
 <body>
@@ -604,7 +626,8 @@ body:has(.home-v8) .header{display:none}
 </div>
 
 <nav class="bottom-nav">
-  <button class="nav-btn" data-screen="home"><span class="nav-ico">🏠</span>Home</button>
+  <button class="nav-btn" data-screen="home"><span class="nav-ico">🗂️</span>Home</button>
+  <button class="nav-btn" data-screen="today"><span class="nav-ico">🧭</span>Today</button>
   <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>Settings</button>
 </nav>
 
@@ -621,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.93';
+const APP_VERSION = '7.94';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -18526,7 +18549,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
 const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
 
 function renderTopbar(){
-  if(state.screen === 'home') return '';
+  if(state.screen === 'home' || state.screen === 'today') return '';
   let title = SCREEN_TITLES[state.screen];
   if(state.screen === 'formDrill'){
     const f = FORMS.find(x => x.id === state._navData);
@@ -18895,7 +18918,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
+  const r = {home:renderHome, today:renderToday, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -18943,6 +18966,156 @@ function updateNav(){
    descriptions. Single accent (blue); other colors retired from buttons.
    Each tile shows a 1-line progress meta so users still see at-a-glance
    where each mode stands without paragraphs. */
+/* ===== Ship 6 — Topics home + Today path tab ===== */
+function _homeTopBar(){
+  const streak = state.streak.current || 0;
+  return `
+    <div class="h8-bar">
+      <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
+      <div class="h8-mark">一心<span class="r">Isshin</span></div>
+      ${streak > 0 ? `<span class="h8-streak">🔥 ${streak}</span>` : `<span style="width:38px"></span>`}
+    </div>`;
+}
+
+/* Daily Path model — shared by the Today screen (full timeline) and the Home
+   path-strip (summary). Same steps/routing as Ship 4 (pathGo unchanged). */
+function _dailyPathModel(){
+  const _dp = _dailyPath();
+  const pool = (typeof getDrillableWords === 'function') ? getDrillableWords() : getActiveWords();
+  const nowT = now();
+  let due = 0, nw = 0;
+  pool.forEach(w => { const st = state.stats[w.id]; if(!st || !st.attempts || !st.attempts.length){ nw++; } else { ensureSm(st); if(st.smNext <= nowT) due++; } });
+  const steps = [
+    { key:'review',   mode:'Recall',         title:'Warm-up · recall what’s due', meta: due ? `${due} due now` : 'nothing due — you’re clear', auto: due === 0 },
+    { key:'learn',    mode:'Hands-free',     title:'Learn new words',             meta: `${nw} new · audio-led` },
+    { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
+    { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
+    { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
+    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-scored' }
+  ];
+  steps.forEach(s => { s._done = !!_dp.done[s.key] || !!s.auto; });
+  const curIdx = steps.findIndex(s => !s._done);
+  const doneCount = steps.filter(s => s._done).length;
+  const allDone = curIdx < 0;
+  const continueKey = allDone ? 'review' : steps[curIdx].key;
+  const continueLabel = allDone ? '✓ Path complete — go again' : (doneCount === 0 ? 'Start today’s path →' : 'Continue →');
+  return { steps, curIdx, doneCount, total: steps.length, allDone, continueKey, continueLabel };
+}
+
+/* Words in a given section/collection, scoped to the active deck. */
+function _topicWords(sec){
+  const active = getActiveWords();
+  if(sec.mode === 'mastered'){
+    const ms = new Set(state.settings.masteredWords || []);
+    return active.filter(w => ms.has(w.id) || (state.stats[w.id] && state.stats[w.id].smInterval >= BLITZ_MATURE_MIN));
+  }
+  if(sec.isCollection){ const col = collectionById(sec.id); const ids = new Set((col && col.wordIds) || []); return active.filter(w => ids.has(w.id)); }
+  if(!sec.themes) return active;
+  const set = new Set(sec.themes);
+  return active.filter(w => set.has(w.theme));
+}
+
+/* One tile — used for the curated grid AND the grouped lists.
+   Tap tile = select scope (Ship 1 setVocabSection); ▶ = hands-free (Ship 1 startTopicHandsFree). */
+function topicTile(id, emoji, name, count, isActive){
+  const noWords = count === 0;
+  return `<div class="cat-tile${isActive ? ' active' : ''}" data-name="${esc(String(name).toLowerCase())}" onclick="setVocabSection('${jsEsc(id)}')">`
+    + `<button class="cat-tile-play${isActive ? ' on' : ''}" ${noWords ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(id)}')" aria-label="Start hands-free: ${esc(name)}">▶</button>`
+    + `<div class="cat-em">${esc(emoji)}</div><div class="cat-nm">${esc(name)}</div><div class="cat-ct">${count == null ? '' : esc(String(count))}</div>`
+    + `</div>`;
+}
+
+/* Curated built-in topic sections, ordered All-first then most-words-first.
+   Mastered shown only if it has content; excludes the active (Continuing) id. */
+function curatedTopicTiles(active, excludeId){
+  const ms = new Set(state.settings.masteredWords || []);
+  const masteredReady = active.filter(w => { if(ms.has(w.id)) return true; const st = state.stats[w.id]; return st && st.smInterval && st.smInterval >= BLITZ_MATURE_MIN; }).length;
+  const rows = VOCAB_SECTIONS.map(s => {
+    let count;
+    if(s.mode === 'mastered') count = masteredReady;
+    else if(!s.themes) count = active.length;
+    else { const set = new Set(s.themes); count = active.filter(w => set.has(w.theme)).length; }
+    return { id:s.id, emoji:s.emoji, name:s.name, count, isAll: s.id === 'all', isMastered: s.mode === 'mastered' };
+  }).filter(r => r.id !== excludeId && !(r.isMastered && r.count === 0));
+  rows.sort((a,b) => (b.isAll - a.isAll) || (b.count - a.count));
+  return rows;
+}
+
+/* Live topic filter — toggles display only, so the keyboard/focus stays put. */
+function filterTopics(q){
+  q = (q || '').trim().toLowerCase();
+  document.querySelectorAll('#topicResults .cat-tile').forEach(t => {
+    t.style.display = (!q || (t.dataset.name || '').includes(q)) ? '' : 'none';
+  });
+  document.querySelectorAll('#topicResults .cat-group').forEach(g => {
+    const any = [...g.querySelectorAll('.cat-tile')].some(t => t.style.display !== 'none');
+    g.style.display = any ? '' : 'none';
+  });
+}
+window.filterTopics = filterTopics;
+
+/* The "Today" tab — the guided Daily Path (relocated from the old home) plus
+   the extra single-tap modes. Routing (pathGo) is Ship 4, unchanged. */
+function renderToday(){
+  const _convoInfo = convoLevelInfo();
+  const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
+  const dp = _dailyPathModel();
+  const pathNodes = dp.steps.map((s, i) => {
+    const done = s._done, current = i === dp.curIdx;
+    const dot = done
+      ? 'width:26px;height:26px;border-radius:50%;background:#34d399;display:flex;align-items:center;justify-content:center;color:#06281c;font-weight:900;font-size:13px;flex-shrink:0'
+      : current
+        ? 'width:26px;height:26px;border-radius:50%;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 0 0 4px rgba(157,92,255,.22),0 0 16px rgba(255,93,158,.5);flex-shrink:0'
+        : 'width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.22);flex-shrink:0';
+    const line = i === dp.steps.length - 1 ? 'display:none' : 'width:2px;flex:1;background:rgba(255,255,255,.12);margin:3px 0';
+    const titleStyle = current ? 'font-weight:800;font-size:15px;color:#fff' : (done ? 'font-weight:800;font-size:14px;color:#9fe9cf' : 'font-weight:800;font-size:14px;color:#cdbfe8');
+    return `<button class="dp-node" onclick="pathGo('${s.key}')" style="display:flex;gap:13px;background:none;border:none;text-align:left;padding:0;cursor:pointer;width:100%;font-family:inherit">
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="${dot}">${done ? '✓' : ''}</div><div style="${line}"></div></div>
+      <div style="flex:1;padding-bottom:15px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div style="min-width:0"><div style="${titleStyle}">${esc(s.title)}</div><div style="font-weight:600;font-size:11.5px;color:#8a80a8;margin-top:3px">${esc(s.meta)}</div></div>
+        <div style="flex:0 0 auto;font-weight:800;font-size:8.5px;letter-spacing:.7px;text-transform:uppercase;color:#c9b3ff;background:rgba(157,92,255,.14);border:1px solid rgba(157,92,255,.28);padding:4px 7px;border-radius:8px;margin-top:1px">${esc(s.mode)}</div>
+      </div>
+    </button>`;
+  }).join('');
+  const extras = `
+    <div class="h8-list" style="margin-top:18px">
+      <button class="h8-row" onclick="nav('convo')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}${_convoInfo.en ? ' · ' + esc(_convoInfo.en) : ''}</span></div>
+          <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-scored</div>
+          <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
+          <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+      <button class="h8-row" onclick="startFormsLadder()">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Verb forms</div>
+          <div class="h8-row-meta">One verb · every form · tap to recall</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+      <button class="h8-row" onclick="startKanaBlitz('all')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Learn Kana</div>
+          <div class="h8-row-meta">Hiragana · Katakana · Mix</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+    </div>`;
+  return `
+    <div class="home-v8">
+      ${_homeTopBar()}
+      <div class="h8-section" style="margin:2px 4px 11px">🧭 Today’s path <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· ${dp.doneCount}/${dp.total} done</span></div>
+      <div style="display:flex;flex-direction:column;margin:0 2px">${pathNodes}</div>
+      <button class="h8-hero-cta" onclick="pathGo('${dp.continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${esc(dp.continueLabel)}</button>
+      ${extras}
+    </div>`;
+}
+
 function renderHome(){
   const active = getActiveWords();
   const streak = state.streak.current || 0;
@@ -19290,12 +19463,66 @@ function renderHome(){
     : '';
   const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· tap ▶ to go hands-free</span></div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
+  /* ===== Ship 6 — Home renders the Topics screen ===== */
+  const _dpm = _dailyPathModel();
+  const _dots = _dpm.steps.map(s => `<i class="${s._done ? 'done' : ''}"></i>`).join('');
+  const pathStrip = `
+    <div class="path-strip" onclick="nav('today')">
+      <div style="font-size:20px">🧭</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div style="font-weight:800;font-size:13px;color:var(--text)">Today’s path <span style="font-weight:600;color:var(--faint)">· ${_dpm.doneCount}/${_dpm.total}</span></div>
+          <div style="font-weight:800;font-size:12px;color:#c9b3ff">${_dpm.allDone ? 'Review →' : 'Resume →'}</div>
+        </div>
+        <div class="path-dots">${_dots}</div>
+      </div>
+    </div>`;
+  const searchBox = `<div class="topic-search"><span style="font-size:15px">🔍</span><input type="text" placeholder="Search topics…" oninput="filterTopics(this.value)"></div>`;
+  /* Continuing card — the active scope, open-and-go */
+  const _sec = activeVocabSection();
+  const _secWords = _topicWords(_sec);
+  const _nowT = now();
+  const _learned = _secWords.filter(w => { const st = state.stats[w.id]; return st && st.attempts && st.attempts.length; }).length;
+  const _due = _secWords.filter(w => { const st = state.stats[w.id]; if(!st || !st.attempts || !st.attempts.length) return false; ensureSm(st); return st.smNext <= _nowT; }).length;
+  const _contNo = _secWords.length === 0;
+  const contCard = `
+    <div class="cont-card" onclick="setVocabSection('${jsEsc(_sec.id)}')">
+      <div style="width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:25px;background:rgba(255,255,255,.16);flex-shrink:0">${esc(_sec.emoji || '🔀')}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.85);text-transform:uppercase">Continuing · hands-free</div>
+        <div style="font-weight:800;font-size:18px;color:#fff;margin-top:1px">${esc(_sec.name)}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.85);margin-top:2px">${_learned}/${_secWords.length} learned · ${_due} due</div>
+      </div>
+      <button class="cont-go" ${_contNo ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(_sec.id)}')" aria-label="Start hands-free: ${esc(_sec.name)}">▶</button>
+    </div>`;
+  /* Curated quick-pick grid (8) + grouped full list (all searchable) */
+  const _curated = curatedTopicTiles(active, _sec.id);
+  const _quick = _curated.slice(0, 8);
+  const _restTopics = _curated.slice(8);
+  const _vSec = state.settings.vocabSection || 'all';
+  const quickGrid = _quick.map(r => topicTile(r.id, r.emoji, r.name, r.count, _vSec === r.id)).join('');
+  const restGrid = _restTopics.map(r => topicTile(r.id, r.emoji, r.name, r.count, _vSec === r.id)).join('');
+  const _allCols = getCollections();
+  const _melRank = c => { if(c.id === 'col_mel_book1') return 0; if(c.id === 'col_mel_book2') return 1; if(c.id.startsWith('col_mel_l')){ const n = parseInt(c.id.slice('col_mel_l'.length), 10); return 100 + (isNaN(n) ? 999 : n); } return null; };
+  const _melCols = _allCols.filter(c => _melRank(c) !== null).sort((a,b) => _melRank(a) - _melRank(b));
+  const _userCols = _allCols.filter(c => _melRank(c) === null);
+  const colGrid = _userCols.map(c => topicTile(c.id, c.emoji, c.name, (c.wordIds || []).length, _vSec === c.id)).join('');
+  const melGrid = _melCols.map(c => topicTile(c.id, c.emoji, c.name, (c.wordIds || []).length, _vSec === c.id)).join('');
+  const groupHtml = (label, grid) => grid ? `<div class="cat-group"><div class="cat-group-label">${esc(label)}</div><div class="cat-grid">${grid}</div></div>` : '';
+  const results = `<div id="topicResults">`
+    + groupHtml('Quick picks', quickGrid)
+    + groupHtml('Your topics', restGrid)
+    + groupHtml('Collections', colGrid)
+    + groupHtml('Textbook lessons (みんな)', melGrid)
+    + `</div>`;
+
   return `
     <div class="home-v8">
       ${topBar}
-      ${heroCard}
-      ${scopeRow}
-      ${upNext}
+      ${pathStrip}
+      ${searchBox}
+      ${contCard}
+      ${results}
       ${statsRow}
     </div>
   `;
