@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.91';
+const APP_VERSION = '7.92';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3026,10 +3026,10 @@ const CONVO_LEVEL_XP = 100;
  * Tiers 1–2 and 3–4 differ in chips (3 vs 2), ttsRate, and maxTurns.
  */
 const CONVO_TIERS = [
-  { lv:1, name:'はじめて',   chips:3, ttsRate:0.70, maxTurns:4,        xpToNext:20       },
-  { lv:2, name:'すこし',     chips:3, ttsRate:0.75, maxTurns:6,        xpToNext:40       },
-  { lv:3, name:'なれてきた', chips:2, ttsRate:0.80, maxTurns:8,        xpToNext:80       },
-  { lv:4, name:'じょうず',   chips:2, ttsRate:0.90, maxTurns:10,       xpToNext:Infinity },
+  { lv:1, name:'はじめて',   en:'Beginner',     chips:3, ttsRate:0.70, maxTurns:4,        xpToNext:20       },
+  { lv:2, name:'すこし',     en:'A little',     chips:3, ttsRate:0.75, maxTurns:6,        xpToNext:40       },
+  { lv:3, name:'なれてきた', en:'Getting it',   chips:2, ttsRate:0.80, maxTurns:8,        xpToNext:80       },
+  { lv:4, name:'じょうず',   en:'Skilled',      chips:2, ttsRate:0.90, maxTurns:10,       xpToNext:Infinity },
 ];
 
 /**
@@ -3069,12 +3069,12 @@ function _convoSafeName(){
  *   minLevel  — minimum convoLevel required to unlock this scene
  */
 const SCENES = [
-  { id:'intro',    nameJP:'じこしょうかい', minLevel:1 },
-  { id:'food',     nameJP:'たべもの',       minLevel:1 },
-  { id:'family',   nameJP:'かぞく',         minLevel:1 },
-  { id:'town',     nameJP:'まち',           minLevel:2 },
-  { id:'daily',    nameJP:'にちじょう',     minLevel:2 },
-  { id:'hobbies',  nameJP:'しゅみ',         minLevel:3 },
+  { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1 },
+  { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1 },
+  { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1 },
+  { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2 },
+  { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2 },
+  { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3 },
 ];
 
 /**
@@ -3101,7 +3101,7 @@ function convoLevelInfo(){
   const tier = CONVO_TIERS.find(t => t.lv === lv) || CONVO_TIERS[CONVO_TIERS.length - 1];
   const atMax = lv >= CONVO_TIERS[CONVO_TIERS.length - 1].lv;
   const scenes = SCENES.filter(s => s.minLevel <= lv);
-  return { lv, name: tier.name, scenes, chips: tier.chips, ttsRate: tier.ttsRate, maxTurns: tier.maxTurns, xp, xpToNext: tier.xpToNext, atMax };
+  return { lv, name: tier.name, en: tier.en, scenes, chips: tier.chips, ttsRate: tier.ttsRate, maxTurns: tier.maxTurns, xp, xpToNext: tier.xpToNext, atMax };
 }
 window.convoLevelInfo = convoLevelInfo;
 
@@ -9987,7 +9987,10 @@ function renderConvo(){
   if(cv._frozen && cur && cur.jp){
     return `<div style="padding:2px 2px 24px">
       ${_convoPartnerHeader(cv)}
-      <div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:12px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
+      <div style="margin-bottom:12px">
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
+        ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
+      </div>
       <div class="convo-turn them" style="margin-bottom:6px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
       </div>
@@ -10035,8 +10038,11 @@ function renderConvo(){
   return `<div style="padding:2px 2px 24px">
     ${_convoPartnerHeader(cv)}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-      <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
-      <div style="font-size:11px;color:#6f6688">ターン ${cv.turn} / ${cv.maxTurns}</div>
+      <div>
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
+        ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
+      </div>
+      <div style="font-size:11px;color:#6f6688;flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}</div>
     </div>
     ${aiLine}
     ${errBlock}
@@ -10066,7 +10072,7 @@ function _renderConvoRecap(cv){
   const levelUpBlock = r.leveledUpTo
     ? `<div style="background:linear-gradient(100deg,rgba(157,92,255,.2),rgba(255,93,158,.15));border:2px solid rgba(157,92,255,.55);border-radius:16px;padding:14px 18px;margin-bottom:14px">
         <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:5px">🎊 レベルアップ！</div>
-        <div style="font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo)} に なりました！</div>
+        <div style="font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo)} に なりました！${(CONVO_TIERS.find(t=>t.name===r.leveledUpTo)||{}).en ? ' <span style="opacity:.7">(' + esc((CONVO_TIERS.find(t=>t.name===r.leveledUpTo)||{}).en) + ')</span>' : ''}</div>
        </div>`
     : '';
   /* xpToNext from recap snapshot (may be Infinity at atMax — show ∞ in that case) */
@@ -19177,7 +19183,7 @@ function renderHome(){
       <button class="h8-row" onclick="nav('convo')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}</span></div>
+          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}${_convoInfo.en ? ' · ' + esc(_convoInfo.en) : ''}</span></div>
           <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-scored</div>
           <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
           <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
