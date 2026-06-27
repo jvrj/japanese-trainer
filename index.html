@@ -2954,7 +2954,8 @@ const LS = {
   variationStats:'jp4_variation_stats',
   similarStats:'jp4_similar_stats',
   snapshots:'jp4_snapshots',       // v7.44 — weekly progress snapshots for the Progress screen
-  openaiKey:'jp4_openai_key'       // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
+  openaiKey:'jp4_openai_key',      // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
+  convo:'jp4_convo'                // oshaberi — mid-session conversation state (scene, messages, pool, etc.)
 };
 
 const DEFAULT_SETTINGS = {
@@ -3001,8 +3002,46 @@ const DEFAULT_SETTINGS = {
   modulesEnabled:false,       // v7.69 — topics-first: guided unlock path OFF by default; every topic is always open. Re-enableable in Settings.
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
   currentModuleId:null,       // user's current focus module — Vocab Blitz/Build pull from here + earlier modules
-  unlockBypassed:[]           // module ids the user manually unlocked via "Unlock anyway"
+  unlockBypassed:[],          // module ids the user manually unlocked via "Unlock anyway"
+  convoHandsFree:true,        // oshaberi — auto-open mic after TTS (mirrors spam-mode hands-free default)
+  convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
+  convoXp:0                   // oshaberi — XP toward the next convoLevel
 };
+
+/* =========================================================================
+   OSHABERI (おしゃべり) — CONVERSATION MODE CONSTANTS
+   ========================================================================= */
+
+/** XP threshold per convoLevel. Each level costs this many XP to clear. */
+const CONVO_LEVEL_XP = 100;
+
+/**
+ * SCENES — closed bank of conversation scenarios for oshaberi.
+ * Each entry: { id, nameJP, minLevel }
+ *   id        — machine key used as LS discriminator
+ *   nameJP    — kana-only display label (no kanji — project invariant)
+ *   minLevel  — minimum convoLevel required to unlock this scene
+ */
+const SCENES = [
+  { id:'intro',    nameJP:'じこしょうかい', minLevel:1 },
+  { id:'food',     nameJP:'たべもの',       minLevel:1 },
+  { id:'family',   nameJP:'かぞく',         minLevel:1 },
+  { id:'town',     nameJP:'まち',           minLevel:2 },
+  { id:'daily',    nameJP:'にちじょう',     minLevel:2 },
+  { id:'hobbies',  nameJP:'しゅみ',         minLevel:3 },
+];
+
+/**
+ * FREE_SET — closed set of always-available scaffold tokens.
+ * The AI may ask questions answerable with only pool words + these tokens.
+ * All values are kana-only (no kanji, no romaji). Never expanded at runtime.
+ */
+const FREE_SET = [
+  'いち', 'に', 'さん', 'し', 'ご',   // numbers 1–5
+  'はい', 'いいえ',                     // yes / no
+  'です', 'ます',                       // polite copula / verb ending
+  'わたし', 'あなた',                   // I / you
+];
 
 let state = {
   words:[],           // array of word objects (from N5 + user-captures + user-added)
@@ -3035,6 +3074,10 @@ let state = {
   _reveal:false,
   _sentenceAnswer:null,
   _libraryUi:{search:'', sort:'en', filter:'all', expandedId:null}, // v6.10 — Library transient UI
+  /** oshaberi session state — null when no session is active, restored from LS.convo on load.
+   *  Fields: scene, messages, pool, freeSet, turn, maxTurns, current, listening,
+   *          interim, viaVoice, loading, error, peekGloss, results, done */
+  convo:null,
 };
 
 /* =========================================================================
@@ -3276,6 +3319,7 @@ function save(){
     localStorage.setItem(LS.variationStats, JSON.stringify(state.variationStats || {}));
     localStorage.setItem(LS.similarStats, JSON.stringify(state.similarStats || {}));
     localStorage.setItem(LS.snapshots, JSON.stringify(state.snapshots || []));
+    localStorage.setItem(LS.convo, JSON.stringify(state.convo));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -3365,6 +3409,7 @@ function load(){
     state.variationStats = JSON.parse(localStorage.getItem(LS.variationStats)||'{}');
     state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
     state.snapshots = JSON.parse(localStorage.getItem(LS.snapshots)||'[]');
+    state.convo = JSON.parse(localStorage.getItem(LS.convo)||'null');
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
