@@ -10321,6 +10321,7 @@ function pathGo(step){
   else if(step === 'sentence') startSentenceCoach();
   else if(step === 'nuance') startNuance();
   else if(step === 'memory') startMemory();
+  else if(step === 'convo') startConvo();
   /* Credit the step only if the launcher actually entered a mode — some bail
      (e.g. startRecall with an empty pool) without navigating. */
   if(state.screen !== 'home'){ d.done[step] = true; save(); }
@@ -18942,7 +18943,8 @@ function renderHome(){
     { key:'learn',    mode:'Hands-free',     title:'Learn new words',             meta: `${_dpNew} new · audio-led` },
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
-    { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' }
+    { key:’memory’,   mode:’Memory’,         title:’Check your memory’,           meta: ‘see what’s coming back’ },
+    { key:’convo’,    mode:’おしゃべり’,    title:’Conversation practice’,        meta: ‘AI-led · multi-turn · voice-scored’ }
   ];
   const isDone = s => !!_dp.done[s.key] || !!s.auto;
   let curIdx = pathSteps.findIndex(s => !isDone(s)); if(curIdx < 0) curIdx = -1;
@@ -18973,6 +18975,14 @@ function renderHome(){
     <div style="display:flex;flex-direction:column;margin:0 2px">${pathNodes}</div>
     <button class="h8-hero-cta" onclick="pathGo('${continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${continueLabel}</button>
     <div class="h8-list" style="margin-top:18px">
+      <button class="h8-row" onclick="nav('convo')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">おしゃべり</div>
+          <div class="h8-row-meta">AI-led · multi-turn · voice-scored</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
       <button class="h8-row" onclick="startFormsLadder()">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
         <div class="h8-row-body">
@@ -20043,6 +20053,8 @@ function renderSettings(){
         <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">🎙️ Voice mode (works on every drill)</div><div class="word-en">${voiceSupported() ? 'Universal switch — when on, Build Mode and Vocab Blitz both listen for your spoken answer and submit it for you. Close matches count as correct. After 2 STT misses on a card, it falls back to typing so you\'re never stranded. Designed for driving.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
         <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in おしゃべり conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
+        <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
