@@ -9354,6 +9354,384 @@ const _CONVO_SCRIPT_TURNS = [
 
 /* ===================== END CONVO HELPERS ===================== */
 
+/* ===================== OSHABERI TURN ENGINE ===================== */
+/* sprint: convo-turn-engine
+   Adds startConvo, convoTurn, convoApplyScore, convoEnd (logic core). */
+
+const CONVO_MAX_TURNS = 6;
+
+/* Convert FREE_SET string array to pool-compatible word objects for _convoPreamble */
+function _convoFreeSetWords(){
+  return FREE_SET.map((jp, i) => ({ id: 'free_' + i, jp }));
+}
+
+/* Fallback chips when parse fails — use first 3 pool words */
+function _convoFallbackChips(cv){
+  return ((cv && cv.pool) || []).slice(0, 3).map(w => w.jp || '').filter(Boolean);
+}
+
+/* _convoOpenProbe — AI asks the first question (no user turn) */
+async function _convoOpenProbe(){
+  const cv = state.convo; if(!cv) return;
+  cv.loading = true; cv.error = null; render();
+  const key = (state.settings.anthropicKey || '').trim();
+  let rawStr;
+  try {
+    rawStr = key ? await _convoCall([], cv.preamble) : _convoScript(cv.sceneId, 0);
+  } catch(e){
+    cv.loading = false;
+    cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
+    render(); return;
+  }
+  /* Retry-once on same raw string */
+  let parsed = _aiJsonExtract(rawStr);
+  if(!parsed) parsed = _aiJsonExtract(rawStr);
+  if(!parsed){
+    cv.loading = false;
+    cv.error = 'もう いちど？';
+    cv.current = { jp:'', glossEn:'', suggested: _convoFallbackChips(cv), sceneDone:false };
+    render(); return;
+  }
+  cv.current = parsed;
+  cv.messages.push({ role:'assistant', content: parsed.jp || '' });
+  cv.loading = false;
+  save();
+  render();
+  if(parsed.jp){
+    _buildSpeakJP(parsed.jp, () => {
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done) convoStartListen();
+    });
+  }
+}
+
+/* startConvo — seed pool, reset state.convo, nav, kick opening probe */
+function startConvo(sceneId){
+  stopVoice();
+  const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
+  /* (a) Seed ~8 due-first words via _buildSpamPick */
+  const pool = _buildSpamPick(getActiveWords(), 8);
+  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ');
+  /* (b) Fresh reset — never merge over a prior session */
+  state.convo = {
+    sceneId: scene.id,
+    scene: scene,
+    pool: pool,
+    preamble: preamble,
+    messages: [],
+    turn: 0,
+    maxTurns: CONVO_MAX_TURNS,
+    /* (c) judged explicitly null so convoApplyScore null guard fires on first turn */
+    judged: null,
+    viaVoice: false,
+    current: null,
+    loading: false,
+    error: null,
+    listening: false,
+    interim: '',
+    peekGloss: false,
+    done: false,
+    recap: null,
+  };
+  save();
+  nav('convo');
+  _convoOpenProbe();
+}
+window.startConvo = startConvo;
+
+/* convoTurn — process one user reply */
+async function convoTurn(userText, viaVoice){
+  const cv = state.convo;
+  if(!cv || cv.loading || cv.done) return;
+  const text = (userText || '').trim();
+  if(!text) return;
+
+  /* Apply SRS score for the PREVIOUS AI judged object.
+     On the first user turn cv.judged is null → null guard fires, no write. */
+  convoApplyScore(cv.judged, cv.viaVoice);
+  cv.judged = null; /* consumed */
+
+  cv.loading = true; cv.error = null; cv.listening = false;
+  /* Store this turn's voice flag so the NEXT convoApplyScore call has it */
+  cv.viaVoice = !!viaVoice;
+  render();
+
+  /* Append user turn — text placed only as content field, never interpolated into system */
+  cv.messages.push({ role:'user', content: userText });
+
+  /* Window to last 6 messages before calling API (cap before invocation) */
+  const windowed = cv.messages.slice(-6);
+
+  const key = (state.settings.anthropicKey || '').trim();
+  let rawStr;
+  try {
+    /* No-key fallback: _convoScript instead of _convoCall */
+    rawStr = key ? await _convoCall(windowed, cv.preamble) : _convoScript(cv.sceneId, cv.turn);
+  } catch(e){
+    cv.loading = false;
+    cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
+    render(); return;
+  }
+
+  /* Parse — retry-once-then-recover path (never freezes) */
+  let parsed = _aiJsonExtract(rawStr);
+  if(!parsed){
+    /* Exactly one retry on the same raw string */
+    parsed = _aiJsonExtract(rawStr);
+  }
+  if(!parsed){
+    /* Persistent null — surface recovery, clear loading, render and return */
+    cv.loading = false;
+    cv.error = 'もう いちど？';
+    /* cv.current preserved so chips remain visible */
+    render();
+    return;
+  }
+
+  /* Map score → landed for the downshift ladder */
+  const score = (parsed.judged && typeof parsed.judged.score === 'number') ? parsed.judged.score : 0;
+  parsed.landed = score;
+
+  /* Downshift ladder — three distinct paths on judged.landed */
+  const aiJP = parsed.jp || '';
+  let didAdvance = false;
+
+  if(parsed.landed >= 2){
+    /* (a) Pass path: high landed — use model's JP reply and advance turn counter */
+    cv.turn++;
+    didAdvance = true;
+    cv.messages.push({ role:'assistant', content: aiJP });
+    cv.current = parsed;
+    cv.error = null;
+  } else if(parsed.landed === 1){
+    /* (b) Intermediate path: mid landed — surface English nudge, do NOT advance */
+    cv.error = parsed.glossEn ? 'ヒント: ' + parsed.glossEn : 'もう いちど？';
+    cv.current = parsed; /* chips still accessible */
+    cv.messages.push({ role:'assistant', content: aiJP });
+  } else {
+    /* (c) Low landed: correct and advance */
+    cv.turn++;
+    didAdvance = true;
+    cv.messages.push({ role:'assistant', content: aiJP });
+    cv.current = parsed;
+    cv.error = null;
+  }
+
+  /* Store judged for the next convoApplyScore call */
+  cv.judged = parsed.judged || null;
+
+  /* Check end condition after potential advance */
+  if(cv.turn >= cv.maxTurns || parsed.sceneDone){
+    cv.loading = false;
+    save();
+    convoEnd();
+    return;
+  }
+
+  cv.loading = false;
+  save();
+  render();
+
+  /* Speak AI reply then auto-open mic on advancing paths (hands-free) */
+  if(aiJP && didAdvance){
+    _buildSpeakJP(aiJP, () => {
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done) convoStartListen();
+    });
+  }
+}
+window.convoTurn = convoTurn;
+
+/* convoApplyScore — write SRS credits after AI-confirmed word use */
+function convoApplyScore(judged, viaVoice){
+  /* (a) Null guard — returns early on opening turn and any null parse */
+  if(judged == null) return;
+
+  const cv = state.convo;
+  const pool = (cv && cv.pool) || [];
+  const usedWords = (judged && Array.isArray(judged.usedWords)) ? judged.usedWords : [];
+
+  for(const raw of usedWords){
+    /* (b) Resolve surface (kana or kanji from STT) or id against the seeded pool */
+    let resolvedId = null;
+    /* First check: direct wordId match against pool */
+    const directMatch = pool.find(w => w.id === raw);
+    if(directMatch){
+      resolvedId = directMatch.id;
+    } else {
+      /* Normalize via _kataToHira + _stripKanji (STT often returns kanji) */
+      const norm = _kataToHira(_stripKanji(raw || ''));
+      if(norm){
+        const found = pool.find(w => {
+          const wNorm = _kataToHira(_stripKanji(w.jp || ''));
+          return wNorm && norm === wNorm;
+        });
+        if(found) resolvedId = found.id;
+      }
+    }
+    /* Drop unresolved entries silently — never write stats for unknown ids */
+    if(!resolvedId) continue;
+
+    /* (c)/(d) Write stats — smGrade only on unaided voice; chip-echo: no ease bump */
+    if(viaVoice === true){
+      recordAttempt(resolvedId, true, 'convo', { voice: true });
+      smGrade(smStatFor(resolvedId), 'good');
+    } else {
+      /* Chip tap or typed: log exposure only, smGrade absent */
+      recordAttempt(resolvedId, true, 'convo', { voice: false, chip: true });
+    }
+  }
+  save();
+}
+window.convoApplyScore = convoApplyScore;
+
+/* convoEnd — build recap on turn cap or sceneDone */
+function convoEnd(){
+  const cv = state.convo; if(!cv) return;
+  cv.done = true;
+  /* Apply any un-scored judged from the final turn */
+  if(cv.judged){
+    convoApplyScore(cv.judged, cv.viaVoice);
+    cv.judged = null;
+  }
+  const turns = cv.turn || 0;
+  const xpGain = Math.max(1, turns);
+  state.settings.convoXp = (state.settings.convoXp || 0) + xpGain;
+  while(state.settings.convoXp >= CONVO_LEVEL_XP){
+    state.settings.convoXp -= CONVO_LEVEL_XP;
+    state.settings.convoLevel = (state.settings.convoLevel || 1) + 1;
+  }
+  cv.recap = { turns, xpGain, convoLevel: state.settings.convoLevel, convoXp: state.settings.convoXp };
+  save();
+  render();
+}
+window.convoEnd = convoEnd;
+
+/* convoChipTap — scaffold chip tap (viaVoice=false, no SRS ease bump) */
+function convoChipTap(chipText){
+  const cv = state.convo; if(!cv || cv.loading || cv.done) return;
+  stopVoice(); cv.listening = false;
+  convoTurn(chipText, false);
+}
+window.convoChipTap = convoChipTap;
+
+/* convoStartListen / convoStopListen — STT integration */
+function convoStartListen(){
+  const cv = state.convo; if(!cv || cv.loading || cv.done || cv.listening) return;
+  if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
+  cv.listening = true; cv.interim = ''; cv._best = ''; cv._ended = false; cv.error = null;
+  render();
+  startVoice(
+    (alts) => {
+      const t = (alts && alts[0] && alts[0].transcript) || '';
+      if(t){ cv._best = t; const el = document.getElementById('convoInterim'); if(el) el.textContent = t; }
+    },
+    (err) => {
+      if(!cv || cv._ended) return; cv._ended = true; cv.listening = false;
+      if(err){ cv.error = _sttErrMsg(err); render(); return; }
+      const heard = (cv._best || '').trim();
+      if(heard) convoTurn(heard, true); else render();
+    },
+    'ja-JP'
+  );
+}
+window.convoStartListen = convoStartListen;
+
+function convoStopListen(){
+  const cv = state.convo; if(!cv) return;
+  stopVoice(); cv.listening = false; render();
+}
+window.convoStopListen = convoStopListen;
+
+/* convoContinue — tap to resume a persisted mid-session convo (explicit 「つづける」 tap) */
+function convoContinue(){
+  const cv = state.convo; if(!cv) return;
+  nav('convo');
+}
+window.convoContinue = convoContinue;
+
+/* convoFresh — discard any prior session and start fresh from scene picker */
+function convoFresh(sceneId){
+  state.convo = null;
+  startConvo(sceneId || (SCENES[0] && SCENES[0].id));
+}
+window.convoFresh = convoFresh;
+
+/* convoTogglePeek — show/hide English gloss under AI's kana line */
+function convoTogglePeek(){
+  const cv = state.convo; if(!cv) return;
+  cv.peekGloss = !cv.peekGloss; render();
+}
+window.convoTogglePeek = convoTogglePeek;
+
+/* renderConvo — screen renderer for the oshaberi mode */
+function renderConvo(){
+  const cv = state.convo;
+  if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
+  if(cv.done && cv.recap) return _renderConvoRecap(cv);
+
+  const cur = cv.current;
+  const chips = ((cur && Array.isArray(cur.suggested) && cur.suggested.filter(Boolean).length)
+    ? cur.suggested.filter(Boolean) : _convoFallbackChips(cv));
+  const chipBtns = chips.map(ch =>
+    `<button onclick="convoChipTap('${jsEsc(ch)}')" style="padding:10px 15px;border-radius:12px;border:1px solid rgba(157,92,255,.4);background:rgba(157,92,255,.1);color:#d6c2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:14px;cursor:pointer;margin:3px">${esc(ch)}</button>`
+  ).join('');
+
+  const aiLine = cur && cur.jp
+    ? `<div class="convo-turn them" style="margin-bottom:6px">
+        <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
+        ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cur.glossEn)}</div>` : ''}
+       </div>
+       <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;margin-bottom:10px;font-family:inherit">${cv.peekGloss ? 'いみをかくす' : 'いみをみる'}</button>`
+    : '';
+
+  const listenBanner = cv.listening
+    ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
+        <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · はなして</div>
+          <div id="convoInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px">${esc(cv.interim||'…')}</div>
+        </div>
+        <button onclick="convoStopListen()" style="padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
+      </div>` : '';
+
+  const loadingDots = cv.loading
+    ? `<div style="display:flex;align-items:center;gap:11px;justify-content:center;padding:20px 0;color:#c9b3ff"><div style="display:flex;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#ff5d9e;animation:pulseDot 1.2s infinite"></span><span style="width:9px;height:9px;border-radius:50%;background:#b97bff;animation:pulseDot 1.2s infinite .2s"></span><span style="width:9px;height:9px;border-radius:50%;background:#9d5cff;animation:pulseDot 1.2s infinite .4s"></span></div></div>` : '';
+
+  const errBlock = cv.error
+    ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-bottom:10px;font-weight:600;font-size:13px;color:#fcd34d;line-height:1.5">${esc(cv.error)}</div>` : '';
+
+  const micBtn = !cv.loading
+    ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoStartListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
+
+  return `<div style="padding:2px 2px 24px">
+    <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase;margin-bottom:4px">おしゃべり 💬</div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+      <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
+      <div style="font-size:11px;color:#6f6688">ターン ${cv.turn} / ${cv.maxTurns}</div>
+    </div>
+    ${aiLine}
+    ${errBlock}
+    ${loadingDots}
+    ${listenBanner}
+    <div class="convo-list" style="flex-wrap:wrap;display:flex;margin-bottom:12px">${chipBtns}</div>
+    <div style="text-align:center">${micBtn}</div>
+  </div>`;
+}
+
+function _renderConvoRecap(cv){
+  const r = cv.recap;
+  return `<div style="padding:2px 2px 24px;text-align:center">
+    <div style="font-weight:800;font-size:32px;margin:24px 0 8px">🎉</div>
+    <div style="font-weight:800;font-size:22px;margin-bottom:8px">よくできました！</div>
+    <div style="color:#a99fc7;font-size:14px;margin-bottom:20px">${r.turns} ターン · +${r.xpGain} XP</div>
+    <div style="background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:16px;padding:16px;margin-bottom:20px;display:inline-block;min-width:200px">
+      <div style="font-weight:700;font-size:13px;color:#c9b3ff">レベル ${r.convoLevel} · ${r.convoXp} / ${CONVO_LEVEL_XP} XP</div>
+    </div><br>
+    <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
+    <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ホームへ</button>
+  </div>`;
+}
+/* ===================== END OSHABERI TURN ENGINE ===================== */
+
 async function scCheck(){
   const sc = state.sentenceCoach; if(!sc) return;
   /* Commit any held trailing "n" (and any leftover romaji) before grading. */
@@ -18116,7 +18494,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
