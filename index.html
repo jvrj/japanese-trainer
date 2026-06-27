@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.94';
+const APP_VERSION = '7.95';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19019,7 +19019,11 @@ function _topicWords(sec){
    Tap tile = select scope (Ship 1 setVocabSection); ▶ = hands-free (Ship 1 startTopicHandsFree). */
 function topicTile(id, emoji, name, count, isActive){
   const noWords = count === 0;
-  return `<div class="cat-tile${isActive ? ' active' : ''}" data-name="${esc(String(name).toLowerCase())}" onclick="setVocabSection('${jsEsc(id)}')">`
+  /* v7.95 — tapping a topic JUMPS straight into its hands-free drill (no
+     select-then-render flash). The ▶ corner is the same action, kept as a
+     visible play cue. Empty topics aren't tappable. */
+  const launch = noWords ? '' : `onclick="startTopicHandsFree('${jsEsc(id)}')"`;
+  return `<div class="cat-tile${isActive ? ' active' : ''}${noWords ? ' empty' : ''}" data-name="${esc(String(name).toLowerCase())}" ${launch}>`
     + `<button class="cat-tile-play${isActive ? ' on' : ''}" ${noWords ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(id)}')" aria-label="Start hands-free: ${esc(name)}">▶</button>`
     + `<div class="cat-em">${esc(emoji)}</div><div class="cat-nm">${esc(name)}</div><div class="cat-ct">${count == null ? '' : esc(String(count))}</div>`
     + `</div>`;
@@ -19486,7 +19490,7 @@ function renderHome(){
   const _due = _secWords.filter(w => { const st = state.stats[w.id]; if(!st || !st.attempts || !st.attempts.length) return false; ensureSm(st); return st.smNext <= _nowT; }).length;
   const _contNo = _secWords.length === 0;
   const contCard = `
-    <div class="cont-card" onclick="setVocabSection('${jsEsc(_sec.id)}')">
+    <div class="cont-card" onclick="${_contNo ? '' : `startTopicHandsFree('${jsEsc(_sec.id)}')`}">
       <div style="width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:25px;background:rgba(255,255,255,.16);flex-shrink:0">${esc(_sec.emoji || '🔀')}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.85);text-transform:uppercase">Continuing · hands-free</div>
