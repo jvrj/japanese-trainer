@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.84';
+const APP_VERSION = '7.85';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9124,11 +9124,21 @@ function _scCur(){ return _COACH_PROMPTS[state.sentenceCoach.promptI % _COACH_PR
 
 function scOnInput(v){
   const sc = state.sentenceCoach; if(!sc) return;
+  /* Romaji → kana assist: lets you write Japanese without switching to a JP
+     keyboard. Kana you type directly passes through unchanged; trailing
+     incomplete romaji (e.g. a lone "k") stays latin until you finish the
+     syllable. Cursor goes to end on conversion (fine for short answers). */
+  if(state.settings.kanaTypeAssist !== false && typeof romajiToKana === 'function'){
+    const conv = romajiToKana(v);
+    if(conv !== v){ const el = document.getElementById('scInput'); if(el){ el.value = conv; try { el.setSelectionRange(conv.length, conv.length); } catch(e){} } v = conv; }
+  }
   sc.input = v;
   const btn = document.getElementById('scCheckBtn');
   if(btn){ const ok = !sc.loading && !sc.listening && (v||'').trim().length > 0; btn.disabled = !ok; btn.style.opacity = ok ? '1' : '.5'; btn.style.cursor = ok ? 'pointer' : 'not-allowed'; }
 }
 window.scOnInput = scOnInput;
+function scKanaToggle(){ const cur = state.settings.kanaTypeAssist !== false; state.settings.kanaTypeAssist = !cur; save(); render(); }
+window.scKanaToggle = scKanaToggle;
 
 function scToggleMode(){
   const sc = state.sentenceCoach; if(!sc) return;
@@ -9238,6 +9248,7 @@ function renderSentenceCoach(){
   const p = _scCur();
   const r = sc.result;
   const canCheck = !sc.loading && !sc.listening && (sc.input || '').trim().length > 0;
+  const kanaAssistOn = state.settings.kanaTypeAssist !== false;
 
   const promptCard = free
     ? `<div style="background:linear-gradient(160deg,rgba(157,92,255,.14),rgba(255,93,158,.05));border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px 16px;margin-bottom:13px"><div style="font-weight:700;font-size:13.5px;line-height:1.55;color:#e7e0f5">Write <b style="color:#fff">any</b> Japanese sentence you want to try — the coach tells you if it lands, why, and how a native might say it.</div></div>`
@@ -9314,7 +9325,10 @@ function renderSentenceCoach(){
     </div>
     <div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:14px">${free ? 'Free practice' : 'Translate & get coached'}</div>
     ${promptCard}
-    <textarea oninput="scOnInput(this.value)" placeholder="${free ? 'ここに にほんごを かいてみて…' : 'type your Japanese here…'}" rows="2" style="width:100%;padding:14px 15px;border-radius:16px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:18px;line-height:1.5;outline:none;resize:none;margin-bottom:12px">${esc(sc.input || '')}</textarea>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button onclick="scKanaToggle()" title="Type romaji and have it become kana — no Japanese keyboard needed" style="font-weight:800;font-size:10.5px;letter-spacing:.3px;color:${kanaAssistOn ? '#fff' : '#a99fc7'};border:1px solid ${kanaAssistOn ? 'transparent' : 'rgba(255,255,255,.16)'};border-radius:999px;padding:6px 12px;background:${kanaAssistOn ? 'linear-gradient(100deg,#9d5cff,#ff5d9e)' : 'rgba(255,255,255,.05)'};cursor:pointer;font-family:inherit">あ Romaji → kana · ${kanaAssistOn ? 'ON' : 'OFF'}</button>
+    </div>
+    <textarea id="scInput" oninput="scOnInput(this.value)" placeholder="${kanaAssistOn ? (free ? 'type romaji — it becomes kana…' : 'type romaji, e.g. eki ni ikitai…') : (free ? 'ここに にほんごを かいてみて…' : 'type your Japanese here…')}" rows="2" style="width:100%;padding:14px 15px;border-radius:16px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:18px;line-height:1.5;outline:none;resize:none;margin-bottom:12px">${esc(sc.input || '')}</textarea>
     ${listenBanner}
     ${actionRow}
     ${sttErr}${voiceHint}${loading}${errBlock}${resultBlock}
