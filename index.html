@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.89';
+const APP_VERSION = '7.90';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19083,8 +19083,8 @@ function renderHome(){
     { key:'learn',    mode:'Hands-free',     title:'Learn new words',             meta: `${_dpNew} new · audio-led` },
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
-    { key:’memory’,   mode:’Memory’,         title:’Check your memory’,           meta: ‘see what’s coming back’ },
-    { key:’convo’,    mode:’おしゃべり’,    title:’Conversation practice’,        meta: ‘AI-led · multi-turn · voice-scored’ }
+    { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
+    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-scored' }
   ];
   const isDone = s => !!_dp.done[s.key] || !!s.auto;
   let curIdx = pathSteps.findIndex(s => !isDone(s)); if(curIdx < 0) curIdx = -1;
