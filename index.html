@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.81';
+const APP_VERSION = '7.82';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9544,6 +9544,26 @@ function renderRecall(){
 function startMemory(){ nav('memory'); }
 window.startMemory = startMemory;
 
+/* ===================== DAILY PATH (canvas A1) =====================
+   Threads the parts into one guided daily sequence so the app stops feeling
+   disconnected. Lightweight per-day completion: tapping a step marks it done
+   for today; the review step auto-completes when nothing's due. Resets at the
+   date rollover. The hands-free hero stays the primary CTA above this. */
+function _todayKey(){ try { return new Date(now()).toISOString().slice(0,10); } catch(e){ return 'today'; } }
+function _dailyPath(){
+  if(!state.dailyPath || state.dailyPath.date !== _todayKey()) state.dailyPath = { date: _todayKey(), done: {} };
+  return state.dailyPath;
+}
+function pathGo(step){
+  const d = _dailyPath(); d.done[step] = true; save();
+  if(step === 'review') startRecall();
+  else if(step === 'learn'){ if(state.settings.buildVoiceMode) startBuildModeVocabSpam(); else startBlitz(); }
+  else if(step === 'sentence') startSentenceCoach();
+  else if(step === 'nuance') startNuance();
+  else if(step === 'memory') startMemory();
+}
+window.pathGo = pathGo;
+
 function _agoLabel(ts){
   if(!ts) return 'not yet';
   const m = (now() - ts) / 60000;
@@ -9701,6 +9721,80 @@ function renderNuance(){
     </div>
     <div style="display:flex;gap:10px;margin-bottom:14px">${z.opts.map(optBtn).join('')}</div>
     ${revealed}
+  </div>`;
+}
+
+/* ===================== VERB FORMS LADDER (canvas B3) =====================
+   One verb, every form, side by side — tap a row to recall its meaning, 🔊 to
+   hear it. A study/overview companion to the existing graded Form Drill (which
+   tests one form at a time): this shows the whole conjugation family at once so
+   the pattern clicks. Reuses the app's real conjugation engine (FORMS[].conj). */
+const _LADDER_FORM_IDS = ['masu','mashita','ta','te','teiru','tai','nai'];
+
+function _ladderVerbs(){
+  return getActiveWords().filter(w => w.pos === 'v' && !hasKatakana(w.jp));
+}
+function startFormsLadder(){
+  const verbs = _ladderVerbs();
+  if(!verbs.length){ alert('No verbs available. Enable the N5 pack in Settings.'); return; }
+  const pref = verbs.find(v => v.jp === 'たべる') || verbs[0];
+  state.formsLadder = { verbId: pref.id, reveal: {} };
+  nav('formsLadder');
+}
+window.startFormsLadder = startFormsLadder;
+
+function formsLadderPick(id){ const L = state.formsLadder; if(!L) return; L.verbId = id; L.reveal = {}; render(); }
+window.formsLadderPick = formsLadderPick;
+function formsLadderReveal(fid){ const L = state.formsLadder; if(!L) return; L.reveal[fid] = !L.reveal[fid]; render(); }
+window.formsLadderReveal = formsLadderReveal;
+function formsLadderSpeak(jp){ try{ speakJP(jp); }catch(e){} }
+window.formsLadderSpeak = formsLadderSpeak;
+
+function renderFormsLadder(){
+  const L = state.formsLadder;
+  if(!L) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startFormsLadder()">Start</button></div>`;
+  const verbs = _ladderVerbs();
+  const byId = {}; verbs.forEach(v => { byId[v.id] = v; });
+  const verb = byId[L.verbId] || verbs[0];
+  if(!verb) return `<div class="card"><div class="muted">No verbs available.</div></div>`;
+
+  const chips = verbs.slice(0, 12).map(v => {
+    const active = v.id === verb.id;
+    const style = active
+      ? 'flex:0 0 auto;padding:10px 14px;border-radius:13px;border:none;font-family:\'Noto Sans JP\',inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer'
+      : 'flex:0 0 auto;padding:10px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.14);font-family:\'Noto Sans JP\',inherit;font-weight:800;font-size:15px;color:#cdbfe8;background:rgba(255,255,255,.05);cursor:pointer';
+    return `<button onclick="formsLadderPick('${jsEsc(v.id)}')" style="${style}">${esc(v.jp)}</button>`;
+  }).join('');
+
+  const baseEn = (verb.en || '').replace(/^to\s+/, '');
+  const revealedCount = _LADDER_FORM_IDS.filter(fid => L.reveal[fid]).length;
+
+  const rows = _LADDER_FORM_IDS.map(fid => {
+    const f = FORMS.find(x => x.id === fid);
+    if(!f) return '';
+    let conj; try { conj = f.conj(verb.jp); } catch(e){ conj = verb.jp; }
+    let meaning; try { meaning = (typeof f.en === 'function') ? f.en(verb) : f.hint; } catch(e){ meaning = f.hint; }
+    const rev = !!L.reveal[fid];
+    const meaningCell = rev
+      ? `<div style="font-weight:600;font-size:11px;color:#cdbfe8;text-align:right;max-width:130px;line-height:1.35">${esc(meaning)}</div>`
+      : `<div style="font-weight:600;font-size:11px;color:#6b6385;font-style:italic">tap to recall</div>`;
+    return `<div onclick="formsLadderReveal('${jsEsc(fid)}')" style="display:flex;align-items:center;gap:11px;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07);cursor:pointer">
+      <div style="font-weight:800;font-size:11px;color:#0c0a09;background:linear-gradient(100deg,#9d5cff,#ff5d9e);padding:5px 9px;border-radius:8px;min-width:48px;text-align:center">${esc(f.name)}</div>
+      <div style="flex:1;min-width:0"><div style="font-family:'Noto Sans JP';font-weight:800;font-size:18px;color:#f5f2ff">${esc(conj)}</div></div>
+      ${meaningCell}
+      <button onclick="event.stopPropagation();formsLadderSpeak('${jsEsc(conj)}')" style="flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:13px;cursor:pointer">🔊</button>
+    </div>`;
+  }).join('');
+
+  return `<div class="ladder-wrap" style="padding:0 2px 24px">
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;margin:0 -2px">${chips}</div>
+    <div style="background:linear-gradient(160deg,rgba(157,92,255,.18),rgba(255,93,158,.07));border:1px solid rgba(255,255,255,.13);border-radius:20px;padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-family:'Noto Sans JP';font-weight:900;font-size:30px">${esc(verb.jp)}</div><div style="font-weight:600;font-size:13px;color:#c9b3ff;margin-top:2px">${esc(verb.en)}</div></div>
+      <button onclick="formsLadderSpeak('${jsEsc(verb.jp)}')" style="flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:17px;cursor:pointer">🔊</button>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:0 4px 8px"><div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#8a80a8;text-transform:uppercase">Climb the ladder · recall each</div><div style="font-weight:700;font-size:10px;color:#8a80a8">${revealedCount}/${_LADDER_FORM_IDS.length}</div></div>
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:2px 14px">${rows}</div>
+    <div style="font-weight:600;font-size:11px;line-height:1.55;color:#6f6688;text-align:center;margin-top:14px;padding:0 8px">Try to recall each form's meaning before you tap. Switch verbs above — the same pattern repeats.</div>
   </div>`;
 }
 
@@ -13817,6 +13911,33 @@ window.startBuildModeFormMix = startBuildModeFormMix;
    so "Food & drink" yields the whole theme even on early modules. Still
    honors mastered + suspended (don't re-drill what the user has retired).
    If the section is smaller than 30, the session length matches the pool. */
+/* v7.82 — Build Mode 2.0 word picker. Composes a spam session from the words
+   you've been learning: all seen words ordered due-first (so reviews surface and
+   the set rotates over time), topped up with fresh words, then shuffled for a
+   lively order. Falls back to padding from the pool so a tiny deck never strands. */
+function _buildSpamPick(arr, n){
+  if(n <= 0 || !arr.length) return [];
+  const seen = [], unseen = [];
+  for(const w of arr){
+    const st = state.stats[w.id];
+    if(st && st.attempts && st.attempts.length) seen.push(w); else unseen.push(w);
+  }
+  seen.sort((a, b) => {
+    const sa = state.stats[a.id], sb = state.stats[b.id];
+    ensureSm(sa); ensureSm(sb);
+    return (sa.smNext || 0) - (sb.smNext || 0);
+  });
+  const learnTake = seen.slice(0, n);
+  const need = n - learnTake.length;
+  const fresh = need > 0 ? shuffleFY(unseen.slice()).slice(0, need) : [];
+  let chosen = [...learnTake, ...fresh];
+  if(chosen.length < n){
+    const have = new Set(chosen.map(w => w.id));
+    for(const w of arr){ if(chosen.length >= n) break; if(!have.has(w.id)) chosen.push(w); }
+  }
+  return shuffleFY(chosen);
+}
+
 function buildGenerateVocabSpamLesson(opts){
   const want = (opts && opts.count) || 30;
   const masteredSet = new Set(state.settings.masteredWords || []);
@@ -13847,7 +13968,11 @@ function buildGenerateVocabSpamLesson(opts){
     log('vocab_spam_widen', {widenedAt, poolSize: sectionPool.length, why});
     showToast(`Section was thin — widened pool ${why} so you get a full session.`, {tone:'info', duration:3500});
   }
-  const pool = shuffleFY(sectionPool.slice()).slice(0, Math.min(want, sectionPool.length));
+  /* v7.82 — Build Mode 2.0: pull the words you've actually been LEARNING, not a
+     pure random shuffle. Prioritize seen/SRS-due words (due-first) so the
+     session reflects your real study and rotates as reviews come due, then top
+     up with new words. Fixes "build mode doesn't change / isn't my words." */
+  const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length));
   const sec = activeVocabSection();
   const steps = pool.map(w => ({ type:'recall', word_id: w.id }));
   return {
@@ -17299,7 +17424,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -17671,7 +17796,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -17927,37 +18052,52 @@ function renderHome(){
      on-ramp we keep alongside the main loop is the kana trainer.
      `upNextRows` above is intentionally left computed-but-unrendered so the
      ideas stay one edit away. */
+  /* v7.82 — Daily Path: one connected flow (review → learn → sentence → nuance
+     → memory) that ties the parts together. The hero above stays the primary
+     "just start" CTA; this is the guided sequence for structure. */
+  const _dp = _dailyPath();
+  const _dpPool = (typeof getDrillableWords === 'function') ? getDrillableWords() : getActiveWords();
+  const _dpNow = now();
+  let _dpDue = 0, _dpNew = 0;
+  _dpPool.forEach(w => { const st = state.stats[w.id]; if(!st || !st.attempts || !st.attempts.length){ _dpNew++; } else { ensureSm(st); if(st.smNext <= _dpNow) _dpDue++; } });
+  const pathSteps = [
+    { key:'review',   title:'Warm-up · recall what’s due', meta: _dpDue ? `${_dpDue} due now` : 'nothing due — you’re clear', auto: _dpDue === 0 },
+    { key:'learn',    title:'Learn new words',             meta: `${_dpNew} new · audio-led` },
+    { key:'sentence', title:'Build a sentence',            meta: 'say one out loud, get coached' },
+    { key:'nuance',   title:'Spot the difference',         meta: 'one tricky look-alike' },
+    { key:'memory',   title:'Check your memory',           meta: 'see what’s coming back' }
+  ];
+  const isDone = s => !!_dp.done[s.key] || !!s.auto;
+  let curIdx = pathSteps.findIndex(s => !isDone(s)); if(curIdx < 0) curIdx = -1;
+  const doneCount = pathSteps.filter(isDone).length;
+  const pathNodes = pathSteps.map((s, i) => {
+    const done = isDone(s), current = i === curIdx;
+    const dot = done
+      ? 'width:26px;height:26px;border-radius:50%;background:#34d399;display:flex;align-items:center;justify-content:center;color:#06281c;font-weight:900;font-size:13px;flex-shrink:0'
+      : current
+        ? 'width:26px;height:26px;border-radius:50%;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 0 0 4px rgba(157,92,255,.22),0 0 16px rgba(255,93,158,.5);flex-shrink:0'
+        : 'width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.22);flex-shrink:0';
+    const line = i === pathSteps.length - 1 ? 'display:none' : 'width:2px;flex:1;background:rgba(255,255,255,.12);margin:3px 0';
+    const titleStyle = current ? 'font-weight:800;font-size:15px;color:#fff' : (done ? 'font-weight:800;font-size:14px;color:#9fe9cf' : 'font-weight:800;font-size:14px;color:#cdbfe8');
+    return `<button class="dp-node" onclick="pathGo('${s.key}')" style="display:flex;gap:13px;background:none;border:none;text-align:left;padding:0;cursor:pointer;width:100%;font-family:inherit">
+      <div style="display:flex;flex-direction:column;align-items:center"><div style="${dot}">${done ? '✓' : ''}</div><div style="${line}"></div></div>
+      <div style="flex:1;padding-bottom:15px"><div style="${titleStyle}">${esc(s.title)}</div><div style="font-weight:600;font-size:11.5px;color:#8a80a8;margin-top:3px">${esc(s.meta)}</div></div>
+    </button>`;
+  }).join('');
+  const allDone = curIdx < 0;
+  const continueKey = allDone ? 'review' : pathSteps[curIdx].key;
+  const continueLabel = allDone ? '✓ Path complete — go again' : (doneCount === 0 ? 'Start today’s path →' : 'Continue →');
+
   const upNext = `
-    <div class="h8-list" style="margin-top:6px">
-      <button class="h8-row" onclick="startRecall()">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:24px;color:#fff;background:linear-gradient(150deg,#9d5cff,#ff5d9e);box-shadow:0 8px 22px rgba(255,93,158,.40),0 0 24px rgba(157,92,255,.35);flex-shrink:0">🧠</div>
+    <div class="h8-section" style="margin:2px 4px 11px">Today’s path <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· ${doneCount}/${pathSteps.length} done</span></div>
+    <div style="display:flex;flex-direction:column;margin:0 2px">${pathNodes}</div>
+    <button class="h8-hero-cta" onclick="pathGo('${continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${continueLabel}</button>
+    <div class="h8-list" style="margin-top:18px">
+      <button class="h8-row" onclick="startFormsLadder()">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">Recall</div>
-          <div class="h8-row-meta">Say it · type it · check it</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-      <button class="h8-row" onclick="startSentenceCoach()">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:24px;color:#fff;background:linear-gradient(150deg,#b97bff,#ff5d9e);box-shadow:0 8px 22px rgba(255,93,158,.38),0 0 24px rgba(185,123,255,.35);flex-shrink:0">💬</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Sentence Coach</div>
-          <div class="h8-row-meta">Translate &amp; get AI feedback</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-      <button class="h8-row" onclick="startNuance()">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:24px;color:#fff;background:linear-gradient(150deg,#a855f7,#ff5d9e);box-shadow:0 8px 22px rgba(168,85,247,.40),0 0 24px rgba(255,93,158,.30);flex-shrink:0">⚖️</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Nuance</div>
-          <div class="h8-row-meta">Tell look-alike words apart</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-      <button class="h8-row" onclick="startMemory()">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#9d5cff,#ff5d9e);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,93,158,.30);flex-shrink:0">🗓️</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Memory</div>
-          <div class="h8-row-meta">When your words come back · 🏆 retire</div>
+          <div class="h8-row-title">Verb forms</div>
+          <div class="h8-row-meta">One verb · every form · tap to recall</div>
         </div>
         <div class="h8-row-arrow">›</div>
       </button>
