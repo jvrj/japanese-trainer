@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jp-trainer-v7830';
+const CACHE_NAME = 'jp-trainer-v7840';
 const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
