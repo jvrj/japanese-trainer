@@ -3030,7 +3030,8 @@ const DEFAULT_SETTINGS = {
   convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
   convoXp:0,                  // oshaberi — XP toward the next convoLevel
   leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
-  userName:'Julius'           // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
+  userName:'Julius',          // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
+  showCoverageMeter:true      // v7.96 — display the vocabulary coverage/reach meter on the home screen
 };
 
 /* =========================================================================
@@ -6845,6 +6846,31 @@ function activeModuleWordIdSet(){
     }
   }
   return ids;
+}
+
+/* v7.96 — Coverage meter: reads existing SRS state and returns current reach
+   stats without locking or gating any word. Iterates getActiveWords() (a
+   trusted app-controlled source) to look up stat entries — never enumerates
+   Object.keys(state.stats) directly, which would be unsafe against corrupted
+   keys like '__proto__' (CWE-1321). Dead code until wired to the home-screen
+   meter in sprint 2; placing it here keeps it alongside the other module/pool
+   helpers so the call path is obvious to a future reader. */
+function vocabAccessStats(){
+  const active = getActiveWords();
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const M = (typeof BLITZ_MATURE_MIN === 'number') ? BLITZ_MATURE_MIN : 10080;
+  let started = 0, mastered = 0;
+  for(const w of active){
+    const st = state.stats[w.id];
+    if(st && st.attempts && st.attempts.length > 0) started++;
+    if(masteredSet.has(w.id)){
+      mastered++;
+    } else if(st){
+      ensureSm(st);
+      if(st.smInterval >= M) mastered++;
+    }
+  }
+  return { mastered, started, total: active.length };
 }
 
 function modulesUnlockBackfill(){
