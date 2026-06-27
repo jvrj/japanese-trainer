@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.96';
+const APP_VERSION = '7.97';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19644,7 +19644,20 @@ function renderModules(){
     </div>
   </div>`;
 
-  return toggle + orderHint + cards + hiddenCards;
+  const _mcs = vocabAccessStats();
+  const _mcPct = _mcs.total > 0 ? Math.round(_mcs.started / _mcs.total * 100) : 0;
+  const coverageHeader = `<div id="modules-coverage-header" style="margin:0 0 10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-weight:700;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;opacity:.7">Vocabulary coverage</div>
+      <div style="font-size:13px;font-weight:700;color:#c9b3ff">${Math.round(_mcPct)}%</div>
+    </div>
+    <div style="height:5px;border-radius:3px;background:var(--border);overflow:hidden">
+      <div style="height:100%;width:${Math.round(_mcPct)}%;border-radius:3px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);transition:width .4s"></div>
+    </div>
+    <div style="margin-top:7px;font-size:13px;opacity:.75">${_mcs.started} of ${_mcs.total} words started · ${_mcs.mastered} mastered</div>
+  </div>`;
+
+  return coverageHeader + toggle + orderHint + cards + hiddenCards;
 }
 
 /* ---------- COLLECTIONS (v7.40) ----------
