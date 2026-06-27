@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.85';
+const APP_VERSION = '7.86';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9129,7 +9129,12 @@ function scOnInput(v){
      incomplete romaji (e.g. a lone "k") stays latin until you finish the
      syllable. Cursor goes to end on conversion (fine for short answers). */
   if(state.settings.kanaTypeAssist !== false && typeof romajiToKana === 'function'){
-    const conv = romajiToKana(v);
+    /* IME-style trailing "n": hold a lone trailing n until the next key so
+       "n" then "i" becomes に (not ん + い). "nn" still commits to ん. */
+    let core = v, tail = '';
+    const m = v.match(/n+$/i);
+    if(m){ const ns = m[0].length; core = v.slice(0, v.length - ns); tail = 'ん'.repeat(ns - 1) + 'n'; }
+    const conv = romajiToKana(core) + tail;
     if(conv !== v){ const el = document.getElementById('scInput'); if(el){ el.value = conv; try { el.setSelectionRange(conv.length, conv.length); } catch(e){} } v = conv; }
   }
   sc.input = v;
@@ -9195,7 +9200,9 @@ async function _coachCall(promptStr){
 
 async function scCheck(){
   const sc = state.sentenceCoach; if(!sc) return;
-  const input = (sc.input || '').trim();
+  /* Commit any held trailing "n" (and any leftover romaji) before grading. */
+  let input = (sc.input || '').trim();
+  if(state.settings.kanaTypeAssist !== false && typeof romajiToKana === 'function'){ input = romajiToKana(input); sc.input = input; }
   if(!input){ sc.error = 'Type a Japanese sentence first, then tap Check.'; render(); return; }
   if(sc.loading) return;
   if(!(state.settings.anthropicKey || '').trim()){ sc.error = 'The coach needs a Claude API key — add one in Settings → AI.'; render(); return; }
