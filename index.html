@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.87';
+const APP_VERSION = '7.88';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9594,16 +9594,23 @@ window.startMemory = startMemory;
    date rollover. The hands-free hero stays the primary CTA above this. */
 function _todayKey(){ try { return new Date(now()).toISOString().slice(0,10); } catch(e){ return 'today'; } }
 function _dailyPath(){
-  if(!state.dailyPath || state.dailyPath.date !== _todayKey()) state.dailyPath = { date: _todayKey(), done: {} };
-  return state.dailyPath;
+  /* Persisted under state.settings (which save()/load() already serialize) so
+     today's completion ticks survive a reload; the date-stamp still clears it at
+     the next day's rollover. */
+  const s = state.settings;
+  if(!s.dailyPath || s.dailyPath.date !== _todayKey()) s.dailyPath = { date: _todayKey(), done: {} };
+  return s.dailyPath;
 }
 function pathGo(step){
-  const d = _dailyPath(); d.done[step] = true; save();
+  const d = _dailyPath();
   if(step === 'review') startRecall();
   else if(step === 'learn'){ if(state.settings.buildVoiceMode) startBuildModeVocabSpam(); else startBlitz(); }
   else if(step === 'sentence') startSentenceCoach();
   else if(step === 'nuance') startNuance();
   else if(step === 'memory') startMemory();
+  /* Credit the step only if the launcher actually entered a mode — some bail
+     (e.g. startRecall with an empty pool) without navigating. */
+  if(state.screen !== 'home'){ d.done[step] = true; save(); }
 }
 window.pathGo = pathGo;
 
@@ -9709,13 +9716,13 @@ function renderMemory(){
     const rows = rest.map(w => {
       const st = state.stats[w.id];
       return `<div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">
-        <button onclick="speakJP('${jsEsc(w.jp)}')" style="flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:15px;cursor:pointer">🔊</button>
+        <button onclick="speakJP('${jsEsc(w.jp)}')" style="flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:15px;cursor:pointer">🔊</button>
         <div style="flex:1;min-width:0"><div style="font-family:'Noto Sans JP';font-weight:800;font-size:18px">${esc(w.jp)}<span style="font-weight:600;font-size:12px;color:#a99fc7;margin-left:8px">${esc(w.en)}</span></div><div style="font-weight:600;font-size:10.5px;color:#8a80a8;margin-top:2px">seen ${st.reviewCount || st.attempts.length}× · ${esc(_agoLabel(st.lastReviewed || st.lastSeen))}</div></div>
-        <button onclick="memoryMaster('${jsEsc(w.id)}')" title="I've mastered this — retire it" style="flex:0 0 auto;padding:9px 11px;border-radius:11px;border:1.5px solid rgba(251,191,36,.5);background:rgba(251,191,36,.12);color:#fbbf24;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer">🏆</button>
+        <button onclick="memoryMaster('${jsEsc(w.id)}')" title="I've mastered this — retire it" style="flex:0 0 auto;min-width:44px;min-height:44px;padding:11px 13px;border-radius:12px;border:1.5px solid rgba(251,191,36,.5);background:rgba(251,191,36,.12);color:#fbbf24;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">🏆</button>
       </div>`;
     }).join('');
     const restBlock = rest.length
-      ? `<div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#8a80a8;text-transform:uppercase;margin:0 4px 4px">Also due · ${due.length - 1}</div>
+      ? `<div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#8a80a8;text-transform:uppercase;margin:0 4px 4px">Also due · ${rest.length}${(due.length - 1) > rest.length ? ' of ' + (due.length - 1) : ''}</div>
         <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:2px 16px;margin-bottom:14px">${rows}</div>`
       : '';
     dueBlock = `${upCard}${restBlock}
@@ -9773,12 +9780,16 @@ const _NUANCE_BASE = {
    advance the schedule. A wrong discrimination is logged but NOT penalized —
    confusing two look-alikes isn't the same as forgetting the word. */
 function _nuanceFeedSm(correctJp, pickedCorrect){
+  /* Confusing two look-alikes isn't a recall miss, so a wrong pick touches
+     nothing — no attempt logged, no penalty. A correct pick counts as a real
+     rep and advances the schedule. */
+  if(!pickedCorrect) return;
   const base = _NUANCE_BASE[correctJp];
   if(!base) return;
   const w = getActiveWords().find(x => x.jp === base);
   if(!w) return;
-  recordAttempt(w.id, pickedCorrect, 'nuance', { nuance:true });
-  if(pickedCorrect){ const st = smStatFor(w.id); smGrade(st, 'good'); }
+  recordAttempt(w.id, true, 'nuance', { nuance:true });
+  const st = smStatFor(w.id); smGrade(st, 'good');
 }
 
 function startNuance(){
@@ -9802,7 +9813,6 @@ function nuancePick(idx){
   const z = _nzCur();
   const pickedCorrect = !!z.opts[idx].correct;
   if(pickedCorrect) n.correct++;
-  n.done++;
   const correctOpt = z.opts.find(o => o.correct);
   try { _nuanceFeedSm(correctOpt && correctOpt.jp, pickedCorrect); } catch(e){}
   save();
@@ -9882,7 +9892,7 @@ function _ladderVerbs(){
 }
 function startFormsLadder(){
   const verbs = _ladderVerbs();
-  if(!verbs.length){ alert('No verbs available. Enable the N5 pack in Settings.'); return; }
+  if(!verbs.length){ showToast('No verbs in your deck yet — learn some words first', { tone:'warn' }); return; }
   const pref = verbs.find(v => v.jp === 'たべる') || verbs[0];
   state.formsLadder = { verbId: pref.id, reveal: {} };
   nav('formsLadder');
@@ -9930,7 +9940,7 @@ function renderFormsLadder(){
       <div style="font-weight:800;font-size:11px;color:#0c0a09;background:linear-gradient(100deg,#9d5cff,#ff5d9e);padding:5px 9px;border-radius:8px;min-width:48px;text-align:center">${esc(f.name)}</div>
       <div style="flex:1;min-width:0"><div style="font-family:'Noto Sans JP';font-weight:800;font-size:18px;color:#f5f2ff">${esc(conj)}</div></div>
       ${meaningCell}
-      <button onclick="event.stopPropagation();formsLadderSpeak('${jsEsc(conj)}')" style="flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:13px;cursor:pointer">🔊</button>
+      <button onclick="event.stopPropagation();formsLadderSpeak('${jsEsc(conj)}')" style="flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:14px;cursor:pointer">🔊</button>
     </div>`;
   }).join('');
 
@@ -9938,7 +9948,7 @@ function renderFormsLadder(){
     <div style="display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;margin:0 -2px">${chips}</div>
     <div style="background:linear-gradient(160deg,rgba(157,92,255,.18),rgba(255,93,158,.07));border:1px solid rgba(255,255,255,.13);border-radius:20px;padding:16px;margin-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
       <div style="min-width:0">
-        <div style="display:flex;align-items:center;gap:9px"><div style="font-family:'Noto Sans JP';font-weight:900;font-size:30px">${esc(verb.jp)}</div><button onclick="formsLadderSpeak('${jsEsc(verb.jp)}')" style="flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:14px;cursor:pointer">🔊</button></div>
+        <div style="display:flex;align-items:center;gap:9px"><div style="font-family:'Noto Sans JP';font-weight:900;font-size:30px">${esc(verb.jp)}</div><button onclick="formsLadderSpeak('${jsEsc(verb.jp)}')" style="flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:15px;cursor:pointer">🔊</button></div>
         <div style="font-weight:600;font-size:13px;color:#c9b3ff;margin-top:3px">${esc(verb.en)}</div>
       </div>
       <div style="flex:0 0 auto;text-align:right">
@@ -18295,8 +18305,8 @@ function renderHome(){
        hands-free audio loop for that scope in one tap. Two buttons, not a
        nested button, so both stay independently tappable. */
     return `<span class="scope-chip-group${isActive ? ' active' : ''}">`
-      + `<button class="scope-chip${isActive ? ' active' : ''}" onclick="setVocabSection('${id}')">${esc(emoji)} ${esc(name)}${ctHtml}</button>`
-      + `<button class="scope-chip-play" ${noWords ? 'disabled' : ''} onclick="startTopicHandsFree('${id}')" aria-label="Start hands-free: ${esc(name)}" title="${noWords ? 'No words in this topic yet' : 'Start hands-free · ' + esc(name)}">▶</button>`
+      + `<button class="scope-chip${isActive ? ' active' : ''}" onclick="setVocabSection('${jsEsc(id)}')">${esc(emoji)} ${esc(name)}${ctHtml}</button>`
+      + `<button class="scope-chip-play" ${noWords ? 'disabled' : ''} onclick="startTopicHandsFree('${jsEsc(id)}')" aria-label="Start hands-free: ${esc(name)}" title="${noWords ? 'No words in this topic yet' : 'Start hands-free · ' + esc(name)}">▶</button>`
       + `</span>`;
   };
   const vocabChips = VOCAB_SECTIONS.map(s => {
