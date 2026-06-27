@@ -150,6 +150,10 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .notes-fab:active{transform:scale(.92)}
 .ask-fab{position:fixed;right:16px;bottom:148px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#9d5cff,#ff5d9e);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 8px 22px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center}
 .ask-fab:active{transform:scale(.92)}
+/* Clean launch surface: the Ask-Claude / notes FABs overlapped the home stats
+   row, and there's nothing to ask about on home anyway — hide them there; they
+   stay available on every drill/mode screen where they're actually useful. */
+body[data-screen="home"] .notes-fab,body[data-screen="home"] .ask-fab{display:none}
 .chat-log{max-height:40dvh;overflow-y:auto;padding:8px 4px;display:flex;flex-direction:column;gap:10px;direction:ltr;unicode-bidi:isolate}
 .chat-msg{padding:10px 12px;border-radius:14px;max-width:85%;line-height:1.45;font-size:14px;white-space:pre-wrap;word-wrap:break-word;direction:ltr;unicode-bidi:isolate;text-align:left}
 .chat-msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
@@ -327,6 +331,13 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .scope-chip:disabled{opacity:0.35;cursor:not-allowed}
 .scope-chip .ct{opacity:0.6;font-size:10px;margin-left:3px}
 .scope-chip.active .ct{opacity:0.85}
+/* ▶ hands-free end-cap on each topic chip (B-flow). The chip + play form one
+   visual pill: chip body selects, ▶ launches the audio loop. */
+.scope-chip-group{flex-shrink:0;display:inline-flex;align-items:stretch;vertical-align:top}
+.scope-chip-group .scope-chip{border-top-right-radius:0;border-bottom-right-radius:0}
+.scope-chip-play{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0 11px 0 9px;font-size:10px;font-family:inherit;cursor:pointer;border:1px solid var(--border);border-left:none;border-top-right-radius:14px;border-bottom-right-radius:14px;background:var(--card);color:var(--blue)}
+.scope-chip-play:active{transform:scale(.94)}
+.scope-chip-play:disabled{opacity:.3;cursor:not-allowed;color:var(--faint)}
 .textbook-sets{margin:0 0 12px}
 .textbook-sets>summary{cursor:pointer;font-size:12px;color:var(--dim);padding:6px 14px;list-style:none;font-weight:600}
 .textbook-sets>summary::-webkit-details-marker{display:none}
@@ -472,6 +483,12 @@ body:has(.home-v8) .scope-chip{background:var(--card);border:1px solid var(--bor
 body:has(.home-v8) .scope-chip .ct{color:var(--faint)}
 body:has(.home-v8) .scope-chip.active{background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(255,93,158,.35),0 0 22px rgba(157,92,255,.30)}
 body:has(.home-v8) .scope-chip.active .ct{color:#fff;background:rgba(255,255,255,.25)}
+/* Home (v8) variant of the ▶ end-cap — match the bigger pill radius/padding
+   and the grape→pink active gradient used on the home scope chips. */
+body:has(.home-v8) .scope-chip-group .scope-chip{border-top-right-radius:0;border-bottom-right-radius:0}
+body:has(.home-v8) .scope-chip-play{border:1px solid var(--border);border-left:none;border-top-right-radius:16px;border-bottom-right-radius:16px;padding:0 13px 0 10px;font-size:11px;color:#ff5d9e;background:var(--card)}
+body:has(.home-v8) .scope-chip-group.active .scope-chip-play{background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(255,93,158,.35),0 0 22px rgba(157,92,255,.30)}
+body:has(.home-v8) .scope-chip-group.active .scope-chip{box-shadow:none}
 body:has(.home-v8) .header h1{color:var(--text)}
 body:has(.home-v8) .header .sub{color:var(--faint);opacity:1}
 
@@ -492,6 +509,9 @@ body{letter-spacing:-.005em}
 
 /* 11 · staggered card entrance on home (replaces the single container rise) */
 @keyframes riseIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:none}}
+/* Sentence Coach + Recall: mic-listening pulse ring and AI "thinking" dots. */
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(255,93,158,.5)}70%{box-shadow:0 0 0 12px rgba(255,93,158,0)}100%{box-shadow:0 0 0 0 rgba(255,93,158,0)}}
+@keyframes pulseDot{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 .home-v8{animation:none}
 .home-v8>*{animation:riseIn .5s cubic-bezier(.16,1,.3,1) both}
 .home-v8>*:nth-child(1){animation-delay:.02s}
@@ -601,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.77';
+const APP_VERSION = '7.80';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -8001,6 +8021,20 @@ function setVocabSection(id){
 }
 window.setVocabSection = setVocabSection;
 
+/* ▶ on a topic chip (home) — one-tap hands-free launch. Sets the scope, then
+   drops straight into the audio-led Build "spam" loop for that topic. Mirrors
+   "select the chip, then tap Begin (hands-free)" but skips the second tap.
+   Tapping the chip BODY still just selects (so you can scope without leaving
+   home); only the ▶ launches. */
+function startTopicHandsFree(id){
+  if(isCollectionId(id)){ if(!collectionById(id)) return; }
+  else if(!VOCAB_SECTIONS.find(s => s.id === id)) return;
+  state.settings.vocabSection = id;
+  save();
+  startBuildModeVocabSpam();
+}
+window.startTopicHandsFree = startTopicHandsFree;
+
 /* v6.29 — Form Drill recency tracker. The prior queue picked 2/3 due + 1/3
    unseen, but common short-interval verbs (たべる/のむ/いく/みる/...) were
    ALWAYS due each session, so users saw the same ~30 verbs every drill.
@@ -9039,6 +9073,468 @@ function startKanaBlitz(scope){
   nav('kanaBlitz');
 }
 window.startKanaBlitz = startKanaBlitz;
+
+/* ============================================================================
+   SHIP 2 — SENTENCE COACH  +  SHIP 3 — UNIFIED RECALL
+   Ported from design_handoff_isshin/ prototypes into Isshin's real plumbing:
+   - AI via the focusGenCall idiom (state.settings.anthropicKey, anthropicModel)
+   - STT via the shared startVoice()/stopVoice() Web Speech path
+   - TTS via speakJP()
+   - SM-2 via recordAttempt() + smGrade() on the real state.stats schedule
+   Hiragana/katakana-only is enforced in the coach prompt to match the app's
+   existing AI prompts and the learner's no-kanji rule (a deliberate change
+   from the prototype, which allowed kanji output).
+   ============================================================================ */
+
+/* ---- shared helpers ---- */
+function _sttErrMsg(e){
+  const c = e && e.error;
+  if(c === 'not-allowed' || c === 'service-not-allowed') return 'Microphone blocked — allow mic access to speak.';
+  if(c === 'no-speech') return "Didn't catch that — tap Speak and try again.";
+  return 'Speech input hiccup — try again, or just type.';
+}
+function _aiJsonExtract(txt){
+  if(!txt) return null;
+  let s = String(txt).trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if(a < 0 || b < 0) return null;
+  try { return JSON.parse(s.slice(a, b+1)); } catch(e){ return null; }
+}
+
+/* ===================== SHIP 2 — SENTENCE COACH ===================== */
+const _COACH_PROMPTS = [
+  {en:'"I’d like to go to the station."', register:'polite', who:'to a stranger / staff', hint:'Think destination + want / request.', accept:['えきにいきたいです','えきへいきたいです','えきまでおねがいします']},
+  {en:'"Do you want to eat something?"', register:'casual', who:'to a friend', hint:'Casual invitation — particles can drop.', accept:['なにかたべる？','なにかたべない？','なんかたべる']},
+  {en:'"How much is this?"', register:'polite', who:'at a shop', hint:'A shopping staple.', accept:['これはいくらですか','いくらですか','これいくらですか']},
+  {en:'"I can’t drink coffee."', register:'neutral', who:'general', hint:'Ability / inability.', accept:['コーヒーがのめません','コーヒーはのめません','コーヒーがのめない']},
+  {en:'"Could you say that again, please?"', register:'formal', who:'to a teacher', hint:'A polite request to repeat.', accept:['もういちどいっていただけますか','もういちどおねがいします','もういちどいってください']},
+  {en:'"This restaurant is expensive."', register:'casual', who:'to a friend', hint:'Adjective + topic.', accept:['このみせはたかい','このみせたかいね','ここたかい']},
+  {en:'"What time does the train leave?"', register:'polite', who:'at a station', hint:'Time + verb.', accept:['でんしゃはなんじにでますか','なんじにでんしゃがでますか']},
+  {en:'"I went to school with my friend yesterday."', register:'casual', who:'general', hint:'Past tense + companion particle.', accept:['きのうともだちとがっこうにいった','きのうともだちといっしょにがっこうへいった']}
+];
+
+function startSentenceCoach(){
+  stopVoice();
+  state.sentenceCoach = { mode:'prompt', promptI:0, input:'', loading:false, result:null, error:null, listening:false, interim:'', voiceUsed:false, sttError:null };
+  nav('sentenceCoach');
+}
+window.startSentenceCoach = startSentenceCoach;
+
+function _scCur(){ return _COACH_PROMPTS[state.sentenceCoach.promptI % _COACH_PROMPTS.length]; }
+
+function scOnInput(v){
+  const sc = state.sentenceCoach; if(!sc) return;
+  sc.input = v;
+  const btn = document.getElementById('scCheckBtn');
+  if(btn){ const ok = !sc.loading && !sc.listening && (v||'').trim().length > 0; btn.disabled = !ok; btn.style.opacity = ok ? '1' : '.5'; btn.style.cursor = ok ? 'pointer' : 'not-allowed'; }
+}
+window.scOnInput = scOnInput;
+
+function scToggleMode(){
+  const sc = state.sentenceCoach; if(!sc) return;
+  stopVoice();
+  const free = sc.mode === 'free';
+  Object.assign(sc, { mode: free ? 'prompt' : 'free', result:null, error:null, input:'', voiceUsed:false, interim:'', sttError:null, listening:false });
+  render();
+}
+window.scToggleMode = scToggleMode;
+
+function scNextPrompt(){
+  const sc = state.sentenceCoach; if(!sc) return;
+  stopVoice();
+  const reset = { input:'', result:null, error:null, voiceUsed:false, interim:'', sttError:null, listening:false };
+  if(sc.mode === 'free') Object.assign(sc, reset);
+  else Object.assign(sc, reset, { promptI: sc.promptI + 1 });
+  render();
+}
+window.scNextPrompt = scNextPrompt;
+
+function scToggleListen(){
+  const sc = state.sentenceCoach; if(!sc) return;
+  if(sc.listening){ stopVoice(); sc.listening = false; render(); return; }
+  if(!voiceSupported()){ sc.sttError = "This browser can't capture speech — typing still works."; render(); return; }
+  sc.listening = true; sc.interim = ''; sc.sttError = null; sc._best = ''; sc._ended = false;
+  render();
+  startVoice(
+    (alts) => { const t = (alts && alts[0] && alts[0].transcript) || ''; if(t){ sc._best = t; const el = document.getElementById('scInterim'); if(el) el.textContent = t; } },
+    (err) => {
+      if(sc._ended) return; sc._ended = true; sc.listening = false;
+      if(err){ sc.sttError = _sttErrMsg(err); render(); return; }
+      const heard = (sc._best || '').trim();
+      if(heard){ sc.input = heard; sc.voiceUsed = true; }
+      render();
+    },
+    'ja-JP'
+  );
+}
+window.scToggleListen = scToggleListen;
+
+async function _coachCall(promptStr){
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key) throw new Error('nokey');
+  const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model, max_tokens: 800, messages:[{ role:'user', content: promptStr }] })
+  });
+  if(!res.ok) throw new Error('http ' + res.status);
+  const data = await res.json();
+  return (data && data.content || []).map(c => c.text || '').join('').trim();
+}
+
+async function scCheck(){
+  const sc = state.sentenceCoach; if(!sc) return;
+  const input = (sc.input || '').trim();
+  if(!input){ sc.error = 'Type a Japanese sentence first, then tap Check.'; render(); return; }
+  if(sc.loading) return;
+  if(!(state.settings.anthropicKey || '').trim()){ sc.error = 'The coach needs a Claude API key — add one in Settings → AI.'; render(); return; }
+  sc.loading = true; sc.error = null; sc.result = null; render();
+  const free = sc.mode === 'free';
+  const fromVoice = sc.voiceUsed;
+  const p = _scCur();
+  const task = free
+    ? 'The learner is doing free practice and wrote a Japanese sentence they wanted to try.'
+    : `The learner was asked to express this in Japanese: ${p.en} (register: ${p.register}, context: ${p.who}).`;
+  const expectBlock = (!free && p.accept && p.accept.length)
+    ? `\nAcceptable natural answers include: ${p.accept.join(' / ')}.`
+    : '';
+  const lenientBlock = fromVoice
+    ? `\nThis answer was captured by SPEECH RECOGNITION, so forgive likely transcription artifacts when they don't change the meaning: homophones, kana equivalence, spacing, vowel elongation, and at most one short particle the recognizer may have dropped. Judge against the acceptable answers and the learner's evident intent. BUT still flag genuine grammar, particle-choice, or politeness mistakes a learner (not the recognizer) would make.`
+    : '\nThis answer was TYPED, so grade it as written.';
+  const prompt = `You are a warm, precise Japanese tutor for a beginner (around JLPT N5). Write ALL Japanese in HIRAGANA and KATAKANA ONLY — never kanji (the learner cannot read kanji yet). ${task}${expectBlock}${lenientBlock}
+They produced: "${input}"
+
+Evaluate it. Reply with ONLY a JSON object (no markdown, no code fence) with these keys:
+"verdict": one of "correct", "understandable", "off"
+"headline": a friendly verdict of at most 6 words
+"why": 1-2 short plain-English sentences on what works or what's off. Mention particles or politeness if relevant. Encouraging and concrete.
+"corrected": the most natural way a native would say it in this situation, in Japanese using HIRAGANA/KATAKANA ONLY (never kanji). If their answer is already perfect, repeat it (in kana).
+"alternatives": array of up to 3 objects {"jp": "kana only, no kanji", "note": "at most 8 words on when/why to use it"}. Natural variants or register shifts. Omit if none add value.
+"sttForgave": ONLY if this came from speech and you treated something as a recognizer mis-hear, a short string naming it. Otherwise "".
+If the input is empty or not Japanese, set verdict "off" and gently ask them to try in Japanese.`;
+  try {
+    const raw = await _coachCall(prompt);
+    const j = _aiJsonExtract(raw);
+    if(!j || !j.verdict) throw new Error('parse');
+    if(!Array.isArray(j.alternatives)) j.alternatives = [];
+    sc.loading = false; sc.result = j; render();
+    log('coach_ok', { verdict: j.verdict, voice: fromVoice });
+  } catch(e){
+    sc.loading = false;
+    sc.error = (e && e.message === 'nokey')
+      ? 'The coach needs a Claude API key — add one in Settings → AI.'
+      : "Couldn’t reach the coach just now (it may be busy). Give it another go.";
+    render();
+    log('coach_err', { err: String(e && e.message || e) });
+  }
+}
+window.scCheck = scCheck;
+
+function renderSentenceCoach(){
+  const sc = state.sentenceCoach;
+  if(!sc) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startSentenceCoach()">Start</button></div>`;
+  const free = sc.mode === 'free';
+  const p = _scCur();
+  const r = sc.result;
+  const canCheck = !sc.loading && !sc.listening && (sc.input || '').trim().length > 0;
+
+  const promptCard = free
+    ? `<div style="background:linear-gradient(160deg,rgba(157,92,255,.14),rgba(255,93,158,.05));border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:15px 16px;margin-bottom:13px"><div style="font-weight:700;font-size:13.5px;line-height:1.55;color:#e7e0f5">Write <b style="color:#fff">any</b> Japanese sentence you want to try — the coach tells you if it lands, why, and how a native might say it.</div></div>`
+    : `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:16px;margin-bottom:13px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px">
+          <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#8a80a8;text-transform:uppercase">Say this in Japanese</div>
+          <div style="font-weight:800;font-size:10px;color:#0c0a09;background:#9fe9cf;border-radius:7px;padding:4px 9px">${esc(p.register)}</div>
+        </div>
+        <div style="font-weight:700;font-size:18px;line-height:1.4">${esc(p.en)}</div>
+        <div style="font-weight:600;font-size:12px;color:#a99fc7;margin-top:8px">${esc(p.who + ' · ' + p.hint)}</div>
+      </div>`;
+
+  const listenBanner = sc.listening
+    ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
+        <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · はなして</div><div id="scInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sc.interim || '…')}</div></div>
+        <button onclick="scToggleListen()" style="flex:0 0 auto;padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
+      </div>`
+    : '';
+
+  const micStyle = sc.listening
+    ? 'flex:0 0 auto;padding:15px 14px;border-radius:15px;border:none;background:#ff5d9e;color:#fff;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 10px 24px rgba(255,93,158,.42)'
+    : 'flex:0 0 auto;padding:15px 14px;border-radius:15px;border:1px solid rgba(157,92,255,.45);background:rgba(157,92,255,.12);color:#d6c2ff;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer';
+  const checkStyle = `flex:1;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;cursor:${canCheck?'pointer':'not-allowed'};opacity:${canCheck?'1':'.5'};background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 28px rgba(255,93,158,.34)`;
+
+  const actionRow = `<div style="display:flex;gap:9px;margin-bottom:6px">
+      <button onclick="scToggleListen()" style="${micStyle}">${sc.listening ? '● Stop' : '🎙 Speak'}</button>
+      <button id="scCheckBtn" onclick="scCheck()" ${canCheck?'':'disabled'} style="${checkStyle}">${sc.loading ? 'Checking…' : 'Check my answer'}</button>
+      <button onclick="scNextPrompt()" style="flex:0 0 auto;padding:15px 14px;border-radius:15px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cdbfe8;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">↻</button>
+    </div>`;
+
+  const sttErr = sc.sttError ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-top:8px;font-weight:600;font-size:12px;color:#fcd34d;line-height:1.5">${esc(sc.sttError)}</div>` : '';
+  const voiceHint = (sc.voiceUsed && !sc.loading && !sc.result && !sc.listening)
+    ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.3);border-radius:12px;padding:10px 13px;margin-top:8px"><span style="color:#9fe9cf;font-weight:900;font-size:13px;flex-shrink:0">✓</span><div style="font-weight:600;font-size:11.5px;color:#9fe9cf;line-height:1.5">Heard you. Read it back above — fix any mis-heard word, <b>then</b> Check. The coach grades what's in the box, not the raw audio.</div></div>`
+    : '';
+  const loading = sc.loading
+    ? `<div style="display:flex;align-items:center;gap:11px;justify-content:center;padding:24px 0 8px;color:#c9b3ff"><div style="display:flex;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#ff5d9e;animation:pulseDot 1.2s infinite"></span><span style="width:9px;height:9px;border-radius:50%;background:#b97bff;animation:pulseDot 1.2s infinite .2s"></span><span style="width:9px;height:9px;border-radius:50%;background:#9d5cff;animation:pulseDot 1.2s infinite .4s"></span></div><span style="font-weight:700;font-size:13px">Coach is reading your sentence…</span></div>`
+    : '';
+  const errBlock = sc.error
+    ? `<div style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.35);border-radius:14px;padding:14px 15px;margin-top:10px"><div style="font-weight:700;font-size:13px;color:#fda4af;line-height:1.5">${esc(sc.error)}</div></div>`
+    : '';
+
+  let resultBlock = '';
+  if(r){
+    const vMap = {
+      correct:{icon:'✓',badge:'background:#34d399;color:#06281c',card:'background:linear-gradient(160deg,rgba(52,211,153,.16),rgba(157,92,255,.06));border:1px solid rgba(52,211,153,.32)'},
+      understandable:{icon:'~',badge:'background:#fbbf24;color:#3d2f00',card:'background:linear-gradient(160deg,rgba(251,191,36,.15),rgba(157,92,255,.06));border:1px solid rgba(251,191,36,.32)'},
+      off:{icon:'!',badge:'background:#fb7185;color:#3d0a14',card:'background:linear-gradient(160deg,rgba(251,113,133,.14),rgba(157,92,255,.06));border:1px solid rgba(251,113,133,.32)'}
+    };
+    const vv = vMap[r.verdict] || vMap.understandable;
+    const badgeBase = 'width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;';
+    const forgave = (typeof r.sttForgave === 'string' && r.sttForgave.trim()) ? r.sttForgave.trim() : '';
+    const alts = (r.alternatives || []).filter(a => a && a.jp).slice(0, 3);
+    const altRows = alts.map(a =>
+      `<button onclick="speakJP('${jsEsc(a.jp)}')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:13px;padding:12px 13px;cursor:pointer;font-family:inherit;width:100%">
+        <div style="flex:1;min-width:0"><div style="font-family:'Noto Sans JP';font-weight:700;font-size:16px;color:#f5f2ff">${esc(a.jp)}</div><div style="font-weight:600;font-size:11.5px;color:#a99fc7;margin-top:3px">${esc(a.note || '')}</div></div>
+        <span style="flex:0 0 auto;color:#9d8fc0;font-size:15px">🔊</span></button>`).join('');
+    resultBlock = `<div style="animation:riseIn .4s ease-out;margin-top:6px">
+      <div style="${vv.card};border-radius:18px;padding:15px 16px">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><div style="${badgeBase}${vv.badge}">${vv.icon}</div><div style="font-weight:800;font-size:15px;color:#fff">${esc(r.headline || '')}</div></div>
+        <div style="font-weight:500;font-size:13px;line-height:1.6;color:#e7e0f5">${esc(r.why || '')}</div>
+      </div>
+      ${forgave ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.32);border-radius:13px;padding:11px 13px;margin-top:9px"><span style="font-size:14px;flex-shrink:0">🎙</span><div style="font-weight:600;font-size:11.5px;color:#c9b3ff;line-height:1.5">Forgave a likely mis-hear — <b style="color:#fff">${esc(forgave)}</b>. Graded on what you meant, not the recognizer's slip.</div></div>` : ''}
+      ${r.corrected ? `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:15px 16px;margin-top:11px"><div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#9fe9cf;text-transform:uppercase;margin-bottom:8px">Most natural here</div><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-family:'Noto Sans JP';font-weight:700;font-size:20px;line-height:1.4">${esc(r.corrected)}</div><button onclick="speakJP('${jsEsc(r.corrected)}')" style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:16px;cursor:pointer">🔊</button></div></div>` : ''}
+      ${alts.length ? `<div style="margin-top:11px"><div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#8a80a8;text-transform:uppercase;margin:0 4px 9px">Other ways to say it</div><div style="display:flex;flex-direction:column;gap:8px">${altRows}</div></div>` : ''}
+      <button onclick="scNextPrompt()" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.35);cursor:pointer">${free ? 'Clear' : 'Next prompt →'}</button>
+    </div>`;
+  }
+
+  return `<div class="coach-wrap" style="padding:2px 2px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">Sentence Coach</div>
+      <button onclick="scToggleMode()" style="font-weight:800;font-size:10.5px;letter-spacing:.5px;color:#c9b3ff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.05);cursor:pointer;font-family:inherit">${free ? '◢ Free practice' : '◢ Situations'}</button>
+    </div>
+    <div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:14px">${free ? 'Free practice' : 'Translate & get coached'}</div>
+    ${promptCard}
+    <textarea oninput="scOnInput(this.value)" placeholder="${free ? 'ここに にほんごを かいてみて…' : 'type your Japanese here…'}" rows="2" style="width:100%;padding:14px 15px;border-radius:16px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:18px;line-height:1.5;outline:none;resize:none;margin-bottom:12px">${esc(sc.input || '')}</textarea>
+    ${listenBanner}
+    ${actionRow}
+    ${sttErr}${voiceHint}${loading}${errBlock}${resultBlock}
+    <div style="font-weight:600;font-size:11px;line-height:1.55;color:#6f6688;text-align:center;margin-top:18px;padding:0 10px">🎙 Speak or type. You always see the transcript and can fix it before checking, so a mis-hear never costs you.</div>
+  </div>`;
+}
+
+/* ===================== SHIP 3 — UNIFIED RECALL ===================== */
+function _rcKata2Hira(s){ return (s||'').replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60)); }
+function _rcNormKana(s){ return _rcKata2Hira(s).replace(/[\s　・、。．.!?！？「」ー〜]/g,'').toLowerCase(); }
+function _rcRomaji(s){ return (s||'').toLowerCase().replace(/[āâ]/g,'a').replace(/[īî]/g,'i').replace(/[ūû]/g,'u').replace(/[ēê]/g,'e').replace(/[ōô]/g,'o').replace(/[^a-z]/g,''); }
+function _rcLev(a,b){ const m=a.length,n=b.length; if(!m) return n; if(!n) return m; const d=Array.from({length:m+1},(_,x)=>[x,...Array(n).fill(0)]); for(let j=1;j<=n;j++) d[0][j]=j; for(let x=1;x<=m;x++) for(let y=1;y<=n;y++){ d[x][y]=Math.min(d[x-1][y]+1, d[x][y-1]+1, d[x-1][y-1]+(a[x-1]===b[y-1]?0:1)); } return d[m][n]; }
+function _rcRomajiOf(w){ return w.romaji || (typeof kanaToRomaji === 'function' ? kanaToRomaji(w.jp) : '') || ''; }
+function _rcMatches(input, w){
+  const ik = _rcNormKana(input);
+  if(ik){ const t = _rcNormKana(w.jp); if(t && (ik === t || _rcLev(ik, t) <= 1)) return true; }
+  const ir = _rcRomaji(input), wr = _rcRomaji(_rcRomajiOf(w));
+  if(ir && wr && (ir === wr || _rcLev(ir, wr) <= 1)) return true;
+  return false;
+}
+function _rcThemeLabel(w){ const t = (w.theme || '').trim(); if(!t) return 'Vocab'; return t.charAt(0).toUpperCase() + t.slice(1); }
+function _rcTier(iv, mastered){
+  const M = (typeof BLITZ_MATURE_MIN === 'number') ? BLITZ_MATURE_MIN : 10080;
+  const prog = Math.max(.08, Math.min(1, (iv || 0) / M));
+  let label = 'New';
+  if(mastered || iv >= M) label = 'Mastered';
+  else if(iv >= 1440) label = 'Guru';
+  else if(iv >= 15) label = 'Learning';
+  return { label, prog, gold: (mastered || iv >= M) };
+}
+
+function startRecall(){
+  stopVoice();
+  let pool = [];
+  try { pool = buildBlitzPool() || []; } catch(e){ pool = []; }
+  const byId = {}; getActiveWords().forEach(w => { byId[w.id] = w; });
+  let words = pool.map(p => byId[p.id]).filter(Boolean);
+  if(!words.length){
+    /* Nothing due — never leave the mode dead. Pull from the drillable set. */
+    let fallback = [];
+    try { fallback = (typeof getDrillableWords === 'function' ? getDrillableWords() : getActiveWords()).slice(); } catch(e){ fallback = getActiveWords().slice(); }
+    words = (typeof shuffleFY === 'function' ? shuffleFY(fallback) : fallback);
+  }
+  if(!words.length){ alert('No words available. Add words or enable the N5 pack in Settings.'); return; }
+  words = words.slice(0, 12);
+  state.recall = { words, i:0, phase:'recall', input:'', listening:false, interim:'', sttError:null, heard:null, via:null, pass:null, lastInterval:null };
+  nav('recall');
+}
+window.startRecall = startRecall;
+
+function _rcCur(){ const r = state.recall; return r && r.words[r.i % r.words.length]; }
+
+function rcOnInput(v){
+  const r = state.recall; if(!r) return;
+  r.input = v;
+  const btn = document.getElementById('rcTypeBtn');
+  if(btn){ const ok = !r.listening && (v||'').trim().length > 0; btn.disabled = !ok; btn.style.opacity = ok ? '1' : '.5'; btn.style.cursor = ok ? 'pointer' : 'not-allowed'; }
+}
+window.rcOnInput = rcOnInput;
+
+function _rcDoGrade(pass, via){
+  const r = state.recall; const w = _rcCur(); if(!w) return;
+  recordAttempt(w.id, pass, 'recall', { via, voice: via === 'voice' || via === 'voice→tap' });
+  if(typeof updateStreak === 'function') updateStreak(pass);
+  const st = smStatFor(w.id);
+  smGrade(st, pass ? 'good' : 'again');
+  r.lastInterval = st.smInterval;
+  r.phase = 'done'; r.pass = pass; r.via = via;
+  save();
+  render();
+}
+function rcGradeGot(){ _rcDoGrade(true, state.recall.via || 'self-check'); }
+function rcGradeMiss(){ _rcDoGrade(false, state.recall.via || 'self-check'); }
+window.rcGradeGot = rcGradeGot; window.rcGradeMiss = rcGradeMiss;
+
+function rcSubmitTyped(){
+  const r = state.recall; if(!r) return;
+  const input = (r.input || '').trim(); if(!input) return;
+  stopVoice(); r.listening = false;
+  if(_rcMatches(input, _rcCur())){ _rcDoGrade(true, 'typing'); }
+  else { r.heard = null; r.via = 'typing'; r.phase = 'judge'; render(); }
+}
+window.rcSubmitTyped = rcSubmitTyped;
+
+function rcShowAnswer(){
+  const r = state.recall; if(!r) return;
+  stopVoice(); r.listening = false; r.heard = null; r.via = 'self-check'; r.phase = 'judge'; render();
+}
+window.rcShowAnswer = rcShowAnswer;
+
+function rcToggleListen(){
+  const r = state.recall; if(!r) return;
+  if(r.listening){ stopVoice(); r.listening = false; render(); return; }
+  if(!voiceSupported()){ r.sttError = "This browser can't capture speech — type or self-check instead."; render(); return; }
+  r.listening = true; r.interim = ''; r.sttError = null; r._alts = []; r._ended = false;
+  render();
+  startVoice(
+    (alts) => { r._alts = alts || []; const t = (alts && alts[0] && alts[0].transcript) || ''; const el = document.getElementById('rcInterim'); if(el && t) el.textContent = t; },
+    (err) => {
+      if(r._ended) return; r._ended = true; r.listening = false;
+      if(err){ r.sttError = _sttErrMsg(err); render(); return; }
+      _rcEvalHeard();
+    },
+    'ja-JP'
+  );
+}
+window.rcToggleListen = rcToggleListen;
+
+function _rcEvalHeard(){
+  const r = state.recall; if(!r) return;
+  if(r.phase !== 'recall'){ render(); return; }
+  const alts = r._alts || []; const w = _rcCur();
+  if(alts.some(a => a && a.transcript && _rcMatches(a.transcript, w))){ _rcDoGrade(true, 'voice'); return; }
+  const heard = (alts[0] && alts[0].transcript || '').trim();
+  r.heard = heard ? `Heard "${heard}" — couldn't confirm it. You decide:` : "Didn't catch a clear word — you decide:";
+  r.via = 'voice→tap'; r.phase = 'judge'; render();
+}
+
+function rcNext(){
+  const r = state.recall; if(!r) return;
+  stopVoice();
+  if(r.i >= r.words.length - 1){ startRecall(); return; }
+  r.i++; r.phase = 'recall'; r.input = ''; r.heard = null; r.via = null; r.pass = null; r.sttError = null; r.interim = ''; r.listening = false;
+  render();
+}
+window.rcNext = rcNext;
+
+function renderRecall(){
+  const r = state.recall;
+  if(!r) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startRecall()">Start</button></div>`;
+  const words = r.words; const w = _rcCur();
+  if(!w) return `<div class="card"><div class="muted">No cards.</div></div>`;
+  const masteredSet = new Set(state.settings.masteredWords || []);
+  const masteredC = masteredSet.size;
+  const M = (typeof BLITZ_MATURE_MIN === 'number') ? BLITZ_MATURE_MIN : 10080;
+
+  const pips = words.map((x, idx) => {
+    const st = state.stats[x.id]; const iv = st ? (st.smInterval || 0) : 0;
+    const isMastered = masteredSet.has(x.id);
+    let bg = (isMastered || iv >= M) ? '#fbbf24' : (iv >= 1440 ? 'linear-gradient(90deg,#9d5cff,#ff5d9e)' : (iv >= 15 ? 'rgba(157,92,255,.5)' : 'rgba(255,255,255,.14)'));
+    const ring = idx === (r.i % words.length) ? ';outline:2px solid #fff;outline-offset:2px' : '';
+    return `<div style="flex:1;height:6px;border-radius:3px;background:${bg}${ring}"></div>`;
+  }).join('');
+
+  const header = `<div style="padding:2px 2px 0">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div><div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">Recall</div><div style="font-weight:800;font-size:20px;letter-spacing:-.3px">Say it · type it · check it</div></div>
+      <div style="text-align:right"><div style="font-weight:800;font-size:18px">${(r.i % words.length) + 1}<span style="color:#6f6688;font-size:13px">/${words.length}</span></div><div style="font-weight:700;font-size:9px;letter-spacing:1.5px;color:#8a80a8">🏆 ${masteredC} OWNED</div></div>
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:18px">${pips}</div>
+  </div>`;
+
+  const promptCard = `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:18px 16px;text-align:center;margin-bottom:13px">
+    <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#8a80a8;text-transform:uppercase;margin-bottom:11px">Recall the Japanese for</div>
+    <div style="font-weight:800;font-size:28px;letter-spacing:-.5px;line-height:1.1">${esc(w.en)}</div>
+    <div style="display:inline-block;margin-top:11px;font-weight:700;font-size:10px;letter-spacing:1px;color:#c9b3ff;background:rgba(157,92,255,.16);border:1px solid rgba(157,92,255,.3);border-radius:8px;padding:5px 10px">${esc(_rcThemeLabel(w))}</div>
+  </div>`;
+
+  let body = '';
+  if(r.phase === 'recall'){
+    const canType = !r.listening && (r.input || '').trim().length > 0;
+    const listenBanner = r.listening
+      ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px"><span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · にほんごで</div><div id="rcInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.interim || '…')}</div></div><button onclick="rcToggleListen()" style="flex:0 0 auto;padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button></div>`
+      : '';
+    const micStyle = r.listening
+      ? 'flex:1;padding:14px;border-radius:14px;border:none;background:#ff5d9e;color:#fff;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;box-shadow:0 10px 24px rgba(255,93,158,.42)'
+      : 'flex:1;padding:14px;border-radius:14px;border:1px solid rgba(157,92,255,.45);background:rgba(157,92,255,.12);color:#d6c2ff;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer';
+    const typeStyle = `flex:0 0 auto;padding:14px 18px;border-radius:14px;border:none;font-family:inherit;font-weight:800;font-size:14px;color:#fff;cursor:${canType?'pointer':'not-allowed'};opacity:${canType?'1':'.5'};background:linear-gradient(100deg,#9d5cff,#ff5d9e)`;
+    const sttErr = r.sttError ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-top:10px;font-weight:600;font-size:12px;color:#fcd34d;line-height:1.5">${esc(r.sttError)}</div>` : '';
+    body = `<div>
+      ${listenBanner}
+      <div style="display:flex;gap:9px;margin-bottom:10px">
+        <input value="${esc(r.input || '')}" oninput="rcOnInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();rcSubmitTyped();}" placeholder="type the word (kana or romaji)…" style="flex:1;min-width:0;padding:14px 15px;border-radius:14px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:16px;outline:none">
+        <button id="rcTypeBtn" onclick="rcSubmitTyped()" ${canType?'':'disabled'} style="${typeStyle}">Check</button>
+      </div>
+      <div style="display:flex;gap:9px">
+        <button onclick="rcToggleListen()" style="${micStyle}">${r.listening ? '● Stop' : '🎙 Speak'}</button>
+        <button onclick="rcShowAnswer()" style="flex:1;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#cdbfe8;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer">👁 Show answer</button>
+      </div>
+      ${sttErr}
+      <div style="font-weight:600;font-size:11px;color:#6f6688;text-align:center;margin-top:13px;line-height:1.5">🎙 say · ⌨ type · 👁 self-check — all three feed the same progress. Voice falls back to a tap if it's unsure.</div>
+    </div>`;
+  } else if(r.phase === 'judge'){
+    const heardLine = r.heard ? `<div style="display:flex;align-items:center;gap:9px;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:12px;padding:10px 13px;margin-bottom:11px"><span style="font-size:13px">🎙</span><div style="font-weight:600;font-size:12px;color:#c9b3ff;line-height:1.4">${esc(r.heard)}</div></div>` : '';
+    body = `<div style="animation:riseIn .35s ease-out">
+      ${heardLine}
+      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px 16px;text-align:center;margin-bottom:13px">
+        <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#9fe9cf;text-transform:uppercase;margin-bottom:10px">Answer</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:11px"><div style="font-family:'Noto Sans JP';font-weight:900;font-size:34px">${esc(w.jp)}</div><button onclick="speakJP('${jsEsc(w.jp)}')" style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:16px;cursor:pointer">🔊</button></div>
+        <div style="font-style:italic;font-weight:500;font-size:13px;color:#a99fc7;margin-top:6px">${esc(_rcRomajiOf(w))}</div>
+      </div>
+      <div style="font-weight:700;font-size:12px;color:#8a80a8;text-align:center;margin-bottom:11px">Did you recall it?</div>
+      <div style="display:flex;gap:9px">
+        <button onclick="rcGradeMiss()" style="flex:1;padding:15px;border-radius:14px;border:1.5px solid rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fb7185;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">Missed it</button>
+        <button onclick="rcGradeGot()" style="flex:1;padding:15px;border-radius:14px;border:1.5px solid rgba(52,211,153,.5);background:rgba(52,211,153,.12);color:#9fe9cf;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">✓ I had it</button>
+      </div>
+      <div style="font-weight:600;font-size:11px;color:#6f6688;text-align:center;margin-top:13px;line-height:1.5">You always get the final say — the recognizer never overrides you.</div>
+    </div>`;
+  } else if(r.phase === 'done'){
+    const viaMap = { voice:'voice ✓ matched', typing:'typing', 'self-check':'self-check', 'voice→tap':'voice → your call' };
+    const pass = r.pass;
+    const tier = _rcTier(r.lastInterval, masteredSet.has(w.id));
+    const outcomeCard = (pass
+      ? 'background:linear-gradient(160deg,rgba(52,211,153,.16),rgba(157,92,255,.06));border:1px solid rgba(52,211,153,.32)'
+      : 'background:linear-gradient(160deg,rgba(251,113,133,.13),rgba(157,92,255,.06));border:1px solid rgba(251,113,133,.3)') + ';border-radius:18px;padding:16px';
+    const outcomeBadge = 'width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex-shrink:0;' + (pass ? 'background:#34d399;color:#06281c' : 'background:#fb7185;color:#3d0a14');
+    const barStyle = 'height:100%;width:' + Math.round(tier.prog * 100) + '%;background:' + (tier.gold ? '#fbbf24' : 'linear-gradient(90deg,#9d5cff,#ff5d9e)');
+    body = `<div style="animation:riseIn .35s ease-out">
+      <div style="${outcomeCard}">
+        <div style="display:flex;align-items:center;gap:11px"><div style="${outcomeBadge}">${pass ? '✓' : '↻'}</div><div><div style="font-weight:800;font-size:16px;color:#fff">${pass ? 'Counted as recalled' : 'Marked for review'}</div><div style="font-weight:600;font-size:12px;color:#cdbfe8;margin-top:2px">via ${esc(viaMap[r.via] || r.via || 'self-check')}</div></div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.1)"><div style="font-family:'Noto Sans JP';font-weight:800;font-size:20px">${esc(w.jp)}<span style="font-weight:600;font-size:13px;color:#a99fc7;margin-left:9px">${esc(w.en)}</span></div></div>
+        <div style="display:flex;align-items:center;gap:9px;margin-top:13px"><div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden"><div style="${barStyle}"></div></div><div style="font-weight:800;font-size:11px;color:#c9b3ff;white-space:nowrap">${tier.label}</div></div>
+        <div style="font-weight:600;font-size:11.5px;color:#a99fc7;margin-top:9px;line-height:1.45">Next review in ${esc(smIntervalLabel(r.lastInterval))} · same SM-2 schedule whether you said it, typed it, or self-checked.</div>
+      </div>
+      <button onclick="rcNext()" style="width:100%;margin-top:13px;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.35);cursor:pointer">${(r.i % words.length) === words.length - 1 ? 'Start over →' : 'Next word →'}</button>
+    </div>`;
+  }
+
+  return `<div class="recall-wrap" style="padding:0 2px 24px">${header}${promptCard}${body}</div>`;
+}
 
 function kanaBlitzCurrent(){
   if(!state.kanaBlitz || !state.kanaBlitz.active) return null;
@@ -16635,7 +17131,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress'};
+const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall'};
 
 function renderTopbar(){
   if(state.screen === 'home') return '';
@@ -16648,7 +17144,7 @@ function renderTopbar(){
      verify what they're running without digging into Settings. Green
      dot = Whisper active; amber = Web Speech fallback. */
   const whisperOn = whisperAvailable();
-  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:${whisperOn ? 'rgba(22,163,74,0.10)' : 'rgba(124,58,237,0.07)'};color:${whisperOn ? '#16a34a' : 'var(--faint)'};white-space:nowrap;margin-left:6px">v${APP_VERSION} · ${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
+  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:${whisperOn ? 'rgba(22,163,74,0.10)' : 'rgba(124,58,237,0.07)'};color:${whisperOn ? '#16a34a' : 'var(--faint)'};white-space:nowrap;margin-left:6px">${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
   return `<div class="topbar" style="display:flex;align-items:center;gap:6px">
     <button class="topbar-back" onclick="goBack()" title="Back">←</button>
     <div class="topbar-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div>
@@ -17007,7 +17503,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress}[state.screen] || renderHome;
+  const r = {home:renderHome, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -17265,6 +17761,22 @@ function renderHome(){
      ideas stay one edit away. */
   const upNext = `
     <div class="h8-list" style="margin-top:6px">
+      <button class="h8-row" onclick="startRecall()">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:24px;color:#fff;background:linear-gradient(150deg,#9d5cff,#ff5d9e);box-shadow:0 8px 22px rgba(255,93,158,.40),0 0 24px rgba(157,92,255,.35);flex-shrink:0">🧠</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Recall</div>
+          <div class="h8-row-meta">Say it · type it · check it</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+      <button class="h8-row" onclick="startSentenceCoach()">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:24px;color:#fff;background:linear-gradient(150deg,#b97bff,#ff5d9e);box-shadow:0 8px 22px rgba(255,93,158,.38),0 0 24px rgba(185,123,255,.35);flex-shrink:0">💬</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Sentence Coach</div>
+          <div class="h8-row-meta">Translate &amp; get AI feedback</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
       <button class="h8-row" onclick="startKanaBlitz('all')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
         <div class="h8-row-body">
@@ -17295,8 +17807,17 @@ function renderHome(){
   /* v7.40 — Vocab Blitz scope chips (re-introduced): built-in sections + your
      own collections. Tapping a chip narrows the hero session to that scope. */
   const vSec = state.settings.vocabSection || 'all';
-  const scopeChipHtml = (id, emoji, name, count, isActive) =>
-    `<button class="scope-chip${isActive ? ' active' : ''}" onclick="setVocabSection('${id}')">${esc(emoji)} ${esc(name)}${count != null ? `<span class="ct">${count}</span>` : ''}</button>`;
+  const scopeChipHtml = (id, emoji, name, count, isActive) => {
+    const ctHtml = count != null ? `<span class="ct">${esc(String(count))}</span>` : '';
+    const noWords = count === 0;
+    /* B-flow: chip body selects (setVocabSection); the ▶ end-cap launches the
+       hands-free audio loop for that scope in one tap. Two buttons, not a
+       nested button, so both stay independently tappable. */
+    return `<span class="scope-chip-group${isActive ? ' active' : ''}">`
+      + `<button class="scope-chip${isActive ? ' active' : ''}" onclick="setVocabSection('${id}')">${esc(emoji)} ${esc(name)}${ctHtml}</button>`
+      + `<button class="scope-chip-play" ${noWords ? 'disabled' : ''} onclick="startTopicHandsFree('${id}')" aria-label="Start hands-free: ${esc(name)}" title="${noWords ? 'No words in this topic yet' : 'Start hands-free · ' + esc(name)}">▶</button>`
+      + `</span>`;
+  };
   const vocabChips = VOCAB_SECTIONS.map(s => {
     let count;
     if(s.mode === 'mastered') count = masteredReady;
@@ -17327,7 +17848,7 @@ function renderHome(){
   const textbookBlock = melChips
     ? `<details class="textbook-sets"><summary>📘 Textbook lessons (みんな) · ${melCols.length}</summary><div class="scope-row" style="padding-bottom:4px">${melChips}</div></details>`
     : '';
-  const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic</div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
+  const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· tap ▶ to go hands-free</span></div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
   return `
     <div class="home-v8">
