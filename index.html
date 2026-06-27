@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.82';
+const APP_VERSION = '7.83';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9656,11 +9656,30 @@ const _NUANCE_SETS = [
   { ctx:'I really ＿＿ coffee — I drink it daily.', sub:'A liking takes が, not を.', opts:[{jp:'すき',gl:'like (が)',correct:true},{jp:'のむ',gl:'drink (を)',correct:false}], ex:'すき is an adjective of liking: コーヒーが すき. It takes が, never を. のむ is the action "drink" and takes を.' },
   { ctx:'The movie ＿＿ at 7 — it begins by itself.', sub:'Nothing is doing it; it just happens.', opts:[{jp:'はじまる',gl:'begins (by itself)',correct:true},{jp:'はじめる',gl:'start (something)',correct:false}], ex:'はじまる = intransitive, it begins on its own (えいがが はじまる). はじめる = transitive, YOU start something (べんきょうを はじめる).' },
   { ctx:'I can ＿＿ the mountain from my window.', sub:'It’s naturally visible, not an effort.', opts:[{jp:'みえる',gl:'is visible',correct:true},{jp:'みる',gl:'watch (on purpose)',correct:false}], ex:'みえる = something is visible to you without trying (やまが みえる). みる = you actively watch (テレビを みる).' },
-  { ctx:'She’s ＿＿ at cooking — praising someone else.', sub:'Use for another person’s skill.', opts:[{jp:'じょうず',gl:'skilled (others)',correct:true},{jp:'とくい',gl:'good-at (own)',correct:false}], ex:'じょうず praises someone else’s skill (りょうりが じょうず). For your OWN strong point, natives prefer とくい — calling yourself じょうず sounds boastful.' }
+  { ctx:'She’s ＿＿ at cooking — praising someone else.', sub:'Use for another person’s skill.', opts:[{jp:'じょうず',gl:'skilled (others)',correct:true},{jp:'とくい',gl:'good-at (own)',correct:false}], ex:'じょうず praises someone else’s skill (りょうりが じょうず). For your OWN strong point, natives prefer とくい — calling yourself じょうず sounds boastful.' },
+  { ctx:'I ＿＿ a pen from my friend — I’m the one taking it.', sub:'Who ends up holding it? You.', opts:[{jp:'かりる',gl:'borrow',correct:true},{jp:'かす',gl:'lend',correct:false}], ex:'かりる = borrow, you take it (ともだちに ペンを かりる). かす = lend, you hand it out (ともだちに ペンを かす).' },
+  { ctx:'I ＿＿ Japanese from a teacher — I’m the student.', sub:'You’re receiving the knowledge.', opts:[{jp:'ならう',gl:'learn',correct:true},{jp:'おしえる',gl:'teach',correct:false}], ex:'ならう = learn / be taught, you receive it (せんせいに ならう). おしえる = teach, you give it out.' },
+  { ctx:'Do you ＿＿ his phone number? (have that info)', sub:'Holding a fact / piece of info.', opts:[{jp:'しる',gl:'know (a fact)',correct:true},{jp:'わかる',gl:'understand',correct:false}], ex:'しる = know / have the info (in real use: しっている). わかる = understand, grasp the meaning (いみが わかる).' },
+  { ctx:'I can ＿＿ music from next door — without trying.', sub:'It reaches your ears on its own.', opts:[{jp:'きこえる',gl:'is audible',correct:true},{jp:'きく',gl:'listen (on purpose)',correct:false}], ex:'きこえる = audible without effort (おんがくが きこえる). きく = actively listen or ask (おんがくを きく).' },
+  { ctx:'This water is ＿＿ — cold to the touch.', sub:'Cold you feel by touching, not the air.', opts:[{jp:'つめたい',gl:'cold (touch)',correct:true},{jp:'さむい',gl:'cold (weather)',correct:false}], ex:'つめたい = cold to the touch (つめたい みず). さむい = cold air / weather (きょうは さむい).' },
+  { ctx:'＿＿ たべた — "I’ve already eaten."', sub:'Something is already finished.', opts:[{jp:'もう',gl:'already',correct:true},{jp:'まだ',gl:'still / not yet',correct:false}], ex:'もう = already (もう たべた). まだ = still / not yet (まだ たべて いない = haven’t eaten yet).' },
+  { ctx:'100えん ＿＿ ない — "I have only 100 yen."', sub:'This "only" must pair with a negative verb.', opts:[{jp:'しか',gl:'only (+ negative)',correct:true},{jp:'だけ',gl:'only (neutral)',correct:false}], ex:'しか always takes a negative verb (100えん しか ない). だけ is neutral and takes a positive (100えん だけ ある). Same idea, opposite verb.' },
+  { ctx:'There are ＿＿ people here — not many.', sub:'Small in NUMBER, not size.', opts:[{jp:'すくない',gl:'few',correct:true},{jp:'ちいさい',gl:'small (size)',correct:false}], ex:'すくない = few / not many (ひとが すくない). ちいさい = small in size (ちいさい いえ). Don’t use ちいさい for amounts.' },
+  { ctx:'みずが ＿＿ — "I want water (the thing)."', sub:'Wanting a THING, not an action.', opts:[{jp:'ほしい',gl:'want (a thing)',correct:true},{jp:'のみたい',gl:'want to drink',correct:false}], ex:'ほしい = want a noun / thing (みずが ほしい). To want to DO something, use verb + たい (みずが のみたい = want to drink water).' },
+  { ctx:'It’s ＿＿ おいしくない — "not very tasty."', sub:'Pairs with a negative — "not much."', opts:[{jp:'あまり',gl:'not very (+ neg)',correct:true},{jp:'とても',gl:'very',correct:false}], ex:'あまり + negative = not very (あまり おいしくない). とても = very, with a positive (とても おいしい). あまり needs a negative.' },
+  { ctx:'I ＿＿ the train at the station — get on board.', sub:'Getting ON, not off.', opts:[{jp:'のる',gl:'get on / ride',correct:true},{jp:'おりる',gl:'get off',correct:false}], ex:'のる = get on / ride, takes に (でんしゃに のる). おりる = get off / descend, takes を (でんしゃを おりる).' },
+  { ctx:'Sushi ＿＿ tempura (and other things) — examples.', sub:'Listing examples, not the full list.', opts:[{jp:'や',gl:'and (examples)',correct:true},{jp:'と',gl:'and (full list)',correct:false}], ex:'や lists examples among more (すし や てんぷら = sushi, tempura, and such). と lists the complete set (すし と てんぷら = exactly those two).' },
+  { ctx:'Finish it ＿＿ 5 o’clock — by that deadline.', sub:'A deadline you must finish by.', opts:[{jp:'までに',gl:'by (deadline)',correct:true},{jp:'まで',gl:'until',correct:false}], ex:'までに = by a deadline (5じ までに する = do it BY 5). まで = continuously until (5じ まで する = keep doing UNTIL 5).' },
+  { ctx:'It’s hot today, ＿＿? — seeking your agreement.', sub:'Checking the listener agrees.', opts:[{jp:'ね',gl:'right? (agree)',correct:true},{jp:'よ',gl:'(informing)',correct:false}], ex:'ね seeks agreement / shared feeling (あついね = hot, isn’t it?). よ informs the listener of something new (あついよ = it’s hot, I’m telling you).' }
 ];
+const NUANCE_SESSION = 10;
 
 function startNuance(){
-  state.nuance = { i:0, pick:null, correct:0, done:0, order: _shuffleNuance() };
+  /* Finite session: shuffle the whole pool and take a fixed number, so it ends
+     with a score instead of wrapping forever. With 24 sets and a 10-card round,
+     consecutive sessions stay varied. */
+  const order = _shuffleNuance().slice(0, Math.min(NUANCE_SESSION, _NUANCE_SETS.length));
+  state.nuance = { i:0, pick:null, correct:0, order };
   nav('nuance');
 }
 window.startNuance = startNuance;
@@ -9668,7 +9687,7 @@ function _shuffleNuance(){
   const a = _NUANCE_SETS.map((_, i) => i);
   return (typeof shuffleFY === 'function') ? shuffleFY(a) : a;
 }
-function _nzCur(){ const n = state.nuance; return _NUANCE_SETS[n.order[n.i % n.order.length]]; }
+function _nzCur(){ const n = state.nuance; return _NUANCE_SETS[n.order[n.i]]; }
 
 function nuancePick(idx){
   const n = state.nuance; if(!n || n.pick !== null) return;
@@ -9684,6 +9703,21 @@ window.nuanceNext = nuanceNext;
 function renderNuance(){
   const n = state.nuance;
   if(!n) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startNuance()">Start</button></div>`;
+  const total = n.order.length;
+  /* Session complete — show the score, then a fresh (re-shuffled) round. */
+  if(n.i >= total){
+    const pct = total ? Math.round(n.correct / total * 100) : 0;
+    return `<div class="nuance-wrap" style="padding:24px 2px">
+      <div style="background:linear-gradient(160deg,rgba(52,211,153,.16),rgba(157,92,255,.06));border:1px solid rgba(52,211,153,.32);border-radius:22px;padding:28px 18px;text-align:center">
+        <div style="font-size:46px;margin-bottom:6px">${pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪'}</div>
+        <div style="font-weight:800;font-size:20px">Round complete</div>
+        <div style="font-weight:800;font-size:34px;letter-spacing:-1px;margin-top:10px"><span style="background:linear-gradient(100deg,#9d5cff,#ff5d9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">${n.correct}/${total}</span></div>
+        <div style="font-weight:600;font-size:12.5px;color:#a99fc7;margin-top:6px">${pct}% on the nuances you saw</div>
+      </div>
+      <button onclick="startNuance()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.35);cursor:pointer">New round →</button>
+      <button onclick="nav('home')" style="width:100%;margin-top:9px;padding:13px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.06);color:#cdbfe8;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">Done</button>
+    </div>`;
+  }
   const z = _nzCur();
   const picked = n.pick;
   const hasPick = picked !== null;
@@ -9712,7 +9746,7 @@ function renderNuance(){
   return `<div class="nuance-wrap" style="padding:0 2px 24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">Nuance · which one fits?</div>
-      <div style="font-weight:700;font-size:11px;color:#8a80a8">${n.correct}/${n.done}</div>
+      <div style="font-weight:700;font-size:11px;color:#8a80a8">${n.i + 1}/${total} · ${n.correct} ✓</div>
     </div>
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:16px;margin-bottom:14px">
       <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#8a80a8;text-transform:uppercase">Context</div>
