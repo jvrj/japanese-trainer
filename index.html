@@ -9243,6 +9243,117 @@ async function _coachCall(promptStr){
   return (data && data.content || []).map(c => c.text || '').join('').trim();
 }
 
+/* ===================== CONVO (おしゃべり) API HELPERS ===================== */
+
+/**
+ * _convoPreamble(pool, freeSet, scene)
+ * Returns the system-prompt string for the multi-turn conversation loop.
+ * Four framing elements (per rubric):
+ *   (a) kana-only / no-kanji instruction
+ *   (b) WORD_POOL — word ids + jp forms from the pool argument
+ *   (c) scene context line (scene argument interpolated directly)
+ *   (d) per-turn JSON schema naming all five locked keys
+ * Security: pool words are serialised via JSON.stringify per-entry so a crafted
+ * word with "\nrole:" cannot inject a message-boundary marker. The scene value
+ * has newlines collapsed to spaces for the same reason.
+ */
+function _convoPreamble(pool, freeSet, scene){
+  /* Sanitize scene: collapse newlines so a crafted value cannot inject role: markers */
+  const safeScene = String(scene || '').replace(/[\r\n]+/g, ' ');
+  /* JSON.stringify each pool entry — prevents injection via embedded role/Human tokens */
+  const poolLines = (pool || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
+  const freeLines = (freeSet || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
+  return [
+    'You are an AI Japanese conversation partner for a beginner learner.',
+    '',
+    'KANA-ONLY RULE: All Japanese text you produce — questions, glosses, suggestions — must be',
+    'written entirely in hiragana and katakana. Never output kanji characters.',
+    '',
+    'WORD_POOL — your questions must be answerable using only these words:',
+    poolLines,
+    freeLines ? ('FREE_SET (supplementary):\n' + freeLines) : '',
+    '',
+    'SCENE: ' + safeScene,
+    '',
+    'Each reply MUST be a single JSON object with exactly these five keys and no others:',
+    '{',
+    '  "jp": "<your short kana-only question or reaction for this turn>",',
+    '  "glossEn": "<brief English gloss of jp so the learner can peek>",',
+    '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
+    '  "judged": {"usedWords": ["<wordId of each pool word the learner used>"], "score": <0|1|2>},',
+    '  "sceneDone": <true|false>',
+    '}',
+    '',
+    'Guidelines:',
+    '- Keep jp to one short sentence (≤10 kana).',
+    '- suggested must contain 2–3 tappable replies from the WORD_POOL in kana.',
+    '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
+    '- judged.score: 0 = chip tap only, 1 = unaided speech with pool word, 2 = rich free speech.',
+    '- sceneDone = true only when the scene has reached a natural close (≥3 turns).',
+    '- Output raw JSON only — no markdown fences, no preamble.',
+  ].filter(l => l !== undefined).join('\n');
+}
+
+/**
+ * _convoCall(messages, systemStr)
+ * Multi-turn Anthropic API call. Duplicates _coachCall's fetch body deliberately
+ * (spec: no in-place refactor of load-bearing _coachCall). Sends the conversation
+ * framing via the top-level system field; the windowed turn history via messages[].
+ * The raw text response must be parsed with _aiJsonExtract by the caller.
+ *
+ * Security: the API key appears only in the x-api-key header — never in any
+ * console call, error string, or DOM output.
+ */
+async function _convoCall(messages, systemStr){
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key) throw new Error('nokey');
+  const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model, max_tokens: 400, system: systemStr || '', messages: messages })
+  });
+  if(!res.ok) throw new Error('http ' + res.status);
+  const data = await res.json();
+  return (data && data.content || []).map(c => c.text || '').join('').trim();
+}
+
+/**
+ * _convoScript(scene, turnIdx)
+ * No-key / offline scripted fallback returning the same five-key schema shape
+ * as a live _convoCall response. Pool word normalization uses _kataToHira +
+ * _stripKanji to match the spec's STT-kanji normalization requirement.
+ */
+function _convoScript(scene, turnIdx){
+  const idx = (turnIdx || 0) % _CONVO_SCRIPT_TURNS.length;
+  const turn = _CONVO_SCRIPT_TURNS[idx];
+  /* Normalize candidate pool words exactly as STT output would need normalizing */
+  const normalizedSuggested = (turn.suggested || []).map(s => _kataToHira(_stripKanji(s)));
+  const judgedWords = normalizedSuggested
+    .filter(s => s && s.length > 0)
+    .map((s, i) => 'w' + i); /* scripted placeholder ids */
+  const obj = {
+    jp: turn.jp || 'なにがすきですか',
+    glossEn: turn.glossEn || 'What do you like?',
+    suggested: normalizedSuggested,
+    judged: { usedWords: [], score: 0 },
+    sceneDone: !!(turn.sceneDone) || (turnIdx >= 4),
+  };
+  /* Return as JSON string so _aiJsonExtract can parse it uniformly */
+  return JSON.stringify(obj);
+}
+
+/* Scripted turn bank for the offline fallback */
+const _CONVO_SCRIPT_TURNS = [
+  { jp:'こんにちは！おなまえはなんですか', glossEn:'Hello! What is your name?', suggested:['わたしはイシンです','はじめまして','よろしくおねがいします'], sceneDone:false },
+  { jp:'すきなたべものはなんですか', glossEn:'What food do you like?', suggested:['すしがすきです','ラーメンがすきです','おかしがすきです'], sceneDone:false },
+  { jp:'まいにちなにをしますか', glossEn:'What do you do every day?', suggested:['がっこうにいきます','しごとをします','うちにいます'], sceneDone:false },
+  { jp:'どこにすんでいますか', glossEn:'Where do you live?', suggested:['とうきょうにすんでいます','おおさかです','ここにいます'], sceneDone:false },
+  { jp:'またはなしましょう！', glossEn:'Let\'s talk again!', suggested:['ありがとうございます','またね','さようなら'], sceneDone:true },
+];
+
+/* ===================== END CONVO HELPERS ===================== */
+
 async function scCheck(){
   const sc = state.sentenceCoach; if(!sc) return;
   /* Commit any held trailing "n" (and any leftover romaji) before grading. */
