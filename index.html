@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.90';
+const APP_VERSION = '7.91';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3006,7 +3006,8 @@ const DEFAULT_SETTINGS = {
   convoHandsFree:true,        // oshaberi — auto-open mic after TTS (mirrors spam-mode hands-free default)
   convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
   convoXp:0,                  // oshaberi — XP toward the next convoLevel
-  leveledUpTo:null            // oshaberi — transient: kana tier name on level-up, cleared after recap display
+  leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
+  userName:'Julius'           // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
 };
 
 /* =========================================================================
@@ -3030,6 +3031,35 @@ const CONVO_TIERS = [
   { lv:3, name:'なれてきた', chips:2, ttsRate:0.80, maxTurns:8,        xpToNext:80       },
   { lv:4, name:'じょうず',   chips:2, ttsRate:0.90, maxTurns:10,       xpToNext:Infinity },
 ];
+
+/**
+ * CONVO_PARTNERS — the cast of characters who host おしゃべり sessions.
+ * One is picked at random per session so the AI partner has an identity
+ * (never "Isshin", the app name). Each: kana name + emoji avatar + accent
+ * colour + a one-line kana persona flavour fed to the model.
+ * All names/personas are kana-only (project invariant).
+ */
+const CONVO_PARTNERS = [
+  { name:'あおい', emoji:'🧑‍🎨', color:'#9d5cff', persona:'あかるくて やさしい。え が すき。' },
+  { name:'はると', emoji:'🧑‍🍳', color:'#ff5d9e', persona:'げんきで たべもの が だいすき。' },
+  { name:'ゆい',   emoji:'🧑‍🎤', color:'#5cc8ff', persona:'うた が すきで おしゃべり。' },
+  { name:'けん',   emoji:'🧑‍💻', color:'#9fe9cf', persona:'しずかで まじめ。ゲーム が すき。' },
+  { name:'さくら', emoji:'🧑‍🏫', color:'#fbbf24', persona:'やさしい せんせい みたい。' },
+  { name:'りく',   emoji:'🧑‍🚀', color:'#ff8a5c', persona:'ぼうけん が すきで げんき。' },
+  { name:'みお',   emoji:'🧑‍🌾', color:'#7ee787', persona:'のんびりで しぜん が すき。' },
+  { name:'そら',   emoji:'🧑‍✈️', color:'#c9b3ff', persona:'りょこう が すきで あかるい。' },
+];
+
+/** Pick a random character to host a session. */
+function _convoPickPartner(){
+  return CONVO_PARTNERS[Math.floor(Math.random() * CONVO_PARTNERS.length)];
+}
+
+/** Sanitise the learner's name for safe injection into the system prompt. */
+function _convoSafeName(){
+  const raw = String((state.settings && state.settings.userName) || '').replace(/[\r\n"]+/g, ' ').trim();
+  return raw.slice(0, 24);
+}
 
 /**
  * SCENES — closed bank of conversation scenarios for oshaberi.
@@ -9319,9 +9349,22 @@ async function _coachCall(promptStr){
  * word with "\nrole:" cannot inject a message-boundary marker. The scene value
  * has newlines collapsed to spaces for the same reason.
  */
-function _convoPreamble(pool, freeSet, scene){
+function _convoPreamble(pool, freeSet, scene, partner){
   /* Sanitize scene: collapse newlines so a crafted value cannot inject role: markers */
   const safeScene = String(scene || '').replace(/[\r\n]+/g, ' ');
+  /* Persona + learner identity. partner fields come from the CONVO_PARTNERS const
+     (trusted); the learner name is sanitised via _convoSafeName. */
+  const p = partner || CONVO_PARTNERS[0];
+  const learner = _convoSafeName();
+  const personaLines = [
+    'YOUR IDENTITY: You are ' + p.name + ', a friendly Japanese person — NOT an app or assistant.',
+    'Never call yourself "Isshin" or any English/app name. ' + p.persona,
+    'When the scene calls for a self-introduction, introduce yourself as 「わたしは ' + p.name + ' です」.',
+    (learner
+      ? ('THE LEARNER\'S NAME IS ' + learner + '. Address them by name sometimes; when THEY introduce themselves expect 「わたしは ' + learner + ' です」.')
+      : 'You do not know the learner\'s name yet — you may ask 「おなまえ は?」 early on.'),
+    '',
+  ];
   /* JSON.stringify each pool entry — prevents injection via embedded role/Human tokens */
   const poolLines = (pool || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
   const freeLines = (freeSet || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
@@ -9338,8 +9381,9 @@ function _convoPreamble(pool, freeSet, scene){
           : 'High fluency tier: richer vocabulary, compound structures, nuanced follow-ups. Minimal scaffold.')
     + ' Kana-only and WORD_POOL invariants remain absolute regardless of tier.';
   return [
-    'You are an AI Japanese conversation partner for a beginner learner.',
+    'You are a Japanese conversation partner for a beginner learner.',
     '',
+  ].concat(personaLines, [
     'KANA-ONLY RULE: All Japanese text you produce — questions, glosses, suggestions — must be',
     'written entirely in hiragana and katakana. Never output kanji characters.',
     '',
@@ -9367,7 +9411,7 @@ function _convoPreamble(pool, freeSet, scene){
     '- judged.score: 0 = chip tap only, 1 = unaided speech with pool word, 2 = rich free speech.',
     '- sceneDone = true only when the scene has reached a natural close (≥3 turns).',
     '- Output raw JSON only — no markdown fences, no preamble.',
-  ].filter(l => l !== undefined).join('\n');
+  ]).filter(l => l !== undefined).join('\n');
 }
 
 /**
@@ -9521,12 +9565,15 @@ function startConvo(sceneId){
   const scene = (available.find(s => s.id === sceneId) || available[0] || SCENES[0]);
   /* (a) Seed ~8 due-first words via _buildSpamPick */
   const pool = _buildSpamPick(getActiveWords(), 8);
-  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ');
+  /* Pick a random character to host this session (gives the AI an identity, not "Isshin") */
+  const partner = _convoPickPartner();
+  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner);
   /* (b) Fresh reset — never merge over a prior session.
      maxTurns, and other tier params come from convoLevelInfo() (not hardcoded). */
   state.convo = {
     sceneId: scene.id,
     scene: scene,
+    partner: partner,        /* the character hosting this session (name/emoji/color/persona) */
     pool: pool,
     preamble: preamble,
     messages: [],
@@ -9911,6 +9958,18 @@ window.convoStartMissedDrill = convoStartMissedDrill;
    Auto-TTS fires in the logic layer that runs immediately after render — specifically
    _convoOpenProbe and convoTurn call _buildSpeakJP after their render() call, so the
    probe card auto-plays TTS on new non-frozen probes without any user tap. */
+/* Avatar + name header for the session's host character (CONVO_PARTNERS). */
+function _convoPartnerHeader(cv){
+  const p = (cv && cv.partner) || CONVO_PARTNERS[0];
+  return `<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
+    <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:25px;background:${esc(p.color)}22;border:2px solid ${esc(p.color)}">${esc(p.emoji)}</div>
+    <div style="min-width:0">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
+      <div style="font-weight:800;font-size:17px;font-family:'Noto Sans JP';line-height:1.15">${esc(p.name)}</div>
+    </div>
+  </div>`;
+}
+
 function renderConvo(){
   const cv = state.convo;
   if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
@@ -9927,7 +9986,7 @@ function renderConvo(){
   /* ── FROZEN PROBE (cold-resume) ── no auto-TTS, no auto-mic; requires explicit 「つづける」 tap */
   if(cv._frozen && cur && cur.jp){
     return `<div style="padding:2px 2px 24px">
-      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase;margin-bottom:4px">おしゃべり 💬</div>
+      ${_convoPartnerHeader(cv)}
       <div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:12px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
       <div class="convo-turn them" style="margin-bottom:6px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
@@ -9974,7 +10033,7 @@ function renderConvo(){
     ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
 
   return `<div style="padding:2px 2px 24px">
-    <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase;margin-bottom:4px">おしゃべり 💬</div>
+    ${_convoPartnerHeader(cv)}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
       <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
       <div style="font-size:11px;color:#6f6688">ターン ${cv.turn} / ${cv.maxTurns}</div>
@@ -20197,6 +20256,8 @@ function renderSettings(){
         <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in おしゃべり conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
         <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり your name</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
+        <input type="text" value="${esc(s.userName||'')}" oninput="setUserName(this.value)" placeholder="your name" style="width:120px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:14px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
@@ -20408,6 +20469,13 @@ function setBuildLingerSec(r){
 }
 window.setBuildThinkSec = setBuildThinkSec;
 window.setBuildLingerSec = setBuildLingerSec;
+function setUserName(v){
+  state.settings.userName = String(v || '').slice(0, 40);
+  save();
+  /* no re-render: avoid yanking focus from the text field while typing */
+}
+window.setUserName = setUserName;
+
 function setVoiceListenSec(r){
   const v = parseInt(r, 10);
   if(!isNaN(v)) state.settings.voiceListenSec = v;
