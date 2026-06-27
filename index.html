@@ -621,7 +621,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.92';
+const APP_VERSION = '7.93';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -10661,7 +10661,23 @@ const _NUANCE_SETS = [
   { ctx:'I ＿＿ the train at the station — get on board.', sub:'Getting ON, not off.', opts:[{jp:'のる',gl:'get on / ride',correct:true},{jp:'おりる',gl:'get off',correct:false}], ex:'のる = get on / ride, takes に (でんしゃに のる). おりる = get off / descend, takes を (でんしゃを おりる).' },
   { ctx:'Sushi ＿＿ tempura (and other things) — examples.', sub:'Listing examples, not the full list.', opts:[{jp:'や',gl:'and (examples)',correct:true},{jp:'と',gl:'and (full list)',correct:false}], ex:'や lists examples among more (すし や てんぷら = sushi, tempura, and such). と lists the complete set (すし と てんぷら = exactly those two).' },
   { ctx:'Finish it ＿＿ 5 o’clock — by that deadline.', sub:'A deadline you must finish by.', opts:[{jp:'までに',gl:'by (deadline)',correct:true},{jp:'まで',gl:'until',correct:false}], ex:'までに = by a deadline (5じ までに する = do it BY 5). まで = continuously until (5じ まで する = keep doing UNTIL 5).' },
-  { ctx:'It’s hot today, ＿＿? — seeking your agreement.', sub:'Checking the listener agrees.', opts:[{jp:'ね',gl:'right? (agree)',correct:true},{jp:'よ',gl:'(informing)',correct:false}], ex:'ね seeks agreement / shared feeling (あついね = hot, isn’t it?). よ informs the listener of something new (あついよ = it’s hot, I’m telling you).' }
+  { ctx:'It’s hot today, ＿＿? — seeking your agreement.', sub:'Checking the listener agrees.', opts:[{jp:'ね',gl:'right? (agree)',correct:true},{jp:'よ',gl:'(informing)',correct:false}], ex:'ね seeks agreement / shared feeling (あついね = hot, isn’t it?). よ informs the listener of something new (あついよ = it’s hot, I’m telling you).' },
+  { ctx:'I ＿＿ a shirt — on my upper body.', sub:'Wearing on the torso / general.', opts:[{jp:'きる',gl:'wear (upper/general)',correct:true},{jp:'はく',gl:'wear (legs/feet)',correct:false}], ex:'きる = wear on the upper body or in general (シャツを きる). はく = wear on the lower body or feet (ズボン・くつを はく).' },
+  { ctx:'I ＿＿ shoes before going out — on my feet.', sub:'Wearing on feet / lower body.', opts:[{jp:'はく',gl:'wear (legs/feet)',correct:true},{jp:'きる',gl:'wear (upper/general)',correct:false}], ex:'はく = wear shoes, trousers, socks (くつを はく). きる = wear on the upper body (シャツを きる).' },
+  { ctx:'There are ＿＿ books here — a large amount.', sub:'"A lot" as an amount, not a size.', opts:[{jp:'たくさん',gl:'a lot (amount)',correct:true},{jp:'おおきい',gl:'big (size)',correct:false}], ex:'たくさん = a lot / many, about quantity (ほんが たくさん ある). おおきい = big in size, never amount.' },
+  { ctx:'I work ＿＿ 9 o’clock — starting from then.', sub:'A starting point in time.', opts:[{jp:'から',gl:'from / since',correct:true},{jp:'まで',gl:'until',correct:false}], ex:'から = from / starting at (9じ から). まで = up until an end point (5じ まで). They are the two ends of a range.' },
+  { ctx:'It is cheap, ＿＿ it is not tasty — joining two ideas.', sub:'"But" joining inside one sentence.', opts:[{jp:'けど',gl:'but (mid-sentence)',correct:true},{jp:'でも',gl:'but (new sentence)',correct:false}], ex:'けど joins two clauses in one sentence (やすいけど おいしくない). でも starts a NEW sentence (やすい。でも おいしくない).' },
+  { ctx:'A cat is ＿＿ the garden — it exists there.', sub:'Where something EXISTS takes に.', opts:[{jp:'に',gl:'in (existence)',correct:true},{jp:'で',gl:'at (action)',correct:false}], ex:'に marks where something exists (にわに ねこが いる). で marks where an ACTION happens (にわで あそぶ = play in the garden).' },
+  { ctx:'This is ＿＿ — my own older brother.', sub:'Talking about YOUR brother.', opts:[{jp:'あに',gl:'my older brother',correct:true},{jp:'おにいさん',gl:'someone’s older brother',correct:false}], ex:'あに = my own older brother (humble). おにいさん = someone else’s older brother, or how you address one politely.' },
+  { ctx:'This is ＿＿ — my own older sister.', sub:'Talking about YOUR sister.', opts:[{jp:'あね',gl:'my older sister',correct:true},{jp:'おねえさん',gl:'someone’s older sister',correct:false}], ex:'あね = my own older sister (humble). おねえさん = someone else’s older sister, or polite address.' },
+  { ctx:'＿＿ came to the party — every person.', sub:'"Everyone" (people), not "all things".', opts:[{jp:'みんな',gl:'everyone (people)',correct:true},{jp:'ぜんぶ',gl:'all (things)',correct:false}], ex:'みんな = everyone, used for people (みんな きた). ぜんぶ = all of them, used for things/amounts (ぜんぶ たべた).' },
+  { ctx:'I studied for three ＿＿ — a length of time.', sub:'A duration, not a clock time.', opts:[{jp:'じかん',gl:'hours (duration)',correct:true},{jp:'じ',gl:'o’clock (point)',correct:false}], ex:'じかん = a span of hours (3じかん べんきょうした = studied FOR 3 hours). じ = a clock time (3じ = 3 o’clock).' },
+  { ctx:'Wash your hands ＿＿ eating — beforehand.', sub:'"Before" an action.', opts:[{jp:'まえ',gl:'before',correct:true},{jp:'あと',gl:'after',correct:false}], ex:'まえ = before (たべる まえに てを あらう). あと = after (たべた あとで).' },
+  { ctx:'＿＿ book is interesting — pointing at a book.', sub:'"This" attached to a noun.', opts:[{jp:'この',gl:'this + noun',correct:true},{jp:'これ',gl:'this one',correct:false}], ex:'この comes before a noun (この ほん = this book). これ stands alone = "this one" (これは ほんです = this is a book).' },
+  { ctx:'I ＿＿ the room — go inside.', sub:'Going in, not out.', opts:[{jp:'はいる',gl:'enter',correct:true},{jp:'でる',gl:'exit',correct:false}], ex:'はいる = enter, takes に (へやに はいる). でる = leave / exit, takes を (へやを でる).' },
+  { ctx:'Please ＿＿ the light — make it bright.', sub:'Switching ON, not off.', opts:[{jp:'つける',gl:'turn on',correct:true},{jp:'けす',gl:'turn off',correct:false}], ex:'つける = turn on (でんきを つける). けす = turn off / erase (でんきを けす).' },
+  { ctx:'I ＿＿ bread at the shop — I pay money.', sub:'Getting it for money, not selling.', opts:[{jp:'かう',gl:'buy',correct:true},{jp:'うる',gl:'sell',correct:false}], ex:'かう = buy, you pay (パンを かう). うる = sell, you receive money (パンを うる).' },
+  { ctx:'The bus is ＿＿ — it arrives late.', sub:'Late / slow, not early.', opts:[{jp:'おそい',gl:'late / slow',correct:true},{jp:'はやい',gl:'early / fast',correct:false}], ex:'おそい = late or slow (バスが おそい). はやい = early or fast (バスが はやい). Opposites on the same scale.' }
 ];
 const NUANCE_SESSION = 10;
 
@@ -10673,7 +10689,10 @@ const _NUANCE_BASE = {
   'くれた':'くれる','あげた':'あげる','たかい':'たかい','いる':'いる','きて':'くる',
   'すき':'すき','はじまる':'はじまる','みえる':'みえる','じょうず':'じょうず',
   'かりる':'かりる','ならう':'ならう','しる':'しる','きこえる':'きこえる',
-  'つめたい':'つめたい','すくない':'すくない','ほしい':'ほしい','のる':'のる'
+  'つめたい':'つめたい','すくない':'すくない','ほしい':'ほしい','のる':'のる',
+  'きる':'きる','はく':'はく','あに':'あに','あね':'あね','みんな':'みんな',
+  'じかん':'じかん','まえ':'まえ','はいる':'はいる','つける':'つける',
+  'かう':'かう','おそい':'おそい'
 };
 /* Wire a nuance result into SM-2: record the attempt and (on a correct pick)
    advance the schedule. A wrong discrimination is logged but NOT penalized —
@@ -10693,7 +10712,7 @@ function _nuanceFeedSm(correctJp, pickedCorrect){
 
 function startNuance(){
   /* Finite session: shuffle the whole pool and take a fixed number, so it ends
-     with a score instead of wrapping forever. With 24 sets and a 10-card round,
+     with a score instead of wrapping forever. With 40 sets and a 10-card round,
      consecutive sessions stay varied. */
   const order = _shuffleNuance().slice(0, Math.min(NUANCE_SESSION, _NUANCE_SETS.length));
   state.nuance = { i:0, pick:null, correct:0, order };
