@@ -3005,15 +3005,31 @@ const DEFAULT_SETTINGS = {
   unlockBypassed:[],          // module ids the user manually unlocked via "Unlock anyway"
   convoHandsFree:true,        // oshaberi — auto-open mic after TTS (mirrors spam-mode hands-free default)
   convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
-  convoXp:0                   // oshaberi — XP toward the next convoLevel
+  convoXp:0,                  // oshaberi — XP toward the next convoLevel
+  leveledUpTo:null            // oshaberi — transient: kana tier name on level-up, cleared after recap display
 };
 
 /* =========================================================================
    OSHABERI (おしゃべり) — CONVERSATION MODE CONSTANTS
    ========================================================================= */
 
-/** XP threshold per convoLevel. Each level costs this many XP to clear. */
+/** XP threshold per convoLevel (legacy — kept for backward-compat display). Per-tier thresholds live in CONVO_TIERS. */
 const CONVO_LEVEL_XP = 100;
+
+/**
+ * CONVO_TIERS — four kana-named progression tiers for おしゃべり.
+ * chips     — number of tappable scaffold chips offered per turn.
+ * ttsRate   — speech rate passed to _buildSpeakJP for AI probes.
+ * maxTurns  — turn cap for sessions at this tier.
+ * xpToNext  — XP needed to advance to the next tier (Infinity at top tier).
+ * Tiers 1–2 and 3–4 differ in chips (3 vs 2), ttsRate, and maxTurns.
+ */
+const CONVO_TIERS = [
+  { lv:1, name:'はじめて',   chips:3, ttsRate:0.70, maxTurns:4,        xpToNext:20       },
+  { lv:2, name:'すこし',     chips:3, ttsRate:0.75, maxTurns:6,        xpToNext:40       },
+  { lv:3, name:'なれてきた', chips:2, ttsRate:0.80, maxTurns:8,        xpToNext:80       },
+  { lv:4, name:'じょうず',   chips:2, ttsRate:0.90, maxTurns:10,       xpToNext:Infinity },
+];
 
 /**
  * SCENES — closed bank of conversation scenarios for oshaberi.
@@ -3042,6 +3058,49 @@ const FREE_SET = [
   'です', 'ます',                       // polite copula / verb ending
   'わたし', 'あなた',                   // I / you
 ];
+
+/**
+ * convoLevelInfo() — single source of truth for the current tier.
+ * Returns { lv, name, scenes, chips, ttsRate, maxTurns, xp, xpToNext, atMax }.
+ * All callers (startConvo, _convoPreamble, renders) read exclusively from here.
+ * Reads from state.settings.convoLevel and state.settings.convoXp.
+ */
+function convoLevelInfo(){
+  const lv = Math.max(1, Math.min(state.settings.convoLevel || 1, CONVO_TIERS.length));
+  const xp  = state.settings.convoXp || 0;
+  const tier = CONVO_TIERS.find(t => t.lv === lv) || CONVO_TIERS[CONVO_TIERS.length - 1];
+  const atMax = lv >= CONVO_TIERS[CONVO_TIERS.length - 1].lv;
+  const scenes = SCENES.filter(s => s.minLevel <= lv);
+  return { lv, name: tier.name, scenes, chips: tier.chips, ttsRate: tier.ttsRate, maxTurns: tier.maxTurns, xp, xpToNext: tier.xpToNext, atMax };
+}
+window.convoLevelInfo = convoLevelInfo;
+
+/**
+ * convoAddXp(n) — monotonic XP increment for unaided-spoken-correct replies.
+ * Guards against non-finite or negative n (early return, no mutation).
+ * On tier-boundary crossing: increments convoLevel, sets leveledUpTo to the
+ * new tier's kana name, and calls save(). Never demotes.
+ */
+function convoAddXp(n){
+  if(typeof n !== 'number' || !isFinite(n) || n < 0) return;
+  state.settings.convoXp = (state.settings.convoXp || 0) + n;
+  let lv = Math.max(1, state.settings.convoLevel || 1);
+  let leveled = false;
+  while(lv < CONVO_TIERS.length){
+    const tier = CONVO_TIERS.find(t => t.lv === lv);
+    if(!tier || !isFinite(tier.xpToNext) || state.settings.convoXp < tier.xpToNext) break;
+    state.settings.convoXp -= tier.xpToNext;
+    lv++;
+    leveled = true;
+  }
+  if(leveled){
+    state.settings.convoLevel = lv;
+    const newTier = CONVO_TIERS.find(t => t.lv === lv) || CONVO_TIERS[CONVO_TIERS.length - 1];
+    state.settings.leveledUpTo = newTier.name;
+  }
+  save();
+}
+window.convoAddXp = convoAddXp;
 
 let state = {
   words:[],           // array of word objects (from N5 + user-captures + user-added)
@@ -9266,6 +9325,18 @@ function _convoPreamble(pool, freeSet, scene){
   /* JSON.stringify each pool entry — prevents injection via embedded role/Human tokens */
   const poolLines = (pool || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
   const freeLines = (freeSet || []).map(w => JSON.stringify({id: w.id, jp: w.jp})).join('\n');
+  /* Addendum A.4 LEVEL block — read tier from convoLevelInfo (single source of truth).
+     The tier name is a hardcoded kana string from CONVO_TIERS; no user/AI data injected. */
+  const _lvInfo = convoLevelInfo();
+  const levelLine = 'LEVEL: ' + _lvInfo.name + ' (tier ' + _lvInfo.lv + ' of ' + CONVO_TIERS.length + '). '
+    + (_lvInfo.lv <= 1
+      ? 'Use the simplest possible sentence structure. Offer maximum scaffold chips. Short, slow questions.'
+      : _lvInfo.lv <= 2
+        ? 'Keep sentences simple but introduce slightly more variety. Scaffold generously.'
+        : _lvInfo.lv <= 3
+          ? 'Moderate complexity: compound phrases welcome. Reduce scaffold — learner is gaining fluency.'
+          : 'High fluency tier: richer vocabulary, compound structures, nuanced follow-ups. Minimal scaffold.')
+    + ' Kana-only and WORD_POOL invariants remain absolute regardless of tier.';
   return [
     'You are an AI Japanese conversation partner for a beginner learner.',
     '',
@@ -9278,6 +9349,8 @@ function _convoPreamble(pool, freeSet, scene){
     '',
     'SCENE: ' + safeScene,
     '',
+    levelLine,
+    '',
     'Each reply MUST be a single JSON object with exactly these five keys and no others:',
     '{',
     '  "jp": "<your short kana-only question or reaction for this turn>",',
@@ -9289,7 +9362,7 @@ function _convoPreamble(pool, freeSet, scene){
     '',
     'Guidelines:',
     '- Keep jp to one short sentence (≤10 kana).',
-    '- suggested must contain 2–3 tappable replies from the WORD_POOL in kana.',
+    '- suggested must contain exactly ' + _lvInfo.chips + ' tappable replies from the WORD_POOL in kana.',
     '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
     '- judged.score: 0 = chip tap only, 1 = unaided speech with pool word, 2 = rich free speech.',
     '- sceneDone = true only when the scene has reached a natural close (≥3 turns).',
@@ -9368,9 +9441,41 @@ function _convoFreeSetWords(){
   return FREE_SET.map((jp, i) => ({ id: 'free_' + i, jp }));
 }
 
-/* Fallback chips when parse fails — use first 3 pool words */
+/* Fallback chips when parse fails — use first N pool words where N = tier chip count */
 function _convoFallbackChips(cv){
-  return ((cv && cv.pool) || []).slice(0, 3).map(w => w.jp || '').filter(Boolean);
+  const n = (cv && cv.chips) || convoLevelInfo().chips || 3;
+  return ((cv && cv.pool) || []).slice(0, n).map(w => w.jp || '').filter(Boolean);
+}
+
+/**
+ * _convoSpeakJP(text, onDone) — tier-aware TTS for oshaberi probes.
+ * Uses state.convo.ttsRate (sourced from convoLevelInfo() at session start) so
+ * each tier plays at its configured speed instead of the global buildTtsRate.
+ * Same onDone-via-onend pattern as _buildSpeakJP to keep the hands-free loop intact.
+ */
+function _convoSpeakJP(text, onDone){
+  const cv = state.convo;
+  const ttsRate = (cv && cv.ttsRate) || convoLevelInfo().ttsRate || 0.75;
+  try{
+    if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) ss.cancel();
+    const utter = () => {
+      const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
+      u.rate = ttsRate;
+      const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
+      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
+      if(onDone){
+        let fired = false;
+        const fire = () => { if(fired) return; fired = true; onDone(); };
+        u.onend = fire; u.onerror = fire;
+      }
+      ss.speak(u);
+    };
+    if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
+    else if(typeof _waitForVoices === 'function') _waitForVoices(utter);
+    else utter();
+  }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
 /* _convoOpenProbe — AI asks the first question (no user turn) */
@@ -9401,7 +9506,7 @@ async function _convoOpenProbe(){
   save();
   render();
   if(parsed.jp){
-    _buildSpeakJP(parsed.jp, () => {
+    _convoSpeakJP(parsed.jp, () => {
       if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
     });
   }
@@ -9410,11 +9515,15 @@ async function _convoOpenProbe(){
 /* startConvo — seed pool, reset state.convo, nav, kick opening probe */
 function startConvo(sceneId){
   stopVoice();
-  const scene = SCENES.find(s => s.id === sceneId) || SCENES[0];
+  /* Gate scenes by tier: only offer scenes at or below the current level */
+  const info = convoLevelInfo();
+  const available = SCENES.filter(s => s.minLevel <= info.lv);
+  const scene = (available.find(s => s.id === sceneId) || available[0] || SCENES[0]);
   /* (a) Seed ~8 due-first words via _buildSpamPick */
   const pool = _buildSpamPick(getActiveWords(), 8);
   const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ');
-  /* (b) Fresh reset — never merge over a prior session */
+  /* (b) Fresh reset — never merge over a prior session.
+     maxTurns, and other tier params come from convoLevelInfo() (not hardcoded). */
   state.convo = {
     sceneId: scene.id,
     scene: scene,
@@ -9422,7 +9531,9 @@ function startConvo(sceneId){
     preamble: preamble,
     messages: [],
     turn: 0,
-    maxTurns: CONVO_MAX_TURNS,
+    maxTurns: info.maxTurns,
+    chips: info.chips,      /* tier chip count — governs fallback + preamble guidance */
+    ttsRate: info.ttsRate,  /* tier TTS rate — used by _convoSpeakJP */
     /* (c) judged explicitly null so convoApplyScore null guard fires on first turn */
     judged: null,
     viaVoice: false,
@@ -9436,6 +9547,7 @@ function startConvo(sceneId){
     recap: null,
     spokenTurns: 0,          /* how many turns the learner replied by voice */
     tappedTurns: 0,          /* how many turns the learner replied by chip tap */
+    sessionXp: 0,            /* XP earned this session via convoAddXp (unaided voice only) */
     usedUnaidedly: [],       /* wordIds confirmed used in unaided spoken reply (for missed-drill) */
     _frozen: false,          /* true on cold-load resume until 「つづける」 tap */
     _lastAutoPlay: null,     /* prevents double-fire when re-rendering the same probe */
@@ -9544,7 +9656,7 @@ async function convoTurn(userText, viaVoice){
 
   /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free) */
   if(aiJP && didAdvance){
-    _buildSpeakJP(aiJP, () => {
+    _convoSpeakJP(aiJP, () => {
       if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
     });
   }
@@ -9588,6 +9700,9 @@ function convoApplyScore(judged, viaVoice){
       smGrade(smStatFor(resolvedId), 'good');
       /* Track for missed-drill computation */
       if(cv.usedUnaidedly && !cv.usedUnaidedly.includes(resolvedId)) cv.usedUnaidedly.push(resolvedId);
+      /* XP only on unaided spoken correct — chip-echo and silent tap earn 0 (spec invariant) */
+      convoAddXp(1);
+      cv.sessionXp = (cv.sessionXp || 0) + 1;
     } else {
       /* Chip tap or typed: log exposure only, smGrade absent */
       recordAttempt(resolvedId, true, 'convo', { voice: false, chip: viaVoice !== true });
@@ -9601,29 +9716,32 @@ window.convoApplyScore = convoApplyScore;
 function convoEnd(){
   const cv = state.convo; if(!cv) return;
   cv.done = true;
-  /* Apply any un-scored judged from the final turn */
+  /* Apply any un-scored judged from the final turn (may call convoAddXp internally) */
   if(cv.judged){
     convoApplyScore(cv.judged, cv.viaVoice);
     cv.judged = null;
   }
+  /* XP arithmetic is fully delegated to convoAddXp (called in convoApplyScore above).
+     No turn-count XP accumulation here — chip-echo and silent taps earn 0 per spec. */
   const turns = cv.turn || 0;
-  const xpGain = Math.max(1, turns);
-  state.settings.convoXp = (state.settings.convoXp || 0) + xpGain;
-  while(state.settings.convoXp >= CONVO_LEVEL_XP){
-    state.settings.convoXp -= CONVO_LEVEL_XP;
-    state.settings.convoLevel = (state.settings.convoLevel || 1) + 1;
-  }
+  const xpGain = cv.sessionXp || 0;
   const _usedSet = new Set(cv.usedUnaidedly || []);
   const _missedWordIds = (cv.pool || []).filter(w => !_usedSet.has(w.id)).map(w => w.id);
+  /* Snapshot level/xp/leveledUpTo into recap BEFORE clearing the transient flag */
+  const info = convoLevelInfo();
   cv.recap = {
     turns,
     xpGain,
-    convoLevel: state.settings.convoLevel,
-    convoXp: state.settings.convoXp,
+    convoLevel: info.lv,
+    convoXp: info.xp,
+    xpToNext: info.xpToNext,
+    leveledUpTo: state.settings.leveledUpTo || null,
     spokenTurns: cv.spokenTurns || 0,
     tappedTurns: cv.tappedTurns || 0,
     missedWordIds: _missedWordIds,
   };
+  /* Consume the transient level-up flag so the celebration does not fire again on next load */
+  state.settings.leveledUpTo = null;
   save();
   render();
 }
@@ -9724,7 +9842,7 @@ function convoContinue(){
   nav('convo');
   const cur = cv.current;
   if(cur && cur.jp){
-    _buildSpeakJP(cur.jp, () => {
+    _convoSpeakJP(cur.jp, () => {
       if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
     });
   }
@@ -9872,8 +9990,10 @@ function renderConvo(){
 
 /* _renderConvoRecap — wrap-up card shown when cv.done && cv.recap.
    Gated by convoEnd() setting both flags; never shown mid-session.
-   Displays: total turns, spoken✅ vs tapped breakdown, XP/level recap strip,
-   「もう いちど」 again button (convoFresh), and drill-missed button. */
+   Displays: total turns, spoken✅ vs tapped breakdown, +XP gained, optional
+   level-up celebration (r.leveledUpTo — consumed by convoEnd, won't re-fire),
+   XP/level recap strip, 「もう いちど」 again button (convoFresh), and drill-missed button.
+   Security: all state-derived strings use esc() (equivalent safe setter per CWE-79). */
 function _renderConvoRecap(cv){
   const r = cv.recap;
   const spoken = r.spokenTurns || 0;
@@ -9882,16 +10002,27 @@ function _renderConvoRecap(cv){
   const drillBtn = missed.length
     ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">🔁 のがしたことばをドリル (${missed.length})</button>`
     : '';
+  /* Level-up celebration — only when the recap captured a leveledUpTo name.
+     r.leveledUpTo is a hardcoded kana string from CONVO_TIERS, esc()-escaped below. */
+  const levelUpBlock = r.leveledUpTo
+    ? `<div style="background:linear-gradient(100deg,rgba(157,92,255,.2),rgba(255,93,158,.15));border:2px solid rgba(157,92,255,.55);border-radius:16px;padding:14px 18px;margin-bottom:14px">
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:5px">🎊 レベルアップ！</div>
+        <div style="font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo)} に なりました！</div>
+       </div>`
+    : '';
+  /* xpToNext from recap snapshot (may be Infinity at atMax — show ∞ in that case) */
+  const xpToNextDisplay = (r.xpToNext === Infinity || !isFinite(r.xpToNext)) ? '∞' : r.xpToNext;
   return `<div style="padding:2px 2px 24px;text-align:center">
     <div style="font-weight:800;font-size:32px;margin:24px 0 8px">🎉</div>
     <div style="font-weight:800;font-size:22px;margin-bottom:8px">よくできました！</div>
-    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} ターン · +${r.xpGain} XP</div>
+    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} ターン · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
+    ${levelUpBlock}
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:inline-flex;gap:24px;justify-content:center">
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 はなした</div></div>
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 タップ</div></div>
     </div><br>
     <div style="background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:16px;padding:16px;margin-bottom:20px;display:inline-block;min-width:200px">
-      <div style="font-weight:700;font-size:13px;color:#c9b3ff">レベル ${r.convoLevel} · ${r.convoXp} / ${CONVO_LEVEL_XP} XP</div>
+      <div style="font-weight:700;font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo ? 'NEW: ' : '')}レベル ${r.convoLevel} · ${r.convoXp} / ${xpToNextDisplay} XP</div>
     </div><br>
     <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
     ${drillBtn}
@@ -18734,6 +18865,9 @@ function renderHome(){
   const totalAttempts = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.length||0),0);
   const totalCorrect = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.filter(a=>a.correct).length||0),0);
   const acc = totalAttempts ? Math.round(100*totalCorrect/totalAttempts) : 0;
+  /* convoLevelInfo for the おしゃべり tile tier/XP display */
+  const _convoInfo = convoLevelInfo();
+  const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
 
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
@@ -18984,8 +19118,10 @@ function renderHome(){
       <button class="h8-row" onclick="nav('convo')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">おしゃべり</div>
-          <div class="h8-row-meta">AI-led · multi-turn · voice-scored</div>
+          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}</span></div>
+          <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-scored</div>
+          <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
+          <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
         </div>
         <div class="h8-row-arrow">›</div>
       </button>
