@@ -9777,22 +9777,11 @@ window.convoWordGloss = convoWordGloss;
    use unaidedly during the session (drills the exact gap exposed by this convo). */
 function convoStartMissedDrill(){
   const cv = state.convo; if(!cv || !cv.recap) return;
-  const ids = cv.recap.missedWordIds || [];
-  const picked = ids.map(id => (state.words || []).find(w => w.id === id)).filter(Boolean);
-  if(!picked.length){ showToast('No missed words to drill!', {tone:'info', duration:3000}); return; }
-  const lesson = {
-    id: 'Gc_missed_' + Date.now().toString(36),
-    title: 'Oshaberi Missed · ' + picked.length + ' words',
-    duration_mins: Math.max(1, Math.round(picked.length * 0.4)),
-    new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
-    carryover_words: [],
-    cycles: [{id:'missed', name:'Missed this session', steps: picked.map(w => ({type:'recall', word_id:w.id}))}],
-    _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
-  };
-  state.buildMode = buildMakeSession(lesson);
-  state.buildMode._origin = 'convo';
-  if(typeof _buildWakeLockSync === 'function') _buildWakeLockSync();
-  nav('buildMode');
+  const missedWordIds = cv.recap.missedWordIds || [];
+  if(!missedWordIds.length){ showToast('No missed words to drill!', {tone:'info', duration:3000}); return; }
+  /* Delegate to startRandomDrill with the explicit-id seam — whitelist validation,
+     empty-pool guard, and buildMakeSession wiring all live there. */
+  startRandomDrill({ids: missedWordIds, _origin: 'convo'});
 }
 window.convoStartMissedDrill = convoStartMissedDrill;
 
@@ -14879,18 +14868,35 @@ window.startBuildModeVocabSpam = startBuildModeVocabSpam;
    mode honored). The "I just want a hands-free shuffle" entry point. */
 function startRandomDrill(opts){
   try{
-    const want = (opts && opts.count) || 30;
     const suspendedSet = new Set(state.settings.suspendedWords || []);
     const masteredSet = new Set(state.settings.masteredWords || []);
-    /* Mastered = "I know this forever" — honor it here too, not just in
-       Vocab Blitz. A word the user retired should never resurface in the
-       daily random drill. v7.55 — also skip particles + bound counters
-       (~mai, ~dai, etc.) — they're reference morphemes, not flashcards. */
-    const pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id) && _isVocabDrillSurface(w));
-    if(pool.length < 1){
-      showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
-      return;
+    let pool;
+    if(opts && Array.isArray(opts.ids) && opts.ids.length > 0){
+      /* Explicit-id seam: caller supplies a wordId list (e.g. "drill the ones you
+         missed"). Validate every entry against the canonical word registry before any
+         entry reaches buildMakeSession — drops non-strings and IDs absent from
+         state.words (CWE-20 Improper Input Validation guard). */
+      const registry = state.words || [];
+      pool = opts.ids
+        .filter(id => typeof id === 'string')
+        .map(id => registry.find(w => w.id === id))
+        .filter(Boolean);
+      if(pool.length < 1){
+        showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
+        return;
+      }
+    } else {
+      /* Default path: pull from the full active deck, respecting suspend + master lists.
+         Mastered = "I know this forever" — honor it here too, not just in Vocab Blitz.
+         v7.55 — also skip particles + bound counters (~mai, ~dai, etc.) — reference
+         morphemes, not flashcards. */
+      pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id) && _isVocabDrillSurface(w));
+      if(pool.length < 1){
+        showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
+        return;
+      }
     }
+    const want = (opts && opts.count) || 30;
     const picked = shuffleFY(pool.slice()).slice(0, Math.min(want, pool.length));
     const lesson = {
       id: 'Gr_' + Date.now().toString(36),
@@ -14902,7 +14908,7 @@ function startRandomDrill(opts){
       _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
     };
     state.buildMode = buildMakeSession(lesson);
-    state.buildMode._origin = 'home';
+    state.buildMode._origin = (opts && opts._origin) || 'home';
     _buildWakeLockSync();
     nav('buildMode');
   } catch(e){
