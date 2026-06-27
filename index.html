@@ -3410,6 +3410,9 @@ function load(){
     state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
     state.snapshots = JSON.parse(localStorage.getItem(LS.snapshots)||'[]');
     state.convo = JSON.parse(localStorage.getItem(LS.convo)||'null');
+    /* Mark restored mid-session convos as frozen — requires explicit 「つづける」 tap to resume
+       (spec: no auto-TTS/auto-mic on cold load; hands-free only starts on explicit Continue tap) */
+    if(state.convo && !state.convo.done && state.convo.current){ state.convo._frozen = true; }
     const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     const packed = pack.map((w,i)=>({...w, id:'n5_'+i, source:'n5', verified:true}));
@@ -9399,7 +9402,7 @@ async function _convoOpenProbe(){
   render();
   if(parsed.jp){
     _buildSpeakJP(parsed.jp, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done) convoStartListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
     });
   }
 }
@@ -9431,6 +9434,11 @@ function startConvo(sceneId){
     peekGloss: false,
     done: false,
     recap: null,
+    spokenTurns: 0,          /* how many turns the learner replied by voice */
+    tappedTurns: 0,          /* how many turns the learner replied by chip tap */
+    usedUnaidedly: [],       /* wordIds confirmed used in unaided spoken reply (for missed-drill) */
+    _frozen: false,          /* true on cold-load resume until 「つづける」 tap */
+    _lastAutoPlay: null,     /* prevents double-fire when re-rendering the same probe */
   };
   save();
   nav('convo');
@@ -9453,6 +9461,9 @@ async function convoTurn(userText, viaVoice){
   cv.loading = true; cv.error = null; cv.listening = false;
   /* Store this turn's voice flag so the NEXT convoApplyScore call has it */
   cv.viaVoice = !!viaVoice;
+  /* Track spoken vs tapped for wrap-up recap */
+  if(viaVoice) cv.spokenTurns = (cv.spokenTurns || 0) + 1;
+  else cv.tappedTurns = (cv.tappedTurns || 0) + 1;
   render();
 
   /* Append user turn — text placed only as content field, never interpolated into system */
@@ -9531,10 +9542,10 @@ async function convoTurn(userText, viaVoice){
   save();
   render();
 
-  /* Speak AI reply then auto-open mic on advancing paths (hands-free) */
+  /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free) */
   if(aiJP && didAdvance){
     _buildSpeakJP(aiJP, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done) convoStartListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
     });
   }
 }
@@ -9570,13 +9581,16 @@ function convoApplyScore(judged, viaVoice){
     /* Drop unresolved entries silently — never write stats for unknown ids */
     if(!resolvedId) continue;
 
-    /* (c)/(d) Write stats — smGrade only on unaided voice; chip-echo: no ease bump */
-    if(viaVoice === true){
+    /* (c)/(d) Write stats — smGrade only on unaided voice (score >= 1); chip-echo: no ease bump */
+    const _scoreVal = (judged && typeof judged.score === 'number') ? judged.score : 0;
+    if(viaVoice === true && _scoreVal >= 1){
       recordAttempt(resolvedId, true, 'convo', { voice: true });
       smGrade(smStatFor(resolvedId), 'good');
+      /* Track for missed-drill computation */
+      if(cv.usedUnaidedly && !cv.usedUnaidedly.includes(resolvedId)) cv.usedUnaidedly.push(resolvedId);
     } else {
       /* Chip tap or typed: log exposure only, smGrade absent */
-      recordAttempt(resolvedId, true, 'convo', { voice: false, chip: true });
+      recordAttempt(resolvedId, true, 'convo', { voice: false, chip: viaVoice !== true });
     }
   }
   save();
@@ -9599,21 +9613,38 @@ function convoEnd(){
     state.settings.convoXp -= CONVO_LEVEL_XP;
     state.settings.convoLevel = (state.settings.convoLevel || 1) + 1;
   }
-  cv.recap = { turns, xpGain, convoLevel: state.settings.convoLevel, convoXp: state.settings.convoXp };
+  const _usedSet = new Set(cv.usedUnaidedly || []);
+  const _missedWordIds = (cv.pool || []).filter(w => !_usedSet.has(w.id)).map(w => w.id);
+  cv.recap = {
+    turns,
+    xpGain,
+    convoLevel: state.settings.convoLevel,
+    convoXp: state.settings.convoXp,
+    spokenTurns: cv.spokenTurns || 0,
+    tappedTurns: cv.tappedTurns || 0,
+    missedWordIds: _missedWordIds,
+  };
   save();
   render();
 }
 window.convoEnd = convoEnd;
 
-/* convoChipTap — scaffold chip tap (viaVoice=false, no SRS ease bump) */
-function convoChipTap(chipText){
+/* convoTapChip — scaffold chip tap: speaks the chip via TTS first so the learner hears their
+   echoed choice, then routes to convoTurn with viaVoice=false (no SRS ease bump — spec invariant).
+   Renamed from convoChipTap; backward-compat alias kept for any cached onclick references. */
+function convoTapChip(chipText){
   const cv = state.convo; if(!cv || cv.loading || cv.done) return;
   stopVoice(); cv.listening = false;
+  /* Speak the chip so the learner hears their echoed selection */
+  if(chipText) speakJP(chipText);
   convoTurn(chipText, false);
 }
+window.convoTapChip = convoTapChip;
+/* backward-compat alias */
+function convoChipTap(chipText){ convoTapChip(chipText); }
 window.convoChipTap = convoChipTap;
 
-/* convoStartListen / convoStopListen — STT integration */
+/* convoStartListen / convoStopListen — STT integration (low-level; prefer convoToggleListen for hands-free loop) */
 function convoStartListen(){
   const cv = state.convo; if(!cv || cv.loading || cv.done || cv.listening) return;
   if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
@@ -9637,14 +9668,66 @@ window.convoStartListen = convoStartListen;
 
 function convoStopListen(){
   const cv = state.convo; if(!cv) return;
+  if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
   stopVoice(); cv.listening = false; render();
 }
 window.convoStopListen = convoStopListen;
 
-/* convoContinue — tap to resume a persisted mid-session convo (explicit 「つづける」 tap) */
+/* convoToggleListen — arms the mic for the hands-free loop.
+   Used as the _buildSpeakJP onDone callback (replaces direct convoStartListen calls).
+   Sets a ~6-second hard-silence timeout (belt-and-braces, matching spam-mode pattern):
+   if STT returns no speech within 6 s the mic closes automatically. The timer is reset
+   each time STT delivers any interim transcript, so continuous speech holds the mic open. */
+function convoToggleListen(){
+  const cv = state.convo; if(!cv || cv.loading || cv.done || cv.listening) return;
+  if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
+  if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
+  cv.listening = true; cv.interim = ''; cv._best = ''; cv._ended = false; cv.error = null;
+  render();
+  /* Arm the belt-and-braces silence guard */
+  const _armSilenceTimer = () => {
+    if(cv._silenceTimer) clearTimeout(cv._silenceTimer);
+    cv._silenceTimer = setTimeout(() => {
+      cv._silenceTimer = null;
+      if(state.convo && state.convo.listening) convoStopListen();
+    }, 6000);
+  };
+  _armSilenceTimer();
+  startVoice(
+    (alts) => {
+      const t = (alts && alts[0] && alts[0].transcript) || '';
+      if(t){
+        cv._best = t;
+        _armSilenceTimer(); /* reset 6 s window on any speech activity */
+        const el = document.getElementById('convoInterim');
+        if(el) el.textContent = t;
+      }
+    },
+    (err) => {
+      if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
+      if(!cv || cv._ended) return; cv._ended = true; cv.listening = false;
+      if(err){ cv.error = _sttErrMsg(err); render(); return; }
+      const heard = (cv._best || '').trim();
+      if(heard) convoTurn(heard, true); else render();
+    },
+    'ja-JP'
+  );
+}
+window.convoToggleListen = convoToggleListen;
+
+/* convoContinue — explicit 「つづける」 tap to unfreeze a cold-resumed session.
+   Clears the frozen flag then speaks the current probe and arms the mic (hands-free).
+   NO auto-TTS or auto-mic fires on cold load — only on this explicit tap. */
 function convoContinue(){
   const cv = state.convo; if(!cv) return;
+  cv._frozen = false;
   nav('convo');
+  const cur = cv.current;
+  if(cur && cur.jp){
+    _buildSpeakJP(cur.jp, () => {
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
+    });
+  }
 }
 window.convoContinue = convoContinue;
 
@@ -9662,7 +9745,65 @@ function convoTogglePeek(){
 }
 window.convoTogglePeek = convoTogglePeek;
 
-/* renderConvo — screen renderer for the oshaberi mode */
+/* convoReplay — replay AI's kana question at normal TTS rate */
+function convoReplay(){
+  const cv = state.convo; if(!cv || !cv.current || !cv.current.jp) return;
+  speakJP(cv.current.jp);
+}
+window.convoReplay = convoReplay;
+
+/* convoWordGloss — render known-word gloss pills for seeded pool words that appear
+   in the current probe, but ONLY for words already in state.stats (studied words only).
+   This gives the learner a quick in-line reminder of words they've seen before without
+   ever exposing new vocabulary definitions on the face of the drill. */
+function convoWordGloss(cv, cur){
+  if(!cv || !cv.pool || !cur || !cur.jp) return '';
+  const curNorm = _kataToHira(cur.jp);
+  const known = cv.pool.filter(w => {
+    if(!state.stats[w.id]) return false; /* studied words only */
+    const wNorm = _kataToHira(w.jp || '');
+    return wNorm && wNorm.length > 0 && curNorm.includes(wNorm);
+  });
+  if(!known.length) return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px">'
+    + known.map(w =>
+        `<span style="padding:2px 9px;border-radius:20px;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.28);font-size:11px;color:#c9b3ff;font-family:\'Noto Sans JP\'">${esc(w.jp)}<span style="color:#7a6e9a;margin-left:4px;font-size:10px">${esc(w.en||'')}</span></span>`
+      ).join('')
+    + '</div>';
+}
+window.convoWordGloss = convoWordGloss;
+
+/* convoStartMissedDrill — seed Build Mode Spam with pool words the learner did not
+   use unaidedly during the session (drills the exact gap exposed by this convo). */
+function convoStartMissedDrill(){
+  const cv = state.convo; if(!cv || !cv.recap) return;
+  const ids = cv.recap.missedWordIds || [];
+  const picked = ids.map(id => (state.words || []).find(w => w.id === id)).filter(Boolean);
+  if(!picked.length){ showToast('No missed words to drill!', {tone:'info', duration:3000}); return; }
+  const lesson = {
+    id: 'Gc_missed_' + Date.now().toString(36),
+    title: 'Oshaberi Missed · ' + picked.length + ' words',
+    duration_mins: Math.max(1, Math.round(picked.length * 0.4)),
+    new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
+    carryover_words: [],
+    cycles: [{id:'missed', name:'Missed this session', steps: picked.map(w => ({type:'recall', word_id:w.id}))}],
+    _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
+  };
+  state.buildMode = buildMakeSession(lesson);
+  state.buildMode._origin = 'convo';
+  if(typeof _buildWakeLockSync === 'function') _buildWakeLockSync();
+  nav('buildMode');
+}
+window.convoStartMissedDrill = convoStartMissedDrill;
+
+/* renderConvo — screen renderer for the oshaberi (💬) mode.
+   Three branches:
+   (1) No session → start prompt
+   (2) done + recap → _renderConvoRecap (wrap-up card)
+   (3) Active session: either frozen-probe (cold-resume, no auto-TTS) or live probe.
+   Auto-TTS fires in the logic layer that runs immediately after render — specifically
+   _convoOpenProbe and convoTurn call _buildSpeakJP after their render() call, so the
+   probe card auto-plays TTS on new non-frozen probes without any user tap. */
 function renderConvo(){
   const cv = state.convo;
   if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
@@ -9671,16 +9812,38 @@ function renderConvo(){
   const cur = cv.current;
   const chips = ((cur && Array.isArray(cur.suggested) && cur.suggested.filter(Boolean).length)
     ? cur.suggested.filter(Boolean) : _convoFallbackChips(cv));
+  /* Chips use convoTapChip (speaks chip first, then routes viaVoice=false — no SRS ease bump) */
   const chipBtns = chips.map(ch =>
-    `<button onclick="convoChipTap('${jsEsc(ch)}')" style="padding:10px 15px;border-radius:12px;border:1px solid rgba(157,92,255,.4);background:rgba(157,92,255,.1);color:#d6c2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:14px;cursor:pointer;margin:3px">${esc(ch)}</button>`
+    `<button onclick="convoTapChip('${jsEsc(ch)}')" style="padding:10px 15px;border-radius:12px;border:1px solid rgba(157,92,255,.4);background:rgba(157,92,255,.1);color:#d6c2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:14px;cursor:pointer;margin:3px">${esc(ch)}</button>`
   ).join('');
 
+  /* ── FROZEN PROBE (cold-resume) ── no auto-TTS, no auto-mic; requires explicit 「つづける」 tap */
+  if(cv._frozen && cur && cur.jp){
+    return `<div style="padding:2px 2px 24px">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase;margin-bottom:4px">おしゃべり 💬</div>
+      <div style="font-weight:800;font-size:22px;letter-spacing:-.4px;margin-bottom:12px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
+      <div class="convo-turn them" style="margin-bottom:6px">
+        <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
+      </div>
+      ${convoWordGloss(cv, cur)}
+      <div style="display:flex;flex-wrap:wrap;margin-bottom:16px">${chipBtns}</div>
+      <button onclick="convoContinue()" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">つづける ▶</button>
+      <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">はじめから</button>
+    </div>`;
+  }
+
+  /* ── LIVE PROBE ── */
   const aiLine = cur && cur.jp
-    ? `<div class="convo-turn them" style="margin-bottom:6px">
+    ? `<div class="convo-turn them" style="margin-bottom:4px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
         ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cur.glossEn)}</div>` : ''}
        </div>
-       <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;margin-bottom:10px;font-family:inherit">${cv.peekGloss ? 'いみをかくす' : 'いみをみる'}</button>`
+       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+         <button onclick="convoReplay()" title="もういちど" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🔊</button>
+         <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="ゆっくり" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
+         <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'いみをかくす' : 'いみをみる'}</button>
+       </div>
+       ${convoWordGloss(cv, cur)}`
     : '';
 
   const listenBanner = cv.listening
@@ -9699,8 +9862,9 @@ function renderConvo(){
   const errBlock = cv.error
     ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-bottom:10px;font-weight:600;font-size:13px;color:#fcd34d;line-height:1.5">${esc(cv.error)}</div>` : '';
 
+  /* Mic button uses convoToggleListen (not convoStartListen) for the hands-free belt-and-braces pattern */
   const micBtn = !cv.loading
-    ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoStartListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
+    ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
 
   return `<div style="padding:2px 2px 24px">
     <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase;margin-bottom:4px">おしゃべり 💬</div>
@@ -9717,16 +9881,31 @@ function renderConvo(){
   </div>`;
 }
 
+/* _renderConvoRecap — wrap-up card shown when cv.done && cv.recap.
+   Gated by convoEnd() setting both flags; never shown mid-session.
+   Displays: total turns, spoken✅ vs tapped breakdown, XP/level recap strip,
+   「もう いちど」 again button (convoFresh), and drill-missed button. */
 function _renderConvoRecap(cv){
   const r = cv.recap;
+  const spoken = r.spokenTurns || 0;
+  const tapped = r.tappedTurns || 0;
+  const missed = r.missedWordIds || [];
+  const drillBtn = missed.length
+    ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">🔁 のがしたことばをドリル (${missed.length})</button>`
+    : '';
   return `<div style="padding:2px 2px 24px;text-align:center">
     <div style="font-weight:800;font-size:32px;margin:24px 0 8px">🎉</div>
     <div style="font-weight:800;font-size:22px;margin-bottom:8px">よくできました！</div>
-    <div style="color:#a99fc7;font-size:14px;margin-bottom:20px">${r.turns} ターン · +${r.xpGain} XP</div>
+    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} ターン · +${r.xpGain} XP</div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:inline-flex;gap:24px;justify-content:center">
+      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 はなした</div></div>
+      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 タップ</div></div>
+    </div><br>
     <div style="background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:16px;padding:16px;margin-bottom:20px;display:inline-block;min-width:200px">
       <div style="font-weight:700;font-size:13px;color:#c9b3ff">レベル ${r.convoLevel} · ${r.convoXp} / ${CONVO_LEVEL_XP} XP</div>
     </div><br>
     <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
+    ${drillBtn}
     <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ホームへ</button>
   </div>`;
 }
