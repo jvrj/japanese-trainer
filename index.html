@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.95';
+const APP_VERSION = '7.96';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19546,11 +19546,27 @@ function renderHome(){
     + groupHtml('Textbook lessons (みんな)', melGrid)
     + `</div>`;
 
+  /* v7.96 — Coverage meter: reads SRS state, nothing is locked */
+  const _cvs = vocabAccessStats();
+  const _cvPct = _cvs.total > 0 ? Math.round(_cvs.started / _cvs.total * 100) : 0;
+  const coverageMeterHtml = state.settings.showCoverageMeter ? `
+    <div class="coverage-meter" style="margin:0 2px 10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7">Vocabulary coverage</div>
+        <div style="font-size:12px;font-weight:700;color:#c9b3ff">${_cvPct}%</div>
+      </div>
+      <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
+        <div style="height:100%;width:${_cvPct}%;border-radius:3px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);transition:width .4s"></div>
+      </div>
+      <div style="margin-top:8px;font-size:13px;color:var(--faint)">${_cvs.started} of ${_cvs.total} words started &middot; ${_cvs.mastered} mastered</div>
+    </div>` : '';
+
   return `
     <div class="home-v8">
       ${topBar}
       ${pathStrip}
       ${searchBox}
+      ${coverageMeterHtml}
       ${contCard}
       ${results}
       ${statsRow}
