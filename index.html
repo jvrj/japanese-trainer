@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.00';
+const APP_VERSION = '8.01';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5630,14 +5630,20 @@ function _voiceScoreJa(targetJp, alts){
    Falls back to Web Speech on offline / API failure.
    ========================================================================= */
 function whisperKey(){ return (state.settings.openaiKey || '').trim(); }
-function whisperAvailable(){
-  if(state.settings.voiceSttEngine === 'webspeech') return false;
-  if(!whisperKey()) return false;
-  if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
-  if(typeof MediaRecorder === 'undefined') return false;
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
-  return true;
+/* v8.01 — single source of truth for "can Whisper actually run, and if not, WHY".
+   The Settings banner used to go green on key-presence alone, which lied whenever
+   the real gate (below) was failing — the user saw "active" but the drill quietly
+   used the browser recognizer. whisperStatus() returns the reason so the banner
+   and any diagnostic can show the truth. whisperAvailable() is the unchanged bool. */
+function whisperStatus(){
+  if(state.settings.voiceSttEngine === 'webspeech') return {ok:false, reason:'set to browser engine (not Whisper)'};
+  if(!whisperKey()) return {ok:false, reason:'no key saved'};
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return {ok:false, reason:"this device is offline"};
+  if(typeof MediaRecorder === 'undefined') return {ok:false, reason:"this browser can't record audio (no MediaRecorder)"};
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return {ok:false, reason:'no microphone-access API in this browser'};
+  return {ok:true, reason:''};
 }
+function whisperAvailable(){ return whisperStatus().ok; }
 
 /* v7.47 — Known Whisper hallucinations. The model was trained heavily on
    YouTube / podcast / Zoom audio and on silence-or-noise inputs it
@@ -5819,7 +5825,7 @@ async function _whisperTranscribe(blob, hint){
    render a spinner during the API round-trip. */
 async function _whisperVoiceListen(target, onVerdict){
   const b = state.buildMode;
-  if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
+  if(!b){ onVerdict && onVerdict({verdict:'nostt', engine:'whisper'}); return; }
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
   const maxMs = listenSec * 1000;
   b._sttActive = true;
@@ -5850,7 +5856,7 @@ async function _whisperVoiceListen(target, onVerdict){
   if(!blob || blob.size < 2000){
     log('whisper_skip_tiny', { blobSize: blob && blob.size, speechDetected: rec && rec.speechDetected });
     b._sttActive = false; b._whisperPhase = null;
-    onVerdict({verdict:'nostt'});
+    onVerdict({verdict:'nostt', engine:'whisper'});
     return;
   }
   b._whisperPhase = 'transcribing';
@@ -5877,7 +5883,7 @@ async function _whisperVoiceListen(target, onVerdict){
     return _buildVoiceListenWebSpeech(target, onVerdict);
   }
   b._sttActive = false; b._whisperPhase = null;
-  if(!text){ onVerdict({verdict:'nostt'}); return; }
+  if(!text){ onVerdict({verdict:'nostt', engine:'whisper'}); return; }
   const alts = [{ transcript: text, conf: 1, whisper: true }];
   log('whisper_result', { text, target: hint });
   const targets = Array.isArray(target) ? target : [target];
@@ -15544,7 +15550,7 @@ function _buildVoiceListen(target, onVerdict){
 
 function _buildVoiceListenWebSpeech(target, onVerdict){
   const b = state.buildMode;
-  if(!b){ onVerdict && onVerdict({verdict:'nostt'}); return; }
+  if(!b){ onVerdict && onVerdict({verdict:'nostt', engine:'webspeech'}); return; }
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
   const listenMs = listenSec * 1000;
   /* STT warmup — Chrome's audio capture takes 300-450ms after rec.start()
@@ -15561,7 +15567,7 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
       if(state.buildMode !== b || b._paused) return;
       if(err || !alts.length){
         log('voice_step_nostt', {type: target ? 'has_target' : 'no_target', err: err && err.error});
-        onVerdict({verdict:'nostt'});
+        onVerdict({verdict:'nostt', engine:'webspeech'});
         return;
       }
       const targets = Array.isArray(target) ? target : [target];
@@ -15572,6 +15578,7 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
         if(r.dist < best.dist) best = r;
       }
       best.alts = alts; /* pass through so reveal panel can show "show all heard" */
+      best.engine = 'webspeech'; /* v8.01 — attribute the engine so the reveal badge is always right */
       log('voice_step_score', {verdict:best.verdict, dist:best.dist, heard:best.heard});
       onVerdict(best);
     }
@@ -15636,7 +15643,7 @@ function _buildVoiceListenStep(step){
       /* Stash nostt so the reveal panel can surface "didn't hear you" —
          silently skipping the echo block makes the user think they were
          ignored, especially when they spoke quietly. */
-      b._lastVoice = {verdict:'nostt', heard:'', heardDisplay:'', heardN:'', heardWord:null};
+      b._lastVoice = {verdict:'nostt', heard:'', heardDisplay:'', heardN:'', heardWord:null, engine: res.engine || 'webspeech'};
       buildAutoReveal();
       return;
     }
@@ -18259,9 +18266,14 @@ function _buildRenderHeard(){
   const lv = b && b._lastVoice;
   if(!lv) return '';
   if(lv.verdict === 'nostt'){
+    /* v8.01 — show which engine failed to hear, so "it never works" is diagnosable
+       at a glance: 🎤 Whisper = the paid path ran (look for a separate error toast
+       if it keeps missing); 📢 Web Speech = the browser fallback (key/gate is off). */
+    const engN = lv.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech';
     return `
       <div style="text-align:center;font-size:13px;color:var(--dim);margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
         🎤 couldn't hear you — speak up a bit or move closer to the mic
+        <div class="muted" style="font-size:10px;margin-top:4px;opacity:0.7">${engN}</div>
       </div>`;
   }
   if(!lv.heard) return '';
@@ -20646,11 +20658,23 @@ function renderSettings(){
 
     <div class="card">
       <h3>🎤 Voice recognition (Whisper)</h3>
-      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.openaiKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(245,158,11,0.10)'};border-left:3px solid ${(s.openaiKey||'').trim() ? '#22c55e' : '#f59e0b'};line-height:1.5">
-        ${(s.openaiKey||'').trim()
+      ${(() => {
+        /* v8.01 — banner now reflects the REAL gate (whisperStatus), not just key
+           presence. The old key-only check went green even when Whisper couldn't
+           actually run, so the drill silently used the browser engine while this
+           said "active". Three honest states: no key / key-but-blocked / live. */
+        const hasKey = (s.openaiKey||'').trim();
+        const st = whisperStatus();
+        const tone = st.ok ? {bg:'rgba(34,197,94,0.10)', br:'#22c55e'}
+                   : hasKey ? {bg:'rgba(239,68,68,0.10)', br:'#ef4444'}
+                            : {bg:'rgba(245,158,11,0.10)', br:'#f59e0b'};
+        const body = st.ok
           ? '✅ Whisper is active — voice mode uses OpenAI Whisper for transcription (vastly more accurate than the browser).'
-          : '⚠️ No OpenAI key yet — voice mode currently uses your browser\'s built-in recognizer, which is the source of the clipped / misheard verdicts. Add a key to switch to Whisper.'}
-      </div>
+          : hasKey
+            ? ('⛔ Key saved, but Whisper can\'t run right now: <b>' + esc(st.reason) + '</b>. Voice mode is falling back to your browser\'s recognizer (the clipped / misheard one) until this is resolved.')
+            : '⚠️ No OpenAI key yet — voice mode currently uses your browser\'s built-in recognizer, which is the source of the clipped / misheard verdicts. Add a key to switch to Whisper.';
+        return '<div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:' + tone.bg + ';border-left:3px solid ' + tone.br + ';line-height:1.5">' + body + '</div>';
+      })()}
       <div class="muted" style="font-size:12px;margin:10px 0 8px">Why this matters: the browser\'s Web Speech API often clips the front of words (you say <b>いそがしい</b>, it hears <b>いい</b>). Whisper is OpenAI\'s speech model — best-in-class for Japanese, doesn\'t clip, and we tell it your deck words so it favours them. ~$0.006/min audio, roughly <b>$1-3/month</b> for daily practice. Round-trip latency ~1-2 sec per attempt. Falls back to the browser recognizer when offline.</div>
       <input class="input" id="openaiKeyInput" type="password" placeholder="sk-..." value="${esc(s.openaiKey||'')}">
       <div class="spacer"></div>
