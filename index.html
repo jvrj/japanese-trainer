@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.01';
+const APP_VERSION = '8.02';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5645,6 +5645,26 @@ function whisperStatus(){
 }
 function whisperAvailable(){ return whisperStatus().ok; }
 
+/* v8.02 — STT diagnostics ("stop debugging blind"). The hands-free reveal
+   auto-advances too fast to read the per-attempt engine badge, so we also stash
+   the LAST spoken-answer outcome and surface it in Settings. One line tells you:
+   which engine ran, whether it captured audio, what it heard, or the exact error. */
+function _sttDebug(engine, event, detail){
+  try{
+    state._lastStt = {
+      engine: engine || '?',
+      event: event || '?',
+      detail: (detail == null ? '' : String(detail)).slice(0, 180),
+      ts: Date.now()
+    };
+    localStorage.setItem('jp4_last_stt', JSON.stringify(state._lastStt));
+  }catch(e){}
+}
+function _sttDebugGet(){
+  if(state._lastStt) return state._lastStt;
+  try{ return JSON.parse(localStorage.getItem('jp4_last_stt') || 'null'); }catch(e){ return null; }
+}
+
 /* v7.47 — Known Whisper hallucinations. The model was trained heavily on
    YouTube / podcast / Zoom audio and on silence-or-noise inputs it
    confidently outputs common training-data phrases (most famously
@@ -5837,6 +5857,7 @@ async function _whisperVoiceListen(target, onVerdict){
   } catch(e){
     const msg = String(e && e.message || e);
     log('whisper_rec_err', { err: msg });
+    _sttDebug('whisper', 'mic/record error', msg);
     b._sttActive = false; b._whisperPhase = null;
     /* v8.00 — SURFACE the error instead of silently masking it as the (broken)
        browser STT. The old silent fallback is exactly why a real failure
@@ -5855,6 +5876,7 @@ async function _whisperVoiceListen(target, onVerdict){
      The occasional silent clip costs ~$0.0002 — worth it for reliability. */
   if(!blob || blob.size < 2000){
     log('whisper_skip_tiny', { blobSize: blob && blob.size, speechDetected: rec && rec.speechDetected });
+    _sttDebug('whisper', 'no audio captured', 'recorded ' + (blob && blob.size || 0) + ' bytes (need ≥2000); voice-detected=' + (rec && rec.speechDetected));
     b._sttActive = false; b._whisperPhase = null;
     onVerdict({verdict:'nostt', engine:'whisper'});
     return;
@@ -5873,6 +5895,7 @@ async function _whisperVoiceListen(target, onVerdict){
   } catch(e){
     const msg = String(e && e.message || e);
     log('whisper_api_err', { err: msg });
+    _sttDebug('whisper', 'API error', msg);
     b._sttActive = false; b._whisperPhase = null;
     /* v8.00 — show the ACTUAL error (e.g. "whisper http 401: invalid key",
        429 rate-limit, network) so a real Whisper problem is diagnosable
@@ -5883,7 +5906,7 @@ async function _whisperVoiceListen(target, onVerdict){
     return _buildVoiceListenWebSpeech(target, onVerdict);
   }
   b._sttActive = false; b._whisperPhase = null;
-  if(!text){ onVerdict({verdict:'nostt', engine:'whisper'}); return; }
+  if(!text){ _sttDebug('whisper', 'transcribed empty', 'recorded audio but Whisper returned no text'); onVerdict({verdict:'nostt', engine:'whisper'}); return; }
   const alts = [{ transcript: text, conf: 1, whisper: true }];
   log('whisper_result', { text, target: hint });
   const targets = Array.isArray(target) ? target : [target];
@@ -5895,6 +5918,7 @@ async function _whisperVoiceListen(target, onVerdict){
   }
   best.alts = alts;
   best.engine = 'whisper';
+  _sttDebug('whisper', 'heard "' + text + '"', 'verdict=' + best.verdict);
   onVerdict(best);
 }
 
@@ -15567,6 +15591,7 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
       if(state.buildMode !== b || b._paused) return;
       if(err || !alts.length){
         log('voice_step_nostt', {type: target ? 'has_target' : 'no_target', err: err && err.error});
+        _sttDebug('webspeech', 'no speech heard', err && err.error ? ('error: ' + err.error) : 'browser recognizer returned nothing');
         onVerdict({verdict:'nostt', engine:'webspeech'});
         return;
       }
@@ -15580,6 +15605,7 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
       best.alts = alts; /* pass through so reveal panel can show "show all heard" */
       best.engine = 'webspeech'; /* v8.01 — attribute the engine so the reveal badge is always right */
       log('voice_step_score', {verdict:best.verdict, dist:best.dist, heard:best.heard});
+      _sttDebug('webspeech', 'heard "' + (best.heard || '?') + '"', 'verdict=' + best.verdict);
       onVerdict(best);
     }
   );
@@ -20674,6 +20700,18 @@ function renderSettings(){
             ? ('⛔ Key saved, but Whisper can\'t run right now: <b>' + esc(st.reason) + '</b>. Voice mode is falling back to your browser\'s recognizer (the clipped / misheard one) until this is resolved.')
             : '⚠️ No OpenAI key yet — voice mode currently uses your browser\'s built-in recognizer, which is the source of the clipped / misheard verdicts. Add a key to switch to Whisper.';
         return '<div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:' + tone.bg + ';border-left:3px solid ' + tone.br + ';line-height:1.5">' + body + '</div>';
+      })()}
+      ${(() => {
+        /* v8.02 — last spoken-answer outcome. Read this AFTER a drill to see
+           exactly what happened on your most recent voice answer. */
+        const d = _sttDebugGet();
+        if(!d) return '<div class="muted" style="font-size:11px;margin-top:8px;opacity:0.7">Last voice attempt: <i>none yet — run a drill and speak one answer, then come back here.</i></div>';
+        const engN = d.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech';
+        const secs = Math.max(0, Math.round((Date.now() - (d.ts||0)) / 1000));
+        const ago = secs < 60 ? secs + 's ago' : Math.round(secs/60) + 'm ago';
+        return '<div class="muted" style="font-size:11px;margin-top:8px;padding:6px 8px;background:var(--card2);border-radius:6px;line-height:1.5">'
+          + '<b>Last voice attempt</b> (' + ago + '): ' + engN + ' · ' + esc(d.event)
+          + (d.detail ? '<br><span style="opacity:0.7">' + esc(d.detail) + '</span>' : '') + '</div>';
       })()}
       <div class="muted" style="font-size:12px;margin:10px 0 8px">Why this matters: the browser\'s Web Speech API often clips the front of words (you say <b>いそがしい</b>, it hears <b>いい</b>). Whisper is OpenAI\'s speech model — best-in-class for Japanese, doesn\'t clip, and we tell it your deck words so it favours them. ~$0.006/min audio, roughly <b>$1-3/month</b> for daily practice. Round-trip latency ~1-2 sec per attempt. Falls back to the browser recognizer when offline.</div>
       <input class="input" id="openaiKeyInput" type="password" placeholder="sk-..." value="${esc(s.openaiKey||'')}">
