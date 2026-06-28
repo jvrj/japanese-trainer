@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.97';
+const APP_VERSION = '7.98';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5415,30 +5415,59 @@ function updateSpeakBtn(){
    ========================================================================= */
 
 let _rec = null;
-function getRecognition(){
+/* Android Chrome's webkitSpeechRecognition is far less reliable than desktop's.
+   Two mobile-specific failure modes were eating ~90% of answers on phone:
+     1. continuous=true — on Android the engine routinely ends the session with
+        NO result, or never finalizes, so the mic closes empty → verdict 'nostt'.
+        Each drill answer is ONE short utterance anyway, so single-utterance
+        mode (continuous=false) lets Android's own end-of-speech detection do
+        its job and is dramatically more dependable. Desktop keeps continuous
+        for quiet speakers (interim partials carry quiet speech through pauses).
+     2. Reusing ONE recognizer instance across spam mode's rapid start/stop
+        cycles makes Android abort silently — so startVoice() now builds a FRESH
+        instance per listen (see below). */
+function _isMobileSTT(){
+  return /Android|iPhone|iPad|iPod|Mobile/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+}
+function _makeRecognition(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR) return null;
+  const rec = new SR();
+  rec.lang = 'ja-JP';
+  rec.continuous = _isMobileSTT() ? false : true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 12;
+  return rec;
+}
+function getRecognition(){
   if(_rec) return _rec;
-  _rec = new SR();
-  _rec.lang = 'ja-JP';
-  /* continuous + interim: lets STT keep listening through quiet pauses and
-     surface partial recognition before it commits to "speech ended". Quiet
-     speakers were getting cut mid-word with the strict end-of-utterance VAD
-     under continuous:false. Our caller closes the mic on listen timeout. */
-  _rec.continuous = true;
-  _rec.interimResults = true;
-  _rec.maxAlternatives = 12;
+  _rec = _makeRecognition();
   return _rec;
 }
 function voiceSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
 
 function startVoice(onResult, onEnd, lang){
-  const rec = getRecognition();
+  /* Fresh recognizer every call. Reusing one SpeechRecognition across the rapid
+     start/stop of spam mode makes Android Chrome abort with no result; a new
+     instance per listen sidesteps that. Tear the previous one down first. */
+  try{ if(_rec){ _rec.onresult = _rec.onerror = _rec.onend = null; (_rec.abort || _rec.stop || function(){}).call(_rec); } }catch(e){}
+  const rec = _makeRecognition();
   if(!rec) { onEnd && onEnd(new Error('unsupported')); return; }
+  _rec = rec;
   // Per-call language override so the same recognizer can listen for EN
   // (Vocab Blitz JP→EN direction) or JP (everything else). Defaults to ja-JP.
   rec.lang = lang || 'ja-JP';
   state.voiceListening = true;
+  /* On Android a failed listen fires onerror AND then onend — guard so the
+     caller's onEnd (which computes the verdict + records the SRS attempt) runs
+     exactly ONCE, never double-counting an answer. */
+  let _done = false;
+  const finish = (errOrNull)=>{
+    if(_done) return; _done = true;
+    state.voiceListening = false;
+    onEnd && onEnd(errOrNull);
+    updateVoiceBtn();
+  };
   rec.onresult = (e)=>{
     const alts = [];
     /* Concatenated transcript: continuous-mode STT chops long words like
@@ -5477,9 +5506,9 @@ function startVoice(onResult, onEnd, lang){
     log('voice_result',{alts, finals:finalChunks, interims:interimChunks, lang: rec.lang});
     onResult && onResult(alts);
   };
-  rec.onerror = (e)=>{ state.voiceListening=false; log('voice_err',{err:e.error}); onEnd && onEnd(e); };
-  rec.onend = ()=>{ state.voiceListening=false; onEnd && onEnd(null); updateVoiceBtn(); };
-  try{ rec.start(); updateVoiceBtn(); }catch(e){ state.voiceListening=false; onEnd && onEnd(e); }
+  rec.onerror = (e)=>{ log('voice_err',{err:e.error}); finish(e); };
+  rec.onend = ()=>{ finish(null); };
+  try{ rec.start(); updateVoiceBtn(); }catch(e){ finish(e); }
 }
 function stopVoice(){ try{ _rec && _rec.stop(); }catch(e){} state.voiceListening=false; updateVoiceBtn(); }
 function updateVoiceBtn(){
