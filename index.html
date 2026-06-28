@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '7.99';
+const APP_VERSION = '8.00';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5776,7 +5776,9 @@ async function _whisperTranscribe(blob, hint){
   const fd = new FormData();
   const filename = 'audio.' + ((blob.type || '').includes('mp4') ? 'mp4' : 'webm');
   fd.append('file', blob, filename);
-  fd.append('model', 'whisper-1');
+  /* v8.00 — gpt-4o-mini-transcribe: half the cost of whisper-1 ($0.003 vs
+     $0.006/min) AND lower WER, same /v1/audio/transcriptions endpoint. */
+  fd.append('model', 'gpt-4o-mini-transcribe');
   fd.append('language', 'ja');
   /* Prompt is a single hiragana word — keeps Whisper in Japanese mode and
      gently biases toward the target without dragging it back to English. */
@@ -5827,26 +5829,26 @@ async function _whisperVoiceListen(target, onVerdict){
   try {
     rec = await _whisperRecord(maxMs);
   } catch(e){
-    log('whisper_rec_err', { err: String(e && e.message || e) });
+    const msg = String(e && e.message || e);
+    log('whisper_rec_err', { err: msg });
     b._sttActive = false; b._whisperPhase = null;
-    /* If we can't even record, fall back to Web Speech for this attempt. */
+    /* v8.00 — SURFACE the error instead of silently masking it as the (broken)
+       browser STT. The old silent fallback is exactly why a real failure
+       looked like "the mic just doesn't work". */
+    if(typeof showToast === 'function') showToast('🎙️ Mic error: ' + msg.slice(0,80) + ' — using browser STT', { tone:'warn', duration:4000 });
     log('whisper_fallback', { reason: 'rec_err' });
     return _buildVoiceListenWebSpeech(target, onVerdict);
   }
   const blob = rec && rec.blob;
-  /* v7.47 — if VAD never detected speech, skip the Whisper round-trip
-     entirely. Sending silent audio to Whisper produces hallucinations
-     like "call ended" / "thanks for watching" and burns API credit. */
-  if(!rec || !rec.speechDetected){
-    log('whisper_skip_silence', { durationMs: rec && rec.durationMs, blobSize: blob && blob.size });
-    b._sttActive = false; b._whisperPhase = null;
-    onVerdict({verdict:'nostt'});
-    return;
-  }
-  /* v7.47 — bumped from 200 → 2000. Sub-second audio (~250ms) is well
-     below this and almost always a noise spike or VAD false positive. */
+  /* v8.00 — FAIL OPEN. The old code skipped Whisper entirely whenever the
+     VAD `speechDetected` flag was false — but that flag is too aggressive on
+     Android mics and was silently dropping real answers without ever calling
+     Whisper (a prime cause of "it doesn't hear me"). Now we transcribe
+     whenever we captured a reasonably-sized clip and rely on the
+     kana/hallucination filter in _whisperTranscribe to drop silence-garbage.
+     The occasional silent clip costs ~$0.0002 — worth it for reliability. */
   if(!blob || blob.size < 2000){
-    log('whisper_skip_tiny', { blobSize: blob && blob.size });
+    log('whisper_skip_tiny', { blobSize: blob && blob.size, speechDetected: rec && rec.speechDetected });
     b._sttActive = false; b._whisperPhase = null;
     onVerdict({verdict:'nostt'});
     return;
@@ -5863,10 +5865,14 @@ async function _whisperVoiceListen(target, onVerdict){
   try {
     text = await _whisperTranscribe(blob, hint);
   } catch(e){
-    log('whisper_api_err', { err: String(e && e.message || e) });
+    const msg = String(e && e.message || e);
+    log('whisper_api_err', { err: msg });
     b._sttActive = false; b._whisperPhase = null;
+    /* v8.00 — show the ACTUAL error (e.g. "whisper http 401: invalid key",
+       429 rate-limit, network) so a real Whisper problem is diagnosable
+       instead of being disguised as the broken browser mic. */
     if(typeof showToast === 'function'){
-      showToast('Whisper failed — falling back to browser STT.', { tone: 'warn', duration: 2500 });
+      showToast('🎙️ Whisper error: ' + msg.slice(0,120) + ' — using browser STT', { tone: 'warn', duration: 5000 });
     }
     return _buildVoiceListenWebSpeech(target, onVerdict);
   }
