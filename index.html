@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.04';
+const APP_VERSION = '8.05';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1783,7 +1783,7 @@ const N5_PACK = [
   {jp:"われる",romaji:"wareru",en:"to break / crack (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for glass/plates: コップ が われた. Tr partner わる = someone breaks it (～を わる)."},
   {jp:"わる",romaji:"waru",en:"to break / split",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を わる. Pairs with われる. Also 'to divide' in maths."},
   {jp:"こわれる",romaji:"kowareru",en:"to break down (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for machines: パソコン が こわれた. Tr partner こわす = someone breaks it."},
-  {jp:"こわす",romaji:"kowasu",en:"to break (on purpose or by accident)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を こわす. Use こわれた (not こわした) if no one is at fault."},
+  {jp:"こわす",romaji:"kowasu",en:"to break (something)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を こわす. Use こわれた (not こわした) if no one is at fault."},
   {jp:"おれる",romaji:"oreru",en:"to snap (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, for long thin things: えんぴつ が おれた. Tr partner おる."},
   {jp:"おる",romaji:"oru",en:"to snap / fold",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Transitive: ～を おる. Also 'to fold' paper (おりがみ)."},
   {jp:"やぶれる",romaji:"yabureru",en:"to tear (by itself)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5,note:"Intransitive, paper/cloth: かみ が やぶれた. Tr partner やぶる."},
@@ -2103,9 +2103,9 @@ const N5_PACK = [
   {jp:"いいですよ。",romaji:"iidesuyo",en:"Sure./ Certainly.",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"ざんねんです",romaji:"zannendesu",en:"I'm sorry , unfortunately",pos:"n",theme:"feelings",register:"neutral",jlpt:5,note:"［が］ optional; but"},
   {jp:"いっしょに いかがですか。",romaji:"isshoni ikagadesuka",en:"Won't you join me (us)?",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
-  {jp:"ちょっと ・・・・・・。",romaji:"chotto",en:"is a bit difficult. (a euphemism used when declining an invitation)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"used with ～は; ~"},
+  {jp:"ちょっと ・・・・・・。",romaji:"chotto",en:"Well, that's a bit… (soft refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"used with ～は; ~"},
   {jp:"だめですか。",romaji:"damedesuka",en:"So you cannot (come)?",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
-  {jp:"また こんど おねがいします。",romaji:"mata kondo onegaishimasu",en:"Please ask me again some other time. (used when refusing an invitation indirectly, considering someone's feelings)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
+  {jp:"また こんど おねがいします。",romaji:"mata kondo onegaishimasu",en:"Maybe another time (polite refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"つけます",romaji:"tsukemasu",en:"turn on",pos:"v",theme:"objects",register:"neutral",jlpt:5},
   {jp:"けします",romaji:"keshimasu",en:"turn off",pos:"v",theme:"objects",register:"neutral",jlpt:5},
   {jp:"あけます",romaji:"akemasu",en:"open",pos:"v",theme:"objects",register:"neutral",jlpt:5},
@@ -2133,7 +2133,7 @@ const N5_PACK = [
   {jp:"あとで",romaji:"atode",en:"later",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"もうすこし",romaji:"mousukoshi",en:"a little more",pos:"n",theme:"adverbs",register:"neutral",jlpt:5},
   {jp:"もう～",romaji:"mou",en:"～more, another～",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"さあ",romaji:"saa",en:"right (used when encouraging some course of action)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
+  {jp:"さあ",romaji:"saa",en:"come on / now then (urging)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"あれ？",romaji:"are",en:"Oh! Eh? (in surprise or wonder)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"しんごうをみぎへまがってください。",romaji:"shingouomigihemagattekudasai",en:"Turn right at the traffic lights",pos:"expr",theme:"travel",register:"neutral",jlpt:5},
   {jp:"まっすぐ",romaji:"massugu",en:"straight",pos:"n",theme:"travel",register:"neutral",jlpt:5},
@@ -2160,7 +2160,7 @@ const N5_PACK = [
   {jp:"かしゅ",romaji:"kashu",en:"singer",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"しょうせつ",romaji:"shousetsu",en:"novel",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"しょうせつか",romaji:"shousetsuka",en:"novelist",pos:"n",theme:"people",register:"neutral",jlpt:4},
-  {jp:"～か",romaji:"ka",en:"-er, -ist, etc. (e.g. painter, novelist)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～か",romaji:"ka",en:"-er / -ist (job suffix, e.g. painter)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"～き",romaji:"ki",en:"~ machine",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"むすこさん",romaji:"musukosan",en:"(someone else's) son",pos:"n",theme:"family",register:"neutral",jlpt:4},
   {jp:"むすめさん",romaji:"musumesan",en:"(someone else's) daughter",pos:"n",theme:"family",register:"neutral",jlpt:4},
@@ -2194,7 +2194,7 @@ const N5_PACK = [
   {jp:"なんでも",romaji:"nandemo",en:"anything",pos:"n",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"こんな～",romaji:"konna",en:"~ like this",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"そんな～",romaji:"sonna",en:"~ like that (near the listener)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"あんな～",romaji:"anna",en:"~ like that (far from both the speaker and the listener)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"あんな～",romaji:"anna",en:"that kind of ~ (over there)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"かたづきます",romaji:"katazukimasu",en:"be put in order, tidy up",pos:"v",theme:"home",register:"neutral",jlpt:4},
   {jp:"だします",romaji:"dashimasu",en:"put out",pos:"v",theme:"objects",register:"neutral",jlpt:4,note:"used with ごみを～; the rubbish"},
   {jp:"もえるごみ",romaji:"moerugomi",en:"burnable trash",pos:"n",theme:"objects",register:"neutral",jlpt:4},
@@ -2301,7 +2301,7 @@ const N5_PACK = [
   {jp:"ばっきん",romaji:"bakkin",en:"fine",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"みがきます",romaji:"migakimasu",en:"brush , polish",pos:"v",theme:"objects",register:"neutral",jlpt:4,note:"used with はを～; one's teeth"},
   {jp:"くみたてます",romaji:"kumitatemasu",en:"assemble",pos:"v",theme:"work",register:"neutral",jlpt:4},
-  {jp:"おります",romaji:"orimasu",en:"bend, fold, break, snap",pos:"v",theme:"objects",register:"neutral",jlpt:4},
+  {jp:"おります",romaji:"orimasu",en:"to break / fold / bend",pos:"v",theme:"objects",register:"neutral",jlpt:4},
   {jp:"きがつきます",romaji:"kigatsukimasu",en:"notice, become aware of",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"used with わすれものに～; things left behind"},
   {jp:"みつかります",romaji:"mitsukarimasu",en:"be found",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"used with かぎが～; a key"},
   {jp:"しつもんします",romaji:"shitsumonshimasu",en:"ask a question",pos:"v",theme:"school",register:"neutral",jlpt:4},
@@ -2314,7 +2314,7 @@ const N5_PACK = [
   {jp:"～か ～",romaji:"ka",en:"~ or ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
   {jp:"ゆうべ",romaji:"yuube",en:"last night",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"さどう",romaji:"sadou",en:"tea ceremony",pos:"n",theme:"home",register:"neutral",jlpt:4},
-  {jp:"おちゃを たてますII",romaji:"ochao tatemasuII",en:"make (green0 tea (at a tea ceremony)",pos:"expr",theme:"food",register:"neutral",jlpt:4},
+  {jp:"おちゃを たてますII",romaji:"ochao tatemasuII",en:"to make green tea (tea ceremony)",pos:"expr",theme:"food",register:"neutral",jlpt:4},
   {jp:"さきに",romaji:"sakini",en:"first, ahead",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"のせます",romaji:"nosemasu",en:"place on, load onto",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"これで いいですか。",romaji:"korede iidesuka",en:"Is this all right?",pos:"expr",theme:"phrases",register:"neutral",jlpt:4},
@@ -2347,7 +2347,7 @@ const N5_PACK = [
   {jp:"このごろ",romaji:"konogoro",en:"these days",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"ぜったいに",romaji:"zettaini",en:"absolutely",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
   {jp:"じょうずに",romaji:"jouzuni",en:"well, skillfully",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
-  {jp:"おきゃくさま",romaji:"okyakusama",en:"visitor, guest, customer, client",pos:"n",theme:"people",register:"neutral",jlpt:4},
+  {jp:"おきゃくさま",romaji:"okyakusama",en:"guest / customer",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"していらっしゃいます",romaji:"shiteirasshaimasu",en:"be doing",pos:"v",theme:"grammar",register:"neutral",jlpt:4,note:"respectful equivalent of しています"},
   {jp:"すいえい",romaji:"suiei",en:"swimming",pos:"n",theme:"body",register:"neutral",jlpt:4},
   {jp:"つかっていらっしゃるんですね",romaji:"tsukatteirassharundesune",en:"You're using, aren't you?",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"respectful equivalent of つかっているんですね"},
@@ -2379,10 +2379,10 @@ const N5_PACK = [
   {jp:"かいじょう",romaji:"kaijou",en:"venue, event location",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"～だい",romaji:"dai",en:"charge, fare, fee",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"フロント",romaji:"furonto",en:"front desk, reception desk",pos:"n",theme:"places",register:"neutral",jlpt:4},
-  {jp:"～や",romaji:"ya",en:"-er (e.g. baker, grocer, etc.)",pos:"expr",theme:"work",register:"neutral",jlpt:4},
+  {jp:"～や",romaji:"ya",en:"-er (shop/trade suffix, e.g. baker)",pos:"expr",theme:"work",register:"neutral",jlpt:4},
   {jp:"～ごうしつ",romaji:"goushitsu",en:"room number ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"おおぜい",romaji:"oozei",en:"a great number (of people)",pos:"n",theme:"people",register:"neutral",jlpt:4},
-  {jp:"おつかれさまでした。",romaji:"otsukaresamadeshita",en:"Thank you for your hard work. (used to express appreciation for a colleague's or subordinate's work)",pos:"expr",theme:"greetings",register:"neutral",jlpt:4},
+  {jp:"おつかれさまでした。",romaji:"otsukaresamadeshita",en:"Thanks for your hard work (to a colleague)",pos:"expr",theme:"greetings",register:"neutral",jlpt:4},
   {jp:"うかがいます。",romaji:"ukagaimasu",en:"I'm coming",pos:"expr",theme:"travel",register:"neutral",jlpt:4,note:"humble equivalent of いきます"},
   {jp:"とちゅうで",romaji:"tochuude",en:"on the way, in the midst of",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"トラック",romaji:"torakku",en:"truck",pos:"n",theme:"travel",register:"neutral",jlpt:4},
@@ -2414,7 +2414,7 @@ const N5_PACK = [
   {jp:"～びん",romaji:"bin",en:"flight, flight number",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"～こ",romaji:"ko",en:"~ (counter for small objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"～ほん、～ぽん、～ぼん",romaji:"honponbon",en:"(counter for long objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～はい、～ぱい、～ばい",romaji:"haipaibai",en:"glass or cup (counter for full cups, glasses, etc.)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"～はい、～ぱい、～ばい",romaji:"haipaibai",en:"~ cupfuls / glassfuls (counter)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"～センチ",romaji:"senchi",en:"~ centimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"～ミリ",romaji:"miri",en:"~ millimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
   {jp:"～グラム",romaji:"guramu",en:"~ grammes",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
@@ -2429,7 +2429,7 @@ const N5_PACK = [
   {jp:"けいさんします",romaji:"keisanshimasu",en:"calculate",pos:"v",theme:"numbers",register:"neutral",jlpt:4},
   {jp:"ならびます",romaji:"narabimasu",en:"stand in a queue, line up",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"じょうぶ",romaji:"joubu",en:"strong, healthy",pos:"adj-na",theme:"adjectives",register:"neutral",jlpt:4},
-  {jp:"べんごし",romaji:"bengoshi",en:"lawyer, attorney, solicitor, barrister",pos:"n",theme:"work",register:"neutral",jlpt:4},
+  {jp:"べんごし",romaji:"bengoshi",en:"lawyer",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"おんがくか",romaji:"ongakuka",en:"musician",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"しぜん",romaji:"shizen",en:"nature",pos:"n",theme:"nature",register:"neutral",jlpt:4},
   {jp:"きょういく",romaji:"kyouiku",en:"education",pos:"n",theme:"school",register:"neutral",jlpt:4},
@@ -2472,7 +2472,7 @@ const N5_PACK = [
   {jp:"ちゅうし",romaji:"chuushi",en:"calling of, cancelling, suspension",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"てん",romaji:"ten",en:"point, score",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"うめ",romaji:"ume",en:"plum (blossom)",pos:"n",theme:"nature",register:"neutral",jlpt:4},
-  {jp:"110ばん",romaji:"110ban",en:"the emergency police telephone number",pos:"n",theme:"tech",register:"neutral",jlpt:4},
+  {jp:"110ばん",romaji:"110ban",en:"110 (police number)",pos:"n",theme:"tech",register:"neutral",jlpt:4},
   {jp:"119ばん",romaji:"119ban",en:"119 (fire / ambulance number)",pos:"n",theme:"tech",register:"neutral",jlpt:4},
   {jp:"きゅうに",romaji:"kyuuni",en:"suddenly",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
   {jp:"むりに",romaji:"murini",en:"unreasonably",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
@@ -2518,7 +2518,7 @@ const ADV_PACK = [
   {jp:"がまんする",romaji:"gaman suru",en:"endure / put up with / hold back",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Suru-verb. いたみ を がまん する = bear the pain. Enduring silently — a prized cultural virtue."},
   {jp:"やくにたつ",romaji:"yaku ni tatsu",en:"be useful / come in handy",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Set phrase やく に たつ (やく = use/role). Takes に for whom it helps. Treat as a unit, not free words."},
   /* --- nouns --- */
-  {jp:"つごう",romaji:"tsugou",en:"circumstances / convenience / availability",pos:"n",theme:"time",register:"neutral",jlpt:3,note:"つごう が いい = it works for me; つごう が わるい = a bad time. The scheduling word."},
+  {jp:"つごう",romaji:"tsugou",en:"circumstances / convenience",pos:"n",theme:"time",register:"neutral",jlpt:3,note:"つごう が いい = it works for me; つごう が わるい = a bad time. The scheduling word."},
   /* --- adverbs --- */
 ];
 
