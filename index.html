@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.02';
+const APP_VERSION = '8.03';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -15673,40 +15673,24 @@ function _buildVoiceListenStep(step){
       buildAutoReveal();
       return;
     }
-    // Record voice attempt against the SRS stats slot. "close" counts as
-    // correct (per user's spec) so it credits firstCorrect / lastSeen too.
+    /* Voice is a turn-trigger + an optional "I heard you say X" reflection —
+       NOT a pronunciation grader. Consumer phone STT can't reliably judge a
+       beginner's pronunciation across accents/mics, so we deliberately do NOT
+       score it into the SRS stats: a false "wrong" is demoralizing and quietly
+       corrupts mastery. We touch lastSeen so the word still counts as practiced,
+       stash a neutral echo for the reveal panel, and reveal the canonical JP.
+       No verdict is spoken — the reveal itself plays the answer. */
     const wid = _buildStateWordIdForStep(step);
-    let attemptIdx = -1;
-    if(wid){
-      const isCorrect = (res.verdict !== 'wrong');
-      const st = smStatFor(wid);
-      /* v7.46 — tag with STT engine so we can later split "Whisper said
-         correct" from "Web Speech said correct" in Progress (different
-         confidence). res.engine is set by the Whisper path; absent → webspeech. */
-      recordAttempt(wid, isCorrect, 'speak', { voice: true, stt: res.engine || 'webspeech' });
-      attemptIdx = st.attempts.length - 1;
-    }
-    /* Stash heard text + reverse lookup so the reveal panel can show
-       "you said X (means Y)" — and on wrong, the verdict TTS can name the
-       mismatch instead of just saying "not quite". */
-    const promptJp = Array.isArray(target) ? target[0] : target;
-    const heardWord = (res.verdict !== 'correct')
-      ? _voiceLookupHeard(res.heardN || '', promptJp)
-      : null;
+    if(wid){ const st = smStatFor(wid); if(st) st.lastSeen = now(); }
     b._lastVoice = {
-      verdict: res.verdict,
+      verdict: 'heard',            /* neutral — panel shows a plain echo, never ✓/✗ */
       heard: res.heard || '',
       heardDisplay: res.heardDisplay || '',
       heardN: res.heardN || '',
-      heardWord,  /* {jp,en,r} or null */
-      wid,        /* for override-button SRS update */
-      attemptIdx, /* index into st.attempts so override can flip the right one */
-      alts: (res.alts || []).slice(0, 20), /* for "show all heard" diagnostic */
-      engine: res.engine || 'webspeech', /* v7.46 — which STT produced this verdict */
+      alts: (res.alts || []).slice(0, 20),
+      engine: res.engine || 'webspeech',
     };
-    _buildSayVerdictWithMiss(res.verdict, heardWord, () => {
-      if(state.buildMode === b && !b._paused) buildAutoReveal();
-    });
+    buildAutoReveal();
   });
 }
 function _buildAiQaActive(step){
@@ -18303,57 +18287,16 @@ function _buildRenderHeard(){
       </div>`;
   }
   if(!lv.heard) return '';
-  /* Kana-only echo so a learner who can't read kanji can verify what STT
-     thought they said. Falls back to a matched-deck word's kana (also pure
-     hiragana in our dataset) if the raw heard string was pure kanji. */
+  /* Neutral reflection only. Voice is no longer graded, so we simply echo what
+     STT thought it heard (kana, so a kanji-blind learner can read it). No ✓/✗,
+     no red, no "means X", no override button — there's nothing to be right or
+     wrong about. The mic is a bonus, never a judgment. */
   let display = (lv.heardDisplay && lv.heardDisplay.trim()) || '';
-  if(!display && lv.heardWord && lv.heardWord.jp) display = lv.heardWord.jp;
   if(!display) display = '(couldn’t catch the sound)';
-  const verdict = lv.verdict;
-  const color = verdict === 'correct' ? 'var(--green)'
-              : verdict === 'close'   ? 'var(--blue)'
-              : 'var(--red)';
-  const label = verdict === 'correct' ? '✓ you said'
-              : verdict === 'close'   ? '~ you said (close)'
-              : '✗ you said';
-  /* Always tell the user what they actually said when wrong/close — meaning
-     from local deck lookup if we matched, otherwise an explicit "not in your
-     deck" so they know we tried instead of silently hiding the line. */
-  let meaning = '';
-  if(verdict !== 'correct'){
-    if(lv.heardWord && lv.heardWord.en){
-      meaning = ` <span style="color:var(--dim)">— means <b>${esc(lv.heardWord.en)}</b></span>`;
-    } else if(verdict === 'wrong'){
-      meaning = ` <span style="color:var(--dim)">— not in your deck</span>`;
-    }
-  }
-  /* Manual override + diagnostic. STT on phone PWAs misfires often; the
-     override lets the user reclaim credit without abandoning voice mode.
-     Diagnostic shows every STT alternative so the user can see exactly
-     what the recognizer heard if it keeps misreading them. */
-  let override = '';
-  if(verdict === 'wrong' || verdict === 'close'){
-    override = `
-      <div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;color:var(--green);border-color:var(--green)" onclick="buildVoiceOverride()">✓ I said it right</button>
-        <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px;color:var(--dim)" onclick="buildVoiceShowAlts()">show all heard</button>
-      </div>`;
-  }
-  const altsBlock = (lv._showAlts && Array.isArray(lv.alts) && lv.alts.length)
-    ? `<div style="margin-top:6px;padding:6px 8px;background:var(--card);border-radius:6px;font-size:11px;color:var(--dim);text-align:left;max-height:120px;overflow-y:auto">
-         <div style="margin-bottom:4px;font-weight:600">STT heard:</div>
-         ${lv.alts.map(a => `<div>· ${esc((a.joined?'[joined] ':'') + (a.transcript||''))}</div>`).join('')}
-       </div>`
-    : '';
-  /* v7.46 — small badge so the user always knows which engine judged this
-     attempt. Whisper = paid, accurate; Web Speech = browser, flaky. Helps
-     diagnose mysterious verdicts ("ah, that was Web Speech fallback"). */
   const engineBadge = `<div class="muted" style="font-size:10px;margin-top:4px;text-align:right;opacity:0.7">${lv.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech'}</div>`;
   return `
-    <div style="text-align:center;font-size:13px;color:${color};margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
-      ${label}: <b>${esc(display)}</b>${meaning}
-      ${override}
-      ${altsBlock}
+    <div style="text-align:center;font-size:13px;color:var(--dim);margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
+      🎤 heard: <b style="color:var(--text)">${esc(display)}</b>
       ${engineBadge}
     </div>`;
 }
