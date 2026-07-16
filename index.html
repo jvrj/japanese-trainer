@@ -644,7 +644,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.05';
+const APP_VERSION = '8.06';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -690,31 +690,31 @@ const N5_PACK = [
   {jp:"そうです",romaji:"sou desu",en:"that's right (polite)",pos:"expr",theme:"phrases",register:"polite",jlpt:5},
 
   /* Particles & conjunctions */
-  {jp:"は",romaji:"wa",en:"topic marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"が",romaji:"ga",en:"subject marker/but",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"を",romaji:"wo",en:"object marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"に",romaji:"ni",en:"to/at/in (direction/time)",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"で",romaji:"de",en:"at/by/with (means/place)",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"へ",romaji:"e",en:"to/toward",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"と",romaji:"to",en:"and/with",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"も",romaji:"mo",en:"also/too",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"の",romaji:"no",en:"of/possessive marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"か",romaji:"ka",en:"question marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"ね",romaji:"ne",en:"right?/isn't it?",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"よ",romaji:"yo",en:"(emphasis)",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"から",romaji:"kara",en:"from/because",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"まで",romaji:"made",en:"until/as far as",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"や",romaji:"ya",en:"and (non-exhaustive)",pos:"part",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"でも",romaji:"demo",en:"but/however",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"それから",romaji:"sorekara",en:"and then/after that",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"そして",romaji:"soshite",en:"and then",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"それで",romaji:"sorede",en:"so/and then",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"じゃあ",romaji:"jaa",en:"well then",pos:"conj",theme:"grammar",register:"casual",jlpt:5},
-  {jp:"しかし",romaji:"shikashi",en:"however",pos:"conj",theme:"grammar",register:"polite",jlpt:5},
-  {jp:"だから",romaji:"dakara",en:"so/therefore",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"は",romaji:"wa",en:"topic marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"わたしは がくせいです。", exEn:"I'm a student."},
+  {jp:"が",romaji:"ga",en:"subject marker/but",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"にわに ねこが います。", exEn:"There's a cat in the garden."},
+  {jp:"を",romaji:"wo",en:"object marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"あさ みずを のみます。", exEn:"I drink water in the morning."},
+  {jp:"に",romaji:"ni",en:"to/at/in (direction/time)",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"しちじに おきます。", exEn:"I get up at 7."},
+  {jp:"で",romaji:"de",en:"at/by/with (means/place)",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"でんしゃで がっこうへ いきます。", exEn:"I go to school by train."},
+  {jp:"へ",romaji:"e",en:"to/toward",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"らいしゅう とうきょうへ いきます。", exEn:"Next week I head to Tokyo."},
+  {jp:"と",romaji:"to",en:"and/with",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"ともだちと えいがを みます。", exEn:"I watch a movie with a friend."},
+  {jp:"も",romaji:"mo",en:"also/too",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"わたしも いきます。", exEn:"I'll go too."},
+  {jp:"の",romaji:"no",en:"of/possessive marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"これは わたしの ほんです。", exEn:"This is my book."},
+  {jp:"か",romaji:"ka",en:"question marker",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"あした いきますか。", exEn:"Will you go tomorrow?"},
+  {jp:"ね",romaji:"ne",en:"right?/isn't it?",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"いい てんきですね。", exEn:"Nice weather, isn't it?"},
+  {jp:"よ",romaji:"yo",en:"(emphasis)",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"これ おいしいですよ。", exEn:"This is delicious, you know."},
+  {jp:"から",romaji:"kara",en:"from/because",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"あさから はたらきます。", exEn:"I work from morning."},
+  {jp:"まで",romaji:"made",en:"until/as far as",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"よるまで べんきょうします。", exEn:"I study until night."},
+  {jp:"や",romaji:"ya",en:"and (non-exhaustive)",pos:"part",theme:"grammar",register:"neutral",jlpt:5, ex:"ほんや ノートを かいます。", exEn:"I buy books, notebooks, and so on."},
+  {jp:"でも",romaji:"demo",en:"but/however",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"おいしいです。でも たかいです。", exEn:"It's tasty. But it's expensive."},
+  {jp:"それから",romaji:"sorekara",en:"and then/after that",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"ごはんを たべました。それから ねました。", exEn:"I ate. And then I slept."},
+  {jp:"そして",romaji:"soshite",en:"and then",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"へやを そうじしました。そして でかけました。", exEn:"I cleaned the room. And then I went out."},
+  {jp:"それで",romaji:"sorede",en:"so/and then",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"あたまが いたかったです。それで やすみました。", exEn:"I had a headache. So I rested."},
+  {jp:"じゃあ",romaji:"jaa",en:"well then",pos:"conj",theme:"grammar",register:"casual",jlpt:5, ex:"じゃあ、また あした。", exEn:"Well then, see you tomorrow."},
+  {jp:"しかし",romaji:"shikashi",en:"however",pos:"conj",theme:"grammar",register:"polite",jlpt:5, ex:"がんばりました。しかし まけました。", exEn:"I tried hard. However, I lost."},
+  {jp:"だから",romaji:"dakara",en:"so/therefore",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"あめです。だから いえに います。", exEn:"It's raining. So I'll stay home."},
   /* v7.56 — semantic reason connectors. ので is softer/more objective than から (from a cause-and-effect feel rather than personal justification); なので is the sentence-initial version ('so' / 'that's why'). */
-  {jp:"ので",romaji:"node",en:"because/since",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Softer/more objective than から. Attaches mid-clause: あついので, まどを あけた = 'It's hot, so I opened the window.' Polite-friendly."},
-  {jp:"なので",romaji:"nanode",en:"so / that's why",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Sentence-initial version of ので. Use after a noun/state sentence: ねむい。 なので、 ねます = 'I'm sleepy. So I'll sleep.'"},
+  {jp:"ので",romaji:"node",en:"because/since",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Softer/more objective than から. Attaches mid-clause: あついので, まどを あけた = 'It's hot, so I opened the window.' Polite-friendly.", ex:"さむいので まどを しめます。", exEn:"Because it's cold, I'll close the window."},
+  {jp:"なので",romaji:"nanode",en:"so / that's why",pos:"conj",theme:"grammar",register:"neutral",jlpt:5,note:"Sentence-initial version of ので. Use after a noun/state sentence: ねむい。 なので、 ねます = 'I'm sleepy. So I'll sleep.'", ex:"にちようびです。なので やすみます。", exEn:"It's Sunday. So I'll rest."},
 
   /* Pronouns & demonstratives */
   {jp:"わたし",romaji:"watashi",en:"I/me",pos:"pron",theme:"people",register:"neutral",jlpt:5},
@@ -805,7 +805,7 @@ const N5_PACK = [
   {jp:"ごぜん",romaji:"gozen",en:"AM/morning",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"ごご",romaji:"gogo",en:"PM/afternoon",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"じかん",romaji:"jikan",en:"time/hour",pos:"n",theme:"time",register:"neutral",jlpt:5},
-  {jp:"ふん",romaji:"fun",en:"minute",pos:"n",theme:"time",register:"neutral",jlpt:5},
+  {jp:"ふん",romaji:"fun",en:"minute",pos:"n",theme:"time",register:"neutral",jlpt:5, ex:"いま くじ じゅっぷんです。", exEn:"It's 9:10 now."},
   {jp:"びょう",romaji:"byou",en:"second",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"にち",romaji:"nichi",en:"day",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"しゅう",romaji:"shuu",en:"week",pos:"n",theme:"time",register:"neutral",jlpt:5},
@@ -1198,11 +1198,11 @@ const N5_PACK = [
   {jp:"よく",romaji:"yoku",en:"often/well",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
   {jp:"ときどき",romaji:"tokidoki",en:"sometimes",pos:"adv",theme:"time",register:"neutral",jlpt:5},
   {jp:"いつも",romaji:"itsumo",en:"always",pos:"adv",theme:"time",register:"neutral",jlpt:5},
-  {jp:"ぜんぜん",romaji:"zenzen",en:"not at all (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"あまり",romaji:"amari",en:"not much (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
+  {jp:"ぜんぜん",romaji:"zenzen",en:"not at all (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"おさけは ぜんぜん のみません。", exEn:"I don't drink alcohol at all."},
+  {jp:"あまり",romaji:"amari",en:"not much (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"きょうは あまり さむくないです。", exEn:"Today isn't very cold."},
   {jp:"すぐ",romaji:"sugu",en:"right away/soon",pos:"adv",theme:"time",register:"neutral",jlpt:5},
-  {jp:"まだ",romaji:"mada",en:"still/not yet",pos:"adv",theme:"time",register:"neutral",jlpt:5},
-  {jp:"もう",romaji:"mou",en:"already/anymore",pos:"adv",theme:"time",register:"neutral",jlpt:5},
+  {jp:"まだ",romaji:"mada",en:"still/not yet",pos:"adv",theme:"time",register:"neutral",jlpt:5, ex:"ごはんは まだ たべていません。", exEn:"I haven't eaten yet."},
+  {jp:"もう",romaji:"mou",en:"already/anymore",pos:"adv",theme:"time",register:"neutral",jlpt:5, ex:"もう ひるごはんを たべました。", exEn:"I already ate lunch."},
   {jp:"また",romaji:"mata",en:"again",pos:"adv",theme:"time",register:"neutral",jlpt:5},
   {jp:"はじめて",romaji:"hajimete",en:"for the first time",pos:"adv",theme:"time",register:"neutral",jlpt:5},
   {jp:"はやく",romaji:"hayaku",en:"quickly/early",pos:"adv",theme:"time",register:"neutral",jlpt:5},
@@ -1393,23 +1393,23 @@ const N5_PACK = [
   {jp:"さっき",romaji:"sakki",en:"a little while ago",pos:"adv",theme:"time",register:"neutral",jlpt:5},
   {jp:"もうすぐ",romaji:"mou sugu",en:"very soon",pos:"adv",theme:"time",register:"neutral",jlpt:5},
   {jp:"これから",romaji:"kore kara",en:"from now on",pos:"adv",theme:"time",register:"neutral",jlpt:5},
-  {jp:"きっと",romaji:"kitto",en:"surely/I'm sure",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"ぜったい",romaji:"zettai",en:"definitely/never (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"ぜひ",romaji:"zehi",en:"by all means",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"やっと",romaji:"yatto",en:"finally/at last",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"なるべく",romaji:"narubeku",en:"as much as possible",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
+  {jp:"きっと",romaji:"kitto",en:"surely/I'm sure",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"あした きっと はれます。", exEn:"It'll surely be sunny tomorrow."},
+  {jp:"ぜったい",romaji:"zettai",en:"definitely/never (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"ぜったいに わすれません。", exEn:"I'll definitely never forget."},
+  {jp:"ぜひ",romaji:"zehi",en:"by all means",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"ぜひ あそびに きてください。", exEn:"By all means, come visit."},
+  {jp:"やっと",romaji:"yatto",en:"finally/at last",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"やっと しごとが おわりました。", exEn:"The work is finally done."},
+  {jp:"なるべく",romaji:"narubeku",en:"as much as possible",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5, ex:"なるべく はやく きてください。", exEn:"Please come as early as possible."},
   {jp:"たまに",romaji:"tama ni",en:"occasionally",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
   {jp:"かなり",romaji:"kanari",en:"quite/considerably",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
   {jp:"けっこう",romaji:"kekkou",en:"quite/fairly",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"やっぱり",romaji:"yappari",en:"as expected/after all",pos:"adv",theme:"adverbs",register:"casual",jlpt:5},
+  {jp:"やっぱり",romaji:"yappari",en:"as expected/after all",pos:"adv",theme:"adverbs",register:"casual",jlpt:5, ex:"やっぱり これに します。", exEn:"After all, I'll go with this one."},
   {jp:"たとえば",romaji:"tatoeba",en:"for example",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5},
 
   /* Conjunctions (~5) */
-  {jp:"けど",romaji:"kedo",en:"but (casual)",pos:"conj",theme:"grammar",register:"casual",jlpt:5},
-  {jp:"ところで",romaji:"tokoro de",en:"by the way",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"つまり",romaji:"tsumari",en:"in other words",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"それに",romaji:"soreni",en:"moreover/besides",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"または",romaji:"matawa",en:"or/alternatively",pos:"conj",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"けど",romaji:"kedo",en:"but (casual)",pos:"conj",theme:"grammar",register:"casual",jlpt:5, ex:"いきたいけど じかんが ないです。", exEn:"I want to go, but I have no time."},
+  {jp:"ところで",romaji:"tokoro de",en:"by the way",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"ところで、あした ひまですか。", exEn:"By the way, are you free tomorrow?"},
+  {jp:"つまり",romaji:"tsumari",en:"in other words",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"つまり、これは むりです。", exEn:"In other words, this is impossible."},
+  {jp:"それに",romaji:"soreni",en:"moreover/besides",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"このみせは やすいです。それに おいしいです。", exEn:"This shop is cheap. Moreover, it's tasty."},
+  {jp:"または",romaji:"matawa",en:"or/alternatively",pos:"conj",theme:"grammar",register:"neutral",jlpt:5, ex:"ペンまたは えんぴつを つかってください。", exEn:"Please use a pen or a pencil."},
 
   /* Expressions / fillers (~9) */
   {jp:"やばい",romaji:"yabai",en:"awesome/terrible (slang)",pos:"expr",theme:"phrases",register:"casual",jlpt:5},
@@ -1433,10 +1433,10 @@ const N5_PACK = [
   {jp:"しつもん",romaji:"shitsumon",en:"question",pos:"n",theme:"school",register:"neutral",jlpt:5},
   {jp:"こたえ",romaji:"kotae",en:"answer (noun)",pos:"n",theme:"school",register:"neutral",jlpt:5},
   {jp:"もんだい",romaji:"mondai",en:"problem/issue",pos:"n",theme:"school",register:"neutral",jlpt:5},
-  {jp:"りゆう",romaji:"riyuu",en:"reason",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"りゆう",romaji:"riyuu",en:"reason",pos:"n",theme:"feelings",register:"neutral",jlpt:5, ex:"おくれた りゆうを おしえてください。", exEn:"Please tell me the reason you were late."},
   {jp:"けっか",romaji:"kekka",en:"result",pos:"n",theme:"work",register:"neutral",jlpt:5},
   {jp:"つもり",romaji:"tsumori",en:"intention/plan",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
-  {jp:"きもち",romaji:"kimochi",en:"feeling/mood",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
+  {jp:"きもち",romaji:"kimochi",en:"feeling/mood",pos:"n",theme:"feelings",register:"neutral",jlpt:5, ex:"いい てんきで きもちが いいです。", exEn:"The weather's nice and I feel good."},
   {jp:"かんがえ",romaji:"kangae",en:"thought/idea",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
   {jp:"けいけん",romaji:"keiken",en:"experience",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
   {jp:"しゅみ",romaji:"shumi",en:"hobby",pos:"n",theme:"feelings",register:"neutral",jlpt:5},
@@ -1856,7 +1856,7 @@ const N5_PACK = [
   {jp:"べつに",romaji:"betsu ni",en:"not particularly / nothing",pos:"expr",theme:"phrases",register:"casual",jlpt:5,note:"Evasive reply to 'what's wrong?'. Can sound cold or sulky."},
   {jp:"まさか",romaji:"masaka",en:"no way / you can't be serious",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"Disbelief at something unexpected. まさか…と おもった = 'I never thought…'."},
   {jp:"けっこうです",romaji:"kekkou desu",en:"that's fine / no thank you",pos:"expr",theme:"phrases",register:"polite",jlpt:5,note:"Two opposite meanings — polite refusal OR 'that's good enough'. Tone & context decide. Tread carefully."},
-  {jp:"ちなみに",romaji:"chinami ni",en:"by the way / incidentally",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"Adds a RELATED side note. ところで instead changes the topic."},
+  {jp:"ちなみに",romaji:"chinami ni",en:"by the way / incidentally",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"Adds a RELATED side note. ところで instead changes the topic.", ex:"ちなみに、これは むりょうです。", exEn:"By the way, this is free."},
   {jp:"おだいじに",romaji:"odaiji ni",en:"take care / get well",pos:"expr",theme:"phrases",register:"polite",jlpt:5,note:"Only said to someone who is unwell — not a general goodbye."},
   {jp:"おつかれ",romaji:"otsukare",en:"good work / thanks (closing)",pos:"expr",theme:"phrases",register:"casual",jlpt:5,note:"Casual workplace 'see you / nice work'. Fuller polite form おつかれさまでした."},
   {jp:"いらっしゃいませ",romaji:"irasshaimase",en:"welcome (to a shop)",pos:"expr",theme:"phrases",register:"polite",jlpt:5,note:"Staff to customers only. You never say it back — just nod."},
@@ -1869,34 +1869,34 @@ const N5_PACK = [
   {jp:"おまたせ",romaji:"omatase",en:"sorry to keep you waiting",pos:"expr",theme:"phrases",register:"casual",jlpt:5,note:"Said when you arrive/return. Fuller: おまたせしました."},
 
   /* ===== Expansion: onomatopoeia (gitaigo/giongo) ===== */
-  {jp:"ぺこぺこ",romaji:"pekopeko",en:"starving (stomach empty)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"おなか が ぺこぺこ = I'm starving. Also bowing obsequiously."},
-  {jp:"ぺらぺら",romaji:"perapera",en:"fluently / flimsy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"えいご が ぺらぺら = speaks fluently. Also thin/flimsy paper."},
-  {jp:"わくわく",romaji:"wakuwaku",en:"excited (anticipation)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Positive thrill before something fun. わくわくする."},
-  {jp:"どきどき",romaji:"dokidoki",en:"heart pounding",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Nervous OR excited — racing heartbeat either way."},
-  {jp:"いらいら",romaji:"iraira",en:"irritated / on edge",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Building frustration. いらいらする."},
-  {jp:"にこにこ",romaji:"nikoniko",en:"smiling warmly",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"A steady gentle smile (not laughing — that's げらげら)."},
-  {jp:"ごろごろ",romaji:"gorogoro",en:"lazing around / rumbling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"いえ で ごろごろする = loaf at home. Also thunder or an empty stomach."},
-  {jp:"ぶらぶら",romaji:"burabura",en:"strolling aimlessly / dangling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"ぶらぶらする = wander with no goal. Also something hanging loosely."},
-  {jp:"きらきら",romaji:"kirakira",en:"sparkling / twinkling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Glittering light: ほし が きらきら."},
-  {jp:"ぴかぴか",romaji:"pikapika",en:"shiny / brand-new",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Polished, spotless. ぴかぴか の くつ = gleaming shoes."},
-  {jp:"つるつる",romaji:"tsurutsuru",en:"smooth / slippery",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"A smooth surface; also slurping noodles. Opposite ざらざら."},
-  {jp:"ざらざら",romaji:"zarazara",en:"rough / gritty",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Coarse to the touch. Opposite つるつる."},
-  {jp:"ふわふわ",romaji:"fuwafuwa",en:"fluffy / floaty",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Soft & light: ふわふわ の パン."},
-  {jp:"べたべた",romaji:"betabeta",en:"sticky / clingy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Tacky to touch; also a couple being overly affectionate."},
-  {jp:"どんどん",romaji:"dondon",en:"rapidly / steadily",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Progress speeding up: どんどん すすむ. Also a heavy banging sound."},
-  {jp:"だんだん",romaji:"dandan",en:"gradually",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Step-by-step change: だんだん さむく なる."},
-  {jp:"ちゃんと",romaji:"chanto",en:"properly / as one should",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Doing it correctly/responsibly. ちゃんと たべて = eat properly."},
-  {jp:"きちんと",romaji:"kichinto",en:"neatly / precisely",pos:"adv",theme:"onomatope",register:"neutral",jlpt:5,note:"Tidy and exact — a notch more formal/orderly than ちゃんと."},
-  {jp:"そろそろ",romaji:"sorosoro",en:"about time to…",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"そろそろ いこうか = 'we should get going soon' — gentle social cue to wrap up."},
-  {jp:"ぐっすり",romaji:"gussuri",en:"soundly (asleep)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Only for deep sleep: ぐっすり ねる."},
-  {jp:"ぐるぐる",romaji:"guruguru",en:"round and round",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Spinning/circling repeatedly."},
-  {jp:"ぺちゃくちゃ",romaji:"pechakucha",en:"chattering away",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Noisy idle gossip — slightly negative."},
-  {jp:"がやがや",romaji:"gayagaya",en:"noisy (crowd hubbub)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Background din of many voices."},
-  {jp:"しーん",romaji:"shiin",en:"dead silence",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"The 'sound' of total silence — Japanese hears silence as a sound. Often after a flat joke."},
-  {jp:"ばらばら",romaji:"barabara",en:"scattered / in pieces",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Disunited or taken apart: いけん が ばらばら = opinions are split."},
-  {jp:"ぎりぎり",romaji:"girigiri",en:"just barely / at the limit",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"ぎりぎり まにあった = made it with no time to spare."},
-  {jp:"ぴったり",romaji:"pittari",en:"perfectly / exact fit",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Fits/matches exactly: サイズ が ぴったり."},
-  {jp:"ぐちゃぐちゃ",romaji:"guchagucha",en:"messy / mushy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Disordered or squished into a pulp."},
+  {jp:"ぺこぺこ",romaji:"pekopeko",en:"starving (stomach empty)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"おなか が ぺこぺこ = I'm starving. Also bowing obsequiously.", ex:"おなかが ぺこぺこです。", exEn:"I'm starving."},
+  {jp:"ぺらぺら",romaji:"perapera",en:"fluently / flimsy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"えいご が ぺらぺら = speaks fluently. Also thin/flimsy paper.", ex:"かのじょは えいごが ぺらぺらです。", exEn:"She speaks English fluently."},
+  {jp:"わくわく",romaji:"wakuwaku",en:"excited (anticipation)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Positive thrill before something fun. わくわくする.", ex:"あしたの りょこうが わくわくします。", exEn:"I'm excited about tomorrow's trip."},
+  {jp:"どきどき",romaji:"dokidoki",en:"heart pounding",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Nervous OR excited — racing heartbeat either way.", ex:"テストのまえは どきどきします。", exEn:"Before a test my heart pounds."},
+  {jp:"いらいら",romaji:"iraira",en:"irritated / on edge",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Building frustration. いらいらする.", ex:"でんしゃが おくれて いらいらします。", exEn:"The train is late and I'm on edge."},
+  {jp:"にこにこ",romaji:"nikoniko",en:"smiling warmly",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"A steady gentle smile (not laughing — that's げらげら).", ex:"あかちゃんが にこにこ しています。", exEn:"The baby is smiling."},
+  {jp:"ごろごろ",romaji:"gorogoro",en:"lazing around / rumbling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"いえ で ごろごろする = loaf at home. Also thunder or an empty stomach.", ex:"にちようびは いえで ごろごろします。", exEn:"On Sundays I laze around at home."},
+  {jp:"ぶらぶら",romaji:"burabura",en:"strolling aimlessly / dangling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"ぶらぶらする = wander with no goal. Also something hanging loosely.", ex:"こうえんを ぶらぶら あるきました。", exEn:"I strolled around the park."},
+  {jp:"きらきら",romaji:"kirakira",en:"sparkling / twinkling",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Glittering light: ほし が きらきら.", ex:"ほしが きらきら ひかっています。", exEn:"The stars are twinkling."},
+  {jp:"ぴかぴか",romaji:"pikapika",en:"shiny / brand-new",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Polished, spotless. ぴかぴか の くつ = gleaming shoes.", ex:"くつを ぴかぴかに みがきました。", exEn:"I polished my shoes till they shone."},
+  {jp:"つるつる",romaji:"tsurutsuru",en:"smooth / slippery",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"A smooth surface; also slurping noodles. Opposite ざらざら.", ex:"ゆかが つるつるです。", exEn:"The floor is slippery."},
+  {jp:"ざらざら",romaji:"zarazara",en:"rough / gritty",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Coarse to the touch. Opposite つるつる.", ex:"このかべは ざらざらです。", exEn:"This wall is rough."},
+  {jp:"ふわふわ",romaji:"fuwafuwa",en:"fluffy / floaty",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Soft & light: ふわふわ の パン.", ex:"このパンは ふわふわです。", exEn:"This bread is fluffy."},
+  {jp:"べたべた",romaji:"betabeta",en:"sticky / clingy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Tacky to touch; also a couple being overly affectionate.", ex:"てが べたべたです。", exEn:"My hands are sticky."},
+  {jp:"どんどん",romaji:"dondon",en:"rapidly / steadily",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Progress speeding up: どんどん すすむ. Also a heavy banging sound.", ex:"にほんごが どんどん じょうずに なります。", exEn:"Your Japanese is getting better and better."},
+  {jp:"だんだん",romaji:"dandan",en:"gradually",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Step-by-step change: だんだん さむく なる.", ex:"だんだん さむく なりました。", exEn:"It gradually got cold."},
+  {jp:"ちゃんと",romaji:"chanto",en:"properly / as one should",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Doing it correctly/responsibly. ちゃんと たべて = eat properly.", ex:"ちゃんと べんきょうしてください。", exEn:"Please study properly."},
+  {jp:"きちんと",romaji:"kichinto",en:"neatly / precisely",pos:"adv",theme:"onomatope",register:"neutral",jlpt:5,note:"Tidy and exact — a notch more formal/orderly than ちゃんと.", ex:"へやを きちんと かたづけました。", exEn:"I tidied the room neatly."},
+  {jp:"そろそろ",romaji:"sorosoro",en:"about time to…",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"そろそろ いこうか = 'we should get going soon' — gentle social cue to wrap up.", ex:"そろそろ かえりましょう。", exEn:"It's about time to head home."},
+  {jp:"ぐっすり",romaji:"gussuri",en:"soundly (asleep)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Only for deep sleep: ぐっすり ねる.", ex:"ゆうべは ぐっすり ねました。", exEn:"Last night I slept soundly."},
+  {jp:"ぐるぐる",romaji:"guruguru",en:"round and round",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Spinning/circling repeatedly.", ex:"みずが ぐるぐる まわっています。", exEn:"The water is spinning round and round."},
+  {jp:"ぺちゃくちゃ",romaji:"pechakucha",en:"chattering away",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Noisy idle gossip — slightly negative.", ex:"ふたりは ぺちゃくちゃ はなしています。", exEn:"The two are chattering away."},
+  {jp:"がやがや",romaji:"gayagaya",en:"noisy (crowd hubbub)",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Background din of many voices.", ex:"きょうしつが がやがや うるさいです。", exEn:"The classroom is noisy with chatter."},
+  {jp:"しーん",romaji:"shiin",en:"dead silence",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"The 'sound' of total silence — Japanese hears silence as a sound. Often after a flat joke.", ex:"へやが しーんと しずかです。", exEn:"The room is dead silent."},
+  {jp:"ばらばら",romaji:"barabara",en:"scattered / in pieces",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Disunited or taken apart: いけん が ばらばら = opinions are split.", ex:"かみが ばらばらに なりました。", exEn:"The papers got scattered."},
+  {jp:"ぎりぎり",romaji:"girigiri",en:"just barely / at the limit",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"ぎりぎり まにあった = made it with no time to spare.", ex:"でんしゃに ぎりぎり まにあいました。", exEn:"I just barely caught the train."},
+  {jp:"ぴったり",romaji:"pittari",en:"perfectly / exact fit",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Fits/matches exactly: サイズ が ぴったり.", ex:"このふくは ぴったりです。", exEn:"These clothes fit perfectly."},
+  {jp:"ぐちゃぐちゃ",romaji:"guchagucha",en:"messy / mushy",pos:"adv",theme:"onomatope",register:"casual",jlpt:5,note:"Disordered or squished into a pulp.", ex:"かばんのなかが ぐちゃぐちゃです。", exEn:"The inside of my bag is a mess."},
 
   /* ===== Expansion: JLPT N4 tier (jlpt:4) ===== */
   {jp:"かまう",romaji:"kamau",en:"to mind / care about",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Usually negative: かまいません = 'I don't mind'. かまわず = without regard for."},
@@ -1915,7 +1915,7 @@ const N5_PACK = [
   {jp:"あんしんする",romaji:"anshin suru",en:"to feel relieved / at ease",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Worry lifting. Opposite of しんぱいする."},
   {jp:"はんたいする",romaji:"hantai suru",en:"to oppose / be against",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"～に はんたいする (note に, not を). Opposite さんせいする."},
   {jp:"さんせいする",romaji:"sansei suru",en:"to agree / approve",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"～に さんせいする. For a proposal/opinion — not casual 'I agree' (そうだね)."},
-  {jp:"もくてき",romaji:"mokuteki",en:"purpose / goal",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"A concrete aim. ゆめ = a dream/aspiration (bigger, vaguer)."},
+  {jp:"もくてき",romaji:"mokuteki",en:"purpose / goal",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"A concrete aim. ゆめ = a dream/aspiration (bigger, vaguer).", ex:"りょこうの もくてきは なんですか。", exEn:"What's the purpose of the trip?"},
   {jp:"よてい",romaji:"yotei",en:"plan / schedule",pos:"n",theme:"time",register:"neutral",jlpt:4,note:"An arranged plan/appointment. けいかく = a plan you actively devise."},
   {jp:"きそく",romaji:"kisoku",en:"rule / regulation",pos:"n",theme:"school",register:"neutral",jlpt:4,note:"Formal rules. ルール is the casual loanword."},
   {jp:"せいかつ",romaji:"seikatsu",en:"daily life / living",pos:"n",theme:"home",register:"neutral",jlpt:4,note:"Day-to-day living. せいかつする = to live (one's life), not いきる (to be alive)."},
@@ -1930,7 +1930,7 @@ const N5_PACK = [
   {jp:"せいかく",romaji:"seikaku",en:"personality / character",pos:"n",theme:"feelings",register:"neutral",jlpt:4,note:"Someone's nature. Homophone with せいかく 'accurate' — context separates."},
   {jp:"げんいん",romaji:"gen'in",en:"cause",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"The cause behind a けっか (result). りゆう is more 'the reason given'."},
   {jp:"かんけい",romaji:"kankei",en:"relationship / connection",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"～に かんけい が ある = related to. かんけいない = 'none of your business / irrelevant'."},
-  {jp:"ばあい",romaji:"baai",en:"case / situation",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"～の ばあい = 'in the case of…'. Conditional framing."},
+  {jp:"ばあい",romaji:"baai",en:"case / situation",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"～の ばあい = 'in the case of…'. Conditional framing.", ex:"あめの ばあいは やすみます。", exEn:"In the case of rain, it's cancelled."},
   {jp:"ふあん",romaji:"fuan",en:"anxious / uneasy",pos:"adj-na",theme:"feelings",register:"neutral",jlpt:4,note:"na-adj. Lingering unease about the future. Opposite あんしん."},
   {jp:"とくべつ",romaji:"tokubetsu",en:"special",pos:"adj-na",theme:"adjectives",register:"neutral",jlpt:4,note:"na-adj; also adverbial とくべつ に = especially."},
   {jp:"じゆう",romaji:"jiyuu",en:"free / freedom",pos:"adj-na",theme:"adjectives",register:"neutral",jlpt:4,note:"na-adj: liberty/at one's discretion. 'Free of charge' is ただ / むりょう."},
@@ -1943,15 +1943,15 @@ const N5_PACK = [
   {jp:"はずかしい",romaji:"hazukashii",en:"embarrassed / shy",pos:"adj",theme:"feelings",register:"neutral",jlpt:4,note:"i-adj. Both 'shy' and 'ashamed' — same word."},
   {jp:"めんどくさい",romaji:"mendokusai",en:"a hassle / can't be bothered",pos:"adj",theme:"feelings",register:"casual",jlpt:4,note:"i-adj, very casual. Muttered alone = 'ugh, what a pain'."},
   {jp:"ただしい",romaji:"tadashii",en:"correct / right",pos:"adj",theme:"adjectives",register:"neutral",jlpt:4,note:"i-adj. Factually or morally right. Opposite まちがっている."},
-  {jp:"もしかして",romaji:"moshikashite",en:"perhaps / by any chance",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Tentatively raising a possibility: もしかして… ですか？"},
-  {jp:"できるだけ",romaji:"dekiru dake",en:"as ~ as possible",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"できるだけ + adj/adv: do it to the greatest extent feasible."},
-  {jp:"かならず",romaji:"kanarazu",en:"without fail / always",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Certainty of an ACTION ('be sure to…'). きっと is a certainty of a GUESS."},
-  {jp:"けっして",romaji:"kesshite",en:"never (with negative)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Requires a negative verb: けっして わすれない = I'll never forget. Emphatic."},
-  {jp:"ほとんど",romaji:"hotondo",en:"almost / hardly (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"ほとんど ぜんぶ = almost all; ほとんど ない = hardly any. Polarity flips meaning."},
-  {jp:"ついに",romaji:"tsuini",en:"finally / in the end",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"The culmination of a long process — can be positive OR negative, unlike やっと."},
-  {jp:"すっかり",romaji:"sukkari",en:"completely / entirely",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"A total change of state: すっかり わすれた = clean forgot."},
-  {jp:"そのまま",romaji:"sono mama",en:"as it is / unchanged",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Leave it そのまま = leave it just as it is, don't touch it."},
-  {jp:"いつのまにか",romaji:"itsu no ma ni ka",en:"before you know it",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Something happened unnoticed: いつのまにか よる だった."},
+  {jp:"もしかして",romaji:"moshikashite",en:"perhaps / by any chance",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Tentatively raising a possibility: もしかして… ですか？", ex:"もしかして たなかさんですか。", exEn:"Are you Tanaka, by any chance?"},
+  {jp:"できるだけ",romaji:"dekiru dake",en:"as ~ as possible",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"できるだけ + adj/adv: do it to the greatest extent feasible.", ex:"できるだけ てつだいます。", exEn:"I'll help as much as I can."},
+  {jp:"かならず",romaji:"kanarazu",en:"without fail / always",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Certainty of an ACTION ('be sure to…'). きっと is a certainty of a GUESS.", ex:"あした かならず きます。", exEn:"I'll come tomorrow without fail."},
+  {jp:"けっして",romaji:"kesshite",en:"never (with negative)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Requires a negative verb: けっして わすれない = I'll never forget. Emphatic.", ex:"けっして うそを いいません。", exEn:"I never tell lies."},
+  {jp:"ほとんど",romaji:"hotondo",en:"almost / hardly (with neg)",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"ほとんど ぜんぶ = almost all; ほとんど ない = hardly any. Polarity flips meaning.", ex:"おかねが ほとんど ありません。", exEn:"I have hardly any money."},
+  {jp:"ついに",romaji:"tsuini",en:"finally / in the end",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"The culmination of a long process — can be positive OR negative, unlike やっと.", ex:"ついに ゆめが かないました。", exEn:"My dream finally came true."},
+  {jp:"すっかり",romaji:"sukkari",en:"completely / entirely",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"A total change of state: すっかり わすれた = clean forgot.", ex:"そらが すっかり くらく なりました。", exEn:"The sky got completely dark."},
+  {jp:"そのまま",romaji:"sono mama",en:"as it is / unchanged",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Leave it そのまま = leave it just as it is, don't touch it.", ex:"そのままで いいです。", exEn:"It's fine as it is."},
+  {jp:"いつのまにか",romaji:"itsu no ma ni ka",en:"before you know it",pos:"adv",theme:"adverbs",register:"neutral",jlpt:4,note:"Something happened unnoticed: いつのまにか よる だった.", ex:"いつのまにか よるに なりました。", exEn:"Before I knew it, it was night."},
 
   /* ===== Expansion: native numbers 6-10 + counters ===== */
   {jp:"むっつ",romaji:"muttsu",en:"six (things)",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Native つ-count. Continues ひとつ〜いつつ."},
@@ -1960,7 +1960,7 @@ const N5_PACK = [
   {jp:"ここのつ",romaji:"kokonotsu",en:"nine (things)",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Native count."},
   {jp:"とお",romaji:"too",en:"ten (things)",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Native count tops out at とお; from 11 switch to じゅういち + a counter."},
   {jp:"いくつ",romaji:"ikutsu",en:"how many / how old",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Counts things, OR politely asks age (おいくつ ですか)."},
-  {jp:"つ",romaji:"~tsu",en:"~ things (counter)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The safe fallback counter (ひとつ..とお) when you don't know the specific one."},
+  {jp:"つ",romaji:"~tsu",en:"~ things (counter)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The safe fallback counter (ひとつ..とお) when you don't know the specific one.", ex:"みかんを みっつ ください。", exEn:"Three mandarins, please."},
   {jp:"にん",romaji:"~nin",en:"~ people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"People counter. Irregular: ひとり (1), ふたり (2), then さんにん, よにん (NOT よんにん)."},
   {jp:"まい",romaji:"~mai",en:"~ flat thin things",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Paper, plates, shirts, tickets, stamps — anything flat."},
   {jp:"ほん",romaji:"~hon",en:"~ long cylindrical things",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぽん, にほん, さんぼん, ろっぽん, はっぽん. Also phone calls, films, train lines."},
@@ -1970,16 +1970,16 @@ const N5_PACK = [
   {jp:"とう",romaji:"~tou",en:"~ large animals",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Cows, horses, elephants. Small animals are ～ひき."},
   {jp:"わ",romaji:"~wa",en:"~ birds / rabbits",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Birds — and rabbits, counted as birds for old historical reasons."},
   {jp:"こ",romaji:"~ko",en:"~ small objects",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"General counter for small/round-ish items (apples, eggs, boxes)."},
-  {jp:"かい",romaji:"~kai",en:"~ times / ~ floors",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Counts occurrences AND building floors. Floor 3 is irregular: さんがい."},
-  {jp:"ど",romaji:"~do",en:"~ times / ~ degrees",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちど = once; also temperature/angle degrees."},
-  {jp:"はい",romaji:"~hai",en:"~ cupfuls / glassfuls",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぱい, にはい, さんばい. Drinks, bowls of rice."},
+  {jp:"かい",romaji:"~kai",en:"~ times / ~ floors",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Counts occurrences AND building floors. Floor 3 is irregular: さんがい.", ex:"えいがを にかい みました。", exEn:"I watched the movie twice."},
+  {jp:"ど",romaji:"~do",en:"~ times / ~ degrees",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちど = once; also temperature/angle degrees.", ex:"いちど だけ あいました。", exEn:"I met them just once."},
+  {jp:"はい",romaji:"~hai",en:"~ cupfuls / glassfuls",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぱい, にはい, さんばい. Drinks, bowls of rice.", ex:"おちゃを いっぱい のみます。", exEn:"I drink a cup of tea."},
   {jp:"ばん",romaji:"~ban",en:"~ number / order",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちばん = No.1 — and also 'the most' (いちばん おいしい = the tastiest)."},
   {jp:"ばんめ",romaji:"~banme",en:"the ~th (in order)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Ordinal: にばんめ = the 2nd one. ～め alone also makes ordinals."},
   {jp:"じかん",romaji:"~jikan",en:"~ hours (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Duration. ～じ (without かん) is a clock point: さんじ = 3 o'clock."},
-  {jp:"ふん",romaji:"~fun",en:"~ minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぷん, よんぷん, ごふん. Clock and duration both."},
+  {jp:"ふん",romaji:"~fun",en:"~ minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぷん, よんぷん, ごふん. Clock and duration both.", ex:"ごふん まちました。", exEn:"I waited five minutes."},
   {jp:"かげつ",romaji:"~kagetsu",en:"~ months (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いっかげつ = one month long. ～がつ (no か) is the calendar month: しがつ = April."},
   {jp:"さい",romaji:"~sai",en:"~ years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Age. はたち = 20 (irregular). Sound: いっさい, はっさい, じゅっさい."},
-  {jp:"ばい",romaji:"~bai",en:"~ times / -fold",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Multiplication: にばい = double, さんばい = triple."},
+  {jp:"ばい",romaji:"~bai",en:"~ times / -fold",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Multiplication: にばい = double, さんばい = triple.", ex:"きょうは にばい たべました。", exEn:"Today I ate twice as much."},
   {jp:"パーセント",romaji:"paasento",en:"percent",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Casual short form: パー. ごじゅっパーセント = 50%."},
 
   /* ===== Expansion: こそあど gaps + question words ===== */
@@ -2012,8 +2012,8 @@ const N5_PACK = [
   {jp:"かんごし",romaji:"kangoshi",en:"nurse",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"Modern gender-neutral term (older かんごふ is dated)."},
   {jp:"きゅうきゅうしゃ",romaji:"kyuukyuusha",en:"ambulance",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"きゅうきゅうしゃ を よぶ = call an ambulance. Dial 119."},
   {jp:"けんこう",romaji:"kenkou",en:"health (good condition)",pos:"adj-na",theme:"health",register:"neutral",jlpt:4,note:"na-adj: けんこう な ＝ healthy / in good shape. The opposite state is びょうき."},
-  {jp:"ぐあい",romaji:"guai",en:"condition (health/state)",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"ぐあい が わるい = to feel unwell. Also how a thing is going."},
-  {jp:"たいちょう",romaji:"taichou",en:"physical condition",pos:"n",theme:"health",register:"neutral",jlpt:4,note:"たいちょう が わるい = under the weather. Slightly formal; common at work."},
+  {jp:"ぐあい",romaji:"guai",en:"condition (health/state)",pos:"n",theme:"health",register:"neutral",jlpt:5,note:"ぐあい が わるい = to feel unwell. Also how a thing is going.", ex:"きょうは からだの ぐあいが わるいです。", exEn:"Today my body feels off."},
+  {jp:"たいちょう",romaji:"taichou",en:"physical condition",pos:"n",theme:"health",register:"neutral",jlpt:4,note:"たいちょう が わるい = under the weather. Slightly formal; common at work.", ex:"たいちょうが よくないので やすみます。", exEn:"I'll rest because I'm not feeling well."},
   {jp:"きぶんがわるい",romaji:"kibun ga warui",en:"feel sick / unwell",pos:"expr",theme:"health",register:"neutral",jlpt:5,note:"Nausea or just 'off'. Opposite きぶん が いい."},
   {jp:"めまい",romaji:"memai",en:"dizziness",pos:"n",theme:"health",register:"neutral",jlpt:4,note:"めまい が する — sensations take する here, not でる."},
   {jp:"はきけ",romaji:"hakike",en:"nausea",pos:"n",theme:"health",register:"neutral",jlpt:4,note:"はきけ が する = to feel like throwing up."},
@@ -2061,9 +2061,9 @@ const N5_PACK = [
   {jp:"ペース",romaji:"peesu",en:"pace",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"マイペース = at one's own pace — can imply 'oblivious to others' (mildly negative)."},
   {jp:"アドバイス",romaji:"adobaisu",en:"advice",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"アドバイス する = to advise. More casual than じょげん."},
   {jp:"パート",romaji:"paato",en:"part-time work",pos:"n",theme:"work",register:"neutral",jlpt:4,note:"Often older/married part-timers; アルバイト skews to students. Both = part-time."},
-  {jp:"この～",romaji:"kono",en:"this ~, this ~ here",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"その～",romaji:"sono",en:"that ~, that ~ there",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"あの～",romaji:"ano",en:"that ~, that ~ over there",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"この～",romaji:"kono",en:"this ~, this ~ here",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"この ほんは おもしろいです。", exEn:"This book is interesting."},
+  {jp:"その～",romaji:"sono",en:"that ~, that ~ there",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"その かばんは だれのですか。", exEn:"Whose is that bag?"},
+  {jp:"あの～",romaji:"ano",en:"that ~, that ~ over there",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"あの ひとは せんせいです。", exEn:"That person over there is a teacher."},
   {jp:"てちょう",romaji:"techou",en:"pocket notebook",pos:"n",theme:"objects",register:"neutral",jlpt:5},
   {jp:"カード",romaji:"kaado",en:"card",pos:"n",theme:"objects",register:"neutral",jlpt:5},
   {jp:"ボールペン",romaji:"boorupen",en:"ballpoint pen",pos:"n",theme:"objects",register:"neutral",jlpt:5},
@@ -2071,7 +2071,7 @@ const N5_PACK = [
   {jp:"CD",romaji:"CD",en:"CD, compact disc",pos:"n",theme:"tech",register:"neutral",jlpt:5},
   {jp:"コンピューター",romaji:"konpyuutaa",en:"computer (general term)",pos:"n",theme:"tech",register:"neutral",jlpt:5},
   {jp:"おみやげ",romaji:"omiyage",en:"souvenir, present",pos:"n",theme:"objects",register:"neutral",jlpt:5},
-  {jp:"～ご～",romaji:"go",en:"~ language",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"～ご～",romaji:"go",en:"~ language",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"にほんごを べんきょうします。", exEn:"I study Japanese."},
   {jp:"あのう",romaji:"anou",en:"Er, well… (hesitation)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"えっ",romaji:"e",en:"Oh? What?! (surprise)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"そうですか。",romaji:"soudesuka",en:"I see.",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
@@ -2098,14 +2098,14 @@ const N5_PACK = [
   {jp:"ようじ",romaji:"youji",en:"something to do, errand",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"ごしゅじん",romaji:"goshujin",en:"(someone else's) husband",pos:"n",theme:"family",register:"neutral",jlpt:5},
   {jp:"だいたい",romaji:"daitai",en:"mostly, roughly",pos:"n",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"～から",romaji:"kara",en:"because ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"～から",romaji:"kara",en:"because ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"やすいから かいます。", exEn:"I'll buy it because it's cheap."},
   {jp:"かして ください。",romaji:"kashite kudasai",en:"Please lend(it to me).",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"いいですよ。",romaji:"iidesuyo",en:"Sure./ Certainly.",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"ざんねんです",romaji:"zannendesu",en:"I'm sorry , unfortunately",pos:"n",theme:"feelings",register:"neutral",jlpt:5,note:"［が］ optional; but"},
   {jp:"いっしょに いかがですか。",romaji:"isshoni ikagadesuka",en:"Won't you join me (us)?",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
-  {jp:"ちょっと ・・・・・・。",romaji:"chotto",en:"Well, that's a bit… (soft refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"used with ～は; ~"},
+  {jp:"ちょっと ・・・・・・。",romaji:"chotto",en:"Well, that's a bit… (soft refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5,note:"used with ～は; ~", ex:"きょうは ちょっと・・・。", exEn:"Today is a bit… (I can't make it)."},
   {jp:"だめですか。",romaji:"damedesuka",en:"So you cannot (come)?",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
-  {jp:"また こんど おねがいします。",romaji:"mata kondo onegaishimasu",en:"Maybe another time (polite refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5},
+  {jp:"また こんど おねがいします。",romaji:"mata kondo onegaishimasu",en:"Maybe another time (polite refusal)",pos:"expr",theme:"phrases",register:"neutral",jlpt:5, ex:"すみません、また こんど おねがいします。", exEn:"Sorry — maybe another time."},
   {jp:"つけます",romaji:"tsukemasu",en:"turn on",pos:"v",theme:"objects",register:"neutral",jlpt:5},
   {jp:"けします",romaji:"keshimasu",en:"turn off",pos:"v",theme:"objects",register:"neutral",jlpt:5},
   {jp:"あけます",romaji:"akemasu",en:"open",pos:"v",theme:"objects",register:"neutral",jlpt:5},
@@ -2129,11 +2129,11 @@ const N5_PACK = [
   {jp:"コピーします",romaji:"kopiishimasu",en:"copy",pos:"v",theme:"tech",register:"neutral",jlpt:5},
   {jp:"じゅうしょ",romaji:"juusho",en:"address",pos:"n",theme:"places",register:"neutral",jlpt:5},
   {jp:"よみかた",romaji:"yomikata",en:"how to read, way of reading",pos:"n",theme:"school",register:"neutral",jlpt:5},
-  {jp:"～かた",romaji:"kata",en:"how to ~, way of ~ing",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
+  {jp:"～かた",romaji:"kata",en:"how to ~, way of ~ing",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"つかいかたを おしえてください。", exEn:"Please teach me how to use it."},
   {jp:"あとで",romaji:"atode",en:"later",pos:"n",theme:"time",register:"neutral",jlpt:5},
   {jp:"もうすこし",romaji:"mousukoshi",en:"a little more",pos:"n",theme:"adverbs",register:"neutral",jlpt:5},
-  {jp:"もう～",romaji:"mou",en:"～more, another～",pos:"expr",theme:"grammar",register:"neutral",jlpt:5},
-  {jp:"さあ",romaji:"saa",en:"come on / now then (urging)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
+  {jp:"もう～",romaji:"mou",en:"～more, another～",pos:"expr",theme:"grammar",register:"neutral",jlpt:5, ex:"もう ひとつ ください。", exEn:"One more, please."},
+  {jp:"さあ",romaji:"saa",en:"come on / now then (urging)",pos:"n",theme:"phrases",register:"neutral",jlpt:5, ex:"さあ、はじめましょう。", exEn:"Come on, let's begin."},
   {jp:"あれ？",romaji:"are",en:"Oh! Eh? (in surprise or wonder)",pos:"n",theme:"phrases",register:"neutral",jlpt:5},
   {jp:"しんごうをみぎへまがってください。",romaji:"shingouomigihemagattekudasai",en:"Turn right at the traffic lights",pos:"expr",theme:"travel",register:"neutral",jlpt:5},
   {jp:"まっすぐ",romaji:"massugu",en:"straight",pos:"n",theme:"travel",register:"neutral",jlpt:5},
@@ -2160,8 +2160,8 @@ const N5_PACK = [
   {jp:"かしゅ",romaji:"kashu",en:"singer",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"しょうせつ",romaji:"shousetsu",en:"novel",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"しょうせつか",romaji:"shousetsuka",en:"novelist",pos:"n",theme:"people",register:"neutral",jlpt:4},
-  {jp:"～か",romaji:"ka",en:"-er / -ist (job suffix, e.g. painter)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"～き",romaji:"ki",en:"~ machine",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～か",romaji:"ka",en:"-er / -ist (job suffix, e.g. painter)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"かれは まんがかに なりたいです。", exEn:"He wants to become a manga artist."},
+  {jp:"～き",romaji:"ki",en:"~ machine",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"せんたくきが こわれました。", exEn:"The washing machine broke."},
   {jp:"むすこさん",romaji:"musukosan",en:"(someone else's) son",pos:"n",theme:"family",register:"neutral",jlpt:4},
   {jp:"むすめさん",romaji:"musumesan",en:"(someone else's) daughter",pos:"n",theme:"family",register:"neutral",jlpt:4},
   {jp:"じぶん",romaji:"jibun",en:"oneself",pos:"n",theme:"grammar",register:"neutral",jlpt:4},
@@ -2184,7 +2184,7 @@ const N5_PACK = [
   {jp:"ボランティア",romaji:"borantia",en:"volunteer",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"こっかいぎじどう",romaji:"kokkaigijidou",en:"the Diet Building",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"へいじつ",romaji:"heijitsu",en:"weekday",pos:"n",theme:"time",register:"neutral",jlpt:4},
-  {jp:"～べん",romaji:"ben",en:"dialect",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～べん",romaji:"ben",en:"dialect",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"おおさかべんを はなします。", exEn:"I speak Osaka dialect."},
   {jp:"こんど",romaji:"kondo",en:"next time, another time",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"ずいぶん",romaji:"zuibun",en:"pretty, very",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
   {jp:"ちょくせつ",romaji:"chokusetsu",en:"directly",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
@@ -2192,16 +2192,16 @@ const N5_PACK = [
   {jp:"どこでも",romaji:"dokodemo",en:"anywhere",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"だれでも",romaji:"daredemo",en:"anybody",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"なんでも",romaji:"nandemo",en:"anything",pos:"n",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"こんな～",romaji:"konna",en:"~ like this",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"そんな～",romaji:"sonna",en:"~ like that (near the listener)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"あんな～",romaji:"anna",en:"that kind of ~ (over there)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"こんな～",romaji:"konna",en:"~ like this",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"こんな とけいが ほしいです。", exEn:"I want a watch like this."},
+  {jp:"そんな～",romaji:"sonna",en:"~ like that (near the listener)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"そんな ことは いいません。", exEn:"I won't say that kind of thing."},
+  {jp:"あんな～",romaji:"anna",en:"that kind of ~ (over there)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"あんな いえに すみたいです。", exEn:"I want to live in a house like that."},
   {jp:"かたづきます",romaji:"katazukimasu",en:"be put in order, tidy up",pos:"v",theme:"home",register:"neutral",jlpt:4},
   {jp:"だします",romaji:"dashimasu",en:"put out",pos:"v",theme:"objects",register:"neutral",jlpt:4,note:"used with ごみを～; the rubbish"},
   {jp:"もえるごみ",romaji:"moerugomi",en:"burnable trash",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"おきば",romaji:"okiba",en:"place where something is put",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"よこ",romaji:"yoko",en:"side",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"ガス",romaji:"gasu",en:"gas",pos:"n",theme:"objects",register:"neutral",jlpt:4},
-  {jp:"～がいしゃ",romaji:"gaisha",en:"~ company",pos:"expr",theme:"work",register:"neutral",jlpt:4},
+  {jp:"～がいしゃ",romaji:"gaisha",en:"~ company",pos:"expr",theme:"work",register:"neutral",jlpt:4, ex:"りょこうがいしゃに でんわします。", exEn:"I call the travel company."},
   {jp:"うちゅう",romaji:"uchuu",en:"space, universe",pos:"n",theme:"nature",register:"neutral",jlpt:4},
   {jp:"うちゅうせん",romaji:"uchuusen",en:"spaceship",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"うちゅうステーション",romaji:"uchuusuteeshon",en:"space station",pos:"n",theme:"places",register:"neutral",jlpt:4},
@@ -2235,7 +2235,7 @@ const N5_PACK = [
   {jp:"ひじょうぶくろ",romaji:"hijoubukuro",en:"emergency kit",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"ひじょうじ",romaji:"hijouji",en:"emergency",pos:"n",theme:"phrases",register:"neutral",jlpt:4},
   {jp:"せいかつします",romaji:"seikatsushimasu",en:"live",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
-  {jp:"～とか、～とか",romaji:"tokatoka",en:"～, ～, and so on",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～とか、～とか",romaji:"tokatoka",en:"～, ～, and so on",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"すしとか てんぷらとか たべました。", exEn:"I ate sushi, tempura, and so on."},
   {jp:"つづけます",romaji:"tsuzukemasu",en:"continue",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
   {jp:"みつけます",romaji:"mitsukemasu",en:"find",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
   {jp:"うけます",romaji:"ukemasu",en:"take",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"used with しけんを～; an examination"},
@@ -2255,7 +2255,7 @@ const N5_PACK = [
   {jp:"かえり",romaji:"kaeri",en:"return",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"おこさん",romaji:"okosan",en:"(someone else's) child",pos:"n",theme:"family",register:"neutral",jlpt:4},
   {jp:"-ごう",romaji:"-gou",en:"train number, typhoon number etc.",pos:"n",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～のほう",romaji:"nohou",en:"place toward ~, direction of ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～のほう",romaji:"nohou",en:"place toward ~, direction of ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"えきのほうへ あるきます。", exEn:"I walk toward the station."},
   {jp:"ずっと",romaji:"zutto",en:"the whole time",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"のこります",romaji:"nokorimasu",en:"remain, be left, stay behind",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
   {jp:"にゅうがくしけん",romaji:"nyuugakushiken",en:"entrance examination",pos:"n",theme:"school",register:"neutral",jlpt:4},
@@ -2293,10 +2293,10 @@ const N5_PACK = [
   {jp:"のみほうだい",romaji:"nomihoudai",en:"all you can drink",pos:"n",theme:"food",register:"neutral",jlpt:4},
   {jp:"しようちゅう",romaji:"shiyouchuu",en:"in use",pos:"n",theme:"phrases",register:"neutral",jlpt:4},
   {jp:"ぼしゅうちゅう",romaji:"boshuuchuu",en:"Applications Wanted",pos:"n",theme:"phrases",register:"neutral",jlpt:4},
-  {jp:"～ちゅう",romaji:"chuu",en:"~ing",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"どういう ～",romaji:"douiu",en:"what kind of ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"あと ～",romaji:"ato",en:"~ left",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
-  {jp:"～ほど",romaji:"hodo",en:"about ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～ちゅう",romaji:"chuu",en:"~ing",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"いま しごとちゅうです。", exEn:"I'm in the middle of work now."},
+  {jp:"どういう ～",romaji:"douiu",en:"what kind of ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"どういう えいがが すきですか。", exEn:"What kind of movies do you like?"},
+  {jp:"あと ～",romaji:"ato",en:"~ left",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"あと ごふん まってください。", exEn:"Please wait five more minutes."},
+  {jp:"～ほど",romaji:"hodo",en:"about ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"いちじかんほど まちました。", exEn:"I waited about an hour."},
   {jp:"ちゅうしゃいはん",romaji:"chuushaihan",en:"parking violation",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"ばっきん",romaji:"bakkin",en:"fine",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"みがきます",romaji:"migakimasu",en:"brush , polish",pos:"v",theme:"objects",register:"neutral",jlpt:4,note:"used with はを～; one's teeth"},
@@ -2311,7 +2311,7 @@ const N5_PACK = [
   {jp:"ず",romaji:"zu",en:"figure, drawing",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"やじるし",romaji:"yajirushi",en:"arrow (sign)",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"ソース",romaji:"soosu",en:"sauce, Worcestershire sauce",pos:"n",theme:"food",register:"neutral",jlpt:4},
-  {jp:"～か ～",romaji:"ka",en:"~ or ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～か ～",romaji:"ka",en:"~ or ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"コーヒーか おちゃを のみます。", exEn:"I'll drink coffee or tea."},
   {jp:"ゆうべ",romaji:"yuube",en:"last night",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"さどう",romaji:"sadou",en:"tea ceremony",pos:"n",theme:"home",register:"neutral",jlpt:4},
   {jp:"おちゃを たてますII",romaji:"ochao tatemasuII",en:"to make green tea (tea ceremony)",pos:"expr",theme:"food",register:"neutral",jlpt:4},
@@ -2352,12 +2352,12 @@ const N5_PACK = [
   {jp:"すいえい",romaji:"suiei",en:"swimming",pos:"n",theme:"body",register:"neutral",jlpt:4},
   {jp:"つかっていらっしゃるんですね",romaji:"tsukatteirassharundesune",en:"You're using, aren't you?",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"respectful equivalent of つかっているんですね"},
   {jp:"チャレンジします",romaji:"charenjishimasu",en:"challenge",pos:"v",theme:"feelings",register:"neutral",jlpt:4},
-  {jp:"～せいき",romaji:"seiki",en:"~th century",pos:"expr",theme:"time",register:"neutral",jlpt:4},
+  {jp:"～せいき",romaji:"seiki",en:"~th century",pos:"expr",theme:"time",register:"neutral",jlpt:4, ex:"これは じゅうくせいきの えです。", exEn:"This is a 19th-century painting."},
   {jp:"とおく",romaji:"tooku",en:"far, remote place",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"めずらしい",romaji:"mezurashii",en:"rare, uncommon",pos:"n",theme:"adjectives",register:"neutral",jlpt:4},
   {jp:"きしゃ",romaji:"kisha",en:"locomotive",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"きせん",romaji:"kisen",en:"steam boat",pos:"n",theme:"travel",register:"neutral",jlpt:4},
-  {jp:"おおぜいの～",romaji:"oozeino",en:"many (people)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"おおぜいの～",romaji:"oozeino",en:"many (people)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"えきに おおぜいの ひとが います。", exEn:"There are many people at the station."},
   {jp:"はこびます",romaji:"hakobimasu",en:"carry, transport",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"りようします",romaji:"riyoushimasu",en:"to use / make use of (a service)",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"こたえます",romaji:"kotaemasu",en:"to answer",pos:"v",theme:"school",register:"neutral",jlpt:4,note:"used with しつもんに～; a question"},
@@ -2377,12 +2377,12 @@ const N5_PACK = [
   {jp:"ハイキング",romaji:"haikingu",en:"hiking",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"みあい",romaji:"miai",en:"matchmaking meeting (for marriage)",pos:"n",theme:"family",register:"neutral",jlpt:4,note:"［お］ optional"},
   {jp:"かいじょう",romaji:"kaijou",en:"venue, event location",pos:"n",theme:"places",register:"neutral",jlpt:4},
-  {jp:"～だい",romaji:"dai",en:"charge, fare, fee",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"～だい",romaji:"dai",en:"charge, fare, fee",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"でんきだいを はらいます。", exEn:"I pay the electricity bill."},
   {jp:"フロント",romaji:"furonto",en:"front desk, reception desk",pos:"n",theme:"places",register:"neutral",jlpt:4},
-  {jp:"～や",romaji:"ya",en:"-er (shop/trade suffix, e.g. baker)",pos:"expr",theme:"work",register:"neutral",jlpt:4},
-  {jp:"～ごうしつ",romaji:"goushitsu",en:"room number ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"～や",romaji:"ya",en:"-er (shop/trade suffix, e.g. baker)",pos:"expr",theme:"work",register:"neutral",jlpt:4, ex:"ほんやで ほんを かいます。", exEn:"I buy books at the bookstore."},
+  {jp:"～ごうしつ",romaji:"goushitsu",en:"room number ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"さんごうしつは あちらです。", exEn:"Room 3 is over there."},
   {jp:"おおぜい",romaji:"oozei",en:"a great number (of people)",pos:"n",theme:"people",register:"neutral",jlpt:4},
-  {jp:"おつかれさまでした。",romaji:"otsukaresamadeshita",en:"Thanks for your hard work (to a colleague)",pos:"expr",theme:"greetings",register:"neutral",jlpt:4},
+  {jp:"おつかれさまでした。",romaji:"otsukaresamadeshita",en:"Thanks for your hard work (to a colleague)",pos:"expr",theme:"greetings",register:"neutral",jlpt:4, ex:"きょうも おつかれさまでした。", exEn:"Thanks for your hard work again today."},
   {jp:"うかがいます。",romaji:"ukagaimasu",en:"I'm coming",pos:"expr",theme:"travel",register:"neutral",jlpt:4,note:"humble equivalent of いきます"},
   {jp:"とちゅうで",romaji:"tochuude",en:"on the way, in the midst of",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"トラック",romaji:"torakku",en:"truck",pos:"n",theme:"travel",register:"neutral",jlpt:4},
@@ -2411,18 +2411,18 @@ const N5_PACK = [
   {jp:"おもさ",romaji:"omosa",en:"weight",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"たかさ",romaji:"takasa",en:"height",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"おおきさ",romaji:"ookisa",en:"size, scale",pos:"n",theme:"objects",register:"neutral",jlpt:4},
-  {jp:"～びん",romaji:"bin",en:"flight, flight number",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～こ",romaji:"ko",en:"~ (counter for small objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～ほん、～ぽん、～ぼん",romaji:"honponbon",en:"(counter for long objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～はい、～ぱい、～ばい",romaji:"haipaibai",en:"~ cupfuls / glassfuls (counter)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～センチ",romaji:"senchi",en:"~ centimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～ミリ",romaji:"miri",en:"~ millimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～グラム",romaji:"guramu",en:"~ grammes",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～いじょう",romaji:"ijou",en:"not less than ~, over ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"～いか",romaji:"ika",en:"not more than ~, under ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"～びん",romaji:"bin",en:"flight, flight number",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"にびんに のります。", exEn:"I take flight 2."},
+  {jp:"～こ",romaji:"ko",en:"~ (counter for small objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"りんごを さんこ かいます。", exEn:"I buy three apples."},
+  {jp:"～ほん、～ぽん、～ぼん",romaji:"honponbon",en:"(counter for long objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"ビールを にほん のみました。", exEn:"I drank two bottles of beer."},
+  {jp:"～はい、～ぱい、～ばい",romaji:"haipaibai",en:"~ cupfuls / glassfuls (counter)",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"みずを いっぱい ください。", exEn:"A glass of water, please."},
+  {jp:"～センチ",romaji:"senchi",en:"~ centimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"このつくえは ひゃくセンチです。", exEn:"This desk is 100 cm."},
+  {jp:"～ミリ",romaji:"miri",en:"~ millimeters",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"このかみは いちミリです。", exEn:"This paper is 1 mm thick."},
+  {jp:"～グラム",romaji:"guramu",en:"~ grammes",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"さとうを ひゃくグラム つかいます。", exEn:"I use 100 grams of sugar."},
+  {jp:"～いじょう",romaji:"ijou",en:"not less than ~, over ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"じゅうにん いじょう きました。", exEn:"More than ten people came."},
+  {jp:"～いか",romaji:"ika",en:"not more than ~, under ~",pos:"expr",theme:"counters",register:"neutral",jlpt:4, ex:"これは せんえん いかです。", exEn:"This is under 1000 yen."},
   {jp:"どうでしょうか。",romaji:"doudeshouka",en:"How is ~? (polite equivalent of どうですか）",pos:"expr",theme:"phrases",register:"neutral",jlpt:4},
   {jp:"いらっしゃいます",romaji:"irasshaimasu",en:"come",pos:"v",theme:"travel",register:"neutral",jlpt:4,note:"respectful equivalent of きます"},
-  {jp:"ようす",romaji:"yousu",en:"situation, condition, appearance",pos:"n",theme:"objects",register:"neutral",jlpt:4},
+  {jp:"ようす",romaji:"yousu",en:"situation, condition, appearance",pos:"n",theme:"objects",register:"neutral",jlpt:4, ex:"そとの ようすを みてきます。", exEn:"I'll go check what it's like outside."},
   {jp:"つつみます",romaji:"tsutsumimasu",en:"wrap",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"わかします",romaji:"wakashimasu",en:"boil",pos:"v",theme:"food",register:"neutral",jlpt:4},
   {jp:"まぜます",romaji:"mazemasu",en:"mix",pos:"v",theme:"food",register:"neutral",jlpt:4},
@@ -2448,7 +2448,7 @@ const N5_PACK = [
   {jp:"ふろしき",romaji:"furoshiki",en:"wrapping cloth used to carry things",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"そろばん",romaji:"soroban",en:"abacus",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"たいおんけい",romaji:"taionkei",en:"(clinical) thermometer",pos:"n",theme:"objects",register:"neutral",jlpt:4},
-  {jp:"ある～",romaji:"aru",en:"a certain ~, one ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"ある～",romaji:"aru",en:"a certain ~, one ~",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"ある ひ、ともだちに あいました。", exEn:"One day, I met a friend."},
   {jp:"いっしょうけんめい",romaji:"isshoukenmei",en:"with all one's effort",pos:"n",theme:"adverbs",register:"neutral",jlpt:4},
   {jp:"こくれん",romaji:"kokuren",en:"United Nations",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"エリーゼのために",romaji:"eriizenotameni",en:"Für Elize",pos:"n",theme:"objects",register:"neutral",jlpt:4},
@@ -2457,7 +2457,7 @@ const N5_PACK = [
   {jp:"ローン",romaji:"roon",en:"loan",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"カップめん",romaji:"kappumen",en:"cup noodles / pot noodles",pos:"n",theme:"food",register:"neutral",jlpt:4},
   {jp:"せかいはつ",romaji:"sekaihatsu",en:"world's first",pos:"n",theme:"objects",register:"neutral",jlpt:4},
-  {jp:"～に よって",romaji:"ni yotte",en:"by～",pos:"expr",theme:"grammar",register:"neutral",jlpt:4},
+  {jp:"～に よって",romaji:"ni yotte",en:"by～",pos:"expr",theme:"grammar",register:"neutral",jlpt:4, ex:"ひとに よって かんがえが ちがいます。", exEn:"Opinions differ from person to person."},
   {jp:"めん",romaji:"men",en:"noodles",pos:"n",theme:"food",register:"neutral",jlpt:4},
   {jp:"ひろめます",romaji:"hiromemasu",en:"spread",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"しじょうちょうさ",romaji:"shijouchousa",en:"market survey, market research",pos:"n",theme:"work",register:"neutral",jlpt:4},
@@ -2513,12 +2513,12 @@ const ADV_PACK = [
   /* --- verbs --- */
   {jp:"あきらめる",romaji:"akirameru",en:"give up / resign oneself",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Ichidan. ゆめ を あきらめる = give up a dream. Letting go because it's hopeless — not casually quitting (=やめる)."},
   {jp:"かんがえなおす",romaji:"kangaenaosu",en:"reconsider / rethink",pos:"v",theme:"work",register:"neutral",jlpt:3,note:"Godan. かんがえる + なおす ('redo'). The なおす suffix = 'do over' — also みなおす, やりなおす."},
-  {jp:"ことわる",romaji:"kotowaru",en:"refuse / decline (politely)",pos:"v",theme:"people",register:"neutral",jlpt:3,note:"Godan. Declining with notice — softer than blunt きょひ. Also 'ask permission in advance'."},
+  {jp:"ことわる",romaji:"kotowaru",en:"refuse / decline (politely)",pos:"v",theme:"people",register:"neutral",jlpt:3,note:"Godan. Declining with notice — softer than blunt きょひ. Also 'ask permission in advance'.", ex:"さそいを ことわりました。", exEn:"I declined the invitation."},
   {jp:"おちつく",romaji:"ochitsuku",en:"calm down / settle",pos:"v",theme:"feelings",register:"neutral",jlpt:3,note:"Godan. き が おちつく = feel settled. Also おちついた ふんいき = a relaxed atmosphere."},
   {jp:"がまんする",romaji:"gaman suru",en:"endure / put up with / hold back",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Suru-verb. いたみ を がまん する = bear the pain. Enduring silently — a prized cultural virtue."},
   {jp:"やくにたつ",romaji:"yaku ni tatsu",en:"be useful / come in handy",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Set phrase やく に たつ (やく = use/role). Takes に for whom it helps. Treat as a unit, not free words."},
   /* --- nouns --- */
-  {jp:"つごう",romaji:"tsugou",en:"circumstances / convenience",pos:"n",theme:"time",register:"neutral",jlpt:3,note:"つごう が いい = it works for me; つごう が わるい = a bad time. The scheduling word."},
+  {jp:"つごう",romaji:"tsugou",en:"circumstances / convenience",pos:"n",theme:"time",register:"neutral",jlpt:3,note:"つごう が いい = it works for me; つごう が わるい = a bad time. The scheduling word.", ex:"あしたは つごうが わるいです。", exEn:"Tomorrow is inconvenient for me."},
   /* --- adverbs --- */
 ];
 
@@ -7614,6 +7614,30 @@ function registerCounterpartChip(w){
   </div>`;
 }
 
+/* v8.05 — "💬 in a sentence" peek. Shown only for the ~134 function words
+   (particles, affixes, counters, onomatopoeia, grammar-bound adverbs, abstract
+   nouns, set expressions) whose meaning lives in usage, not in the gloss. The
+   example JP is kana-only and built from core deck vocab; its English sits
+   behind a いみ tap (JP-first). Static + offline — no API key. exampleStrip
+   returns '' for the ~1568 words with no w.ex, so it never clutters a card. */
+function exampleStrip(w){
+  if(!w || !w.ex) return '';
+  const trId = 'exTr_' + (w.id || 'x');
+  return `<div style="margin-top:10px;padding:9px 11px;background:rgba(139,124,246,0.09);border-left:3px solid var(--grape,#8b7cf6);border-radius:4px">
+    <div style="display:flex;align-items:flex-start;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div class="muted" style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px">💬 in a sentence</div>
+        <div class="jp" style="font-size:15px;color:var(--text);line-height:1.55">${esc(w.ex)}</div>
+        <div id="${trId}" class="muted" style="font-size:12px;margin-top:4px;line-height:1.4;display:none">${esc(w.exEn||'')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(w.ex)}')" title="Listen">🔊</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();var e=document.getElementById('${trId}');if(e)e.style.display=(e.style.display==='none'?'block':'none');" title="Meaning">いみ</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderBlitz(){
   const b = state.blitz;
   // Cancel any pending voice listener / timer from a prior render before
@@ -7702,6 +7726,7 @@ function renderBlitz(){
       <div class="jp" style="font-size:36px;text-align:center;font-weight:700;line-height:1.4;padding:6px 8px">${esc(w.jp)}</div>
       ${romaji ? `<div class="muted" style="text-align:center;font-size:14px;font-style:italic;margin-top:4px;letter-spacing:0.02em">${esc(romaji)}</div>` : ''}
       ${registerCounterpartChip(w)}
+      ${exampleStrip(w)}
       <div class="spacer"></div>
       <div class="audio-row">
         <button class="audio-btn" onclick="speakJP('${jsEsc(w.jp)}')">🔊 Listen again</button>
@@ -7782,6 +7807,7 @@ function renderBlitz(){
     ${matchHint}
     <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
     ${registerCounterpartChip(w)}
+    ${exampleStrip(w)}
     <div style="text-align:center;margin-top:8px">
       <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="focusAddCurrentBlitz()" title="Add to Focus — practice building sentences with it">⭐ Work on this in sentences</button>
     </div>
@@ -10426,6 +10452,7 @@ function renderRecall(){
         <div style="display:flex;align-items:center;justify-content:center;gap:11px"><div style="font-family:'Noto Sans JP';font-weight:900;font-size:34px">${esc(w.jp)}</div><button onclick="speakJP('${jsEsc(w.jp)}')" style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:16px;cursor:pointer">🔊</button></div>
         <div style="font-style:italic;font-weight:500;font-size:13px;color:#a99fc7;margin-top:6px">${esc(_rcRomajiOf(w))}</div>
       </div>
+      ${exampleStrip(w)}
       <div style="font-weight:700;font-size:12px;color:#8a80a8;text-align:center;margin-bottom:11px">Did you recall it?</div>
       <div style="display:flex;gap:9px">
         <button onclick="rcGradeMiss()" style="flex:1;padding:15px;border-radius:14px;border:1.5px solid rgba(251,113,133,.5);background:rgba(251,113,133,.1);color:#fb7185;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">Missed it</button>
