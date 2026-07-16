@@ -176,7 +176,7 @@ practice-drawer / settings-buried / deleted**. Internal session screens ride wit
 | 16 | `speakDrills` (+ `speakDrillSession`) | Contrast/conjugation speech drills (17427) | **practice-drawer** | "Speak drills" tile; session internal. |
 | 17 | `phrases` (+ `phraseBlitz`) | Phrasebook + drill (11995) | **practice-drawer** | "Phrases" tile; drill internal. |
 | 18 | `focus` | User word basket (4930) | **merge → practice-drawer** | Becomes the ⭐ scope in the Topics scope row — not a separate door. |
-| 19 | `collections` | User word groups (19680) | **merge → practice-drawer** | Already chips in the scope row (19379–19393); the management screen opens from a "manage" affordance there. |
+| 19 | `collections` | User word groups (19680) | **merge → practice-drawer** | Already chips in the scope row (19379–19393). The "manage" affordance is **new build** (small): scopeChipHtml (19361–19370) currently renders only select + ▶ per chip, and the sole `nav('collections')` call site (19227) sits in the dead v7.76 `upNextRows` list — corrected per code-review synthesis. |
 | 20 | `modules` | Opt-in linear unlock path (19490) | **settings-buried** | Already default-off (`modulesEnabled:false`, v7.69). Stays a Settings toggle + screen; never resurfaces on Home (ADR-003 posture). |
 | 21 | `settings` | Settings wall (20417) | **settings (kept, slimmed)** | Gear stays in the top bar. Slimming itself is a Stage-D item: group into Voice / Learning / Data; BYO-key cards die in Phase 1 (Delve 4). |
 | 22 | `library` | Word browser (19998) | **deleted** | Already de-surfaced v7.76. Word lookup lives inside topic/collection screens. Code removed in Stage E. |
@@ -195,6 +195,12 @@ the parts bin. This answers the "de-sprawl theater" attack in advance: 25 → **
 Doors a stranger can reach within one tap of open: **Home** (hero + path + resume) and
 **Practice** (topics + 6 tiles). Everything else is inside those or behind ⚙. From ~15
 first-class doors to **2**.
+
+**Honest count (per devils-advocate synthesis):** "2" counts *first-class doors* (tabs).
+One tap deeper there remain ~13 visible surfaces (topics grid + 6 tiles + hero + 5 path
+steps + resume + spine sheet). The felt reduction is real but comes from **hierarchy +
+true deletion of 4 modes**, not from making the app small; the claim this delve stands
+behind is "one promise, one training drawer" — not "13 surfaces became 2."
 
 ### 3.5 Power-user escape hatch (owner's routine)
 
@@ -227,10 +233,15 @@ tap vs today). Locked as an explicit acceptance criterion in §9 Stage A.
 |---|---|---|---|
 | OB-0 | **Promise** | 一心 wordmark · one-liner (§8.2) · one CTA **「はじめる — Start」** · tiny "I've used Isshin before" (→ restore/skip) | 0–8s |
 | OB-1 | **One question** | "How much Japanese do you have?" → **ぜんぜん — none yet** / **すこし — a little** / **けっこう — a fair bit**. Nothing else asked. No goal quiz, no age, no email. | 8–15s |
-| OB-2 | **Meet your partner + mic pre-prompt** | Random partner from `CONVO_PARTNERS` (2960), e.g. あおい 🧑‍🎨: "あおい will talk — you talk back. Allow the microphone so she can hear you." [Allow mic] → browser permission. **Denied/no-mic fallback:** "No mic? Tap your replies instead" — chips-only variant, identical script. | 15–25s |
-| OB-3A | **First exchange (beginner path)** | Scripted 3 turns, hands-free (`convoHandsFree:true` default, 2923): ① Partner TTS: こんにちは! — screen shows こんにちは + romaji + 🔁 replay + 👁 peek-meaning (English stays behind the peek, [[feedback_japanese_trainer_no_english_prompts]]); mic auto-opens; user says it. **← first spoken exchange, ~40–50s.** ② Partner: こんにちは! わたしは あおい です。あなたは? — chip scaffold わたしは ___ です; user speaks their name in the frame. ③ Partner: 〔name〕さん、はじめまして! | 25–75s |
-| OB-3B | **Router (returnee path)** | ≤3 taps, skippable ("just start talking →"): Q1 kana check (read ひと — 3 options); Q2 production self-check ("Could you say 'I eat sushi' out loud?" — yes/roughly/no); Q3 listening check (partner speaks たべもの が すき です — pick gist). Places Stage 1/2/3 (§7) and skips Stage 0 if Q1 passes. Then → OB-2 mic pre-prompt → a stage-matched scripted exchange (same 3-turn shape, higher-tier lines). | 15–60s; spoken exchange ≤90s |
-| OB-4 | **First-win card** | "That was Japanese — you spoke it. 🎉" + "Day 1 together" + single CTA **「つづける — Keep going」** → Home, path seeded at the user's stage. NO score, NO accuracy, NO signup. | +8s |
+| OB-2 | **Meet your partner + mic pre-prompt** | Random partner from `CONVO_PARTNERS` (2960), e.g. あおい 🧑‍🎨: "あおい will talk — you talk back. Allow the microphone so she can hear you." [Allow mic] → browser permission. **Runs exactly ONCE, immediately before the first exchange** — beginner path: OB-0→OB-1→OB-2→OB-3A; returnee path: OB-0→OB-1→OB-3B (router) →OB-2→exchange. Never shown twice. **Two distinct fallback branches:** (a) *permission denied* → "No mic? Tap your replies instead" — chips-only variant, identical script; (b) *STT API absent* (`voiceSupported()` false — iOS/Safari & some standalone-PWA contexts, 5313/5327) → skip the mic ask entirely, route straight to the chips-only variant with the same warm copy; the user is never asked for a mic the browser can't use. | 15–25s |
+| OB-3A | **First exchange (beginner path)** | Scripted 3 turns, hands-free (`convoHandsFree:true` default, 2923): ① Partner TTS: こんにちは! — screen shows こんにちは + romaji + 🔁 replay + 👁 peek-meaning (English stays behind the peek, [[feedback_japanese_trainer_no_english_prompts]]); mic auto-opens; user says it. **← first spoken exchange, ~40–50s.** ② Partner: こんにちは! わたしは あおい です。あなたは? — chip scaffold わたしは ___ です with a **small typed name field in the blank** (existing `setUserName` path, 20716); the user types their name then *speaks the whole sentence aloud* with STT as turn-trigger only. **The name text comes from the typed field, never from STT** — open-vocab STT extraction is out of doctrine (turn-trigger only, and the app's own matcher is constrained-vocabulary by design, 16707); a mis-greeting by garbled name would break the zero-judgment promise on turn 2. Typing is skippable (blank → partner uses あなた warmly). ③ Partner: 〔name〕さん、はじめまして! (or あなた variant). | 25–75s |
+| OB-3B | **Router (returnee path)** | ≤3 taps, skippable ("just start talking →"): Q1 kana check (read ひと — 3 options); Q2 production self-check ("Could you say 'I eat sushi' out loud?" — yes/roughly/no); Q3 listening check (partner speaks たべもの が すき です — pick gist). Places Stage 1/2/3 (§7) and skips Stage 0 if Q1 passes. Then → OB-2 mic pre-prompt (its **only** occurrence on this path — see OB-2) → a stage-matched scripted exchange (same 3-turn shape, higher-tier lines). | 15–60s; spoken exchange ≤90s |
+| OB-4 | **First-win card** | "That was Japanese — you spoke it. 🎉" + "Day 1 together" + single CTA **「つづける — Keep going」** → Home, path seeded at the user's stage. NO score, NO accuracy, NO signup. | 75–83s |
+
+**What the <90s budget measures (scope note, per devils-advocate):** it is an *activation /
+bail-point* budget — time-to-the-moment-of-speaking — not a pedagogy-efficacy claim. OB-3A
+gives no feedback by design, so "graduated onboarding" is evidence the funnel works, never
+evidence the user learned; learning evidence lives in the drills and spine (§5.3, §7).
 
 **Future insertion points (designed, dormant):** (a) after OB-4, a soft "save your progress"
 account prompt — Phase 1 only; (b) paywall trigger day 3–5 after a completed session (M2
@@ -296,6 +307,15 @@ nothing): silent-by-default risks the plateau; the hedge is *placement* (post-fl
 standards-over-comfort learning stance ([[feedback_standards_over_rules_of_thumb]]). The
 rigor lives in the drills and the recap, so the live conversation can stay consequence-free.
 
+**Closing the rigor loop (per devils-advocate synthesis):** "rigor lives in the drills"
+only holds if conversation weaknesses can *reach* the drills. Each recap note therefore
+carries a **one-tap 「これを れんしゅう — practice these」 action** that adds the note's
+target words to the existing missed-drill pathway (`usedUnaidedly`/missed-drill machinery
+already in `state.convo`, 9576–9604). This is **content-derived from the LLM recap, never
+an STT score** — STT stays a turn-trigger ([[project_japanese_trainer_stt_not_grader]]);
+nothing writes SRS state automatically; the user opts in per recap. A spoken error repeated
+across conversations now has a route back into review without any surface becoming a grader.
+
 ### 5.4 The double-miss rule (STT failure containment)
 
 After **2 consecutive** STT misses in any voice surface: the partner apologizes (rule 5),
@@ -322,6 +342,11 @@ are measurable; Phase-1 acceptance inherits the 1.2s figure.
 
 ### 6.1 Locked mechanics — shipping in the restructure (no backend)
 
+**Honesty note (per qa-tester synthesis):** all four mechanics below are *reactive* — they
+shape what a returning user feels **once they have already reopened the app**; none can
+independently *cause* a day-7 reopen. The proactive pull (push) is deferred to its platform
+(§6.2). This section is the guilt-free *baseline*, not a solved retention problem.
+
 1. **Streak, reframed as 「いっしょ の ひ — days together」.** Same counter
    (`state.streak`, 19059), possessive-warm framing, shown on Home header only.
    **Optional:** a Settings toggle hides it entirely.
@@ -331,8 +356,11 @@ are measurable; Phase-1 acceptance inherits the 1.2s figure.
    copy stays forward-looking ("Day 1 together — again 🙂"). No streak-repair purchase, ever.
 3. **Private-by-default progress.** Spine + minutes visible only in-app; no sharing prompts.
 4. **Weekly summary, in-app.** First open ≥7 days after last summary: one card — "This week:
-   you talked 23 min · 4 conversations · 18 new words out loud." Derived from existing
-   session logs; volume language only (§5.1 rule 2).
+   you talked 23 min · 4 conversations · 18 new words out loud." **Requires a NEW lightweight
+   persistent session log** (corrected per code-review: `state.convo` is ephemeral, nulled on
+   close at 9906, and no persistent per-session structure exists) — an additive
+   `state.convoLog` array appending `{ts, minutes, spokenTurns, newWordsSpoken}` on session
+   end, capped (e.g. last 60 entries). Scoped into Stage D. Volume language only (§5.1 rule 2).
 
 ### 6.2 Deferred — waits for its platform
 
@@ -388,7 +416,10 @@ adds no new gate state, so **it does not decide ADR-003**: if the owner signs th
 arm instead, the spine gains gates at exactly one seam (stage targets become unlock
 conditions; scene `minLevel` — the one soft gate that already exists in source, 2989 —
 becomes the enforcement precedent). Surfaced for the owner in §11. Until signoff, Stage C
-ships the advisory spine only.
+ships the advisory spine only — **acknowledged status-quo default** (the app has no gates
+today, so advisory adds no new posture; waiting would block Stage C on a signoff pending
+since Delve 2). To keep the choice live rather than sunk, the ADR-003 ask is re-surfaced to
+the owner **at Stage-C ship time** as a named checklist line in §9, not just here.
 
 ---
 
@@ -400,6 +431,14 @@ ships the advisory spine only.
 product promise, not a tagline — because H3 says the claim must be engineered (§5 is the
 engineering).
 
+**White-space verification is binary, so it gets a pre-launch check (per devils-advocate):**
+H2 is absence-of-evidence, and "occupied or not" is not a tunable number the blanket caveat
+rule covers. Before any store copy ships, a **targeted competitor sweep** (store-search for
+Japanese + conversation-first apps, ≤1 day) must re-verify the claim; if an occupant exists,
+L9's *differentiation wording* changes (judgment-free engineering + beginner scaffolding
+remain differentiators regardless) while the product design stands. Moved from "post-launch
+A/B" to a pre-launch gate in L9.
+
 ### 8.2 The one-liner (opening screen, OB-0) — locked
 
 > **Speak Japanese from your first minute — with a friend who never judges.**
@@ -410,6 +449,16 @@ Store-facing variants (same lock, different lengths):
 - Store long line: "Isshin is a patient AI friend who talks with you in Japanese — real
   conversations from your very first minute. No grades, no streak-shaming, no judgment.
   Drills exist for one reason: to get you talking."
+
+**Publication gate (per devils-advocate FATAL — accepted):** the store long line promises
+*live* conversation, but today's keyless fallback is a 5-line scripted bank
+(`_convoScript` → `_CONVO_SCRIPT_TURNS`, 9453/9472 — cycles 5 canned turns). The wording is
+locked **but its publication is gated on the Phase-1 hosted backend** (Delve 4) making the
+hero conversation real for a keyless buyer. Sequencing is explicit: **Stages A–E ship now
+for the owner/BYO-key users; the paid-ads + store funnel opens only at Phase 1.** Until
+then, nothing ad-facing may claim live conversation; the *onboarding* scripted exchange
+(L11) is honest by construction because it is designed as a scripted first lesson, not sold
+as live AI. Added to L9 and §9.
 
 ### 8.3 Names of the surviving surfaces — locked
 
@@ -451,8 +500,22 @@ No stage requires the Phase-1 backend. This section is the follow-on `/hydra-for
   (18997) folded into new Home (its `pathNodes` + extras blocks are the donor code — note the
   path ladder is currently duplicated in both renderers, 19001–19017 and 19287–19303; the fold
   de-duplicates it into one shared helper); `progress` reachable from spine placeholder only.
+- **Alias must NORMALIZE, not just route (per code-review — accepted):** `nav('today')`
+  (still called from the pathStrip, 19408) must set `state.screen = 'home'` at `nav()` entry,
+  not merely share a renderer. Three families of exact-string `'home'` checks break under a
+  raw alias: `updateBackFab` (18890, `state.screen !== 'home'`), the CSS
+  `body[data-screen="home"]` rules (156, 399, 400 — no `"today"` equivalents, so header/FAB
+  visibility diverges), and **`pathGo()`'s bail-detection** (10518–10519: credits a step only
+  if `state.screen !== 'home'` after the launcher — an un-normalized `'today'` would make
+  that trivially true and **false-credit a bailed step**). With normalization all three keep
+  working and §3.3 row 2's "`pathGo()` routing unchanged" claim holds. Correction: 18486 is
+  inside `renderTopbar()` (which already special-cases `'home'` and `'today'`), not
+  `updateBackFab`.
 - **Also touches:** `_homeTopBar` (18904), `updateNav`/nav binding (18893, 21140),
-  `updateBackFab` home checks (18486, 18890), hash-router entries.
+  `renderTopbar` home/today check (18486), `updateBackFab` (18890), CSS `data-screen` rules
+  (156, 399, 400), hash-router entries; audit-only under normalization: the ~9 generic
+  `nav('home')` drill-exit sites (7580, 10099, 10391, 10764, 11010, 11018, 11370, 11378,
+  13078) land on the new Home and need a visual sanity pass, nothing more.
 - **Migration:** existing users land on the new Home with their streak/path state intact;
   resume chip reproduces the Continuing card (19426) → **acceptance: owner's topic-drill
   routine ≤1 tap worse, resume case 0 taps worse; path/convo/topic-▶ all reachable.**
@@ -464,8 +527,12 @@ No stage requires the Phase-1 backend. This section is the follow-on `/hydra-for
   backfill for existing users; `renderOnboard` (OB-0/1/2/4 cards + router OB-3B); the
   scripted first exchange as a canned-script variant of the convo session runner (fixed lines
   + TTS + STT-as-trigger; zero network); Home routes to onboarding when `!onboard.done`.
-- **Acceptance:** cold profile → spoken exchange ≤90s (beginner ≤60s) measured on-device;
-  mic-denied path completes via chips; existing profile never sees OB-0.
+- **Acceptance:** cold profile → spoken exchange ≤90s (beginner ≤60s) — measured via
+  timestamped console markers at OB-0 render and first user speech-end, read on-device;
+  mic-denied path completes via chips; **STT-API-absent path (`voiceSupported()` false)
+  auto-routes to chips with no mic ask — tested on iOS Safari AND standalone/home-screen PWA
+  mode** (the universal-phone constraint made checkable); existing profile never sees OB-0;
+  OB-2 appears exactly once on each path (F3 duplicate-prompt check).
 
 ### Stage C — The spine
 
@@ -474,26 +541,40 @@ No stage requires the Phase-1 backend. This section is the follow-on `/hydra-for
   content becomes the expandable detail sheet; router placement (OB-3B) writes
   `onboard.placedStage` which seeds the displayed stage floor.
 - **Acceptance:** spine is display-only (0 pool changes — the ADR-003 non-locking invariant
-  test reused); stage/summit reflect existing counts correctly on a seeded profile.
+  test reused); stage/summit reflect existing counts correctly on a seeded profile; **the
+  ADR-003 signoff ask is re-presented to the owner at Stage-C ship (checklist line, §7.2)**
+  so shipping the advisory arm stays an acknowledged default, not a silent decision.
 
 ### Stage D — Judgment-free sweep + retention baseline
 
 - **Change:** copy audit across all wrong-answer/reveal strings (§5.1 banned-word list —
   enforced by a grep script over `index.html` string literals, exhaustive per
-  [[feedback_translation_audit_exhaustive]] method); remove Accuracy tile (19342–19356);
-  convo recap → celebration-first ≤3 notes + `convoRecapNotes` toggle; double-miss rule
-  (§5.4) in the voice-turn handler; streak reframe + silent auto-freeze + weekly summary
-  card; dev latency readout.
-- **Acceptance:** grep for banned words in UI strings returns 0; no user-facing %-accuracy
-  anywhere; STT double-miss demo degrades to chips.
+  [[feedback_translation_audit_exhaustive]] method); **remove ALL user-facing Accuracy
+  stat surfaces — the grep sweep is the scope of record, not the Home tile alone** (per
+  qa-tester: known sites today are Home 19342–19356 plus stat-label "Accuracy" blocks at
+  7661 (Vocab Blitz complete, beside a banned "Wrong" label at 7660), 9029, 11028–11030
+  (Kana Blitz complete), 11389, 12064, 12624, 13132 — several on screens surviving as
+  drawer tiles); convo recap → celebration-first ≤3 notes + `convoRecapNotes` toggle + the
+  one-tap 「これを れんしゅう」 practice-these action (§5.3); double-miss rule
+  (§5.4) in the voice-turn handler; streak reframe + silent auto-freeze; **new additive
+  `state.convoLog` session log (§6.1 item 4)** + weekly summary card; dev latency readout.
+- **Acceptance:** grep for banned words in UI strings returns 0; grep for user-facing
+  `Accuracy`/`%`-stat labels returns 0 (the numeric gate — not a per-site checklist);
+  STT double-miss demo degrades to chips.
 
 ### Stage E — True deletion
 
+- **PRECONDITION (blocking, per devils-advocate — accepted):** the owner's deletion-veto
+  answer (§11 OQ #4) is **collected before any code removal**. Until then rows 22–25 are
+  *conditional locks*: burial ships (they are already de-surfaced), deletion waits. No
+  finding may be deleted over the only proven daily user's veto.
 - **Change:** remove `library`, `similar`, `variations`/`variationBlitz`, `particles`
   render functions, nav/router references, and orphaned helpers/data; render map shrinks
   accordingly; Settings slimmed into Voice/Learning/Data groups; `modules` stays (buried).
-- **Acceptance:** no dead nav targets (router sweep), render-verify passes on every surviving
-  screen, sw.js cache coherent, `index.html` line count visibly down.
+- **Acceptance:** no dead nav targets — verified by a scripted sweep that calls `nav(key)`
+  for every surviving render-map key headlessly and asserts a non-blank render (extends the
+  render-verify harness beyond render-not-blank, per qa-tester); render-verify passes on
+  every surviving screen, sw.js cache coherent, `index.html` line count visibly down.
 
 **Ordering rationale:** A first (the lock users see, zero feature risk) → B (needs A's Home) →
 C (needs B's placement) → D (copy touches everything; do once IA is stable) → E last
@@ -506,14 +587,14 @@ C (needs B's placement) → D (copy touches everything; do once IA is stable) �
 | # | Lock | Reversal condition |
 |---|---|---|
 | L1 | **Hybrid conversation-first front door:** Home = spine header + おしゃべり hero + today's path + resume chip; second tab = Practice; settings gear only. 2 doors total. | Post-ship: stranger D1 activation or owner-routine friction demonstrably worse |
-| L2 | **Verdict table §3.3 for all 29 screens** — incl. TRUE deletion (code removal) of `library`, `similar`, `variations`, `variationBlitz`, `particles`; `modules` settings-buried | Owner veto on any specific deletion before Stage E |
+| L2 | **Verdict table §3.3 for all 29 screens**; `modules` settings-buried. Deletions of `library`, `similar`, `variations`, `variationBlitz`, `particles` are **CONDITIONAL locks: burial ships now; TRUE deletion (code removal) executes only after the owner's §11 OQ #4 veto answer is collected** (Stage-E blocking precondition — synthesis reordering of the original lock-then-ask sequence) | Owner veto on any specific deletion (collected BEFORE Stage E, not after) |
 | L3 | **Onboarding flow §4.2:** ≤90s to first spoken exchange, scripted zero-key first conversation, one-question entry + skippable 3-question router, mic pre-prompt with chips fallback, no signup/paywall | Funnel data contradicting a specific screen |
 | L4 | **Judgment-free spec §5:** no user-facing accuracy %, volume-based score language, observation/question corrections, banned-word list, neutral reveals, partner-takes-blame, no leaderboards ever | — (brand foundation; changes require a new delve) |
 | L5 | **Recap notes default ON**, post-conversation only, ≤3, did-you-mean framing, one-tap OFF | Early users report plateau/feel-judged imbalance |
 | L6 | **Latency/TTS budgets §5.5** as product requirements (now: ≤3.5s turn; Phase-1: ≤1.2s/700ms) | Phase-1 stack measurements |
 | L7 | **Retention baseline §6:** "days together" optional streak, silent auto-freezes, loss never announced, private-by-default, weekly in-app summary; push waits for native, opt-in at a success moment | No-streak cohort test post-launch |
 | L8 | **Spine §7.1:** five kana-named stages built ONLY from existing thresholds (PROG_LADDERS + CONVO_TIERS/SCENES); advisory/non-locking; convo tier = stage summit | ADR-003 owner signoff choosing the hard-lock arm (spine gains gates, §7.2) |
-| L9 | **Positioning §8:** one-liner locked; chrome English-primary; おしゃべり keeps its JP name; surface names per §8.3 | Store A/B post-launch (copy only, not identity) |
+| L9 | **Positioning §8:** one-liner locked; chrome English-primary; おしゃべり keeps its JP name; surface names per §8.3. **Two synthesis gates added:** (a) store/ad copy claiming live conversation publishes only once the Phase-1 backend makes the hero real for keyless users (§8.2 publication gate); (b) a pre-launch competitor sweep re-verifies the H2 white space before store copy ships (§8.1) | Pre-launch sweep finds an occupant (wording changes); Store A/B post-launch (copy only, not identity) |
 | L10 | **Shipping order A→E §9**, each stage independently shippable + render-verified; deletion last | — |
 | L11 | **Onboarding first exchange must run offline-of-AI** (canned script, local TTS/STT) — doubles as the free-tier functional first lesson | Phase-1 may ADD a live variant; never replace the zero-dependency path |
 
@@ -530,8 +611,10 @@ one-liner wording, freeze count (2/week), weekly-summary copy, resume-chip place
 2. **Paywall day + trial config** (M2's rate-vs-LTV tension): an experiment for Phase-1
    instrumentation, not decidable from current evidence.
 3. **一心 wordmark furigana** (§8.4): owner taste.
-4. **Deletion veto list** (L2): does the owner use `particles`/`similar`/`variations`
-   enough to stay his own power user? One-line confirmation before Stage E.
+4. **Deletion veto list** (L2) — **BLOCKING for Stage E** (synthesis): does the owner use
+   `particles`/`similar`/`variations` enough to stay his own power user? One-line
+   confirmation is a hard precondition before any Stage-E code removal; until answered,
+   rows 22–25 ship as burial only.
 5. **Web Push interim on Android (Phase 1)**: worth the server surface before native, or skip
    straight to Phase-4 push? Leans skip; revisit at Phase-1 planning.
 6. **Streak-softening cost**: unmeasurable pre-launch; cohort test filed for post-launch
@@ -577,5 +660,80 @@ them to `docs/decisions-pending/` after the adversary round.
 
 ---
 
-*End of Round-1 primary. Awaiting adversary panel (devils-advocate, qa-tester, code-reviewer)
-and synthesis per charter.*
+*End of Round-1 primary. Adversary panel filed at 6666902; synthesis below.*
+
+---
+
+## Synthesis (Round 1 — Delve 5)
+
+**Panel:** devils-advocate (WARN) · qa-tester (WARN) · code-reviewer (WARN) — committed at
+`6666902`. Every finding dispositioned below; every citation was verified against
+`index.html` (21,207 lines) / this doc before adoption. Accepted fixes are applied inline
+in the body above (marked "per … synthesis"). No finding was silently dropped.
+
+### Dispositions — devils-advocate
+
+| # | Finding | Disposition | Rationale + action |
+|---|---|---|---|
+| DA-1 | FATAL: conversation-first hero is a 5-turn canned script for the keyless buyer | **accepted** | Verified: `index.html:9643` keyless branch → `_convoScript`; `_CONVO_SCRIPT_TURNS` = exactly 5 entries (9472; modulo cycling at 9453; adversary's "9466" was 6 lines shy but the token exists). Fix applied: §8.2 publication gate — store/ad copy claiming live conversation is Phase-1-gated; sequencing made explicit (Stages A–E ship for owner/BYO now, paid-ads funnel opens at Phase 1); L9 amended. The restructure locks stand — the *sellable front door* claim is now honestly sequenced on the backend it needs. |
+| DA-2 | SERIOUS: deletion locked before owner veto collected | **accepted** | Process inversion confirmed (L2 lock vs OQ #4 still open). Fix: L2 reworded to conditional lock (burial ships, deletion waits); Stage E gains a BLOCKING precondition; OQ #4 marked blocking. |
+| DA-3 | SERIOUS: H2 white space is binary, not "directional" | **accepted** | Correct — the blanket direction-not-number hedge cannot cover an occupied/not-occupied claim. Fix: §8.1 pre-launch competitor sweep gate (≤1 day, before store copy ships); L9 reversal amended from post-launch-only to pre-launch. Product design (judgment-free engineering, beginner scaffolding) stands regardless of occupancy — only differentiation *wording* is at stake. |
+| DA-4 | QUESTIONABLE: "2 doors" is a counting trick | **accepted** (wording) | The ~13 one-tap-deep surfaces count is arithmetically right. Fix: §3.4 honest-count paragraph — "2" claims first-class doors + hierarchy + 4 true deletions, not app smallness. The hierarchy claim itself survives: a drawer you *choose* to open differs from 15 peer doors. |
+| DA-5 | SERIOUS: hero surface has no rigor route; repeated spoken errors never reach review | **accepted** | The structural blindness was real: recap notes fed nothing. Fix (§5.3): each recap note gains a one-tap 「これを れんしゅう」 action feeding the existing missed-drill pathway — LLM-content-derived, user-opt-in per recap, no automatic SRS writes, STT stays a turn-trigger ([[project_japanese_trainer_stt_not_grader]] intact). Stage D scopes it. |
+| DA-6 | QUESTIONABLE: shipping the advisory spine soft-decides ADR-003 | **contested** | Advisory is today's live status quo — zero gate state exists in source, and ADR-003-as-proposed is itself the non-locking arm; NOT shipping the spine would block Stage C on a signoff already pending since Delve 2, which is a larger silent decision. Mitigation added anyway (§7.2 + Stage C acceptance): the signoff ask is re-presented at Stage-C ship time, so the default stays acknowledged, not sunk. |
+| DA-7 | NITPICK: <90s "win" fires on any noise, decoupled from learning | **accepted** (clarify) | True by design (onboarding gives no feedback). Fix: §4.2 scope note — the budget is an activation/bail metric, never pedagogy evidence; learning evidence lives in drills + spine. L3 unchanged in substance. |
+
+### Dispositions — qa-tester
+
+| # | Finding | Disposition | Rationale + action |
+|---|---|---|---|
+| QA-1 | SERIOUS: spoken-name capture needs open-vocab STT that doesn't exist; no failure path | **accepted** | Verified: only typed `userName` path exists (20479/20716); constrained-vocab matcher comment at 16707. Fix: OB-3A turn 2 redesigned — typed name field in the chip scaffold (reuses `setUserName`), user speaks the full sentence with STT as turn-trigger only; skippable (あなた fallback); the name never comes from STT. |
+| QA-2 | SERIOUS: iOS/Safari STT-API absence unhandled in onboarding; universal-phone untested | **accepted** | Verified: `voiceSupported()` gates on SR API (5313/5327); existing guard sites degrade silently (9312, 16089). Fix: OB-2 gains a distinct API-absence branch (no mic ask, straight to chips); Stage B acceptance adds iOS Safari + standalone-PWA testing explicitly. |
+| QA-3 | QUESTIONABLE: OB-2 once or twice on the returnee path — underspecified | **accepted** | Real ambiguity in the original table. Fix: OB-2 now specified to run exactly once, immediately before the first exchange on both paths (beginner OB-0→1→2→3A; returnee OB-0→1→3B→2→exchange); duplicate-prompt check added to Stage B acceptance. |
+| QA-4 | SERIOUS: Stage D names one Accuracy site; 7+ exist | **accepted** | Verified: Accuracy stat-labels at 7661 (beside "Wrong" at 7660), 9029, 11028–11030, 11389, 12064, 12624, 13132 — several on surviving drawer screens. Fix: Stage D change list enumerates all known sites and names the exhaustive grep as the scope of record; acceptance gate is grep-returns-0, not a site checklist. |
+| QA-5 | QUESTIONABLE: §6 reads as solving day-7 return but all mechanics are reactive | **accepted** (framing) | Correct read; the doc was honest in OQ #5 but §6.1's framing oversold. Fix: honesty note atop §6.1 — reactive baseline only; the proactive pull is push, deferred (§6.2). No mechanic change. |
+| QA-6 | QUESTIONABLE: acceptance-criteria verification methods inconsistent/unautomatable | **accepted** | Fix: Stage B timing method named (timestamped console markers on-device); Stage E router sweep named (scripted `nav(key)` iteration over surviving render-map keys, asserting non-blank render — extends render-verify beyond render-not-blank). Deeper interaction-level verification remains a forge-time concern; the budgets are now checkable as written. |
+| QA-7 | NITPICK: OB budget table switches cumulative→relative on the last row | **accepted** | Fix: OB-4 budget rewritten as cumulative 75–83s. |
+
+### Dispositions — code-reviewer
+
+| # | Finding | Disposition | Rationale + action |
+|---|---|---|---|
+| CR-1 | SERIOUS: today→home aliasing breaks exact-string `'home'` checks (back-FAB / topbar / CSS) | **accepted** | All citations verified: 18890 (`state.screen !== 'home'` in updateBackFab), CSS `body[data-screen="home"]` at 156/399/400 with no `"today"` equivalent, `nav('today')` live at 19408, and 18486 is indeed inside `renderTopbar()` — the primary doc's Stage-A label was wrong and is corrected. Fix: Stage A now mandates **normalization** (`nav('today')` sets `state.screen='home'`) with the full check-family enumeration. |
+| CR-2 | SERIOUS: un-normalized alias false-credits Daily-Path steps in `pathGo()` | **accepted** | Verified at 10518–10519 (`if(state.screen !== 'home'){ d.done[step] = true; …`). Subsumed by the CR-1 normalization fix; Stage A names it explicitly so §3.3 row 2's "pathGo unchanged" claim holds *because of* normalization, not despite the alias. |
+| CR-3 | SERIOUS: weekly summary claims session-log data that doesn't exist | **accepted** | Verified: `state.convo` is ephemeral (9578–9602), nulled in `convoFresh` (9906); no persistent per-session structure found. Fix: §6.1 item 4 corrected — new additive `state.convoLog` (capped array of `{ts, minutes, spokenTurns, newWordsSpoken}`), scoped into Stage D so L7's build cost is stated honestly. |
+| CR-4 | QUESTIONABLE: Collections "manage" affordance claimed as existing UI but isn't | **accepted** | Verified: `scopeChipHtml` (19361–19370) renders select + ▶ only; the sole `nav('collections')` site (19227) is inside the v7.76 computed-but-unrendered `upNextRows` (parts-bin comment 19261–19267). Fix: §3.3 row 19 corrected — the manage affordance is new build (small). |
+| CR-5 | QUESTIONABLE: Stage A "Also touches" undercounts `nav('home')` call sites | **accepted** | Verified: all 9 cited lines are real `nav('home')` drill-exit sites. Fix: enumerated in Stage A as audit-only under normalization (they land on the new Home; visual sanity pass only). Stage A remains the lowest-risk stage, but its blast radius is now honestly enumerated. |
+
+### Decision-notes (heuristic gate — recorded here, NOT ADRs)
+
+- **Store-copy publication gated on Phase-1 backend.** *Decision:* locked store wording may
+  not publish while the keyless hero is the 5-line script; ads funnel opens at Phase 1.
+  *Why:* false-by-construction copy is a brand/App-Store-review risk. *Reversal cost:* nil —
+  publish earlier the moment the backend ships or wording is softened.
+- **OB-3A name via typed field, spoken sentence.** *Decision:* name text comes from a typed
+  field inside the chip scaffold; STT remains turn-trigger. *Why:* no open-vocab STT exists
+  or is wanted (doctrine). *Reversal cost:* local to one onboarding screen.
+- **OB-2 runs exactly once, immediately pre-exchange.** *Why:* duplicate permission asks are
+  a bail point. *Reversal cost:* trivial flow reorder.
+- **Recap "practice these" one-tap action** feeding missed-drill (opt-in, content-derived,
+  no auto-SRS). *Why:* closes the hero rigor loop without a grader. *Reversal cost:* one
+  recap-card button; remove anytime.
+- **`state.convoLog` additive session log** (capped) for the weekly summary. *Why:* the
+  mechanic's data source didn't exist. *Reversal cost:* additive key, local-only, deletable.
+- **`nav('today')` normalizes `state.screen` to `'home'`.** *Why:* three exact-string check
+  families break otherwise (CR-1/CR-2). *Reversal cost:* one line in `nav()`.
+- **Pre-launch competitor sweep before store copy ships** (H2 re-verification). *Why:* white
+  space is binary. *Reversal cost:* ≤1 day of checking; no code.
+
+Per the heuristic ADR gate, two decisions are load-bearing/costly-to-reverse and are filed
+as pending ADRs (as forecast in §13): **ADR-008 — Conversation-first two-door IA** (L1+L2,
+deletes code, retrains the only proven user, every later phase builds on it) and
+**ADR-009 — Judgment-free interaction specification** (L4+L6+§5.4, the engineered brand
+promise whose silent regression must be visible). Filed to `docs/decisions-pending/`;
+promotion is a human step.
+
+**Round-1 state:** all six charter locks stand, four materially amended by the panel
+(L2 conditional deletion, L9 dual gates, §4.2 onboarding mechanics, Stage A normalization).
+Definition-of-done items 1–7 complete; **user signoff** (charter DoD #8) remains open,
+carrying OQ #1 (ADR-003), OQ #4 (deletion veto — Stage-E blocking) and the two pending ADRs.
