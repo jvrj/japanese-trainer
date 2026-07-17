@@ -117,7 +117,7 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 /* Feedback card */
 .feedback-card{border-radius:20px;padding:20px;text-align:center;margin-bottom:12px;border:2px solid;color:#fbf7ff}
 .feedback-card.correct{background:var(--green-d);border-color:var(--green)}
-.feedback-card.wrong{background:var(--red-d);border-color:var(--red)}
+.feedback-card.miss{background:var(--red-d);border-color:var(--red)}
 .feedback-card.partial{background:var(--orange-d);border-color:var(--orange)}
 .feedback-head{font-size:13px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
 .feedback-body{font-size:15px;line-height:1.5}
@@ -534,7 +534,7 @@ body{letter-spacing:-.005em}
 @keyframes popIn{0%{transform:scale(.92);opacity:.5}60%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
 @keyframes shakeX{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
 .feedback-card.correct{animation:popIn .35s ease-out}
-.feedback-card.wrong{animation:shakeX .42s ease-out}
+.feedback-card.miss{animation:shakeX .42s ease-out}
 .drill-answer.ok{animation:popIn .35s ease-out;display:inline-block}
 
 /* 18 · bottom-nav active indicator */
@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.091';
+const APP_VERSION = '8.10';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2901,7 +2901,8 @@ const LS = {
   similarStats:'jp4_similar_stats',
   snapshots:'jp4_snapshots',       // v7.44 — weekly progress snapshots for the Progress screen
   openaiKey:'jp4_openai_key',      // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
-  convo:'jp4_convo'                // oshaberi — mid-session conversation state (scene, messages, pool, etc.)
+  convo:'jp4_convo',               // oshaberi — mid-session conversation state (scene, messages, pool, etc.)
+  convoLog:'jp4_convo_log'         // Stage D (v8.10) — capped session-volume log; see state.convoLog
 };
 
 const DEFAULT_SETTINGS = {
@@ -2955,7 +2956,9 @@ const DEFAULT_SETTINGS = {
   leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
   userName:'Julius',          // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
   showCoverageMeter:true,     // v7.96 — display the vocabulary coverage/reach meter on the home screen
-  onboard:{ done:false, path:null, placedStage:null }  // Stage B (v8.08) — first-run onboarding record. Additive; boot-time backfill in load() marks existing users done:true so they never see OB-0. path: 'beginner'|'router'. placedStage: router-derived starting stage (display-only, non-locking).
+  onboard:{ done:false, path:null, placedStage:null },  // Stage B (v8.08) — first-run onboarding record. Additive; boot-time backfill in load() marks existing users done:true so they never see OB-0. path: 'beginner'|'router'. placedStage: router-derived starting stage (display-only, non-locking).
+  convoRecapNotes:true,       // Stage D (v8.10) — judgment-free copy sweep: show up to 3 content-derived "did-you-mean" notes on the おしゃべり recap. Default ON; toggle in Settings hides them (celebration-only recap when off).
+  hideStreak:false            // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
 };
 
 /* =========================================================================
@@ -3086,7 +3089,12 @@ let state = {
   settings:{...DEFAULT_SETTINGS},
   notes:[],           // [{id, ts, text}]
   logs:[],            // [{ts, evt, data}]
-  streak:{current:0, longest:0, lastDate:null},
+  streak:{current:0, longest:0, lastDate:null, freezeWeekKey:null, freezesUsedWeek:0}, // freezeWeekKey/freezesUsedWeek (Stage D v8.10) — silent auto-freeze budget, see updateStreak()
+  /** Stage D (v8.10) — additive session-volume log for おしゃべり sessions.
+   *  Capped at ~60 entries (oldest dropped first); appended on convoEnd().
+   *  Each entry: {ts, minutes, spokenTurns, newWordsSpoken}. Volume-language
+   *  only — no accuracy/% field, by design (judgment-free copy sweep). */
+  convoLog:[],
   screen:'home',
   voiceListening:false,
   voiceResult:null,
@@ -3362,6 +3370,7 @@ function save(){
     localStorage.setItem(LS.similarStats, JSON.stringify(state.similarStats || {}));
     localStorage.setItem(LS.snapshots, JSON.stringify(state.snapshots || []));
     localStorage.setItem(LS.convo, JSON.stringify(state.convo));
+    localStorage.setItem(LS.convoLog, JSON.stringify((state.convoLog || []).slice(-60)));
   }catch(e){ log('save_err',{err:String(e)}); }
 }
 
@@ -3463,6 +3472,8 @@ function load(){
     state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
     state.snapshots = JSON.parse(localStorage.getItem(LS.snapshots)||'[]');
     state.convo = JSON.parse(localStorage.getItem(LS.convo)||'null');
+    /* Stage D (v8.10) — additive; capped defensively on read too (not just on write) */
+    state.convoLog = JSON.parse(localStorage.getItem(LS.convoLog)||'[]').slice(-60);
     /* Mark restored mid-session convos as frozen — requires explicit 「つづける」 tap to resume
        (spec: no auto-TTS/auto-mic on cold load; hands-free only starts on explicit Continue tap) */
     if(state.convo && !state.convo.done && state.convo.current){ state.convo._frozen = true; }
@@ -4722,7 +4733,7 @@ async function focusGenWord(id){
     save();
     if(typeof showToast === 'function') showToast('✨ ' + sents.length + ' natural sentences cached for ' + w.jp, {tone:'success', duration:2600});
   } catch(e){
-    if(typeof showToast === 'function') showToast('Generation failed: ' + (e && e.message ? e.message : e), {tone:'warn', duration:5000});
+    if(typeof showToast === 'function') showToast('Could not generate that: ' + (e && e.message ? e.message : e), {tone:'warn', duration:5000});
     log('focus_gen_err', { id, err:String(e && e.message || e) });
   } finally {
     if(state._focusGen) delete state._focusGen[id];
@@ -5585,6 +5596,22 @@ function whisperStatus(){
 }
 function whisperAvailable(){ return whisperStatus().ok; }
 
+/* Stage D (v8.10) — dev-only gate for internal-only readouts (e.g. the おしゃべり
+   turn-latency line). OFF for every normal end user by default: opt in per-device
+   via ?dev=1 (sticky in localStorage) or by setting jp4_dev directly in devtools.
+   Never surfaced in any Settings UI — this is a developer escape hatch, not a
+   user-facing preference. */
+function _isDevMode(){
+  try{
+    const qp = (typeof URLSearchParams !== 'undefined' && typeof location !== 'undefined')
+      ? new URLSearchParams(location.search).get('dev') : null;
+    if(qp === '1'){ localStorage.setItem('jp4_dev', '1'); return true; }
+    if(qp === '0'){ localStorage.removeItem('jp4_dev'); return false; }
+    return localStorage.getItem('jp4_dev') === '1';
+  }catch(e){ return false; }
+}
+window._isDevMode = _isDevMode;
+
 /* v8.02 — STT diagnostics ("stop debugging blind"). The hands-free reveal
    auto-advances too fast to read the per-attempt engine badge, so we also stash
    the LAST spoken-answer outcome and surface it in Settings. One line tells you:
@@ -5926,8 +5953,26 @@ function updateStreak(wasCorrect){
     state.streak.current = 1;
   } else {
     const y = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
-    if(last === y) state.streak.current = (state.streak.current||0) + 1;
-    else state.streak.current = 1;
+    if(last === y){
+      state.streak.current = (state.streak.current||0) + 1;
+    } else {
+      /* Stage D (v8.10) — 「いっしょ の ひ」 silent auto-freeze: a missed day
+         doesn't reset the count as long as a freeze is left this week (up to
+         2/week, Monday-keyed via weekStart()). The loss is NEVER announced —
+         no toast either way — the freeze just quietly decides reset vs hold. */
+      const wk = (typeof weekStart === 'function') ? weekStart(Date.now()) : null;
+      if(wk !== null){
+        if(state.streak.freezeWeekKey !== wk){ state.streak.freezeWeekKey = wk; state.streak.freezesUsedWeek = 0; }
+        if((state.streak.freezesUsedWeek||0) < 2){
+          state.streak.freezesUsedWeek = (state.streak.freezesUsedWeek||0) + 1;
+          /* current holds — frozen, not reset */
+        } else {
+          state.streak.current = 1;
+        }
+      } else {
+        state.streak.current = 1;
+      }
+    }
   }
   state.streak.lastDate = t;
   if(state.streak.current > (state.streak.longest||0)) state.streak.longest = state.streak.current;
@@ -7695,16 +7740,13 @@ function renderBlitz(){
 
   if(b.complete){
     const t = b.tally;
-    const attempts = t.correct + t.wrong;
-    const accPct = attempts ? Math.round(100 * t.correct / attempts) : 0;
     return `<div class="card">
       <h2 style="margin-top:0">Deck clear</h2>
       <div class="muted" style="font-size:13px;margin-bottom:8px">Nothing left to pull — every available card graduated. Come back later when reviews are due.</div>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
         <div class="stat-box"><div class="stat-num">${t.correct}</div><div class="stat-label">Correct</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
-        <div class="stat-box"><div class="stat-num">${accPct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startBlitz()">Start another session</button>
@@ -7820,7 +7862,7 @@ function renderBlitz(){
   const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
   const gradStat = graduated ? state.stats[b.justGraduated] : null;
   const nextLbl = gradStat ? smIntervalLabel(gradStat.smInterval) : '';
-  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Wrong');
+  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Missed it');
   const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
   const streakAfter = graduated ? '' : (correct
     ? `<div class="muted" style="font-size:12px;text-align:center;margin-top:4px">Streak ${poolItem.streak}/${poolItem.required}</div>`
@@ -8612,13 +8654,10 @@ function renderFormDrill(){
 
   if(d.complete){
     const t = d.tally;
-    const correct = t.good + t.easy;
-    const pct = t.total ? Math.round(100*correct/t.total) : 0;
     return `<div class="card">
       <h2 style="margin-top:0">${esc(f?.name||'Form')} drill complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${t.total}</div><div class="stat-label">Cards</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Retention</div></div>
         <div class="stat-box"><div class="stat-num">${t.again}</div><div class="stat-label">Again</div></div>
         <div class="stat-box"><div class="stat-num">${t.good}</div><div class="stat-label">Good</div></div>
       </div>
@@ -9063,16 +9102,13 @@ function renderFormBlitz(){
 
   if(b.complete){
     const t = b.tally;
-    const attempts = t.correct + t.wrong;
-    const accPct = attempts ? Math.round(100*t.correct/attempts) : 0;
     return `<div class="card">
       <h2 style="margin-top:0">Form deck clear</h2>
       <div class="muted" style="font-size:13px;margin-bottom:8px">Every pair graduated or the well ran dry. Come back later when reviews come due.</div>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
         <div class="stat-box"><div class="stat-num">${t.correct}</div><div class="stat-label">Correct</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
-        <div class="stat-box"><div class="stat-num">${accPct}%</div><div class="stat-label">Accuracy</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startFormBlitz()">Start another session</button>
@@ -9127,7 +9163,7 @@ function renderFormBlitz(){
   const accent = graduated ? 'var(--blue)' : (correct ? 'var(--green)' : 'var(--red)');
   const fst = state.formStats?.[pair.verbId]?.[pair.formId];
   const nextLbl = (graduated && fst) ? smIntervalLabel(fst.smInterval) : '';
-  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Wrong');
+  const verdict = graduated ? `Graduated ✓ · next in ${esc(nextLbl)}` : (correct ? 'Correct' : 'Missed it');
   const userShown = b.input ? esc(b.input) : '<span class="muted">(nothing typed)</span>';
   const idealEn = f.en(w);
   const streakAfter = graduated ? '' : (correct
@@ -9649,6 +9685,10 @@ function startConvo(sceneId){
     usedUnaidedly: [],       /* wordIds confirmed used in unaided spoken reply (for missed-drill) */
     _frozen: false,          /* true on cold-load resume until 「つづける」 tap */
     _lastAutoPlay: null,     /* prevents double-fire when re-rendering the same probe */
+    startedTs: Date.now(),   /* Stage D (v8.10) — session start, used to compute convoLog minutes on convoEnd */
+    voiceMissStreak: 0,      /* Stage D (v8.10) — double-miss rule: consecutive voice turns that landed no pool word */
+    forceChips: false,       /* Stage D (v8.10) — true for exactly one turn right after a double-miss: hides the mic, chips only */
+    lastLatencyMs: null,     /* Stage D (v8.10) — dev-only: last AI-turn round-trip latency, see _isDevMode() */
   };
   save();
   nav('convo');
@@ -9668,6 +9708,10 @@ async function convoTurn(userText, viaVoice){
   convoApplyScore(cv.judged, cv.viaVoice);
   cv.judged = null; /* consumed */
 
+  /* Stage D (v8.10) double-miss rule — this reply CONSUMES any forceChips set by
+     the previous turn (the "switch to chips" only applies to exactly one turn). */
+  cv.forceChips = false;
+
   cv.loading = true; cv.error = null; cv.listening = false;
   /* Store this turn's voice flag so the NEXT convoApplyScore call has it */
   cv.viaVoice = !!viaVoice;
@@ -9684,6 +9728,7 @@ async function convoTurn(userText, viaVoice){
 
   const key = (state.settings.anthropicKey || '').trim();
   let rawStr;
+  const _t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   try {
     /* No-key fallback: _convoScript instead of _convoCall */
     rawStr = key ? await _convoCall(windowed, cv.preamble) : _convoScript(cv.sceneId, cv.turn);
@@ -9692,6 +9737,8 @@ async function convoTurn(userText, viaVoice){
     cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
     render(); return;
   }
+  /* Stage D (v8.10) — dev-only latency readout; never rendered outside _isDevMode() */
+  cv.lastLatencyMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _t0);
 
   /* Parse — retry-once-then-recover path (never freezes) */
   let parsed = _aiJsonExtract(rawStr);
@@ -9711,6 +9758,24 @@ async function convoTurn(userText, viaVoice){
   /* Map score → landed for the downshift ladder */
   const score = (parsed.judged && typeof parsed.judged.score === 'number') ? parsed.judged.score : 0;
   parsed.landed = score;
+
+  /* Stage D (v8.10) double-miss rule (spec 5.4) — track consecutive VOICE turns
+     that landed no pool word (score 0). On the 2nd consecutive miss the partner
+     apologizes and the NEXT probe switches to chip-only input (cv.forceChips) —
+     STT stays a pure turn-trigger throughout; nothing here writes SRS/mastery. */
+  let _apology = null;
+  if(viaVoice){
+    if(score === 0){
+      cv.voiceMissStreak = (cv.voiceMissStreak || 0) + 1;
+      if(cv.voiceMissStreak >= 2){
+        _apology = 'ごめんね、つぎは えらんでね 🙏';
+        cv.forceChips = true;
+        cv.voiceMissStreak = 0;
+      }
+    } else {
+      cv.voiceMissStreak = 0;
+    }
+  }
 
   /* Downshift ladder — three distinct paths on judged.landed */
   const aiJP = parsed.jp || '';
@@ -9740,6 +9805,9 @@ async function convoTurn(userText, viaVoice){
   /* Store judged for the next convoApplyScore call */
   cv.judged = parsed.judged || null;
 
+  /* Apology overrides whatever the ladder set — double-miss always wins the display */
+  if(_apology) cv.error = _apology;
+
   /* Check end condition after potential advance */
   if(cv.turn >= cv.maxTurns || parsed.sceneDone){
     cv.loading = false;
@@ -9752,10 +9820,11 @@ async function convoTurn(userText, viaVoice){
   save();
   render();
 
-  /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free) */
+  /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free).
+     Stage D (v8.10): skip the auto-mic when forceChips is set (double-miss) — that turn is chip-only. */
   if(aiJP && didAdvance){
     _convoSpeakJP(aiJP, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen();
     });
   }
 }
@@ -9824,7 +9893,12 @@ function convoEnd(){
   const turns = cv.turn || 0;
   const xpGain = cv.sessionXp || 0;
   const _usedSet = new Set(cv.usedUnaidedly || []);
-  const _missedWordIds = (cv.pool || []).filter(w => !_usedSet.has(w.id)).map(w => w.id);
+  const _missedPoolWords = (cv.pool || []).filter(w => !_usedSet.has(w.id));
+  const _missedWordIds = _missedPoolWords.map(w => w.id);
+  /* Stage D (v8.10) — celebration-first recap notes: content-derived, capped
+     at 3, drawn straight from the seeded pool (no new AI/SRS call). Gated at
+     render time by state.settings.convoRecapNotes. */
+  const _recapNotes = _missedPoolWords.slice(0, 3).map(w => ({ id:w.id, jp:w.jp, en:w.en, romaji:w.romaji||'' }));
   /* Snapshot level/xp/leveledUpTo into recap BEFORE clearing the transient flag */
   const info = convoLevelInfo();
   cv.recap = {
@@ -9837,9 +9911,21 @@ function convoEnd(){
     spokenTurns: cv.spokenTurns || 0,
     tappedTurns: cv.tappedTurns || 0,
     missedWordIds: _missedWordIds,
+    notes: _recapNotes,
   };
   /* Consume the transient level-up flag so the celebration does not fire again on next load */
   state.settings.leveledUpTo = null;
+  /* Stage D (v8.10) — additive session-volume log, capped ~60 entries, no
+     accuracy/% field (judgment-free — volume language only). */
+  const _minutes = cv.startedTs ? Math.max(1, Math.round((Date.now() - cv.startedTs) / 60000)) : 1;
+  state.convoLog = state.convoLog || [];
+  state.convoLog.push({
+    ts: Date.now(),
+    minutes: _minutes,
+    spokenTurns: cv.spokenTurns || 0,
+    newWordsSpoken: (cv.usedUnaidedly || []).length,
+  });
+  if(state.convoLog.length > 60) state.convoLog = state.convoLog.slice(-60);
   save();
   render();
 }
@@ -10082,9 +10168,14 @@ function renderConvo(){
   const errBlock = cv.error
     ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-bottom:10px;font-weight:600;font-size:13px;color:#fcd34d;line-height:1.5">${esc(cv.error)}</div>` : '';
 
-  /* Mic button uses convoToggleListen (not convoStartListen) for the hands-free belt-and-braces pattern */
-  const micBtn = !cv.loading
+  /* Mic button uses convoToggleListen (not convoStartListen) for the hands-free belt-and-braces pattern.
+     Stage D (v8.10) double-miss rule: cv.forceChips hides the mic for exactly one turn — chips only. */
+  const micBtn = (!cv.loading && !cv.forceChips)
     ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
+
+  /* Dev-only latency readout (Stage D v8.10) — gated by _isDevMode(), never shown to normal end users */
+  const devLatency = (typeof _isDevMode === 'function' && _isDevMode() && cv.lastLatencyMs != null)
+    ? `<div class="muted" style="font-size:10px;text-align:right;margin-top:2px;opacity:.6">⏱ dev: last turn ${cv.lastLatencyMs}ms</div>` : '';
 
   return `<div style="padding:2px 2px 24px">
     ${_convoPartnerHeader(cv)}
@@ -10101,6 +10192,7 @@ function renderConvo(){
     ${listenBanner}
     <div class="convo-list" style="flex-wrap:wrap;display:flex;margin-bottom:12px">${chipBtns}</div>
     <div style="text-align:center">${micBtn}</div>
+    ${devLatency}
   </div>`;
 }
 
@@ -10115,8 +10207,25 @@ function _renderConvoRecap(cv){
   const spoken = r.spokenTurns || 0;
   const tapped = r.tappedTurns || 0;
   const missed = r.missedWordIds || [];
+  /* Stage D (v8.10) — one-tap 「これを れんしゅう」 feeds the EXISTING missed-drill
+     pathway (convoStartMissedDrill -> startRandomDrill), content-derived from this
+     session's pool. No new grading/auto-SRS write happens here. */
   const drillBtn = missed.length
-    ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">🔁 のがしたことばをドリル (${missed.length})</button>`
+    ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">これを れんしゅう 🔁 (${missed.length})</button>`
+    : '';
+  /* Stage D (v8.10) — celebration-first "did-you-mean" notes: at most 3, content-
+     derived (r.notes, built in convoEnd from the seeded pool — no new AI call).
+     Gated by state.settings.convoRecapNotes (default ON). Rendered via esc() /
+     template interpolation only — no innerHTML string-splice of raw text. */
+  const notes = (state.settings.convoRecapNotes !== false) ? (r.notes || []) : [];
+  const notesBlock = notes.length
+    ? `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 15px;margin-bottom:16px;text-align:left">
+        <div style="font-weight:700;font-size:11px;letter-spacing:.4px;color:#c9b3ff;margin-bottom:8px;text-transform:uppercase">💬 words worth another listen</div>
+        ${notes.map(n => `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;font-size:13px">
+          <span class="jp" style="font-weight:700">${esc(n.jp)}</span>
+          <span class="muted" style="font-size:12px">${esc(n.en || '')}</span>
+        </div>`).join('')}
+      </div>`
     : '';
   /* Level-up celebration — only when the recap captured a leveledUpTo name.
      r.leveledUpTo is a hardcoded kana string from CONVO_TIERS, esc()-escaped below. */
@@ -10140,6 +10249,7 @@ function _renderConvoRecap(cv){
     <div style="background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:16px;padding:16px;margin-bottom:20px;display:inline-block;min-width:200px">
       <div style="font-weight:700;font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo ? 'NEW: ' : '')}レベル ${r.convoLevel} · ${r.convoXp} / ${xpToNextDisplay} XP</div>
     </div><br>
+    ${notesBlock}
     <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
     ${drillBtn}
     <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ホームへ</button>
@@ -10167,7 +10277,7 @@ async function scCheck(){
     : '';
   const lenientBlock = fromVoice
     ? `\nThis answer was captured by SPEECH RECOGNITION, so forgive likely transcription artifacts when they don't change the meaning: homophones, kana equivalence, spacing, vowel elongation, and at most one short particle the recognizer may have dropped. Judge against the acceptable answers and the learner's evident intent. BUT still flag genuine grammar, particle-choice, or politeness mistakes a learner (not the recognizer) would make.`
-    : '\nThis answer was TYPED, so grade it as written.';
+    : '\nThis answer was TYPED, so judge it as written.';
   const prompt = `You are a warm, precise Japanese tutor for a beginner (around JLPT N5). Write ALL Japanese in HIRAGANA and KATAKANA ONLY — never kanji (the learner cannot read kanji yet). ${task}${expectBlock}${lenientBlock}
 They produced: "${input}"
 
@@ -10238,7 +10348,7 @@ function renderSentenceCoach(){
 
   const sttErr = sc.sttError ? `<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:12px;padding:11px 13px;margin-top:8px;font-weight:600;font-size:12px;color:#fcd34d;line-height:1.5">${esc(sc.sttError)}</div>` : '';
   const voiceHint = (sc.voiceUsed && !sc.loading && !sc.result && !sc.listening)
-    ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.3);border-radius:12px;padding:10px 13px;margin-top:8px"><span style="color:#9fe9cf;font-weight:900;font-size:13px;flex-shrink:0">✓</span><div style="font-weight:600;font-size:11.5px;color:#9fe9cf;line-height:1.5">Heard you. Read it back above — fix any mis-heard word, <b>then</b> Check. The coach grades what's in the box, not the raw audio.</div></div>`
+    ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(52,211,153,.09);border:1px solid rgba(52,211,153,.3);border-radius:12px;padding:10px 13px;margin-top:8px"><span style="color:#9fe9cf;font-weight:900;font-size:13px;flex-shrink:0">✓</span><div style="font-weight:600;font-size:11.5px;color:#9fe9cf;line-height:1.5">Heard you. Read it back above — fix any mis-heard word, <b>then</b> Check. The coach checks what's in the box, not the raw audio.</div></div>`
     : '';
   const loading = sc.loading
     ? `<div style="display:flex;align-items:center;gap:11px;justify-content:center;padding:24px 0 8px;color:#c9b3ff"><div style="display:flex;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#ff5d9e;animation:pulseDot 1.2s infinite"></span><span style="width:9px;height:9px;border-radius:50%;background:#b97bff;animation:pulseDot 1.2s infinite .2s"></span><span style="width:9px;height:9px;border-radius:50%;background:#9d5cff;animation:pulseDot 1.2s infinite .4s"></span></div><span style="font-weight:700;font-size:13px">Coach is reading your sentence…</span></div>`
@@ -10267,7 +10377,7 @@ function renderSentenceCoach(){
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><div style="${badgeBase}${vv.badge}">${vv.icon}</div><div style="font-weight:800;font-size:15px;color:#fff">${esc(r.headline || '')}</div></div>
         <div style="font-weight:500;font-size:13px;line-height:1.6;color:#e7e0f5">${esc(r.why || '')}</div>
       </div>
-      ${forgave ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.32);border-radius:13px;padding:11px 13px;margin-top:9px"><span style="font-size:14px;flex-shrink:0">🎙</span><div style="font-weight:600;font-size:11.5px;color:#c9b3ff;line-height:1.5">Forgave a likely mis-hear — <b style="color:#fff">${esc(forgave)}</b>. Graded on what you meant, not the recognizer's slip.</div></div>` : ''}
+      ${forgave ? `<div style="display:flex;gap:9px;align-items:flex-start;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.32);border-radius:13px;padding:11px 13px;margin-top:9px"><span style="font-size:14px;flex-shrink:0">🎙</span><div style="font-weight:600;font-size:11.5px;color:#c9b3ff;line-height:1.5">Forgave a likely mis-hear — <b style="color:#fff">${esc(forgave)}</b>. Matched on what you meant, not the recognizer's slip.</div></div>` : ''}
       ${r.corrected ? `<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:15px 16px;margin-top:11px"><div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#9fe9cf;text-transform:uppercase;margin-bottom:8px">Most natural here</div><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-family:'Noto Sans JP';font-weight:700;font-size:20px;line-height:1.4">${esc(r.corrected)}</div><button onclick="speakJP('${jsEsc(r.corrected)}')" style="flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:16px;cursor:pointer">🔊</button></div></div>` : ''}
       ${alts.length ? `<div style="margin-top:11px"><div style="font-weight:800;font-size:9px;letter-spacing:2px;color:#8a80a8;text-transform:uppercase;margin:0 4px 9px">Other ways to say it</div><div style="display:flex;flex-direction:column;gap:8px">${altRows}</div></div>` : ''}
       <button onclick="scNextPrompt()" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.35);cursor:pointer">${free ? 'Clear' : 'Next prompt →'}</button>
@@ -11071,9 +11181,8 @@ function renderKanaBlitz(){
       <h2 style="margin-top:0">Kana Blitz complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startKanaBlitz('${esc(kb.scope)}')">Drill again</button>
@@ -11121,7 +11230,7 @@ function renderKanaBlitz(){
   return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
     <div style="font-size:80px;text-align:center;font-weight:900;line-height:1;padding:14px 0">${esc(item.k)}</div>
     <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
-      ${correct ? '✓ correct' : '✗ wrong'}
+      ${correct ? '✓ correct' : '○ missed'}
     </div>
     <div style="text-align:center;font-size:14px;margin-bottom:6px">
       <span class="muted">Answer:</span> <b>${esc(item.r)}</b>
@@ -11432,9 +11541,8 @@ function renderSentenceBlitz(){
       <h2 style="margin-top:0">Sentence Blitz complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
         Pool mastery: <b>${counts.retired}</b> / ${counts.total} retired · ${counts.learning} learning · ${counts.unseen} unseen
@@ -11483,7 +11591,7 @@ function renderSentenceBlitz(){
   return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
     <div class="jp" style="font-size:26px;text-align:center;font-weight:700;line-height:1.4;padding:14px 8px">${esc(item.jp)}</div>
     <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
-      ${correct ? '✓ correct' : '✗ wrong'}
+      ${correct ? '✓ correct' : '○ missed'}
     </div>
     <div style="text-align:center;font-size:16px;margin:6px 0 4px;color:var(--text)">
       ${esc(item.en)}
@@ -12107,9 +12215,8 @@ function renderPhraseBlitz(){
       <h2 style="margin-top:0">Phrase drill complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
         ${esc(scope)}: <b>${counts.retired}</b> / ${counts.total} mastered · ${counts.learning} learning · ${counts.unseen} unseen
@@ -12288,7 +12395,7 @@ function renderPhraseBlitz(){
     <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:6px">${esc(item.en)}</div>
     <div class="jp" style="font-size:26px;text-align:center;font-weight:700;line-height:1.4;padding:8px">${esc(item.jp)}</div>
     <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
-      ${correct ? '✓ correct' : '✗ wrong'}
+      ${correct ? '✓ correct' : '○ missed'}
     </div>
     ${!correct && pb.input ? `<div class="feedback-smart" style="margin-top:10px">You wrote: <b>${esc(pb.input)}</b></div>` : ''}
     <div class="spacer"></div>
@@ -12667,9 +12774,8 @@ function renderVariationBlitz(){
       <h2 style="margin-top:0">Variation drill complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
         <b>${counts.drillsDone}</b> / ${counts.totalDrills} intents fully mastered · ${counts.retiredVariants} / ${counts.totalVariants} variants retired
@@ -13175,9 +13281,8 @@ function renderSimilar(){
       <h2 style="margin-top:0">Similar drill complete</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${pct}%</div><div class="stat-label">Accuracy</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Wrong</div></div>
+        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
       </div>
       <div class="spacer"></div>
       <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">Drill again</button>
@@ -15772,7 +15877,7 @@ async function _buildAiQaSendToClaude(step, transcript){
     if(state.buildMode === b && !b._paused) buildAutoReveal();
   } catch(e){
     log('build_ai_qa_err', {err: String(e.message || e)});
-    showToast('AI reply failed — using scripted answer.', {tone:'warn'});
+    showToast('Switched to a scripted line for a moment.', {tone:'warn'});
     step._aiFailCount = (step._aiFailCount || 0) + 1;
     step._aiMode = false;
     step._aiReplyJp = null;
@@ -17573,7 +17678,7 @@ function renderSpeakDrillSession(){
           <span style="font-size:22px">🎙️</span>
           <span>Listening… speak now</span>
         </button>
-        <div style="font-size:11px;color:var(--dim);margin-top:10px">say it clearly${s.autoMode ? ' · scores itself when it hears you' : ' · tap to stop'}</div>
+        <div style="font-size:11px;color:var(--dim);margin-top:10px">say it clearly${s.autoMode ? ' · moves on when it hears you' : ' · tap to stop'}</div>
       </div>`;
   } else if(s.autoMode){
     /* Hands-free idle: mic is about to open itself. Manual start optional. */
@@ -17714,7 +17819,7 @@ function renderBuildModeStart(){
     ? 'First roll — callbacks filled with fresh deck picks.'
     : `${seqLen} prior generation${seqLen === 1 ? '' : 's'} — cold callbacks drawn from coldest.`;
   const hasFood = (state.words || []).some(w => w.pos==='n' && w.theme==='food' && !hasKatakana(w.jp));
-  const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> no hiragana food nouns in your deck. Enable the N5 pack in Settings, or dice rolls will fail.</div></div>` : '';
+  const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> no hiragana food nouns in your deck. Enable the N5 pack in Settings, or dice rolls will come up empty.</div></div>` : '';
 
   /* v6.12.14 — surface lesson history so the user can see what the app
      remembers. New lesson generation already biases callbacks toward words
@@ -17909,7 +18014,7 @@ function renderBuildModeStep(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
-          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — listens, scores, falls back to type after 2 misses">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
+          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — listens, and switches to typing after 2 misses in a row">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
@@ -19053,10 +19158,40 @@ function _spineSelfTest(){
 }
 window._spineSelfTest = _spineSelfTest;
 
+/* Stage D (v8.10) — weekly おしゃべり summary, built from state.convoLog.
+   Volume language ONLY (sessions/minutes/turns/new words) — no %, no
+   "accuracy", by design (judgment-free copy sweep, criterion 2 + 4).
+   Returns '' when there's no convo activity in the last 7 days, so it
+   never renders an empty/zeroed card. */
+function _convoWeeklySummary(){
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent = (state.convoLog || []).filter(e => e && e.ts >= cutoff);
+  if(!recent.length) return null;
+  return recent.reduce((acc, e) => ({
+    sessions: acc.sessions + 1,
+    minutes: acc.minutes + (e.minutes || 0),
+    spokenTurns: acc.spokenTurns + (e.spokenTurns || 0),
+    newWordsSpoken: acc.newWordsSpoken + (e.newWordsSpoken || 0),
+  }), { sessions:0, minutes:0, spokenTurns:0, newWordsSpoken:0 });
+}
+function _convoWeeklyCardHtml(){
+  const s = _convoWeeklySummary();
+  if(!s) return '';
+  return `
+    <div class="card">
+      <h3 style="margin-top:0">💬 This week's おしゃべり</h3>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.sessions}</div><div class="muted" style="font-size:10px">SESSIONS</div></div>
+        <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.minutes}</div><div class="muted" style="font-size:10px">MINUTES</div></div>
+        <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.spokenTurns}</div><div class="muted" style="font-size:10px">TURNS SPOKEN</div></div>
+        <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.newWordsSpoken}</div><div class="muted" style="font-size:10px">WORDS SPOKEN</div></div>
+      </div>
+    </div>`;
+}
+
 function renderProgress(){
   const core = progConversationalCore();
   const c = progStageCounts();
-  const acc = progAccuracy();
   const series = reconstructWeekly();
   const vals = progLadderValues();
   const longest = (state.streak && state.streak.longest) || 0;
@@ -19078,7 +19213,7 @@ function renderProgress(){
         <h2 style="margin:0">💬 Conversational core</h2>
         <span style="font-size:28px;font-weight:800;color:var(--blue)">${core.pct}%</span>
       </div>
-      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation. "Producible" = words you've got right at least 3× with ≥70% accuracy (solid), plus SRS-mature & mastered.</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation. "Producible" = words you've got right consistently (solid), plus SRS-mature & mastered.</div>
       ${subBars}
     </div>`;
 
@@ -19092,7 +19227,6 @@ function renderProgress(){
     /* compare to ~4 weeks ago (or the earliest we have) */
     const backIdx = Math.max(0, series.length - 5);
     const back = series[backIdx];
-    const accNow = Math.round(acc.all * 100);
     const compare = (lab, then, now2, suffix) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
         <span style="font-size:13px">${lab}</span>
@@ -19103,12 +19237,11 @@ function renderProgress(){
         <h3 style="margin-top:0">📈 Since you started</h3>
         <div class="muted" style="font-size:11px;margin-bottom:6px">Reconstructed from your actual practice history (${weeksSpan} week${weeksSpan===1?'':'s'} of data, ${totalAttempts} attempts logged).</div>
         ${compare('Words encountered', back.cumWords, nowWk.cumWords, '')}
-        ${compare('Accuracy (that week → recent)', Math.round(back.acc*100), accNow, '%')}
         ${compare('First practiced', first.label, nowWk.label, '')}
       </div>`;
   }
 
-  /* weekly charts — new words/week + accuracy/week */
+  /* weekly charts — new words/week */
   let chartCard = '';
   if(series.length){
     const recent = series.slice(-12);
@@ -19119,23 +19252,17 @@ function renderProgress(){
         <div title="${w.newWords} new" style="width:70%;height:${h}px;background:var(--blue);border-radius:3px 3px 0 0"></div>
         <div class="muted" style="font-size:8px;white-space:nowrap">${w.label}</div>
       </div>`; }).join('');
-    const accBars = recent.map(w => {
-      const a = Math.round(w.acc * 100);
-      const col = a >= 80 ? '#22c55e' : a >= 60 ? '#f59e0b' : '#ef4444';
-      const h = Math.round(6 + 46 * w.acc);
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0">
-        <div title="${a}% (${w.att} attempts)" style="width:70%;height:${h}px;background:${col};border-radius:3px 3px 0 0"></div>
-        <div class="muted" style="font-size:8px;white-space:nowrap">${w.label}</div>
-      </div>`; }).join('');
     chartCard = `
       <div class="card">
         <h3 style="margin-top:0">New words per week</h3>
         <div style="display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:6px">${newBars}</div>
-        <h3 style="margin-top:16px">Accuracy per week</h3>
-        <div class="muted" style="font-size:11px;margin-bottom:4px">Green ≥80% · amber ≥60% · red below.</div>
-        <div style="display:flex;align-items:flex-end;gap:3px;height:60px">${accBars}</div>
       </div>`;
   }
+
+  /* Stage D (v8.10) — weekly おしゃべり summary card. Replaces the old
+     "Accuracy per week" chart with volume language only (no %/accuracy),
+     built from the additive state.convoLog (judgment-free copy sweep). */
+  const convoWeekCard = _convoWeeklyCardHtml();
 
   /* mastery distribution + consistency + conjugation */
   const curWeek = series.length ? series[series.length - 1] : { att:0 };
@@ -19147,14 +19274,15 @@ function renderProgress(){
         ${[['new',c.new,'#64748b'],['learning',c.learning,'#f59e0b'],['solid',c.solid,'#a78bfa'],['mature',c.mature,'#3b82f6'],['mastered',c.mastered,'#22c55e']]
           .map(([lab,v,col]) => `<div style="flex:1;min-width:54px;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
       </div>
-      <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words · overall accuracy ${Math.round(acc.all*100)}% · on mature words ${Math.round(acc.mature*100)}%</div>
-      <div class="muted" style="font-size:11px;margin-top:4px">Solid = 3+ correct & ≥70% accuracy (counts toward producible before SRS-mature).</div>
+      <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words in your deck.</div>
+      <div class="muted" style="font-size:11px;margin-top:4px">Solid = 3+ correct in a row (counts toward producible before SRS-mature).</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0">🔥 Consistency</h3>
       <div style="display:flex;gap:6px">
-        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">CURRENT STREAK</div></div>
-        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${longest}</div><div class="muted" style="font-size:10px">LONGEST</div></div>
+        ${state.settings.hideStreak ? '' : `
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">いっしょ の ひ</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${longest}</div><div class="muted" style="font-size:10px">LONGEST</div></div>`}
         <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${curWeek.att}</div><div class="muted" style="font-size:10px">REVIEWS THIS WK</div></div>
       </div>
     </div>
@@ -19190,7 +19318,7 @@ function renderProgress(){
 
   const forwardNote = `<div class="card" style="background:rgba(167,139,250,0.08)"><div class="muted" style="font-size:12px;line-height:1.5">📸 A weekly snapshot is now being saved. Your mature / producible curve was reconstructed from practice history above and becomes <b>exact</b> from this week forward — check back in 2-4 weeks to watch it move.</div></div>`;
 
-  return headline + sinceCard + chartCard + statusCard + ladderCard + forwardNote;
+  return headline + sinceCard + chartCard + convoWeekCard + statusCard + ladderCard + forwardNote;
 }
 
 /* Home's collapsed spine header + expandable detail sheet (Stage C, §7.1
@@ -19337,7 +19465,7 @@ function _dailyPathModel(){
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
     { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
-    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-scored' }
+    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
   ];
   steps.forEach(s => { s._done = !!_dp.done[s.key] || !!s.auto; });
   const curIdx = steps.findIndex(s => !s._done);
@@ -19854,8 +19982,6 @@ function renderPractice(){
   const active = getActiveWords();
   const streak = state.streak.current || 0;
   const totalAttempts = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.length||0),0);
-  const totalCorrect = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.filter(a=>a.correct).length||0),0);
-  const acc = totalAttempts ? Math.round(100*totalCorrect/totalAttempts) : 0;
   /* convoLevelInfo for the おしゃべり tile tier/XP display */
   const _convoInfo = convoLevelInfo();
   const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
@@ -19926,7 +20052,7 @@ function renderPractice(){
        so picking a topic then Begin gave random words. Vocab Spam honors the
        section (and transparently widens with a toast if the section is thin). */
     heroAction = voiceOn ? 'startBuildModeVocabSpam()' : 'startBlitz()';
-    if(voiceOn) heroMeta = `${heroMeta} · audio-led, voice-scored`;
+    if(voiceOn) heroMeta = `${heroMeta} · audio-led, hands-free`;
   }
 
   /* Top bar — settings icon · wordmark · streak */
@@ -20075,7 +20201,7 @@ function renderPractice(){
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
     { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
-    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-scored' }
+    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
   ];
   const isDone = s => !!_dp.done[s.key] || !!s.auto;
   let curIdx = pathSteps.findIndex(s => !isDone(s)); if(curIdx < 0) curIdx = -1;
@@ -20110,7 +20236,7 @@ function renderPractice(){
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
         <div class="h8-row-body">
           <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}${_convoInfo.en ? ' · ' + esc(_convoInfo.en) : ''}</span></div>
-          <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-scored</div>
+          <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-led</div>
           <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
           <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
         </div>
@@ -20134,16 +20260,20 @@ function renderPractice(){
       </button>
     </div>`;
 
-  /* Stats footer */
-  const statsRow = `
-    <div class="h8-stats">
+  /* Stats footer — Stage D (v8.10): 「いっしょ の ひ」 streak reframe (hideable via
+     Settings), Accuracy% replaced by a volume-language review count. */
+  const _hideStreak = !!state.settings.hideStreak;
+  const streakBox = _hideStreak ? '' : `
       <div class="h8-stat">
         <div class="h8-stat-num flame">${streak}</div>
-        <div class="h8-stat-label">Streak</div>
-      </div>
+        <div class="h8-stat-label">いっしょ の ひ</div>
+      </div>`;
+  const statsRow = `
+    <div class="h8-stats" style="${_hideStreak ? 'grid-template-columns:1fr 1fr' : ''}">
+      ${streakBox}
       <div class="h8-stat">
-        <div class="h8-stat-num">${acc}%</div>
-        <div class="h8-stat-label">Accuracy</div>
+        <div class="h8-stat-num">${totalAttempts}</div>
+        <div class="h8-stat-label">Reviews</div>
       </div>
       <div class="h8-stat">
         <div class="h8-stat-num accent">${active.length}</div>
@@ -20682,13 +20812,12 @@ function libraryRenderList(){
     const st = state.stats[w.id];
     const attempts = st?.attempts?.length || 0;
     const correctCount = st?.attempts?.filter(a => a.correct).length || 0;
-    const acc = attempts ? Math.round(100*correctCount/attempts) : 0;
     const next = (st && st.smInterval) ? smIntervalLabel(st.smInterval) : '—';
 
     const tray = !expanded ? '' : `
       <div style="border-top:1px solid var(--border);padding:10px 4px 4px;margin-top:8px">
         <div class="muted" style="font-size:12px;margin-bottom:8px">
-          ${attempts} attempts · ${acc}% accuracy · next ${esc(next)}
+          ${attempts} attempts · ${correctCount} correct · next ${esc(next)}
         </div>
         <div class="btn-row">
           <button class="btn ${focused ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="libraryFocusToggle('${jsEsc(w.id)}')">${focused ? '⭐ Unfocus' : '⭐ Focus'}</button>
@@ -20818,7 +20947,7 @@ function renderLibrary(){
           ${sortOption('en', 'EN A→Z')}
           ${sortOption('jp', 'JP あ→ん')}
           ${sortOption('seen', 'Last seen')}
-          ${sortOption('struggle', 'Most-wrong recent')}
+          ${sortOption('struggle', 'Needs another look')}
         </select>
       </div>
       <div class="spacer"></div>
@@ -21154,8 +21283,8 @@ function renderParticles(){
     ${ans ? '' : `<div class="tags" style="justify-content:center">
       ${PARTICLE_OPTIONS.map(p => `<button class="tag" onclick="answerParticle('${jsEsc(p)}')">${p}</button>`).join('')}
     </div>`}
-    ${ans ? `<div class="feedback-card ${isCorrect?'correct':'wrong'}">
-      <div class="feedback-head">${isCorrect?'✓ Correct':'✗ Wrong — accepted: '+accept.map(esc).join(' / ')}</div>
+    ${ans ? `<div class="feedback-card ${isCorrect?'correct':'miss'}">
+      <div class="feedback-head">${isCorrect?'✓ Correct':'→ Also accepted: '+accept.map(esc).join(' / ')}</div>
       <div class="feedback-body" style="line-height:1.7">${particleJPRevealed(d, cur.blankIdx, ans, isCorrect)}</div>
       ${!isCorrect ? `<div class="feedback-smart">${esc(blank.explain)}</div>` : ''}
     </div>
@@ -21271,6 +21400,10 @@ function renderSettings(){
         <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in おしゃべり conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
         <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 recap notes</div><div class="word-en">On: the おしゃべり wrap-up shows up to 3 "words worth another listen" notes + a one-tap practice button. Off: recap is celebration-only, no notes.</div></div>
+        <input type="checkbox" ${s.convoRecapNotes!==false?'checked':''} onchange="toggleSetting('convoRecapNotes')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔥 「いっしょ の ひ」 streak</div><div class="word-en">Off: hide the daily-practice streak from Home / Practice / Progress. It still counts quietly in the background either way.</div></div>
+        <input type="checkbox" ${s.hideStreak?'':'checked'} onchange="toggleSetting('hideStreak')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり your name</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
         <input type="text" value="${esc(s.userName||'')}" oninput="setUserName(this.value)" placeholder="your name" style="width:120px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:14px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
@@ -21879,7 +22012,7 @@ async function sendAskClaude(){
       logEl.insertAdjacentHTML('beforeend', `<div class="chat-msg err">Request failed: ${esc(String(e.message||e))}</div>`);
       scrollChatToBottom();
     }
-    if(status) status.textContent = 'error';
+    if(status) status.textContent = 'try again';
     log('ask_claude_err',{err:String(e.message||e)});
   } finally {
     if(btn) btn.disabled = false;
