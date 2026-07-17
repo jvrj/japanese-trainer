@@ -36,6 +36,9 @@ implementation sketch a follow-on `/hydra-forge` builds from.
   hue/glow, inward rings = listening, outward rings = speaking, chips-on-stall at 6s,
   tap-to-peek) is the validated **base to evolve, not re-open** (owner, 2026-07-17:
   *"i kind of like it as a very base form… the options that come up are good"*).
+  *Provenance note (synthesis, code-review finding):* the mockup was a chat-session
+  artifact and has no in-repo file or commit; §3 of this doc is its formalization of
+  record, and the Stage-T1 orb module becomes the canonical committed artifact.
 
 ### 1.3 Ground truth carried in
 
@@ -54,7 +57,9 @@ implementation sketch a follow-on `/hydra-forge` builds from.
 ### 1.4 Supersession (the load-bearing act of this delve)
 
 Delve 5 §3 locked **L1: the hybrid two-door IA** — Home = spine header + おしゃべり hero +
-today's path + resume chip; Practice tab; settings gear (ADR-008 filed pending). It
+today's path + resume chip; Practice tab; settings gear (ADR-008 — **Accepted**, promoted
+2026-07-17 with owner signoff; this doc's round-1 draft mislabeled it "pending", corrected
+at synthesis). It
 **rejected candidate A (おしゃべり-first)** with this reasoning: *"a true beginner cannot
 hold a conversation on minute one; landing them inside a live AI chat with no ladder is the
 fastest bail point."*
@@ -167,6 +172,7 @@ at 9538 already measures it). The mask must convert dead time into *consideratio
 | 0–450ms | listening→thinking morph completes | the state change itself absorbs the first beat |
 | 0.45–2.5s | compact + shimmer (base thinking) | reads as "she's thinking about what you said" |
 | 2.5s | **one** filler TTS: うーん… or そうですね… (random, ≤1 per turn — the Delve-5 §5.5 budget, already spec'd) | a human hums; also proves audio path is alive |
+| *(collision rule — synthesis)* | if the real reply arrives while the filler is **queued but not yet speaking**, the filler is skipped (cancel before start is inaudible); if the filler is **mid-speech**, let it finish (~≤600ms — fillers are ≤4 kana) and speak the reply immediately after via the normal queue. Never `speechSynthesis.cancel()` mid-filler (audible clip), never let the reply queue behind an unstarted filler | closes the 2.6–3s race the devils-advocate found |
 | 6s | blob adds a slow stretch-and-settle wobble | visible acknowledgment without apology |
 | 12s | apology + retry affordance: partner takes the blame (Delve-5 rule 5) — 「ごめん、ちょっと まって ね」 TTS once; peek sheet shows a retry button | never an error toast on the zen surface |
 | fetch reject | existing error path (9532–9536) sets `cv.error`; orb → idle; chips surface | degraded, never dead |
@@ -239,6 +245,16 @@ single `convoSoftCap` (default **30 advanced turns**) — the tier table keeps `
    the learner says goodbye (またね/バイバイ/さようなら/おわり) or clearly wants to stop."
    The five-key contract stays byte-identical; only prose semantics shift (§5.1). The
    `parsed.sceneDone` branch at 9609 already routes to `convoEnd()` — zero new end plumbing.
+   **Amended at synthesis (devils-advocate):** the model boolean is not the sole end
+   signal. A **deterministic client-side farewell match** on the learner's transcript
+   (the enumerated tokens above, whole-utterance or utterance-final match) is ORed with
+   `parsed.sceneDone` — the model flag cannot be the only path to an end, and a
+   hallucinated `true` cannot end a session the client sees no farewell in *silently*
+   because of the undo rule below. **False-positive floor (locks OQ-3's leaning):** the
+   recap card always carries a 「もどる」 chip — tapping it instantly resumes a new
+   session seeded with the same 6-message window, so any wrong end (model OR matcher —
+   a learner *practicing* またね trips both) costs one tap, not the session. Trust +
+   cheap undo, no confirm dialog (judgment-free).
 2. **Tap-to-end** — an unobtrusive ✕ pill (bottom corner of Talk) → confirm-free immediate
    `convoEnd()` (recap card). Judgment-free: ending is never questioned.
 3. **Idle timeout → sleep → auto-end** (§4.3).
@@ -247,7 +263,7 @@ single `convoSoftCap` (default **30 advanced turns**) — the tier table keeps `
 
 | Trigger | Behavior |
 |---|---|
-| 6s silence in listening (mockup value, kept) | **stall**: chips overlay fades in (§4.4); mic stays open |
+| 6s silence in listening (mockup value, kept) | **stall**: chips overlay fades in (§4.4); mic stays open. **Build note (qa-tester):** the existing belt-and-braces silence timer (`_armSilenceTimer` inside `convoToggleListen`, 9780–9794) currently calls `convoStopListen()` (9768–9772) at the same 6s and **closes the mic** — on the endless path its timeout action is **repurposed to the stall handler** (surface chips, re-arm the timer, keep listening); `convoStopListen` fires only at the ladder's explicit mic-close rungs (sleep, forceChips, end). Scoped into Stage T2. |
 | listening window ends with nothing (SR `onend`, no result) ×1 | orb re-opens mic once, silently |
 | ×2 (double empty listen) + total silence ≥45s | orb asks **once**: 「まだ いますか?」 (are you still there?) with chips 「うん、いるよ」/「またね」 |
 | no response 30s after that | **sleep**: session freezes (`cv._frozen` — the flag already exists and gates the auto-mic chain at 9624), orb → idle breathing, mic closed. Tap resumes exactly where it left off. |
@@ -275,17 +291,30 @@ Two orthogonal detectors, kept orthogonal:
 
 - **SRS:** already boundary-free — `convoApplyScore` (9631) credits per turn as the next
   turn arrives. No change.
-- **XP:** currently awarded in `convoEnd`. LOCKED: XP accrues **per advanced turn**
-  (the `didAdvance` paths, 9581–9600), recap shows the session total. An endless session
-  that dies by tab-kill loses nothing.
+- **XP:** *corrected at synthesis (qa-tester)* — XP **already accrues per turn** today:
+  `convoTurn` calls `convoApplyScore(cv.judged, cv.viaVoice)` at the top of every turn
+  (9505), which calls `convoAddXp(1)` per unaided-spoken resolved word (9668);
+  `convoEnd` only flushes the final turn's judged object (9683). The round-1 premise
+  "currently awarded in convoEnd" was wrong. **No XP change needed** — an endless
+  session that dies by tab-kill already loses at most the un-flushed final turn. The
+  recap continues to show `cv.sessionXp`. The net-new T2 credit work is the convoLog
+  checkpointing below, not XP.
 - **convoLog:** currently appended once in `convoEnd` (2929–2930). LOCKED: **checkpoint
   every 10 advanced turns** (upsert the open session's row by `startedTs`) + final write on
   end/sleep-death — tab-kill loses ≤10 turns of volume stats, never the session.
 - **Cost guard (the BYO-key collision, confronted):** per-turn cost on the default
   `claude-haiku-4-5` (9314) ≈ 1.8k tokens in (preamble ~1.2k + 6-message window) + ≤400 out
-  (9318) ≈ **$0.003/turn**; a heavy 100-turn day ≈ $0.30; a runaway month ≈ $9 — real money
-  on the owner's personal key, and structurally unshippable to paying customers without
-  Phase-1 metering. LOCKED, three tiers:
+  (9318). *Pricing source (added at synthesis, code-review):* Anthropic list pricing for
+  Claude Haiku 4.5 is **$1/MTok input, $5/MTok output** (per the claude-api model catalog,
+  cached 2026-06), giving 1.8k×$1/M ≈ $0.0018 + ≤400×$5/M ≈ $0.0020 = **≤ $0.004/turn**
+  (typical ≈ $0.003); a heavy 100-turn day ≈ $0.30–0.40; a runaway month ≈ $9–12 — real
+  money on the owner's personal key, and structurally unshippable to paying customers
+  without Phase-1 metering. *Prompt-caching note (devils-advocate, checked):* `_convoCall`
+  sends no `cache_control` (9318), but adding one is a **no-op on this model** — Haiku
+  4.5's minimum cacheable prefix is **4096 tokens** and the near-static preamble is only
+  ~1.2k, so the marker would silently never cache (`cache_creation_input_tokens: 0`).
+  Revisit if the preamble grows past ~4k or the model moves to a lower-floor tier.
+  LOCKED, three tiers:
   1. **Soft wrap** at `convoSoftCap` (30 advanced turns): the partner *naturally* suggests
      a break in-character — 「たくさん はなした ね!すこし やすむ?」 with chips
      「まだ はなす!」/「またね」. Choosing to continue resets the wrap counter. Never a
@@ -298,6 +327,10 @@ Two orthogonal detectors, kept orthogonal:
   - **Commercial note (scope boundary):** these guards protect the *BYO-key era*. Phase-1
     server metering replaces tier 2 wholesale; tier 1 (soft wrap) survives as pedagogy.
     This delve deliberately does not design Phase-1 metering (charter exclusion).
+  - **Threat model (clarified at synthesis):** tier 2 is *self-awareness for the person
+    who pays for the key*, not enforcement against an adversary — in the BYO era every
+    user spends their own money, so a localStorage counter being editable is by design,
+    not a hole. Adversarial metering is exactly what ADR-004's server proxy exists for.
 
 ---
 
@@ -306,17 +339,27 @@ Two orthogonal detectors, kept orthogonal:
 ### 5.1 Free talk without a scene
 
 - LOCKED: a new pseudo-scene **`free`** (`{ id:'free', nameJP:'フリートーク', en:'Free talk',
-  minLevel:1 }`) becomes the **default Talk session**. In `_convoPreamble`, when
-  `scene === free`, the SCENE line (9272–9273) is replaced by: *"No scene. Open with a warm
-  greeting and one easy question about the learner's day, then follow wherever they go."*
-  — and the `sceneDone` guideline (9296) becomes the farewell semantics (§4.2.1).
+  minLevel:1 }`) becomes the **default Talk session**. *Wiring corrected at synthesis
+  (code-review):* as coded, neither seam can see 'free' — `startConvo`'s scene resolution
+  (9447–9449: `SCENES.filter(...).find(s => s.id === sceneId) || available[0]`) would
+  silently fall back to `intro` because `free` is not in the 6-scene `SCENES` bank
+  (2858–2865), and `_convoPreamble(pool, freeSet, scene, partner)` (9230) receives the
+  pre-formatted display string `scene.nameJP + ' かいわ'` (9454), never the raw id. Two
+  explicit T2 build items therefore accompany the lock: (a) `startConvo` gains a
+  `free`-branch **before** the bank lookup (a module-level `FREE_SCENE` constant, not a
+  `SCENES` entry — the bank stays closed); (b) `_convoPreamble` gains a 5th `sceneId`
+  parameter (callers pass `scene.id`) and branches on `sceneId === 'free'`, replacing the
+  SCENE line (9272–9273) with: *"No scene. Open with a warm greeting and one easy question
+  about the learner's day, then follow wherever they go."* — and the `sceneDone` guideline
+  (9296) becomes the farewell semantics (§4.2.1).
 - The six existing `SCENES` (2858–2865) survive as **topic sparks**: reachable from the Talk
   screen's peek sheet ("きょうの トピック?") and from the spine's summit steps (Delve-5 L8
   unbroken — summit scenes still exist for stage graduation). The FOLLOW-THE-LEARNER
   contract already makes any scene a starting point, not a script (9273).
-- `startConvo('free')` is the orb-tap target; `minLevel` gating (2989-era logic) does not
-  apply to `free` (available from tier 1 — the scaffold burden moves to chips + downshift,
-  §7).
+- `startConvo('free')` is the orb-tap target; `minLevel` gating (the tier filter at
+  9447–9448 — the round-1 draft miscited this as "2989-era logic"; 2989 is inside the
+  unrelated ROMAJI_KANA table) does not apply to `free` (available from tier 1 — the
+  scaffold burden moves to chips + downshift, §7).
 
 ### 5.2 Hands-free orchestration — the orb subscribes to existing seams
 
@@ -329,7 +372,7 @@ called from exactly these five seams:
 |---|---|---|
 | `_convoSpeakJP` entry (9384) | `_orbSet('speaking', {jp})` | speaking, envelope from `jp` |
 | its `onend`/`onerror` fire | (chain already calls `convoToggleListen`) | → listening via next seam |
-| recognition `onstart` (inside `convoToggleListen`'s SR setup) | `_orbSet('listening')` | listening |
+| `convoToggleListen` body, where `cv.listening = true` is set (~9784) — *corrected at synthesis: no SR `.onstart` handler exists anywhere in source (the only `.onstart` is on a TTS utterance, 5136); `startVoice` (5177) wires only `onresult`/`onerror`/`onend`. The listening call is added at the existing synchronous state-set, still a wrap at a named seam, not a rewire* | `_orbSet('listening')` | listening |
 | `convoTurn` entry (after 9512 `cv.loading = true`) | `_orbSet('thinking')` | thinking + mask timers |
 | response rendered / error / `convoEnd` / `_frozen` | `_orbSet('speaking'…)` or `_orbSet('idle')` | close the loop |
 
@@ -417,10 +460,15 @@ Nothing here writes SRS (9562 comment stands).
   of Home. The `nav()` onboarding gate (18570: `home && !onboard.done → onboard`) extends
   to `talk`.
 - **No-key case at the orb:** `convoTurn`'s keyless branch (9531) already serves
-  `_convoScript`; the orb presents identically. The 5-turn script bank cycling is
-  serviceable-but-thin for an *endless* front door — expanding `_CONVO_SCRIPT_TURNS` to
-  ~15 turns with branch-on-chip variety is scoped into stage T5 (content work, no
-  architecture).
+  `_convoScript`; the orb presents identically — **but not endlessly, as coded
+  (qa-tester, FATAL):** `_convoScript` returns `sceneDone: !!(turn.sceneDone) ||
+  (turnIdx >= 4)` (9344), unconditionally hard-ending every keyless session on turn 5
+  (a hardcoded index compare, so growing the bank does not fix it), and the bank's last
+  turn also carries `sceneDone:true`. **The 9344 end condition is an architecture fix
+  scoped into Stage T2** (drop the `turnIdx >= 4` clause; keyless ends follow the same
+  farewell-match / tap-to-end / sleep ladder as live sessions, with the bank cycling
+  modulo its length as it already does). Expanding `_CONVO_SCRIPT_TURNS` to ~15 turns
+  with branch-on-chip variety remains stage-T5 content work.
 - **<90s lock reconciliation:** untouched — same flow, same budget, different landing
   screen. The budget clock still ends at the OB-3 first spoken exchange, before Talk.
 
@@ -450,7 +498,7 @@ his own week-long test — §8).
 
 | Delve-5 lock | Status here |
 |---|---|
-| L1 two-door IA (ADR-008 pending) | **superseded**: front door = Talk; Home demoted to drawer. ADR proposal §12 |
+| L1 two-door IA (ADR-008 — **Accepted** 2026-07-17, not pending as round-1 drafted) | **superseded** (gated): front door = Talk; Home demoted to drawer — contingent on the L12a interim probe (§8-T2 gate). ADR-010 filed pending (§12) |
 | L2 verdict table + deletions | intact (all shipped) |
 | L3 onboarding <90s | intact; landing amended to `talk` (§6.2) |
 | L4/ADR-009 judgment-free spec | intact; extended to orb copy (§4.3, §5.3) |
@@ -482,6 +530,23 @@ point"* (conclusion). Each premise is removed structurally:
    tap, and every tap is spoken aloud by TTS so the loop stays audio-led. Chips relax to
    stall-only when tier ≥2 or 3 sessions done. This is the ladder *inside* the
    conversation.
+   **Guided-mode mic contract (locked at synthesis, qa-tester):** during guided sessions
+   `convoHandsFree` auto-listen (2789) **stays armed in parallel** with the visible chips
+   — the loop remains audio-led and speaking is always available. The silence/mishear
+   ladders still run, with one rule making the walk testable: **a chip tap resolves any
+   stall rung** (clears the silence timer, `voiceMissStreak`, and any pending re-ask),
+   and the apology-`forceChips` rung is a no-op while chips are already always-on (the
+   partner still takes the blame verbally; input mode is unchanged because it already
+   includes chips).
+   **Chips-vs-learn-by-speaking reconciliation (devils-advocate):** a chip tap is
+   recognition, not production — the doc does not pretend otherwise. The design's claim
+   is narrower: chips keep the *loop* alive so production can happen on the turns the
+   learner can manage, and the app's **existing credit economy already biases toward
+   speaking** — chip taps earn 0 XP and no SRS ease bump (9662–9674: `smGrade`/XP fire
+   only on unaided voice). The scaffold saves the bail point without rewarding staying
+   on it. Whether beginners actually *migrate* from taps to speech is measurable:
+   stage T5 adds a chip-vs-voice ratio line per guided session to the dev readout, and
+   OQ-2 stays open on the psychological freeze.
 3. **P3 falls — the ladder is one gesture away and signposted.** The Delve-5 path ladder
    survives in the drawer; the first-run coach mark points at it; the spine's stage-1
    summit still routes through structured scenes. A beginner who wants "teach me first"
@@ -523,15 +588,27 @@ Phase 1. This section is the follow-on `/hydra-forge` brief.
 
 ### Stage T2 — Endless engine (still on the convo screen)
 
-- **Build:** `free` pseudo-scene + preamble branch (§5.1, `_convoPreamble` 9230); farewell
-  semantics on `sceneDone` (9296 guideline text); end-condition change at 9609 (drop
-  turn-cap end; `convoSoftCap` wrap flow §4.5.1); silence-stall ladder + sleep/auto-end
-  (§4.3) in the listen orchestration; per-turn XP + convoLog checkpointing (§4.5);
-  `state.convoDailyTurns` guard; messages array cap 40 (9521 vicinity); dev cost line
-  (5390 gate).
-- **Acceptance:** a session survives 40+ turns with flat per-turn payload (window
-  assertion); farewell ends it; silence path reaches sleep then auto-recap; soft-wrap
-  fires at 30 and continue resets it; tab-kill at turn 25 loses ≤10 turns of convoLog.
+- **Build:** `free` pseudo-scene + the two wiring branches from §5.1 (`startConvo`
+  free-branch before the 9447–9449 bank lookup; `_convoPreamble` `sceneId` param + branch);
+  farewell semantics on `sceneDone` (9296 guideline text) **plus the client-side farewell
+  match + 「もどる」 undo chip (§4.2.1)**; end-condition change at 9609 (drop turn-cap end;
+  `convoSoftCap` wrap flow §4.5.1); **keyless end fix at 9344** (drop `turnIdx >= 4` —
+  §6.2); silence-stall ladder + sleep/auto-end (§4.3), including **repurposing
+  `_armSilenceTimer`'s timeout from `convoStopListen` to the stall handler** (9780–9794);
+  convoLog checkpointing (§4.5 — XP is already per-turn, no change); `state.convoDailyTurns`
+  guard; messages array cap 40 (9521 vicinity); dev cost line (5390 gate).
+- **Acceptance:** a live session survives 40+ turns with flat per-turn payload (window
+  assertion); **a keyless session also survives 40+ turns** (bank cycling, no turn-5
+  hard end); farewell ends it and 「もどる」 resumes it; a 6s silence stalls with the
+  mic still open; silence path reaches sleep then auto-recap; soft-wrap fires at 30 and
+  continue resets it; tab-kill at turn 25 loses ≤10 turns of convoLog.
+- **Gate (added at synthesis — devils-advocate S1/S7): interim felt-difference probe
+  (L12a).** After T2 the owner runs **≥5 endless orb sessions on the existing convo
+  screen** and answers the charter question — does it feel different yet? A positive or
+  promising read green-lights T3/T4; a flat "no difference" **stops the IA work before it
+  starts** (T3/T4 don't build, ADR-010 is rejected rather than reversed, and the finding
+  is recorded as "Phase-1 latency/voice is the blocker"). This puts the cheapest read of
+  the central hypothesis *before* the IA risk instead of after it.
 
 ### Stage T3 — The Talk screen (reachable, not yet default)
 
@@ -565,9 +642,11 @@ Phase 1. This section is the follow-on `/hydra-forge` brief.
   guided-chips counter tuning (§7.2); any panel-accepted refinements.
 
 **Ordering rationale:** presentation first (T1, zero logic risk), engine second (T2,
-testable on the old screen), new surface third (T3, additive), the irreversible-feeling
-flip last (T4) — and even T4 is a setting, not a rewrite. The never-break invariant holds
-at every boundary because the engine seams (§5.2) are wrap-points, not rewires.
+testable on the old screen), **measurement third (the L12a interim probe — the premise is
+read before the IA is touched)**, new surface fourth (T3, additive), the
+irreversible-feeling flip last (T4) — and even T4 is a setting, not a rewrite. The
+never-break invariant holds at every boundary because the engine seams (§5.2) are
+wrap-points, not rewires.
 
 ---
 
@@ -581,11 +660,12 @@ at every boundary because the engine seams (§5.2) are wrap-points, not rewires.
 | L4 | **Latency-mask escalation ladder** (morph → shimmer → ≤1 filler TTS at 2.5s → wobble at 6s → blame-taking apology at 12s) (§3.4) | Phase-1 streaming collapses the ladder naturally |
 | L5 | **Perf budget §3.6** incl. 30fps auto-degrade + hidden/off-screen rAF suspension | device-lab data |
 | L6 | **Orb greets first; one-tap wake gates the cold open** (autoplay/mic gesture) (§4.1) | — |
-| L7 | **Endless session:** turn-cap end removed; ends only by farewell (via re-semanticized `sceneDone` — no schema change), tap-to-end, or the silence→sleep→auto-end ladder (§4.2–4.3) | felt-experience regression in the L12 probe |
+| L7 | **Endless session:** turn-cap end removed (incl. the keyless `turnIdx >= 4` hard end at 9344); ends only by farewell (deterministic client-side token match **OR** re-semanticized `sceneDone` — no schema change), tap-to-end, or the silence→sleep→auto-end ladder; every recap carries a 「もどる」 instant-resume chip (§4.2–4.3, §6.2) | felt-experience regression in the L12 probe |
 | L8 | **Cost guard:** soft wrap at 30 advanced turns, 150-turn/day default budget (editable), dev cost readout; never a mid-thought cutoff (§4.5) | Phase-1 server metering replaces tier 2 |
 | L9 | **Free-talk default** (`free` pseudo-scene, FOLLOW-THE-LEARNER preamble branch); scenes survive as topic sparks + spine summits; **6-msg window + 40-entry array cap; no rolling-summary call** (§5.1, §5.5) | panel/field evidence that 3-exchange memory breaks the friend illusion → FACTS-accumulator fallback |
 | L10 | **Amended IA:** `talk` = front door; Delve-5 Home = drawer (content intact, hero removed); onboarding-before-orb unchanged with OB-4 → talk; legacy convo screen absorbed at T4; `frontDoor` setting makes the flip per-user reversible (§6) | owner's L12 verdict or stranger D1 data |
-| L11 | **Minute-one scaffold:** onboarding ramp + orb-speaks-first + always-visible chips for first 3 tier-1 sessions + stall/mishear floors + drawer ladder one gesture away (§7) | qa-tester walk finds an undefended freeze point |
+| L11 | **Minute-one scaffold:** onboarding ramp + orb-speaks-first + always-visible chips for first 3 tier-1 sessions (hands-free mic stays armed; a chip tap resolves any stall rung) + stall/mishear floors + drawer ladder one gesture away (§7) | qa-tester walk finds an undefended freeze point |
+| L12a | **Interim felt-difference gate:** after T2, ≥5 endless orb sessions on the existing convo screen; a "no difference" read stops T3/T4 and rejects ADR-010 before any IA change ships (§8-T2 gate) | — (it is the gate on L10, not a bet) |
 | L12 | **Felt-difference acceptance signal:** after 7 days on the flipped front door, the owner's own "does it feel like talking to someone?" verdict is collected and recorded; a "still no difference" outcome is a *finding that Phase-1 latency/voice is the blocker*, and does NOT trigger IA churn back (§1.4, §8-T4) | — (it is the measurement, not a bet) |
 
 Inline decision-notes (deliberately not ADRs — reversible, local blast radius): hue
@@ -665,3 +745,87 @@ foundation docs):
 ---
 
 *End of Round-1 primary. Adversary panel and synthesis follow per charter.*
+
+---
+
+## Synthesis (Round 1 — Delve 6)
+
+Every adversary citation was re-verified against source before adoption (`wc -l` +
+grep/read of `index.html` and this doc). One citation carried an off-by-one line number
+(noted below); no invented citations were found. Dispositions for all 17 findings:
+
+### devils-advocate (WARN)
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| S1 | L12 sits downstream of the build it should gate | **accepted** | Citation verified (§8-T4). Fixed structurally: new **L12a interim probe** after T2 (≥5 endless orb sessions on the existing convo screen) gates T3/T4; a "no difference" read rejects ADR-010 *before* any IA change ships. Baked into ADR-010's acceptance gate. |
+| S2 | Whiplash on shipped code; superseding a "not-yet-accepted" ADR | **accepted** (with factual correction) | Citation verified (§6.5). The premise "never formally accepted" is wrong — ADR-008 was **promoted to Accepted 2026-07-17** (this doc's "pending" label was the error, now corrected in §1.4/§6.5) — which makes the whiplash concern *stronger*, not weaker. Structural anti-churn now exists: ADR-010 carries numeric acceptance/reversal gates (L12a + the 7-day L12 probe), so delve-7 cannot flip the IA back without failing evidence on record. |
+| S3 | `sceneDone` overloaded as sole endless-end signal | **accepted** (modified) | Citation verified (index.html:9296 guideline text exact). Fix locked in §4.2.1: deterministic client-side farewell token match ORed with the model flag, plus a 「もどる」 instant-resume chip on every recap making any false positive (model *or* matcher — a learner practicing またね trips both) cost one tap. Pure client matching alone was rejected: it has the same practice-またね false positive, so the undo floor is the load-bearing part. |
+| S4 | Minute-one chips undercut learn-by-speaking | **accepted** (as a reconciliation gap) | Citation verified (§7 point 2). §7 now states the reconciliation explicitly: chips are recognition, the credit economy already pays 0 XP / no SRS ease for taps (9662–9674 verified), so the scaffold saves the bail point without rewarding staying on it; T5 adds chip-vs-voice ratio telemetry; OQ-2 stays open. |
+| S5 | Cost guard is client-side theater | **contested** | Citation verified (§4.5 tier 2). Mischaracterizes the threat model: in the BYO era the user IS the payer, so tier 2 is wallet self-awareness, not enforcement; an editable localStorage cap is by design. Adversarial metering is ADR-004's server proxy (Phase 1), which the doc already scopes. Clarifying "Threat model" bullet added to §4.5. |
+| S6 | Filler-TTS at 2.5s races the real reply | **accepted** | Citation verified (§3.4 table). Collision rule added to §3.4: skip filler if reply lands before it starts; if mid-speech, let it finish (≤4 kana) then speak the reply; never cancel() mid-filler. |
+| S7 | Premise concession deferred, not resolved | **accepted** | Citation verified (§1.4). Same remedy as S1 — L12a runs "T1/T2 alone, read the verdict, then decide the rest," which is exactly the finding's ask. |
+| S8 | Prompt caching a cheaper lever than the 40-entry cap | **contested** | Citation token verified at index.html:9318 (cited as 9317 — off-by-one; the quoted `body: JSON.stringify(...)` line exists, and `cache_control` is genuinely absent from `_convoCall` while used elsewhere at 15034/20389). Contested on substance: Claude Haiku 4.5's **minimum cacheable prefix is 4096 tokens**; the ~1.2k-token preamble is under the floor, so a breakpoint silently never caches and the claimed ~90% input saving cannot materialize on the default model. Recorded as a decision-note to revisit if the preamble grows past ~4k or the model tier changes. §4.5 notes it inline. |
+
+### qa-tester (WARN)
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| Q1 | Keyless "endless" hard-ends every 5 turns (FATAL) | **accepted** | Citation verified: index.html:9344 is exactly `sceneDone: !!(turn.sceneDone) \|\| (turnIdx >= 4),`. Correct and load-bearing — L7/§6.2 as drafted were unbuildable for the keyless stranger. Fix (drop the index clause; keyless follows the same end ladder) scoped into Stage T2 build + a keyless 40-turn acceptance test; bank content growth stays T5. |
+| Q2 | New 6s stall collides with existing hard-close mic timer | **accepted** | Citations verified: `_armSilenceTimer` inside `convoToggleListen` (9780–9794) calls `convoStopListen()` (9768–9772, sets `cv.listening=false`) at the same 6s. §4.3 build note + Stage T2 item added: the timeout action is repurposed to the stall handler on the endless path; `convoStopListen` fires only at explicit mic-close rungs. |
+| Q3 | Guided-chips mode silent on hands-free mic | **accepted** | Citations verified (§7.2 text; `convoHandsFree` at 2789). §7 now locks the guided-mode mic contract: auto-listen stays armed, ladders still run, a chip tap resolves any stall rung, apology-forceChips is a no-op while chips are already visible — giving walk-1 a testable behavior. |
+| Q4 | XP-per-turn "LOCKED" change is already current behavior | **accepted** | Citations verified: `convoApplyScore(cv.judged, cv.viaVoice)` at 9505 inside `convoTurn`; `convoAddXp(1)` at 9668 inside `convoApplyScore`. §4.5 premise corrected — XP already accrues per turn; the net-new T2 credit delta is convoLog checkpointing only, and the T2 build list no longer claims an XP change. |
+
+### code-reviewer (WARN)
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| C1 | `startConvo('free')` cannot select the free pseudo-scene | **accepted** | Verified: 9448–9449 falls back to `available[0]`; `SCENES` (2858–2865) has no `free`; and the doc's "(2989-era logic)" citation was wrong (2989 is the ROMAJI_KANA yoon table). §5.1 corrected + explicit T2 build item (a) `startConvo` free-branch before the bank lookup. |
+| C2 | `_convoPreamble`'s scene param is a display string, not an id | **accepted** | Verified: signature at 9230; call site 9454 passes `scene.nameJP + ' かいわ'`. §5.1 build item (b): new 5th `sceneId` parameter, branch on `sceneId === 'free'`. |
+| C3 | Cited "recognition onstart" seam does not exist | **accepted** | Verified: the only `.onstart` in index.html is a TTS utterance handler (5136); `startVoice` (5177) wires `onresult`/`onerror`/`onend` only, and `convoToggleListen` sets `cv.listening=true` synchronously (~9784). §5.2 seam table corrected — the listening call is added in `convoToggleListen`'s body at the existing state-set. |
+| C4 | Cost-guard thresholds rest on an unsourced per-turn price | **accepted** | Verified: no pricing source existed in-repo. §4.5 now cites Anthropic list pricing for Haiku 4.5 ($1/MTok in, $5/MTok out) and recomputes: ≤$0.004/turn worst case (~$0.003 typical). L8's 30/150 thresholds survive re-derivation (worst-case runaway month ≈ $12). |
+| C5 | The reviewed mockup has no in-repo artifact | **accepted** | Verified: no commit or file matches (a fresh content search found only false positives like "absorb"). §1.2 provenance note added: the mockup was chat-session-only; §3 is the formalization of record and the T1 orb module becomes the canonical committed artifact. No retro-recovery is possible. |
+
+### Decision-notes (heuristic ADR gate — deliberately NOT ADRs)
+
+Local, cheaply reversible implementation decisions made at synthesis; each can be undone
+in a single small edit if forge-time evidence disagrees:
+
+1. **Filler-TTS collision rule** — *Decision:* skip an unstarted filler when the reply
+   lands first; never cancel mid-filler; reply queues after a mid-speech filler. *Why:*
+   closes the 2.6–3s race without audible clipping. *Reversal cost:* one guard branch in
+   the mask timer — trivial.
+2. **Farewell = client token match OR `sceneDone`, + 「もどる」 undo chip** — *Decision:*
+   deterministic backstop plus one-tap resume on every recap. *Why:* removes the
+   single-unreliable-bit failure; makes any false positive cost one tap. *Reversal cost:*
+   drop the OR-clause / hide the chip — local to the end path.
+3. **Silence-timer repurpose** — *Decision:* `_armSilenceTimer` timeout → stall handler
+   (chips + keep listening) on the endless path; `convoStopListen` only at explicit
+   mic-close rungs. *Why:* the existing hard-close contradicted "mic stays open".
+   *Reversal cost:* restore one callback — trivial.
+4. **Guided-mode mic stays armed; chip tap resolves any stall rung** — *Decision:* §7.2
+   contract above. *Why:* makes the nervous-beginner walk testable. *Reversal cost:*
+   settings-level toggle, local.
+5. **XP premise corrected — no XP change in T2** — *Decision:* rely on the existing
+   per-turn `convoApplyScore` path; T2 credit work is convoLog checkpointing only.
+   *Why:* the drafted change already exists in production. *Reversal cost:* none (it
+   removes planned work).
+6. **Free-scene wiring** — *Decision:* `FREE_SCENE` constant outside the closed `SCENES`
+   bank + `_convoPreamble` `sceneId` param. *Why:* the lock was unbuildable as cited.
+   *Reversal cost:* two small function edits.
+7. **Prompt caching deferred** — *Decision:* no `cache_control` on `_convoCall` for now.
+   *Why:* Haiku 4.5's 4096-token minimum cacheable prefix makes it a silent no-op on the
+   ~1.2k preamble. *Reversal cost:* one line, revisit when preamble >4k or model changes.
+
+### ADR filed
+
+- **ADR-010 — Talk-mode orb front door (supersedes ADR-008's two-door IA)** →
+  `docs/decisions-pending/ADR-010-talk-mode-orb-front-door.md`. Load-bearing and costly
+  to reverse (boot route, retirement of the convo chat screen, demotion of the shipped
+  Home, all commercial imagery). Carries the L12a interim gate as its numeric acceptance
+  precondition and numeric reversal triggers, per dispositions S1/S2/S7. Promotion to
+  `docs/decisions/` remains a human step.
+
+*Round 1 closed. 17/17 findings dispositioned (15 accepted — S2 accepted with a factual
+correction — 0 accepted-deferred, 2 contested: S5, S8); 1 ADR filed pending;
+7 decision-notes recorded.*

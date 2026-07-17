@@ -10,7 +10,8 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Open work (sequenced)
 
-- **Phase 0 · De-sprawl to ONE product** — conversation-first 2-door IA (Home hero + Practice), <90s onboarding, judgment-free spec, spine, staged A–E build. No backend. *The first act of "world-class."* → **spec: `docs/delve-cycles/5-conversation-first-product.md`** (Delve 5, round 1 synthesized; forge brief = its §9; ADR-008/009 pending).
+- **Phase 0 · De-sprawl to ONE product** — conversation-first IA, <90s onboarding, judgment-free spec, spine, staged A–E build (A–E shipped v8.08–v8.11). No backend. → parent IA record: `docs/delve-cycles/5-conversation-first-product.md` (its §3 front door superseded by Delve 6; other locks intact per Delve 6 §6.5).
+- **Phase 0.5 · Talk-mode orb front door** — canvas orb presence + endless session + Talk-as-boot-screen, gated: the L12a interim probe after stage T2 decides whether the IA flips. → **spec + forge brief: `docs/delve-cycles/6-talk-mode-presence.md`** (Delve 6, round 1 synthesized; forge brief = its §8; ADR-010 pending).
 - **Phase 1 · Capped AI proxy + auth** — Supabase Edge Functions proxy w/ global spend ceiling + rate-limit; account/auth; remove BYO-key Settings cards. → `docs/decisions/ADR-004`, `ADR-005`.
 - **Phase 2 · Store-readiness product polish** — onboarding, empty states, world-class UX pass, offline behavior, universal-phone (non-Pixel STT/TTS fallbacks).
 - **Phase 3 · iOS mic spike** — prove WKWebView `getUserMedia` capture works. **GATES the whole native plan.** → `ADR-007`.
@@ -20,8 +21,11 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 ## Live decisions (awaiting owner signoff)
 
 - **ADR-003 · Progressive vocab access** — non-locking coverage meter *(current)* vs literal hard-lock ("only 1,500 words unlocked"). → `docs/decisions-pending/ADR-003`.
-- **ADR-008 · Conversation-first two-door IA** + **ADR-009 · Judgment-free spec** — Delve-5 locks, pending. → `docs/decisions-pending/ADR-008`, `ADR-009`.
-- **Deletion veto (blocks Stage E)** — owner: still use `particles`/`similar`/`variations`? One line before any code removal. → Delve 5 §11 OQ #4.
+- **ADR-010 · Talk-mode orb front door** — supersedes ADR-008's two-door portion, evidence-gated (L12a probe after T2; L12 7-day verdict). → `docs/decisions-pending/ADR-010`.
+
+## Recently decided
+
+- ADR-008 (two-door IA) + ADR-009 (judgment-free spec) — **Accepted, promoted 2026-07-17** → `docs/decisions/`; deletion veto collected same day (all 4 modes cleared for Stage-E removal).
 
 ## Recently closed
 

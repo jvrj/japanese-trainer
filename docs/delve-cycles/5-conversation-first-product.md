@@ -100,6 +100,12 @@ independently confirmed.
 
 ## 3. The front door — target IA (Task 1) 🔒
 
+> **Superseded (2026-07-17):** this section's L1 front door (hybrid two-door, ADR-008) is
+> superseded by **Delve 6** — `6-talk-mode-presence.md` §6 (Talk-mode orb front door,
+> ADR-010 pending, evidence-gated on its L12a interim probe). The supersession changes the
+> *candidate*, not this section's reasoning: Delve 6 §7 removes each rejection premise
+> structurally. All other Delve-5 locks remain intact per Delve 6 §6.5 ledger.
+
 ### 3.1 Candidates
 
 - **A. おしゃべり-first** — the conversation screen IS the home. *Rejected:* a true beginner
