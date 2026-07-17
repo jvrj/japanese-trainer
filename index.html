@@ -2787,6 +2787,7 @@ const DEFAULT_SETTINGS = {
   currentModuleId:null,       // user's current focus module — Vocab Blitz/Build pull from here + earlier modules
   unlockBypassed:[],          // module ids the user manually unlocked via "Unlock anyway"
   convoHandsFree:true,        // oshaberi — auto-open mic after TTS (mirrors spam-mode hands-free default)
+  orbMode:false,               // Delve 6 T1 (sprint: orb) — presentation-only canvas orb replacing the convo avatar header. OFF by default so legacy renderConvo output stays byte-identical to v8.12.
   convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
   convoXp:0,                  // oshaberi — XP toward the next convoLevel
   leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
@@ -9384,6 +9385,10 @@ function _convoFallbackChips(cv){
 function _convoSpeakJP(text, onDone){
   const cv = state.convo;
   const ttsRate = (cv && cv.ttsRate) || convoLevelInfo().ttsRate || 0.75;
+  /* orb seam (1/5, sprint: orb): entry -> speaking. Only chars (a number) is
+     passed as meta — never the raw text — so the orb module never touches
+     AI-response text. No-op when the orb isn't mounted (orbMode off). */
+  _orbSet('speaking', { chars: String(text || '').length });
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
@@ -9395,7 +9400,9 @@ function _convoSpeakJP(text, onDone){
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
       if(onDone){
         let fired = false;
-        const fire = () => { if(fired) return; fired = true; onDone(); };
+        /* orb seam (2/5, sprint: orb): onend/onerror -> listening, via the same
+           fire() the existing hands-free chain already calls onDone through. */
+        const fire = () => { if(fired) return; fired = true; _orbSet('listening', null); onDone(); };
         u.onend = fire; u.onerror = fire;
       }
       ss.speak(u);
@@ -9510,6 +9517,10 @@ async function convoTurn(userText, viaVoice){
   cv.forceChips = false;
 
   cv.loading = true; cv.error = null; cv.listening = false;
+  /* orb seam (4/5, sprint: orb): convoTurn entry, immediately after cv.loading=true ->
+     thinking. This is also where the latency-mask ladder timers (0.45s shimmer,
+     2.5s filler, 6s wobble, 12s apology) get armed, inside _orbSet itself. */
+  _orbSet('thinking', null);
   /* Store this turn's voice flag so the NEXT convoApplyScore call has it */
   cv.viaVoice = !!viaVoice;
   /* Track spoken vs tapped for wrap-up recap */
@@ -9532,6 +9543,8 @@ async function convoTurn(userText, viaVoice){
   } catch(e){
     cv.loading = false;
     cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
+    /* orb seam (5/5, sprint: orb): error path -> idle */
+    _orbSet('idle', null);
     render(); return;
   }
   /* Stage D (v8.10) — dev-only latency readout; never rendered outside _isDevMode() */
@@ -9548,6 +9561,8 @@ async function convoTurn(userText, viaVoice){
     cv.loading = false;
     cv.error = 'もう いちど？';
     /* cv.current preserved so chips remain visible */
+    /* orb seam (5/5, sprint: orb): error/parse-fail path -> idle */
+    _orbSet('idle', null);
     render();
     return;
   }
@@ -9623,6 +9638,11 @@ async function convoTurn(userText, viaVoice){
     _convoSpeakJP(aiJP, () => {
       if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen();
     });
+  } else {
+    /* orb seam (5/5, sprint: orb): response render, non-advancing (intermediate hint)
+       branch — no TTS fires here (_convoSpeakJP's own 'speaking' seam never runs), so
+       reflect idle explicitly. */
+    _orbSet('idle', null);
   }
 }
 window.convoTurn = convoTurn;
@@ -9680,6 +9700,8 @@ window.convoApplyScore = convoApplyScore;
 function convoEnd(){
   const cv = state.convo; if(!cv) return;
   cv.done = true;
+  /* orb seam (5/5, sprint: orb): convoEnd -> idle */
+  _orbSet('idle', null);
   /* Apply any un-scored judged from the final turn (may call convoAddXp internally) */
   if(cv.judged){
     convoApplyScore(cv.judged, cv.viaVoice);
@@ -9782,6 +9804,8 @@ function convoToggleListen(){
   if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
   if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
   cv.listening = true; cv.interim = ''; cv._best = ''; cv._ended = false; cv.error = null;
+  /* orb seam (3/5, sprint: orb): the synchronous cv.listening=true set above -> listening */
+  _orbSet('listening', null);
   render();
   /* Arm the belt-and-braces silence guard */
   const _armSilenceTimer = () => {
@@ -9904,6 +9928,400 @@ function _convoPartnerHeader(cv){
   </div>`;
 }
 
+/* _convoOrbHeader — T1 (sprint: orb) opt-in replacement for _convoPartnerHeader.
+   Renders the mount canvas for the orb module (see the ORB PRESENCE block below);
+   bindScreen() picks up #orbCanvas and calls _orbInit on it after every render(). */
+function _convoOrbHeader(cv){
+  const p = (cv && cv.partner) || CONVO_PARTNERS[0];
+  return `<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:13px">
+    <canvas id="orbCanvas" aria-hidden="true" style="width:min(72vw,300px);height:min(72vw,300px);max-width:100%;display:block"></canvas>
+    <div style="text-align:center;margin-top:4px">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
+      <div style="font-weight:800;font-size:15px;font-family:'Noto Sans JP';margin-top:2px">${esc(p.name)}</div>
+    </div>
+  </div>`;
+}
+
+/* _convoHeader — mount-point switch. orbMode:false takes the exact same branch
+   renderConvo always took (byte-identical to v8.12); orbMode:true swaps in the canvas. */
+function _convoHeader(cv){
+  return state.settings.orbMode ? _convoOrbHeader(cv) : _convoPartnerHeader(cv);
+}
+
+/* ===================== ORB PRESENCE (T1, sprint: orb) =====================
+   Delve 6 §3. Self-contained Canvas-2D presence for the convo screen.
+   PURE SUBSCRIBER — never drives session logic, only mirrors it. The ONLY
+   entry point other code calls is _orbSet(state, meta), and only from the
+   five wrap-points named in the sprint (see the "orb seam" comments at each
+   call site: _convoSpeakJP entry/onend/onerror, convoToggleListen's
+   cv.listening=true set, convoTurn entry + its response/error/convoEnd
+   paths). Mounted only when state.settings.orbMode is truthy (renderConvo /
+   _convoHeader); when it's off this whole module simply never mounts and
+   every function here is a documented no-op via the `mounted` guard.
+
+   Security note: no user/AI text ever enters this module. _orbSet's `meta`
+   is restricted to numbers from a closed set of callers (see call sites) —
+   never raw strings — so nothing here can reach an HTML sink. */
+
+const ORB_HUE = {
+  idle:      [157, 92, 255],   // #9d5cff violet
+  listening: [45, 212, 191],   // teal
+  thinking:  [99, 102, 241],   // indigo
+  speaking:  [255, 93, 158],   // #ff5d9e magenta
+};
+const ORB_N = 14;              // 14-point blob
+const ORB_HARMONICS = [2, 3, 5]; // 3-harmonic sum frequencies
+
+const _orb = {
+  mounted:false, canvas:null, ctx:null, dpr:1, size:120,
+  state:'idle', meta:null,
+  fromRGB:[157,92,255], toRGB:[157,92,255], curRGB:[157,92,255],
+  lerpStart:0, lerpDur:450,
+  angles:null, ptx:null, pty:null,
+  phase:0, envAmp:0, envUntil:0,
+  glowCanvas:null, glowCtx:null, lastBakeTs:0, bakeMinInterval:250, /* <=4 bakes/sec cap */
+  ringInCanvas:null, ringOutCanvas:null, ringsBaked:false,
+  thinkingPhase:null,         // null | 'shimmer' | 'wobble' | 'apology'
+  timers:{ shimmer:null, filler:null, wobble:null, apology:null },
+  rafId:null, lastFrameTs:null, lastDrawTs:null,
+  windowSum:0, windowCount:0, windowStart:0, degraded:false,
+  _boundVis:null,
+};
+
+/* _orbInit — (re)attach the orb to a live <canvas> element. renderConvo
+   rebuilds the DOM (m.innerHTML = ...) on every render(), so #orbCanvas is a
+   fresh node most calls; the module's own state (hue, thinkingPhase, timers,
+   typed-array buffers, pre-baked sprites) persists across that swap and is
+   only reset here when the canvas element itself actually changed. */
+function _orbInit(canvasEl){
+  if(!canvasEl) return;
+  const o = _orb;
+  const isNewCanvas = (o.canvas !== canvasEl);
+  if(isNewCanvas){
+    o.canvas = canvasEl;
+    o.ctx = canvasEl.getContext('2d');
+    o.dpr = Math.min(window.devicePixelRatio || 1, 2); /* DPR capped at 2 */
+    const cssSize = canvasEl.clientWidth || Math.min(window.innerWidth * 0.72, 300);
+    o.size = cssSize;
+    canvasEl.width = Math.round(cssSize * o.dpr);
+    canvasEl.height = Math.round(cssSize * o.dpr);
+    o.ctx.setTransform(o.dpr, 0, 0, o.dpr, 0, 0);
+  }
+  if(!o.angles){
+    /* typed-array param buffers — allocated once, reused every frame */
+    o.angles = new Float32Array(ORB_N);
+    o.ptx = new Float32Array(ORB_N);
+    o.pty = new Float32Array(ORB_N);
+    for(let i=0;i<ORB_N;i++) o.angles[i] = (i / ORB_N) * Math.PI * 2;
+  }
+  if(!o.glowCanvas){
+    o.glowCanvas = document.createElement('canvas');
+    o.glowCanvas.width = o.glowCanvas.height = 256;
+    o.glowCtx = o.glowCanvas.getContext('2d');
+  }
+  if(!o.ringInCanvas){
+    o.ringInCanvas = document.createElement('canvas');
+    o.ringInCanvas.width = o.ringInCanvas.height = 256;
+    o.ringOutCanvas = document.createElement('canvas');
+    o.ringOutCanvas.width = o.ringOutCanvas.height = 256;
+  }
+  if(!o.ringsBaked){ _orbBakeRings(); o.ringsBaked = true; }
+  o.mounted = true;
+  if(isNewCanvas) _orbBakeGlow(true);
+  if(!o._boundVis){
+    o._boundVis = () => _orbSyncLoop();
+    document.addEventListener('visibilitychange', o._boundVis);
+  }
+  _orbSyncLoop();
+}
+
+/* _orbUnmount — stop the rAF loop + clear ladder timers + release the canvas
+   reference. Called from bindScreen whenever orbMode is off or the screen
+   isn't 'convo'. After this, _orbSet is a documented no-op (mounted:false). */
+function _orbUnmount(){
+  const o = _orb;
+  if(!o.mounted && o.rafId == null) return;
+  o.mounted = false;
+  _orbStopLoop();
+  _orbClearTimers();
+  o.canvas = null; o.ctx = null;
+}
+
+/* _orbSyncLoop — rAF suspend/resume gate. Suspends (cancels, not throttles)
+   when the tab is hidden, the screen isn't the convo screen ('convo' is this
+   codebase's actual screen id for the talk/おしゃべり mode — nav('convo'),
+   renderConvo), or the orb is unmounted. Resumes cleanly when conditions
+   clear again (called from bindScreen after every render + on visibilitychange). */
+function _orbSyncLoop(){
+  const o = _orb;
+  const shouldRun = o.mounted && !document.hidden && state.screen === 'convo';
+  if(shouldRun) _orbStartLoop(); else _orbStopLoop();
+}
+function _orbStartLoop(){
+  const o = _orb;
+  if(o.rafId != null) return; /* already running */
+  o.lastFrameTs = null;
+  o.lastDrawTs = null;
+  o.windowSum = 0; o.windowCount = 0; o.windowStart = 0;
+  o.rafId = requestAnimationFrame(_orbLoop);
+}
+function _orbStopLoop(){
+  const o = _orb;
+  if(o.rafId != null){ cancelAnimationFrame(o.rafId); o.rafId = null; }
+}
+
+/* _orbLoop — the rAF callback. No new arrays/objects/closures are created in
+   here; all working state lives in the pre-allocated `_orb` buffers. Tracks a
+   2-second windowed average of the RAW rAF-to-rAF gap (every tick, whether or
+   not this tick goes on to draw) — that's what reflects true device/CPU
+   capability — and degrades the DRAW-GATE (a separate timestamp) to a 30fps
+   cap once that average exceeds ~24ms. Measuring raw ticks instead of
+   post-throttle draw gaps matters: once degraded, the draw gate itself
+   spaces draws ~33ms apart, so feeding THOSE gaps back into the average
+   would keep it pinned above the recovery threshold forever. */
+function _orbLoop(ts){
+  const o = _orb;
+  if(!o.mounted || document.hidden || state.screen !== 'convo'){ o.rafId = null; return; }
+  o.rafId = requestAnimationFrame(_orbLoop);
+  if(o.lastFrameTs == null){ o.lastFrameTs = ts; o.windowStart = ts; o.lastDrawTs = ts; return; }
+  const rawDt = ts - o.lastFrameTs;
+  o.lastFrameTs = ts;
+  o.windowSum += rawDt; o.windowCount++;
+  if(ts - o.windowStart >= 2000){
+    const avg = o.windowCount ? (o.windowSum / o.windowCount) : 0;
+    o.degraded = avg > 24;
+    o.windowSum = 0; o.windowCount = 0; o.windowStart = ts;
+  }
+  /* draw-gate: independent of the raw perf measurement above. When degraded,
+     skip drawing (not measuring) ticks closer together than ~33ms. */
+  const minInterval = o.degraded ? (1000 / 30) : 0;
+  const drawDt = ts - o.lastDrawTs;
+  if(drawDt < minInterval) return;
+  o.lastDrawTs = ts;
+  _orbDraw(ts, drawDt);
+}
+
+/* _orbSyllableEnvelope — scripted amplitude envelope standing in for real
+   audio (speechSynthesis exposes no audio stream to analyze). Deterministic
+   function of elapsed phase only — no allocations. */
+function _orbSyllableEnvelope(o){
+  return (Math.sin(o.phase * 9) * 0.5 + 0.5) * (Math.sin(o.phase * 3.7) * 0.3 + 0.7);
+}
+
+/* _orbDraw — per-frame render. Draw-path rule: no shadowBlur, no gradient
+   construction here — the glow + ring sprites are pre-baked elsewhere and
+   only drawImage'd/scaled here. Blob points are written into the
+   pre-allocated ptx/pty Float32Arrays in place. */
+function _orbDraw(ts, dt){
+  const o = _orb;
+  const ctx = o.ctx; if(!ctx) return;
+  const size = o.size, cx = size / 2, cy = size / 2;
+  ctx.clearRect(0, 0, size, size);
+
+  /* ~450ms ease-in-out cubic hue retarget lerp */
+  const lerpT = o.lerpDur > 0 ? Math.min(1, (ts - o.lerpStart) / o.lerpDur) : 1;
+  const eased = lerpT < 0.5 ? 4 * lerpT * lerpT * lerpT : 1 - Math.pow(-2 * lerpT + 2, 3) / 2;
+  o.curRGB[0] = o.fromRGB[0] + (o.toRGB[0] - o.fromRGB[0]) * eased;
+  o.curRGB[1] = o.fromRGB[1] + (o.toRGB[1] - o.fromRGB[1]) * eased;
+  o.curRGB[2] = o.fromRGB[2] + (o.toRGB[2] - o.fromRGB[2]) * eased;
+
+  const shimmerOn = o.state === 'thinking' && o.thinkingPhase != null; /* shimmer|wobble|apology all shimmer */
+  const wobbleOn = o.state === 'thinking' && (o.thinkingPhase === 'wobble' || o.thinkingPhase === 'apology');
+
+  o.phase += dt * 0.001;
+  const baseR = size * 0.26;
+  const speakEnv = (o.state === 'speaking' && ts < o.envUntil) ? o.envAmp * _orbSyllableEnvelope(o) : 0;
+  const shimmerAmp = shimmerOn ? size * 0.012 : 0;
+  const wobbleOffset = wobbleOn ? Math.sin(o.phase * 1.6) * size * 0.02 : 0;
+
+  for(let i=0;i<ORB_N;i++){
+    const a = o.angles[i];
+    /* 3-harmonic sum, f = 2,3,5 */
+    const h1 = Math.sin(a * ORB_HARMONICS[0] + o.phase * 1.3) * size * 0.028;
+    const h2 = Math.sin(a * ORB_HARMONICS[1] + o.phase * 2.1) * size * 0.018;
+    const h3 = Math.sin(a * ORB_HARMONICS[2] + o.phase * 0.9) * size * 0.010;
+    const jitter = shimmerOn ? Math.sin(a * 7 + o.phase * 5.3) * shimmerAmp : 0;
+    const r = baseR + h1 + h2 + h3 + jitter + speakEnv;
+    o.ptx[i] = cx + wobbleOffset + Math.cos(a) * r;
+    o.pty[i] = cy + Math.sin(a) * r;
+  }
+
+  /* pre-baked glow sprite — drawImage only, never rebuilt per frame */
+  const glowSize = size * 1.7;
+  ctx.drawImage(o.glowCanvas, cx - glowSize / 2, cy - glowSize / 2, glowSize, glowSize);
+
+  /* <=3 ring sprites total (in+out baked once); only one active per state */
+  if(o.state === 'listening'){
+    const t = (o.phase % 1.4) / 1.4;
+    const rs = size * 1.05 * (1 - t * 0.35); /* inward: shrinks toward the blob */
+    ctx.globalAlpha = (1 - t) * 0.55;
+    ctx.drawImage(o.ringInCanvas, cx - rs / 2, cy - rs / 2, rs, rs);
+    ctx.globalAlpha = 1;
+  } else if(o.state === 'speaking'){
+    const t = (o.phase % 1.1) / 1.1;
+    const rs = size * 0.9 * (0.6 + t * 0.7); /* outward: grows away from the blob */
+    ctx.globalAlpha = (1 - t) * 0.5;
+    ctx.drawImage(o.ringOutCanvas, cx - rs / 2, cy - rs / 2, rs, rs);
+    ctx.globalAlpha = 1;
+  }
+
+  /* blob body — closed 14-point quadratic-curve loop through ptx/pty */
+  ctx.beginPath();
+  let mx = (o.ptx[ORB_N - 1] + o.ptx[0]) / 2, my = (o.pty[ORB_N - 1] + o.pty[0]) / 2;
+  ctx.moveTo(mx, my);
+  for(let i=0;i<ORB_N;i++){
+    const nxt = (i + 1) % ORB_N;
+    const emx = (o.ptx[i] + o.ptx[nxt]) / 2, emy = (o.pty[i] + o.pty[nxt]) / 2;
+    ctx.quadraticCurveTo(o.ptx[i], o.pty[i], emx, emy);
+  }
+  ctx.closePath();
+  const apologyPulse = (o.thinkingPhase === 'apology') ? (0.75 + Math.sin(o.phase * 4) * 0.15) : 1;
+  ctx.fillStyle = 'rgba(' + (o.curRGB[0]|0) + ',' + (o.curRGB[1]|0) + ',' + (o.curRGB[2]|0) + ',' + (0.92 * apologyPulse).toFixed(3) + ')';
+  ctx.fill();
+}
+
+/* _orbBakeGlow — the ONLY place a radial gradient is constructed. Rate-capped
+   to <=4 bakes/second (250ms floor) and only invoked on mount or when the
+   lerp TARGET color changes in _orbSet — never from the per-frame draw path,
+   and never uncapped-per-tick even while a 450ms lerp is in flight (the
+   sprite bakes once toward the new target, then the per-frame lerp just
+   fades the blob fill color across it). */
+function _orbBakeGlow(force){
+  const o = _orb;
+  if(!o.glowCtx) return;
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  if(!force && (now - o.lastBakeTs) < o.bakeMinInterval) return;
+  o.lastBakeTs = now;
+  const g = o.glowCtx, S = o.glowCanvas.width;
+  const r = o.toRGB[0]|0, gc = o.toRGB[1]|0, b = o.toRGB[2]|0;
+  g.clearRect(0, 0, S, S);
+  const grad = g.createRadialGradient(S/2, S/2, 0, S/2, S/2, S/2);
+  grad.addColorStop(0, 'rgba(' + r + ',' + gc + ',' + b + ',0.55)');
+  grad.addColorStop(0.5, 'rgba(' + r + ',' + gc + ',' + b + ',0.18)');
+  grad.addColorStop(1, 'rgba(' + r + ',' + gc + ',' + b + ',0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, S, S);
+}
+
+/* _orbBakeRings — bakes the (at most) two ring sprites ONCE, ever (state-
+   fixed colors: teal for the inward listening ring, magenta for the outward
+   speaking ring). Never called from the per-frame draw path. */
+function _orbBakeRings(){
+  const S = 256;
+  const bake = (canvas, rgb) => {
+    const c = canvas.getContext('2d');
+    c.clearRect(0, 0, S, S);
+    c.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.9)';
+    c.lineWidth = 6;
+    c.beginPath();
+    c.arc(S/2, S/2, S/2 - 6, 0, Math.PI * 2);
+    c.stroke();
+  };
+  bake(_orb.ringInCanvas, ORB_HUE.listening);
+  bake(_orb.ringOutCanvas, ORB_HUE.speaking);
+}
+
+/* _orbClearTimers — clears/no-ops every latency-mask ladder timer. Called on
+   every transition OUT of 'thinking' (a response arrived or the turn ended)
+   so nothing fires late, and from _orbUnmount so nothing fires after the
+   orb is torn down. */
+function _orbClearTimers(){
+  const o = _orb, t = o.timers;
+  if(t.shimmer){ clearTimeout(t.shimmer); t.shimmer = null; }
+  if(t.filler){ clearTimeout(t.filler); t.filler = null; }
+  if(t.wobble){ clearTimeout(t.wobble); t.wobble = null; }
+  if(t.apology){ clearTimeout(t.apology); t.apology = null; }
+  o.thinkingPhase = null;
+}
+
+/* _orbArmLadder — the latency-mask ladder. Converts the 2-6s API gap into
+   visible "consideration": 0.45s shimmer starts, 2.5s at most one filler TTS
+   line (collision-gated, see _orbMaybeFiller), 6s wobble, 12s blame-taking
+   apology. Every timer is cleared the moment the turn leaves 'thinking'
+   (_orbClearTimers, called from _orbSet on any other state). */
+function _orbArmLadder(){
+  const o = _orb;
+  _orbClearTimers();
+  o.timers.shimmer = setTimeout(() => { if(o.mounted && o.state === 'thinking') o.thinkingPhase = 'shimmer'; }, 450);
+  o.timers.filler = setTimeout(_orbMaybeFiller, 2500);
+  o.timers.wobble = setTimeout(() => { if(o.mounted && o.state === 'thinking') o.thinkingPhase = 'wobble'; }, 6000);
+  o.timers.apology = setTimeout(_orbApology, 12000);
+}
+
+const _ORB_FILLERS = ['んー…', 'そうですね…', 'ちょっと まってね'];
+/* _orbMaybeFiller — 2.5s rung. Collision rule: if the primary utterance (or
+   anything else) is already speaking/queued, SKIP the filler outright —
+   never speechSynthesis.cancel() to make room for it. */
+function _orbMaybeFiller(){
+  const o = _orb;
+  o.timers.filler = null;
+  if(!o.mounted || o.state !== 'thinking') return;
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) return; /* collision — skip, never cancel() */
+    const line = _ORB_FILLERS[Math.floor(Math.random() * _ORB_FILLERS.length)];
+    const u = new SpeechSynthesisUtterance(line);
+    u.lang = 'ja-JP'; u.rate = 0.85;
+    const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
+    if(v) u.voice = v;
+    ss.speak(u);
+  }catch(e){ /* presentation-only — never throws into the session */ }
+}
+
+/* _orbApology — 12s rung. Same collision rule as the filler; blame-taking
+   copy (kana-only) so the wait reads as the partner's doing, not the learner's. */
+function _orbApology(){
+  const o = _orb;
+  o.timers.apology = null;
+  if(!o.mounted || o.state !== 'thinking') return;
+  o.thinkingPhase = 'apology';
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const ss = window.speechSynthesis;
+    if(ss.speaking || ss.pending) return; /* collision — skip, never cancel() */
+    const u = new SpeechSynthesisUtterance('ごめんね、いま かんがえてるよ');
+    u.lang = 'ja-JP'; u.rate = 0.85;
+    const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
+    if(v) u.voice = v;
+    ss.speak(u);
+  }catch(e){}
+}
+
+/* _orbSet(state, meta) — the orb's ONLY public entry point. Documented no-op
+   when unmounted (orbMode off, or a stray timer fires after navigating away
+   from the convo screen) — guards against ever touching a null/undefined
+   orb instance. `state` must be one of the four closed enum values below;
+   `meta` (when present) is restricted to numbers by every call site. */
+function _orbSet(newState, meta){
+  const o = _orb;
+  if(!o.mounted) return; /* no-op: not mounted (orbMode off / navigated away) */
+  if(!ORB_HUE[newState]) return; /* closed enum guard */
+  const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  if(newState !== o.state){
+    /* snapshot the CURRENTLY-interpolated color as the new lerp start so a
+       state change mid-transition eases from where it visually is, not a hard cut */
+    o.fromRGB[0] = o.curRGB[0]; o.fromRGB[1] = o.curRGB[1]; o.fromRGB[2] = o.curRGB[2];
+    const target = ORB_HUE[newState];
+    o.toRGB[0] = target[0]; o.toRGB[1] = target[1]; o.toRGB[2] = target[2];
+    o.lerpStart = now; o.lerpDur = 450;
+    o.state = newState;
+    _orbBakeGlow(false); /* rate-capped inside */
+  }
+  o.meta = (meta && typeof meta === 'object') ? meta : null;
+
+  if(newState === 'speaking'){
+    const chars = (o.meta && typeof o.meta.chars === 'number') ? o.meta.chars : 6;
+    /* scripted syllable envelope duration — ~180ms/kana char, clamped */
+    o.envUntil = now + Math.max(600, Math.min(6000, chars * 180));
+    o.envAmp = o.size * 0.05;
+  }
+
+  if(newState === 'thinking') _orbArmLadder();
+  else _orbClearTimers();
+}
+/* ===================== END ORB PRESENCE ===================== */
+
 function renderConvo(){
   const cv = state.convo;
   if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
@@ -9920,7 +10338,7 @@ function renderConvo(){
   /* ── FROZEN PROBE (cold-resume) ── no auto-TTS, no auto-mic; requires explicit 「つづける」 tap */
   if(cv._frozen && cur && cur.jp){
     return `<div style="padding:2px 2px 24px">
-      ${_convoPartnerHeader(cv)}
+      ${_convoHeader(cv)}
       <div style="margin-bottom:12px">
         <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
         ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
@@ -9975,7 +10393,7 @@ function renderConvo(){
     ? `<div class="muted" style="font-size:10px;text-align:right;margin-top:2px;opacity:.6">⏱ dev: last turn ${cv.lastLatencyMs}ms</div>` : '';
 
   return `<div style="padding:2px 2px 24px">
-    ${_convoPartnerHeader(cv)}
+    ${_convoHeader(cv)}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
       <div>
         <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
@@ -19871,6 +20289,8 @@ function renderSettings(){
         <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 recap notes</div><div class="word-en">On: the おしゃべり wrap-up shows up to 3 "words worth another listen" notes + a one-tap practice button. Off: recap is celebration-only, no notes.</div></div>
         <input type="checkbox" ${s.convoRecapNotes!==false?'checked':''} onchange="toggleSetting('convoRecapNotes')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔮 おしゃべり orb (beta)</div><div class="word-en">On: replaces the character avatar in おしゃべり with an animated presence orb that mirrors listening / thinking / speaking. Off: classic avatar header (default).</div></div>
+        <input type="checkbox" ${s.orbMode?'checked':''} onchange="toggleSetting('orbMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">🔥 「いっしょ の ひ」 streak</div><div class="word-en">Off: hide the daily-practice streak from Home / Practice / Progress. It still counts quietly in the background either way.</div></div>
         <input type="checkbox" ${s.hideStreak?'':'checked'} onchange="toggleSetting('hideStreak')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり your name</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
@@ -20445,6 +20865,16 @@ function bindScreen(){
   const inp = $('#ansInput');
   if(inp && !inp.disabled) inp.focus();
   document.onkeydown = null;
+  /* orb mount/unmount (T1, sprint: orb) — presentation-only, mirrors renderConvo's
+     own orbMode gate. Runs after every render() so a freshly-rebuilt #orbCanvas
+     (renderConvo replaces the whole screen's innerHTML on each render) gets
+     re-attached without resetting the orb's own state (hue/timers/buffers). */
+  if(state.screen === 'convo' && state.settings.orbMode){
+    const orbEl = document.getElementById('orbCanvas');
+    if(orbEl) _orbInit(orbEl); else _orbUnmount();
+  } else {
+    _orbUnmount();
+  }
 }
 
 /* ---------- INIT ---------- */
