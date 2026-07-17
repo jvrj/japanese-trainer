@@ -1,6 +1,6 @@
 # ADR-008 — Conversation-first two-door IA (Home hero + Practice drawer)
 
-- **Status:** Proposed (PENDING — filed by Delve 5 Round-1 synthesis; not promoted to `docs/decisions/`; awaiting owner signoff)
+- **Status:** Accepted (promoted 2026-07-17 — owner signoff; deletion veto collected same day: NONE — all four modes (`library`, `similar`, `variations`/`variationBlitz`, `particles`) cleared for Stage-E code removal, so the point-3 conditional is resolved and Stage E is unblocked)
 - **Date:** 2026-07-16
 - **Source:** Delve 5 — `docs/delve-cycles/5-conversation-first-product.md` (locks L1 + L2, verdict table §3.3, staged sketch §9, Round-1 synthesis dispositions)
 - **Related:** ADR-003 (spine stays advisory until its signoff), Delve-4 ADR-004..007 (backend/productization inputs)

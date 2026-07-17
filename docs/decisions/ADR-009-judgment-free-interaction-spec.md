@@ -1,6 +1,6 @@
 # ADR-009 — Judgment-free interaction specification (copy rules + latency budgets + failure containment)
 
-- **Status:** Proposed (PENDING — filed by Delve 5 Round-1 synthesis; not promoted to `docs/decisions/`; awaiting owner signoff)
+- **Status:** Accepted (promoted 2026-07-17 — owner signoff)
 - **Date:** 2026-07-16
 - **Source:** Delve 5 — `docs/delve-cycles/5-conversation-first-product.md` (locks L4 + L5 + L6, §5 spec, §5.4 double-miss rule, Round-1 synthesis dispositions)
 - **Related:** [[project_japanese_trainer_stt_not_grader]] (v8.03 doctrine — unchanged), research H3 (judgment-free is engineered, not declared)
