@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.08';
+const APP_VERSION = '8.09';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -18763,6 +18763,137 @@ function bar(pct, color){
   return `<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:${pct}%;background:${color||'var(--blue)'};border-radius:999px"></div></div>`;
 }
 
+/* =========================================================================
+   ADVISORY SPINE — Stage C (v8.09). Delve-5 §7.1/§7.2, ADR-008/ADR-009.
+
+   _spineModel() is a PURE derivation over data that already exists:
+   progConversationalCore()/progLadderValues() (18732/18751, which read
+   state.stats), PROG_LADDERS (18745, the same tiers renderProgress's own
+   milestone cards already use) and convoLevelInfo() (3046, state.settings.
+   convoLevel/convoXp via CONVO_TIERS). No new tuning numbers are invented —
+   every threshold below is an array-index reference into PROG_LADDERS'
+   existing tiers, exactly matching the Delve-5 §7.1 stage table.
+
+   ADR-003 posture (§7.2, non-locking): the spine is ADVISORY ONLY. It is
+   read by renderHome/renderProgress for display and by nothing else — no
+   drill pool, word list, or nav target is ever filtered/gated by stageIdx
+   or summit. If the owner later signs the hard-lock ADR-003 arm, gating
+   would be added at exactly one seam (scene minLevel, 2989); until then
+   this file must contain zero `if(stage` / `if(spine` pool-construction
+   guards (see .state/render_check_stage_c.js's non-locking invariant probe).
+
+   ---- SHIP CHECKLIST (Stage C, §9 Delve-5) ----
+   [x] sw.js CACHE_NAME bumped for this ship
+   [x] headless Playwright render check passed — collapsed spine header on
+       Home + the expanded detail sheet, buildMode hands-free voice loop
+       screen unaffected
+   [ ] ADR-003 signoff ask RE-PRESENTED to the owner (§7.2, not silently
+       bypassed): Stage C ships the ADVISORY (non-locking) arm as the
+       acknowledged status-quo default — the app has zero gate state today,
+       so this adds no new posture. The HARD-LOCK arm
+       (docs/decisions-pending/ADR-003-progressive-vocab-access-model.md)
+       remains open and un-decided; owner signoff on it is still pending
+       and, if given, adds gating at the one seam noted above (scene
+       minLevel) rather than being silently foreclosed by this ship.
+   ------------------------------------------------ */
+const SPINE_STAGES = [
+  { name:'おと と かな',   en:'Sounds & kana' },          // 0 — pre-conversation; onboarding/placement-only, never stats-derived
+  { name:'あいさつ',       en:'First words' },             // 1
+  { name:'じぶん の こと', en:'Talking about me' },       // 2
+  { name:'まいにち',       en:'Your daily life' },        // 3
+  { name:'ともだち',       en:'A real conversation' }     // 4 — summit stage: "your first real conversation"
+];
+
+/* Per-stage targets, sourced ONLY by indexing into PROG_LADDERS' existing
+ * tiers arrays (Delve-5 §7.1 table: producible uses tiers[stageN-1];
+ * verbs/sentences start applying at stage 2, using tiers[stageN-2]). Every
+ * number returned already lives in PROG_LADDERS — this function adds none. */
+function _spineRequirement(stageN){
+  const pTiers = PROG_LADDERS.find(l => l.key === 'producible').tiers;
+  const vTiers = PROG_LADDERS.find(l => l.key === 'verbsAllForms').tiers;
+  const sTiers = PROG_LADDERS.find(l => l.key === 'sentences').tiers;
+  return {
+    producible: pTiers[stageN - 1],
+    verbsAllForms: stageN >= 2 ? vTiers[stageN - 2] : 0,
+    sentences: stageN >= 2 ? sTiers[stageN - 2] : 0
+  };
+}
+
+/* Bottleneck (not weighted-average) progress toward stageN's requirement —
+ * matches the AND-gating _spineModel() uses to decide "achieved", so a bar
+ * reading 100% and an achieved flag flipping happen at the same instant. */
+function _spineStagePct(stageN){
+  const req = _spineRequirement(stageN);
+  const vals = progLadderValues();
+  const ratio = (v, t) => t ? Math.min(1, v / t) : 1;
+  return Math.round(100 * Math.min(
+    ratio(vals.producible, req.producible),
+    ratio(vals.verbsAllForms, req.verbsAllForms),
+    ratio(vals.sentences, req.sentences)
+  ));
+}
+
+/**
+ * _spineModel() — single source of truth for the Home spine header + the
+ * expandable detail sheet. Returns everything both need so neither
+ * recomputes.
+ *
+ * stageIdx: 0..4. Stats alone (progLadderValues/PROG_LADDERS) can only ever
+ * derive 1..4 — stage 0 (kana-only, pre-conversation) is reachable solely
+ * via state.settings.onboard.placedStage, the router-derived (OB-3B) seed.
+ * placedStage acts as a FLOOR on top of the stats-derived stage, never a
+ * ceiling, and degrades gracefully to the stats-derived stage when it is
+ * null/absent (pre-Stage-B users, or beginner-path users who skipped the
+ * router) — never throws, never leaves stageIdx undefined.
+ *
+ * summit: whether the learner's convoLevelInfo() tier (existing
+ * state.settings.convoLevel via CONVO_TIERS) has ALREADY CLEARED this
+ * stage's matching convo tier — stages 1..4 map 1:1 onto CONVO_TIERS lv
+ * 1..4, and clearing tier N means having leveled up PAST it (convo.lv > N),
+ * since CONVO_TIERS itself starts every learner at lv 1 — using "lv >= N"
+ * instead would make stage 1 read as trivially summited for every brand
+ * new profile before a single おしゃべり turn is spoken. The top stage (4)
+ * is the one exception: CONVO_TIERS has no lv 5 to level past, so its
+ * summit is convoLevelInfo().atMax (the existing "at the tier ceiling"
+ * flag) — the §7.1 "your first real conversation" graduation moment.
+ * Stage 0 has no convo tier at all, so summit is null (not applicable),
+ * never false.
+ */
+function _spineModel(){
+  const core = progConversationalCore();
+  const vals = progLadderValues();
+  const convo = convoLevelInfo();
+
+  let achievedStage = 0; // highest stage (1..4) whose requirement is fully met
+  for(let n = 1; n <= 4; n++){
+    const req = _spineRequirement(n);
+    if(vals.producible >= req.producible && vals.verbsAllForms >= req.verbsAllForms && vals.sentences >= req.sentences) achievedStage = n;
+    else break;
+  }
+  const statsStage = Math.min(4, achievedStage + 1); // the stage currently being worked toward
+
+  const onboard = (state.settings && state.settings.onboard) || {};
+  const placed = onboard.placedStage;
+  let stageIdx = statsStage;
+  if(typeof placed === 'number' && isFinite(placed)){
+    stageIdx = Math.max(stageIdx, Math.max(0, Math.min(4, Math.round(placed))));
+  }
+
+  const stage = SPINE_STAGES[stageIdx] || SPINE_STAGES[1];
+  const pctToNext = stageIdx >= 4 ? 100 : _spineStagePct(Math.max(1, stageIdx));
+  const summit = stageIdx === 0 ? null : (stageIdx === 4 ? convo.atMax : convo.lv > stageIdx);
+
+  return {
+    stageIdx, stageName: stage.name, stageEn: stage.en,
+    pctToNext, achievedStage,
+    placedStage: (typeof placed === 'number' && isFinite(placed)) ? placed : null,
+    summit, atMaxSummit: stageIdx === 4 && convo.atMax,
+    corePct: core.pct, convoLv: convo.lv, convoName: convo.name,
+    stages: SPINE_STAGES
+  };
+}
+window._spineModel = _spineModel;
+
 function renderProgress(){
   const core = progConversationalCore();
   const c = progStageCounts();
@@ -18901,6 +19032,57 @@ function renderProgress(){
   const forwardNote = `<div class="card" style="background:rgba(167,139,250,0.08)"><div class="muted" style="font-size:12px;line-height:1.5">📸 A weekly snapshot is now being saved. Your mature / producible curve was reconstructed from practice history above and becomes <b>exact</b> from this week forward — check back in 2-4 weeks to watch it move.</div></div>`;
 
   return headline + sinceCard + chartCard + statusCard + ladderCard + forwardNote;
+}
+
+/* Home's collapsed spine header + expandable detail sheet (Stage C, §7.1
+ * "Progress surface"). Collapsed: stage name headline + single bar only —
+ * the Conversational Core % lives ONLY inside the sheet (renderProgress()'s
+ * own headline card), never duplicated up here. Expand/collapse reuses the
+ * existing .collapsible/.collapsible-head/.collapsible-body CSS + toggle
+ * convention already used by Phrases' "Browse phrases" (12080) — plain
+ * classList.toggle, no extra render-state plumbing needed.
+ * All dynamic text below is either a hardcoded kana literal (SPINE_STAGES)
+ * or a number run through esc()/template-safe interpolation — no raw
+ * localStorage-derived string is ever concatenated as markup. */
+function _spineHeaderHtml(){
+  const m = _spineModel();
+  const summitBadge = m.summit === null ? ''
+    : m.summit
+      ? `<span style="font-size:10px;font-weight:800;color:#22c55e">🏔️ summit reached</span>`
+      : `<span class="muted" style="font-size:10px">summit: ${esc(m.convoName)} (tier ${m.convoLv})</span>`;
+  const stageRows = m.stages.map((s, i) => {
+    const isDone = i === 0 ? m.stageIdx > 0 : i <= m.achievedStage;
+    const isCurrent = !isDone && i === m.stageIdx;
+    const mark = isDone ? '✓' : isCurrent ? '●' : '○';
+    const col = isDone ? '#22c55e' : isCurrent ? '#9d5cff' : 'var(--muted)';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;${isCurrent ? 'font-weight:800' : ''}">
+      <span style="color:${col};width:14px;text-align:center">${mark}</span>
+      <span>${esc(s.name)}</span>
+      <span class="muted" style="font-size:11px">${esc(s.en)}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="collapsible" id="spineDetail">
+      <div class="collapsible-head" onclick="document.getElementById('spineDetail').classList.toggle('open')" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div class="h8-section" style="margin:0;padding:0">Your path to a real conversation</div>
+          <span class="collapsible-arrow">›</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-weight:800;font-size:16px">${esc(m.stageName)} <span class="muted" style="font-size:12px;font-weight:600">· ${esc(m.stageEn)}</span></div>
+          ${summitBadge}
+        </div>
+        ${bar(m.pctToNext, '#9d5cff')}
+      </div>
+      <div class="collapsible-body">
+        <div class="card" style="padding:12px 14px;margin-top:8px">
+          <h3 style="margin-top:0;font-size:13px">🧭 The five stages</h3>
+          ${stageRows}
+        </div>
+        ${renderProgress()}
+      </div>
+    </div>`;
 }
 
 function render(){
@@ -19093,27 +19275,25 @@ function _pathLadderHtml(dp){
     <button class="h8-hero-cta" onclick="pathGo('${dp.continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${esc(dp.continueLabel)}</button>`;
 }
 
-/* ---------- HOME (Stage A — conversation-first front door) ----------
+/* ---------- HOME (Stage A front door + Stage C advisory spine) ----------
    Replaces the old topics-grid Home + separate Today tab with a single
-   screen: a spine placeholder (Stage C wires the real _spineModel() header
-   in here), the おしゃべり (conversation) hero with its tier chip + XP bar,
-   the shared path ladder above, and the resume chip for an in-progress
-   Build Mode session — relocated from the old topics-Home's hero so a
-   resume is still visible with 0 extra taps on app open. Topic browsing
-   moved to renderPractice() (former renderHome, still one tap away via the
-   Practice tab). Verb forms + Learn Kana stay reachable via the folded
-   extras row below the ladder, same as the old Today tab. */
+   screen: the real advisory spine header (_spineHeaderHtml() / _spineModel(),
+   Stage C — collapsed to a stage-name headline + single bar, expandable to
+   the detail sheet that absorbs renderProgress()), the おしゃべり
+   (conversation) hero with its tier chip + XP bar, the shared path ladder
+   above, and the resume chip for an in-progress Build Mode session —
+   relocated from the old topics-Home's hero so a resume is still visible
+   with 0 extra taps on app open. Topic browsing moved to renderPractice()
+   (former renderHome, still one tap away via the Practice tab). Verb forms
+   + Learn Kana stay reachable via the folded extras row below the ladder,
+   same as the old Today tab. */
 function renderHome(){
   const bm = state.buildMode;
   const hasResume = !!(bm && bm.lesson && !bm.done);
   const _convoInfo = convoLevelInfo();
   const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
 
-  /* Stage C will replace this placeholder with the real advisory spine
-     header (_spineModel()); Stage A only reserves the slot so the layout
-     doesn't shift again when it lands. */
-  const spineHeader = `
-    <div class="h8-section" style="margin:2px 4px 8px;opacity:.7">Your path to a real conversation</div>`;
+  const spineHeader = _spineHeaderHtml();
 
   const resumeChip = hasResume ? (() => {
     const stepsLeft = Math.max(0, (bm.steps?.length || 0) - (bm.stepIdx || 0));
