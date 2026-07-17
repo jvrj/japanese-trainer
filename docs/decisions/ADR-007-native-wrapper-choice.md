@@ -1,6 +1,6 @@
 # ADR-007 — Native wrapper choice (Capacitor, CONDITIONAL on iOS WKWebView mic spike)
 
-- **Status:** Proposed (PENDING — filed by Delve 4 synthesis; not promoted to `docs/decisions/`; awaiting user signoff)
+- **Status:** Accepted (promoted to `docs/decisions/` 2026-06-29 — user signoff)
 - **Date:** 2026-06-28
 - **Source:** Delve 4 — `docs/delve-cycles/4-productization-architecture.md` (§6, §10; Round 1 synthesis)
 - **Supersedes / superseded by:** none

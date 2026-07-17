@@ -433,3 +433,65 @@ No framework, no build step, no new dependency.
 
 - **ADR-001 — Conversation mode interaction model & scaffolding** (`docs/decisions-pending/ADR-001-conversation-mode-interaction-model.md`). Load-bearing: sets the turn-loop contract, scaffolding tiers (incl. the echo rung), recovery ladder, and the TTS→mic (`_buildSpeakJP`) + `system`-field conventions the forge build and any later mode must follow.
 - **ADR-002 — Conversation mode SRS-coupling policy** (`docs/decisions-pending/ADR-002-conversation-mode-srs-coupling.md`). Load-bearing: defines the SM-2 write contract (data-model/determinism posture) — seed source, kana→id normalization, unaided-speech-only ease bump, echo-only weak exposure log.
+
+---
+
+## Addendum A — Levelling / progression (おしゃべりレベル)  [added 2026-06-27, user-directed via /interactive]
+
+> Folds a levelling system onto the locked design. User picks (via /interactive): **(1)** levels unlock harder scenes **AND** fade scaffolding (both); **(2)** earned by **unaided spoken-correct word use** only; **(3)** **named kana tiers + progress bar**. This resolves open questions §12 Q3 (scene selection → now level-gated) and §12 Q5 (adaptive difficulty → in scope as discrete tiers, not a continuous engine). Where this modifies an earlier lock, the override is stated; nothing about the AI-led probing spine, the SRS write contract, or the kana-only rule changes.
+
+### A.1 Tiers — LOCK: 4 named kana tiers, monotonic (never demote)
+
+| Lv | Name | Scenes available (cumulative) | Chips | TTS rate | Probe complexity | maxTurns |
+|----|------|-------------------------------|-------|----------|------------------|----------|
+| 1 | **はじめ** | greetings, cafe, self-intro | 3 always | 0.85 (slow) | one short clause, no follow-up | 6 |
+| 2 | **なれる** | + time/daily-routine, shopping-numbers | 2–3 | 1.0 | may add one light follow-up | 8 |
+| 3 | **がんばる** | + weekend, directions | 2 (occasionally withheld: "try without 🎤") | 1.0 | "why/when/where?" follow-ups, occasional two-clause | 9 |
+| 4 | **ぺらぺら** | all + free-topic ("anything") | on-demand only (peek-to-reveal) | 1.1 (natural) | multi-clause, opinions | 10 |
+
+These **override the fixed values** in §4.3 (chip count), §5 (TTS rate default), §8 (maxTurns=8 fixed, scene bank ungated). The scene bank itself (§8) is unchanged in membership; each scene gains a `minLevel` field and `startConvo` draws only from `scene.minLevel <= convoLevel`, then applies the existing due-word bias within the unlocked set.
+
+### A.2 Earning — LOCK: XP = the §7.1 unaided-spoken-correct event, reused verbatim
+
+No new judging signal. Inside `convoApplyScore` (§10.2), the **same branch that already fires `smGrade(smStatFor(id),'good')`** (resolved id, `viaVoice===true`) also does `convoAddXp(1)` per word. Chip-echo (`{chip:true}`) and silent tap add **0 XP** — identical to their SRS treatment, so a tier can never be grinded by tapping.
+
+- Thresholds (tunable constants `CONVO_LEVEL_XP = [0, 30, 80, 160]`): cumulative XP ≥ entry of tier N ⇒ `convoLevel = N`. Monotonic; XP never decreases, level never drops.
+- `convoAddXp(n)` updates `state.settings.convoXp`, recomputes `convoLevel`, and sets a transient `state.convo.leveledUpTo` if a threshold was crossed this session (surfaced at wrap-up, never mid-turn).
+
+### A.3 Persistence — LOCK (per the §10.1 rule): durable progression lives in `state.settings`
+
+`convoLevel` (default `1`) and `convoXp` (default `0`) are seeded in `DEFAULT_SETTINGS` (index.html:2960) — `state.settings` is already auto-persisted, so this is the correct home (NOT a bare `state.*`). `state.convo.leveledUpTo` is transient (session-scoped, lives in the `LS.convo` blob like the rest of the session).
+
+### A.4 Prompt contract — LOCK: a LEVEL line in the §6.1 `system` field
+
+The constant `system` preamble gains one block describing the active tier's difficulty contract, e.g.:
+
+```
+LEARNER LEVEL: なれる (2 of 4). Ask natural questions; you MAY add ONE short
+follow-up. Offer 2-3 suggested replies. Keep each probe answerable from WORD_POOL.
+```
+
+At がんばる/ぺらぺら the block instructs: fewer/no chips by default, allow two-clause and "why/when/where" probes, natural pace. The kana-only rule, WORD_POOL constraint, and per-turn JSON schema (§6.2) are **unchanged** — level only tunes complexity/scaffolding *within* those invariants. (Vocab still comes from the SRS seed; tiers do NOT widen the pool — keeps the tight-pool rule intact. A future "1 stretch word at ぺらぺら" idea is deferred, not in this build.)
+
+### A.5 UI — LOCK
+
+- **Home 💬 tile:** shows current tier name + a thin XP progress bar to next tier (or "MAX" at ぺらぺら).
+- **Wrap-up recap card (§7.3/§8):** "+N XP" this session, the bar moving, and — if a threshold was crossed — a level-up celebration line ("レベルアップ！→ がんばる 🎉"). Reuses the existing wrap-up card; no new screen.
+- **In-session:** no level chrome (keeps the turn loop clean); difficulty changes are felt, not labelled.
+
+### A.6 New/changed functions for the forge
+
+- `state.settings.convoLevel`, `state.settings.convoXp` — new DEFAULT_SETTINGS keys.
+- `convoLevelInfo()` → `{lv, name, scenes[], chips, ttsRate, maxTurns, xp, xpToNext, atMax}` — single source the renderer + startConvo + preamble all read.
+- `convoAddXp(n)` — increment, recompute level, flag `leveledUpTo`.
+- `startConvo` (§10.2) — now filters scenes by `minLevel`, reads `maxTurns`/`chips`/`ttsRate` from `convoLevelInfo()`.
+- `_convoPreamble` (§10.2) — appends the A.4 LEVEL block.
+- `renderConvo` wrap-up + the home 💬 tile — render the bar + level-up line.
+- SCENES bank entries (§8) — each gains `minLevel`.
+
+### A.7 Definition of done (levelling)
+- [ ] 4 tiers gate scenes + scale chips/rate/turns/probe-complexity as A.1
+- [ ] XP earned ONLY on unaided spoken-correct use; chips/taps = 0 (A.2)
+- [ ] level + xp persist in `state.settings`; monotonic (A.3)
+- [ ] LEVEL block in the `system` field; invariants unchanged (A.4)
+- [ ] home tile bar + wrap-up level-up celebration (A.5)
