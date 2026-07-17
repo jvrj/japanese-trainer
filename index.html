@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.11';
+const APP_VERSION = '8.12';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9265,11 +9265,17 @@ function _convoPreamble(pool, freeSet, scene, partner){
     'KANA-ONLY RULE: All Japanese text you produce — questions, glosses, suggestions — must be',
     'written entirely in hiragana and katakana. Never output kanji characters.',
     '',
-    'WORD_POOL — your questions must be answerable using only these words:',
+    'WORD_POOL — the learner\'s known words. Anchor your questions and replies in these:',
     poolLines,
     freeLines ? ('FREE_SET (supplementary):\n' + freeLines) : '',
     '',
     'SCENE: ' + safeScene,
+    'The scene is a STARTING POINT, not a script.',
+    '',
+    'FOLLOW THE LEARNER (most important rule):',
+    '- If the learner says something on a different topic — anything appropriate — respond to WHAT THEY SAID. Never steer them back to the scene.',
+    '- The learner may mix English words into their Japanese (e.g. 「きのう pizza を たべました」). Understand the intent, respond to it, and weave the correct simple Japanese for the English word into your jp or your suggested chips so they hear the real word.',
+    '- Prefer WORD_POOL words in your replies, but following the learner ALWAYS wins. When you need a word outside the pool, pick the simplest everyday kana word a beginner would know.',
     '',
     levelLine,
     '',
@@ -9284,9 +9290,9 @@ function _convoPreamble(pool, freeSet, scene, partner){
     '',
     'Guidelines:',
     '- Keep jp to one short sentence (≤10 kana).',
-    '- suggested must contain exactly ' + _lvInfo.chips + ' tappable replies from the WORD_POOL in kana.',
+    '- suggested must contain exactly ' + _lvInfo.chips + ' short kana replies the learner could actually say next — prefer WORD_POOL words, but fitting the live conversation wins.',
     '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
-    '- judged.score: 0 = chip tap only, 1 = unaided speech with pool word, 2 = rich free speech.',
+    '- judged.score: 2 = you UNDERSTOOD the learner — any comprehensible unaided speech, on ANY topic, pool word or not. 1 = partly understood, you want one gentle retry. 0 = chip tap, or you could not extract any meaning at all. Never give comprehensible speech a 0 just because it used no pool word or left the scene.',
     '- sceneDone = true only when the scene has reached a natural close (≥3 turns).',
     '- Output raw JSON only — no markdown fences, no preamble.',
   ]).filter(l => l !== undefined).join('\n');
