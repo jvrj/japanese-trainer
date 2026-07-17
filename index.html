@@ -144,6 +144,12 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 .nav-btn{background:none;border:none;color:var(--faint);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:6px 10px;display:flex;flex-direction:column;align-items:center;gap:3px}
 .nav-btn .nav-ico{font-size:20px;line-height:1}
 .nav-btn.active{color:var(--grape)}
+/* Stage A — 2-tab nav (Home/Practice) + a standalone settings gear. The gear
+   is deliberately NOT a .nav-btn (it isn't a screen tab — no active state,
+   not part of the Home/Practice toggle group), just an icon-only affordance
+   parked at the end of the same bottom bar. */
+.nav-gear{background:none;border:none;color:var(--faint);font-family:inherit;cursor:pointer;padding:6px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.nav-gear .nav-ico{font-size:20px;line-height:1}
 
 /* Floating FABs */
 .notes-fab{position:fixed;right:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--purple);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 8px 22px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center}
@@ -503,8 +509,8 @@ body{letter-spacing:-.005em}
 .drill-prompt{letter-spacing:-.3px}
 
 /* 10 · tactile press feedback (springy) */
-.scope-chip,.tag,.h8-row,.nav-btn,.btn,.h8-icon-btn,.h8-hero-cta,.audio-btn,.tile{transition:transform .14s cubic-bezier(.34,1.56,.64,1),background .15s,box-shadow .2s,border-color .15s}
-.scope-chip:active,.tag:active,.nav-btn:active,.h8-row:active,.tile:active{transform:scale(.94)}
+.scope-chip,.tag,.h8-row,.nav-btn,.nav-gear,.btn,.h8-icon-btn,.h8-hero-cta,.audio-btn,.tile{transition:transform .14s cubic-bezier(.34,1.56,.64,1),background .15s,box-shadow .2s,border-color .15s}
+.scope-chip:active,.tag:active,.nav-btn:active,.nav-gear:active,.h8-row:active,.tile:active{transform:scale(.94)}
 .h8-hero-cta:active{transform:scale(.96)}
 
 /* 11 · staggered card entrance on home (replaces the single container rise) */
@@ -592,7 +598,7 @@ body:has(.home-v8) .header{display:none}
 .blitz-head-done{font-size:11px;color:var(--faint);margin-top:2px}
 .blitz-head-btns{display:flex;gap:6px;flex-shrink:0}
 @media (prefers-reduced-motion:reduce){.bring-fill{transition:none}}
-/* ===== Ship 6 — Home = Topics + Today path tab ===== */
+/* ===== Ship 6 — Home = Topics + Today path tab (Stage A: now the Practice tab) ===== */
 .path-strip{display:flex;align-items:center;gap:11px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 13px;margin:0 0 13px;cursor:pointer}
 .path-dots{display:flex;gap:3px;margin-top:5px}
 .path-dots i{width:14px;height:5px;border-radius:3px;background:rgba(255,255,255,.16)}
@@ -626,9 +632,9 @@ body:has(.home-v8) .header{display:none}
 </div>
 
 <nav class="bottom-nav">
-  <button class="nav-btn" data-screen="home"><span class="nav-ico">🗂️</span>Home</button>
-  <button class="nav-btn" data-screen="today"><span class="nav-ico">🧭</span>Today</button>
-  <button class="nav-btn" data-screen="settings"><span class="nav-ico">⚙️</span>Settings</button>
+  <button class="nav-btn" data-screen="home"><span class="nav-ico">💬</span>Home</button>
+  <button class="nav-btn" data-screen="practice"><span class="nav-ico">🗂️</span>Practice</button>
+  <button class="nav-gear" id="navGearBtn" onclick="nav('settings')" title="Settings" aria-label="Settings"><span class="nav-ico">⚙️</span></button>
 </nav>
 
 <button class="back-fab" id="backFab" title="Back">←</button>
@@ -644,7 +650,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.06';
+const APP_VERSION = '8.07';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -18480,10 +18486,14 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
 
 function renderTopbar(){
-  if(state.screen === 'home' || state.screen === 'today') return '';
+  /* Home and Practice both draw their own top bar inline (wordmark + streak +
+     settings icon) — the generic back-button topbar stays hidden for both,
+     same as the pre-Stage-A behavior for 'home' (topics) and the now-removed
+     'today' alias. */
+  if(state.screen === 'home' || state.screen === 'practice') return '';
   let title = SCREEN_TITLES[state.screen];
   if(state.screen === 'formDrill'){
     const f = FORMS.find(x => x.id === state._navData);
@@ -18852,7 +18862,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, today:renderToday, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -18861,6 +18871,13 @@ function render(){
 function nav(screen, data, fromPop){
   /* history tracking: only push when not coming from popstate */
   clearNextTimer();
+  /* Stage A (CR-1/CR-2) — 'today' is now an alias for 'home': the old Today
+     tab's guided path folded into the new conversation-first Home. Normalize
+     ONCE here (the single nav() entry point) rather than patching every call
+     site, so state.screen, the CSS body[data-screen="home"] hook, and
+     pathGo()'s bail-detection (which compares state.screen==='home') all keep
+     seeing one canonical string instead of a second stale 'today'. */
+  if(screen === 'today') screen = 'home';
   /* v6.5 — re-shuffle on each entry so re-opening Particles doesn't resume
      the same deck. v6.7 — swap to multi-blank session model. */
   if(screen === 'particles' && state.screen !== 'particles'){
@@ -18900,7 +18917,9 @@ function updateNav(){
    descriptions. Single accent (blue); other colors retired from buttons.
    Each tile shows a 1-line progress meta so users still see at-a-glance
    where each mode stands without paragraphs. */
-/* ===== Ship 6 — Topics home + Today path tab ===== */
+/* ===== Ship 6 — Topics home + Today path tab (Stage A: today's path lives in
+   renderHome now via _pathLadderHtml(); _dailyPathModel() below is still
+   shared by both renderHome and renderPractice's summary strip) ===== */
 function _homeTopBar(){
   const streak = state.streak.current || 0;
   return `
@@ -18992,12 +19011,13 @@ function filterTopics(q){
 }
 window.filterTopics = filterTopics;
 
-/* The "Today" tab — the guided Daily Path (relocated from the old home) plus
-   the extra single-tap modes. Routing (pathGo) is Ship 4, unchanged. */
-function renderToday(){
-  const _convoInfo = convoLevelInfo();
-  const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
-  const dp = _dailyPathModel();
+/* Today's path ladder — the step-by-step daily sequence (review → learn →
+   sentence → nuance → memory → convo). Ship 4 built this once inside the old
+   Today tab and a second, drifting copy inside the old Home hero; Stage A
+   pulls both into this ONE shared helper so there is a single place that
+   renders the ladder markup. Consumed by renderHome() below (Routing via
+   pathGo() is unchanged). */
+function _pathLadderHtml(dp){
   const pathNodes = dp.steps.map((s, i) => {
     const done = s._done, current = i === dp.curIdx;
     const dot = done
@@ -19015,18 +19035,62 @@ function renderToday(){
       </div>
     </button>`;
   }).join('');
+  return `
+    <div class="h8-section" style="margin:2px 4px 11px">🧭 Today’s path <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· ${dp.doneCount}/${dp.total} done</span></div>
+    <div style="display:flex;flex-direction:column;margin:0 2px">${pathNodes}</div>
+    <button class="h8-hero-cta" onclick="pathGo('${dp.continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${esc(dp.continueLabel)}</button>`;
+}
+
+/* ---------- HOME (Stage A — conversation-first front door) ----------
+   Replaces the old topics-grid Home + separate Today tab with a single
+   screen: a spine placeholder (Stage C wires the real _spineModel() header
+   in here), the おしゃべり (conversation) hero with its tier chip + XP bar,
+   the shared path ladder above, and the resume chip for an in-progress
+   Build Mode session — relocated from the old topics-Home's hero so a
+   resume is still visible with 0 extra taps on app open. Topic browsing
+   moved to renderPractice() (former renderHome, still one tap away via the
+   Practice tab). Verb forms + Learn Kana stay reachable via the folded
+   extras row below the ladder, same as the old Today tab. */
+function renderHome(){
+  const bm = state.buildMode;
+  const hasResume = !!(bm && bm.lesson && !bm.done);
+  const _convoInfo = convoLevelInfo();
+  const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
+
+  /* Stage C will replace this placeholder with the real advisory spine
+     header (_spineModel()); Stage A only reserves the slot so the layout
+     doesn't shift again when it lands. */
+  const spineHeader = `
+    <div class="h8-section" style="margin:2px 4px 8px;opacity:.7">Your path to a real conversation</div>`;
+
+  const resumeChip = hasResume ? (() => {
+    const stepsLeft = Math.max(0, (bm.steps?.length || 0) - (bm.stepIdx || 0));
+    return `<button class="continue-strip" style="width:100%;text-align:left;font-family:inherit" onclick="nav('buildMode')">
+      <div class="ico">▶</div>
+      <div class="label">
+        <div class="label-t">Resume — ${esc(bm.lesson.title || 'Build Mode session')}</div>
+        <div class="label-s">${stepsLeft} step${stepsLeft===1?'':'s'} left · pick up where you left off</div>
+      </div>
+      <div class="arrow">›</div>
+    </button>`;
+  })() : '';
+
+  const heroCard = `
+    <div class="h8-hero">
+      <div class="h8-hero-deco emoji">💬</div>
+      <div class="h8-hero-eyebrow">おしゃべり</div>
+      <div class="h8-hero-title">${esc(_convoInfo.name)}${_convoInfo.en ? ` <span style="font-size:13px;font-weight:600;opacity:.75">· ${esc(_convoInfo.en)}</span>` : ''}</div>
+      <div class="h8-hero-meta">Talk it out — AI-led, multi-turn, zero judgment</div>
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:12px"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
+      <div style="font-size:11px;color:rgba(255,255,255,.72);margin-top:4px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
+      <button class="h8-hero-cta" style="margin-top:12px" onclick="nav('convo')">💬 Start おしゃべり</button>
+    </div>`;
+
+  const dp = _dailyPathModel();
+  const ladder = _pathLadderHtml(dp);
+
   const extras = `
     <div class="h8-list" style="margin-top:18px">
-      <button class="h8-row" onclick="nav('convo')">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}${_convoInfo.en ? ' · ' + esc(_convoInfo.en) : ''}</span></div>
-          <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-scored</div>
-          <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
-          <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
       <button class="h8-row" onclick="startFormsLadder()">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
         <div class="h8-row-body">
@@ -19044,17 +19108,23 @@ function renderToday(){
         <div class="h8-row-arrow">›</div>
       </button>
     </div>`;
+
   return `
     <div class="home-v8">
       ${_homeTopBar()}
-      <div class="h8-section" style="margin:2px 4px 11px">🧭 Today’s path <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· ${dp.doneCount}/${dp.total} done</span></div>
-      <div style="display:flex;flex-direction:column;margin:0 2px">${pathNodes}</div>
-      <button class="h8-hero-cta" onclick="pathGo('${dp.continueKey}')" style="width:100%;margin-top:2px;padding:15px;border:none;border-radius:16px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer">${esc(dp.continueLabel)}</button>
+      ${spineHeader}
+      ${resumeChip}
+      ${heroCard}
+      ${ladder}
       ${extras}
     </div>`;
 }
 
-function renderHome(){
+/* ---------- PRACTICE (topics browser — former Home, Stage A renamed) ----------
+   Everything below is unchanged topics/vocab-section browsing logic; only the
+   function name + tab binding moved. Still bound to the "practice" screen via
+   render()'s dispatch map and the Practice bottom-nav tab. */
+function renderPractice(){
   const active = getActiveWords();
   const streak = state.streak.current || 0;
   const totalAttempts = Object.values(state.stats).reduce((s,x)=>s+(x.attempts?.length||0),0);
@@ -19401,11 +19471,11 @@ function renderHome(){
     : '';
   const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· tap ▶ to go hands-free</span></div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
-  /* ===== Ship 6 — Home renders the Topics screen ===== */
+  /* ===== Ship 6 — Practice renders the Topics screen (Stage A: renamed from Home) ===== */
   const _dpm = _dailyPathModel();
   const _dots = _dpm.steps.map(s => `<i class="${s._done ? 'done' : ''}"></i>`).join('');
   const pathStrip = `
-    <div class="path-strip" onclick="nav('today')">
+    <div class="path-strip" onclick="nav('home')">
       <div style="font-size:20px">🧭</div>
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
