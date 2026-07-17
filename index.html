@@ -2866,6 +2866,14 @@ const SCENES = [
 ];
 
 /**
+ * FREE_SCENE — the free-talk pseudo-scene (Delve 6 T2). Deliberately declared
+ * OUTSIDE the SCENES bank: it is not a topic spark and must never appear in
+ * scene-picker UIs that iterate SCENES. startConvo('free') resolves directly
+ * to this constant via a dedicated branch, before the SCENES bank lookup.
+ */
+const FREE_SCENE = { id:'free', nameJP:'フリートーク', en:'Free talk', minLevel:1 };
+
+/**
  * FREE_SET — closed set of always-available scaffold tokens.
  * The AI may ask questions answerable with only pool words + these tokens.
  * All values are kana-only (no kanji, no romaji). Never expanded at runtime.
@@ -9217,18 +9225,23 @@ async function _coachCall(promptStr){
 /* ===================== CONVO (おしゃべり) API HELPERS ===================== */
 
 /**
- * _convoPreamble(pool, freeSet, scene)
+ * _convoPreamble(pool, freeSet, scene, partner, sceneId)
  * Returns the system-prompt string for the multi-turn conversation loop.
  * Four framing elements (per rubric):
  *   (a) kana-only / no-kanji instruction
  *   (b) WORD_POOL — word ids + jp forms from the pool argument
- *   (c) scene context line (scene argument interpolated directly)
+ *   (c) scene context line (scene argument interpolated directly) — replaced by
+ *       the free-talk directive when sceneId === 'free' (Delve 6 T2)
  *   (d) per-turn JSON schema naming all five locked keys
  * Security: pool words are serialised via JSON.stringify per-entry so a crafted
  * word with "\nrole:" cannot inject a message-boundary marker. The scene value
- * has newlines collapsed to spaces for the same reason.
+ * has newlines collapsed to spaces for the same reason. sceneId is checked with
+ * a strict === 'free' comparison (never a loose/truthy check) so only the exact
+ * free-talk pseudo-scene id swaps the directive; every other sceneId (including
+ * undefined/unrecognised ones) falls through to the unchanged SCENE line, which
+ * is always a caller-controlled static/sanitised string, never raw external input.
  */
-function _convoPreamble(pool, freeSet, scene, partner){
+function _convoPreamble(pool, freeSet, scene, partner, sceneId){
   /* Sanitize scene: collapse newlines so a crafted value cannot inject role: markers */
   const safeScene = String(scene || '').replace(/[\r\n]+/g, ' ');
   /* Persona + learner identity. partner fields come from the CONVO_PARTNERS const
@@ -9259,6 +9272,18 @@ function _convoPreamble(pool, freeSet, scene, partner){
           ? 'Moderate complexity: compound phrases welcome. Reduce scaffold — learner is gaining fluency.'
           : 'High fluency tier: richer vocabulary, compound structures, nuanced follow-ups. Minimal scaffold.')
     + ' Kana-only and WORD_POOL invariants remain absolute regardless of tier.';
+  /* Delve 6 T2 free-talk branch: strict closed-set check (=== 'free'), never a loose/
+     truthy check. Any other sceneId — including undefined/unrecognised values — falls
+     through to the unchanged SCENE line below (fail-closed to the existing, always-defined
+     behavior; never propagates an undefined scene into the prompt). */
+  const sceneLines = (sceneId === 'free')
+    ? [
+        'FREE TALK: No scene. Open with a warm greeting and one easy question about the learner\'s day, then follow wherever they go.',
+      ]
+    : [
+        'SCENE: ' + safeScene,
+        'The scene is a STARTING POINT, not a script.',
+      ];
   return [
     'You are a Japanese conversation partner for a beginner learner.',
     '',
@@ -9270,8 +9295,7 @@ function _convoPreamble(pool, freeSet, scene, partner){
     poolLines,
     freeLines ? ('FREE_SET (supplementary):\n' + freeLines) : '',
     '',
-    'SCENE: ' + safeScene,
-    'The scene is a STARTING POINT, not a script.',
+  ], sceneLines, [
     '',
     'FOLLOW THE LEARNER (most important rule):',
     '- If the learner says something on a different topic — anything appropriate — respond to WHAT THEY SAID. Never steer them back to the scene.',
@@ -9450,15 +9474,24 @@ async function _convoOpenProbe(){
 /* startConvo — seed pool, reset state.convo, nav, kick opening probe */
 function startConvo(sceneId){
   stopVoice();
-  /* Gate scenes by tier: only offer scenes at or below the current level */
+  /* Tier info is needed regardless of scene branch (maxTurns/chips/ttsRate below). */
   const info = convoLevelInfo();
-  const available = SCENES.filter(s => s.minLevel <= info.lv);
-  const scene = (available.find(s => s.id === sceneId) || available[0] || SCENES[0]);
+  /* Delve 6 T2: free-talk pseudo-scene resolves BEFORE the closed-bank lookup below, via a
+     strict === 'free' check, so it can never silently fall through to the SCENES bank/
+     intro fallback. FREE_SCENE is not a member of SCENES. */
+  let scene;
+  if(sceneId === 'free'){
+    scene = FREE_SCENE;
+  } else {
+    /* Gate scenes by tier: only offer scenes at or below the current level */
+    const available = SCENES.filter(s => s.minLevel <= info.lv);
+    scene = (available.find(s => s.id === sceneId) || available[0] || SCENES[0]);
+  }
   /* (a) Seed ~8 due-first words via _buildSpamPick */
   const pool = _buildSpamPick(getActiveWords(), 8);
   /* Pick a random character to host this session (gives the AI an identity, not "Isshin") */
   const partner = _convoPickPartner();
-  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner);
+  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner, scene.id);
   /* (b) Fresh reset — never merge over a prior session.
      maxTurns, and other tier params come from convoLevelInfo() (not hardcoded). */
   state.convo = {
