@@ -2951,7 +2951,6 @@ let state = {
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null,
-  _libraryUi:{search:'', sort:'en', filter:'all', expandedId:null}, // v6.10 — Library transient UI
   /** oshaberi session state — null when no session is active, restored from LS.convo on load.
    *  Fields: scene, messages, pool, freeSet, turn, maxTurns, current, listening,
    *          interim, viaVoice, loading, error, peekGloss, results, done */
@@ -3596,10 +3595,6 @@ function libraryWordStatus(w){
   return 'learning';
 }
 
-function libraryIsFocused(id){
-  return (state.settings.focusWords || []).includes(id);
-}
-
 function libraryToggle(listKey, id){
   const s = state.settings;
   s[listKey] = s[listKey] || [];
@@ -3608,30 +3603,6 @@ function libraryToggle(listKey, id){
   else s[listKey].push(id);
   save();
 }
-
-function libraryFocusToggle(id){
-  /* If user focuses a mastered/suspended word, un-mastered/un-suspended it. */
-  const s = state.settings;
-  if(!libraryIsFocused(id)){
-    s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
-    s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
-  }
-  libraryToggle('focusWords', id);
-  render();
-}
-window.libraryFocusToggle = libraryFocusToggle;
-
-function librarySuspendToggle(id){
-  /* Suspending clears focus + mastered (mutually exclusive states). */
-  const s = state.settings;
-  if(!(s.suspendedWords || []).includes(id)){
-    s.focusWords = (s.focusWords || []).filter(x => x !== id);
-    s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
-  }
-  libraryToggle('suspendedWords', id);
-  render();
-}
-window.librarySuspendToggle = librarySuspendToggle;
 
 function libraryMasterToggle(id){
   const s = state.settings;
@@ -3643,19 +3614,6 @@ function libraryMasterToggle(id){
   render();
 }
 window.libraryMasterToggle = libraryMasterToggle;
-
-function libraryResetWord(id){
-  if(!confirm('Reset all drill progress for this word? Streaks, intervals, and attempts will be cleared.')) return;
-  delete state.stats[id];
-  /* Reset also clears focus/suspend/mastered so the word starts fresh. */
-  const s = state.settings;
-  s.focusWords = (s.focusWords || []).filter(x => x !== id);
-  s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
-  s.masteredWords = (s.masteredWords || []).filter(x => x !== id);
-  save();
-  render();
-}
-window.libraryResetWord = libraryResetWord;
 
 /* v7.31 — focus is now a USER-OWNED basket (the Focus workshop). It used to
    silently empty itself the moment a word matured, which is exactly the
@@ -3686,7 +3644,7 @@ function focusAdd(id){
   const s = state.settings;
   s.focusWords = s.focusWords || [];
   if(s.focusWords.includes(id)) return false;
-  /* focus is mutually exclusive with mastered/suspended (cf. libraryFocusToggle) */
+  /* focus is mutually exclusive with mastered/suspended (mirrors libraryMasterToggle's mutual-exclusion) */
   s.suspendedWords = (s.suspendedWords || []).filter(x => x !== id);
   s.masteredWords  = (s.masteredWords  || []).filter(x => x !== id);
   s.focusWords.push(id);
