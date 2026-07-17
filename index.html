@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.10';
+const APP_VERSION = '8.11';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2553,170 +2553,6 @@ const ADV_PACK = [
 
 /* ===================== SENTENCE TEMPLATES ===================== */
 
-/* ===================== PARTICLE DRILLS ===================== */
-
-/* v6.7 — multi-blank shape: each drill has blanks:[{answer, accept?, explain}].
-   JP keeps `___` placeholders, sequential by blank index. Each (drillIdx,
-   blankIdx) is an independent pool item with its own retire streak. */
-/* v6.20 — each blank tagged {particle, use} so drills can be filtered by
-   particle, by use bucket, or all-particles. Tags are additive; do NOT
-   reorder this array — particleStats keys are by drillIdx. */
-const PARTICLE_DRILLS = [
-  {jp:"わたし ___ がくせい です。", en:"I am a student.",
-   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic of the sentence."}]},
-  {jp:"ほん ___ よみます。", en:"I read a book.",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object."}]},
-  {jp:"がっこう ___ いきます。", en:"I go to school.",
-   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に marks destination/direction. へ also works."}]},
-  {jp:"バス ___ いきます。", en:"I go by bus.",
-   blanks:[{answer:"で",particle:"で",use:"means", explain:"で marks the means/method."}]},
-  {jp:"レストラン ___ たべます。", en:"I eat at the restaurant.",
-   blanks:[{answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."}]},
-  {jp:"ともだち ___ あいます。", en:"I meet a friend.",
-   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"に marks the target of 会う. と ('with') also works."}]},
-  {jp:"ともだち ___ いきます。", en:"I go with a friend.",
-   blanks:[{answer:"と",particle:"と",use:"with", explain:"と = 'with' for companions."}]},
-  {jp:"これ ___ ほん です。", en:"This is a book.",
-   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic: 'as for this...'."}]},
-  {jp:"ねこ ___ すき です。", en:"I like cats.",
-   blanks:[{answer:"が",particle:"が",use:"stative_obj", explain:"が marks the object of emotion verbs like すき, きらい, ほしい."}]},
-  {jp:"コーヒー ___ おちゃ を のみます。", en:"I drink coffee and tea.",
-   blanks:[{answer:"と",particle:"と",use:"and", explain:"と connects two concrete nouns ('and')."}]},
-  {jp:"きょう ___ あつい です。", en:"Today is hot.",
-   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic even when it's a time."}]},
-  {jp:"わたし ___ いきます。", en:"I also go.",
-   blanks:[{answer:"も",particle:"も",use:"also", explain:"も = 'also/too', replaces は/が."}]},
-  {jp:"えき ___ いきます。", en:"I go toward the station.",
-   blanks:[{answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ = 'toward', like に but emphasises direction."}]},
-  {jp:"あさ ___ ばん まで はたらきます。", en:"I work from morning until evening.",
-   blanks:[{answer:"から",particle:"から",use:"from", explain:"から = 'from'. Pairs with まで ('until')."}]},
-  {jp:"ほん ___ ある。", en:"There is a book.",
-   blanks:[{answer:"が",particle:"が",use:"existence", explain:"が marks the subject of ある/いる (existence)."}]},
-  {jp:"それ ___ なん ですか。", en:"What is that?",
-   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks 'that' as topic in a question."}]},
-  {jp:"パン ___ たべません。", en:"I don't eat bread.",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を still marks the object in negative."}]},
-  {jp:"くるま ___ のります。", en:"I get in a car.",
-   blanks:[{answer:"に",particle:"に",use:"target", explain:"のる takes に for the thing you ride."}]},
-  {jp:"いぬ ___ ねこ が すき です。", en:"I like dogs and cats.",
-   blanks:[{answer:"と",particle:"と",use:"and", explain:"と connects nouns exhaustively."}]},
-  {jp:"うち ___ かえります。", en:"I return home.",
-   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に = destination. へ also works."}]},
-  {jp:"さかな ___ たべます か。", en:"Do you eat fish?",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the object even in questions."}]},
-  {jp:"おちゃ ___ おねがいします。", en:"Tea, please.",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"Can be omitted in very casual speech, but を is standard."}]},
-  {jp:"いしゃ ___ なりたい。", en:"I want to become a doctor.",
-   blanks:[{answer:"に",particle:"に",use:"becoming", explain:"に marks the target state for なる ('become')."}]},
-  {jp:"はし ___ わたります。", en:"I cross the bridge.",
-   blanks:[{answer:"を",particle:"を",use:"path", explain:"Movement verbs like わたる, あるく take を for the path."}]},
-  {jp:"せんせい ___ はなします。", en:"I talk with the teacher.",
-   blanks:[{answer:"と",particle:"と",use:"with", accept:["と","に"], explain:"と = 'with' for interactions. に also works for the target of speech."}]},
-
-  /* v6.7 expansion — multi-blank sentences force per-blank thinking */
-  {jp:"わたし ___ コーヒー ___ のみます。", en:"I drink coffee.",
-   blanks:[
-     {answer:"は",particle:"は",use:"topic", explain:"は marks the topic ('as for me')."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object."}
-   ]},
-  {jp:"ともだち ___ えいが ___ みました。", en:"I watched a movie with my friend.",
-   blanks:[
-     {answer:"と",particle:"と",use:"with", explain:"と = 'with' for companions."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the direct object even in past tense."}
-   ]},
-  {jp:"かいしゃ ___ いきます。", en:"I go to the company.",
-   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ both mark destination."}]},
-  {jp:"げつようび ___ かようび ___ やすみ です。", en:"Monday and Tuesday are days off.",
-   blanks:[
-     {answer:"と",particle:"と",use:"and", explain:"と connects nouns exhaustively ('A and B')."},
-     {answer:"は",particle:"は",use:"topic", explain:"は marks the whole 'Mon and Tue' compound as topic."}
-   ]},
-  {jp:"やまださん ___ メール ___ おくりました。", en:"I sent Yamada an email.",
-   blanks:[
-     {answer:"に",particle:"に",use:"target", explain:"に marks the recipient — the target the email was sent to."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the email itself as the direct object."}
-   ]},
-  {jp:"としょかん ___ ほん ___ よみました。", en:"I read a book at the library.",
-   blanks:[
-     {answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the book as the thing being read."}
-   ]},
-  {jp:"でんしゃ ___ かいしゃ ___ いきます。", en:"I go to work by train.",
-   blanks:[
-     {answer:"で",particle:"で",use:"means", explain:"で marks the means of transport."},
-     {answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ marks the destination."}
-   ]},
-  {jp:"とうきょう ___ おおさか ___ いきます。", en:"I go from Tokyo to Osaka.",
-   blanks:[
-     {answer:"から",particle:"から",use:"from", explain:"から = 'from' — origin point."},
-     {answer:"へ",particle:"へ",use:"direction", accept:["へ","に","まで"], explain:"へ / に for destination; まで for 'all the way to'."}
-   ]},
-  {jp:"なに ___ たべますか。", en:"What will you eat?",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を still marks the (unknown) object in a question."}]},
-  {jp:"どこ ___ いきますか。", en:"Where are you going?",
-   blanks:[{answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ / に both mark destination, even with question words."}]},
-  {jp:"なんじ ___ おきますか。", en:"What time do you wake up?",
-   blanks:[{answer:"に",particle:"に",use:"time", explain:"に marks specific times (clock times, days)."}]},
-  {jp:"たなかさん ___ あいました。", en:"I met Tanaka.",
-   blanks:[{answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"あう usually takes に for the person met. と = 'met with'."}]},
-  {jp:"ペン ___ なまえ ___ かきます。", en:"I write the name with a pen.",
-   blanks:[
-     {answer:"で",particle:"で",use:"means", explain:"で marks the instrument/tool used."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the name as what's being written."}
-   ]},
-  {jp:"へや ___ さむい です。", en:"The room is cold.",
-   blanks:[{answer:"は",particle:"は",use:"topic", explain:"は marks the topic — what we're saying something about."}]},
-  {jp:"これ ___ だれ ___ ですか。", en:"Whose is this?",
-   blanks:[
-     {answer:"は",particle:"は",use:"topic", explain:"は makes 'this' the topic."},
-     {answer:"の",particle:"の",use:"possessive", explain:"の marks possession when the noun is implied — 'whose (thing)'."}
-   ]},
-  {jp:"テレビ ___ みません。", en:"I don't watch TV.",
-   blanks:[{answer:"を",particle:"を",use:"dobj", explain:"を marks the object even in negative sentences."}]},
-  {jp:"しゅうまつ ___ うみ ___ いきます。", en:"On weekends I go to the sea.",
-   blanks:[
-     {answer:"は",particle:"は",use:"contrast", accept:["は","に"], explain:"は contrasts ('as for weekends'); に marks the time."},
-     {answer:"へ",particle:"へ",use:"direction", accept:["へ","に"], explain:"へ / に both mark destination."}
-   ]},
-  {jp:"パン ___ チーズ ___ あります。", en:"There's bread and cheese.",
-   blanks:[
-     {answer:"と",particle:"と",use:"and", explain:"と = 'and' between concrete nouns."},
-     {answer:"が",particle:"が",use:"existence", explain:"が marks the subject of ある/いる (existence)."}
-   ]},
-  {jp:"しちじ ___ うち ___ かえります。", en:"I return home at 7.",
-   blanks:[
-     {answer:"に",particle:"に",use:"time", explain:"に marks the specific time (7 o'clock)."},
-     {answer:"に",particle:"に",use:"target", accept:["に","へ"], explain:"に / へ for destination — back home."}
-   ]},
-  {jp:"うち ___ ねこ ___ います。", en:"There's a cat at home.",
-   blanks:[
-     {answer:"に",particle:"に",use:"target", explain:"に marks the location of existence (with ある/いる)."},
-     {answer:"が",particle:"が",use:"existence", explain:"が marks the subject of いる — what exists."}
-   ]},
-  {jp:"やまださん ___ アメリカ ___ きました。", en:"Yamada came from America.",
-   blanks:[
-     {answer:"は",particle:"は",use:"topic", explain:"は marks Yamada as the topic."},
-     {answer:"から",particle:"から",use:"from", explain:"から = 'from' — origin point of motion."}
-   ]},
-  {jp:"すし ___ てんぷら ___ たべました。", en:"I ate sushi and tempura.",
-   blanks:[
-     {answer:"と",particle:"と",use:"and", explain:"と connects two specific nouns ('and')."},
-     {answer:"を",particle:"を",use:"dobj", explain:"を marks the food eaten as the direct object."}
-   ]},
-  {jp:"パーティー ___ ともだち ___ あいました。", en:"I met a friend at the party.",
-   blanks:[
-     {answer:"で",particle:"で",use:"location", explain:"で marks where an action happens."},
-     {answer:"に",particle:"に",use:"target", accept:["に","と"], explain:"に marks the person met (or と for 'with')."}
-   ]},
-  {jp:"ゆうがた ___ うち ___ べんきょうします。", en:"I study at home in the evening.",
-   blanks:[
-     {answer:"に",particle:"に",use:"time", explain:"に marks the time of an action."},
-     {answer:"で",particle:"で",use:"location", explain:"で marks where the action happens."}
-   ]},
-  {jp:"みち ___ あるきます。", en:"I walk along the street.",
-   blanks:[{answer:"を",particle:"を",use:"path", explain:"を marks the path traversed by motion verbs (walk, cross, fly)."}]}
-];
-
 /* =========================================================================
    KANA DATA — hiragana + katakana, organised by row for teaching order.
    confusion_group: cards in the same group are surfaced back-to-back on fail.
@@ -3110,11 +2946,8 @@ let state = {
   phraseStats:{},       // phrase id -> same shape as sentenceStats — v6.3
   phraseBlitz:null,     // active Phrase Blitz session — v6.3
   particleStats:{},     // drillIdx -> blankIdx -> {streak, retired, retiredAt, correctCount, wrongCount, lastSeen} — v6.7
-  particleSession:null, // active Particle session — v6.7
   variationStats:{},    // drill id -> variantIdx -> same shape — v6.8
-  variationBlitz:null,  // active Variation Blitz session — v6.8
   similarStats:{},      // setId -> itemIdx -> {streak, retired, retiredAt, lastSeen, correctCount, wrongCount} — v6.22
-  similar:null,         // active Similar drill session — v6.22
   buildMode:null,       // active Build Mode session (Paul Noble-style construction drill). Shape: {lesson, steps, stepIdx, revealed, done}
   _reveal:false,
   _sentenceAnswer:null,
@@ -4676,7 +4509,7 @@ function focusGenParse(text){
 
 async function focusGenCall(w, retryNote){
   const key = (state.settings.anthropicKey || '').trim();
-  if(!key) throw new Error('No API key — add one in Settings → AI Focus sentences.');
+  if(!key) throw new Error('AI sentence generation is unavailable on this device right now.');
   const model = state.settings.focusGenModel || 'claude-haiku-4-5-20251001';
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
@@ -5100,7 +4933,7 @@ function renderFocus(){
         <span class="muted" style="font-size:13px">${words.length} word${words.length===1?'':'s'}</span>
       </div>
       <div class="muted" style="font-size:13px;margin-top:6px">See how each word slots into a sentence, then drill the whole set as guided EN→JP construction.</div>
-      ${hasKey ? '' : `<div class="muted" style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(167,139,250,0.10);border-left:3px solid #a78bfa;border-radius:4px;line-height:1.5">✨ <b>Want natural AI sentences?</b> The examples below are templates. Add your Anthropic API key in <a href="#" onclick="nav('settings')();return false" style="color:#a78bfa">Settings → AI Focus sentences</a> to generate real, nuance-rich sentences per word (cached offline after).</div>`}
+      ${hasKey ? '' : `<div class="muted" style="font-size:12px;margin-top:8px;padding:8px 10px;background:rgba(167,139,250,0.10);border-left:3px solid #a78bfa;border-radius:4px;line-height:1.5">✨ <b>Natural AI sentences</b> are unavailable on this device right now — the examples below are templates.</div>`}
     </div>
     ${cards}
     <div class="card" style="position:sticky;bottom:8px">
@@ -10264,7 +10097,7 @@ async function scCheck(){
   if(state.settings.kanaTypeAssist !== false && typeof romajiToKana === 'function'){ input = romajiToKana(input); sc.input = input; }
   if(!input){ sc.error = 'Type a Japanese sentence first, then tap Check.'; render(); return; }
   if(sc.loading) return;
-  if(!(state.settings.anthropicKey || '').trim()){ sc.error = 'The coach needs a Claude API key — add one in Settings → AI.'; render(); return; }
+  if(!(state.settings.anthropicKey || '').trim()){ sc.error = 'The coach needs an AI connection that isn\'t available on this device right now.'; render(); return; }
   sc.loading = true; sc.error = null; sc.result = null; render();
   const free = sc.mode === 'free';
   const fromVoice = sc.voiceUsed;
@@ -10299,7 +10132,7 @@ If the input is empty or not Japanese, set verdict "off" and gently ask them to 
   } catch(e){
     sc.loading = false;
     sc.error = (e && e.message === 'nokey')
-      ? 'The coach needs a Claude API key — add one in Settings → AI.'
+      ? 'The coach needs an AI connection that isn\'t available on this device right now.'
       : "Couldn’t reach the coach just now (it may be busy). Give it another go.";
     render();
     log('coach_err', { err: String(e && e.message || e) });
@@ -12408,14 +12241,13 @@ function renderPhraseBlitz(){
 }
 
 /* =========================================================================
-   VARIATIONS — one English intent, multiple Japanese ways to say it.
+   VARIATIONS DATA — one English intent, multiple Japanese ways to say it.
    Real life isn't 1:1; you say the same thing casually, politely, with a
-   softener, in past tense, with a different particle. This mode exposes
-   3-4 variants per intent. User types ANY of them; whichever they typed
-   gets streak credit toward retirement. After answering, the OTHER
-   variants are revealed with register notes — that's how new variants
-   surface naturally. Retire per-variant; drill ranks as "fully mastered"
-   only when every variant retires.
+   softener, in past tense, with a different particle. Stage E (v8.11)
+   deleted the standalone typed-drill Variations mode + its Variation Blitz
+   session; this pool now exists solely as content for buildMode's
+   Variation Spam (buildGenerateVariationSpamLesson) — the hands-free
+   audio-led counterpart. Do not delete: it feeds the never-break voice loop.
    ========================================================================= */
 const VARIATION_POOL = [
   {id:'v_late', en:"I'm running late",
@@ -12525,363 +12357,14 @@ const VARIATION_POOL = [
    ]}
 ];
 
-const VARIATION_RETIRE_STREAK = 3;
-const VARIATION_SESSION_TARGET = 10;
-
-function variationStatFor(drillId, variantIdx){
-  if(!state.variationStats) state.variationStats = {};
-  if(!state.variationStats[drillId]) state.variationStats[drillId] = {};
-  if(!state.variationStats[drillId][variantIdx]){
-    state.variationStats[drillId][variantIdx] = {streak:0, retired:false, retiredAt:null, correctCount:0, wrongCount:0, lastSeen:null};
-  }
-  return state.variationStats[drillId][variantIdx];
-}
-function variationStatPeek(drillId, variantIdx){
-  return state.variationStats?.[drillId]?.[variantIdx] || null;
-}
-function variationDrillIsIntroduced(drillId){
-  /* A drill is "introduced" once any variant has been seen. */
-  const m = state.variationStats?.[drillId];
-  if(!m) return false;
-  for(const k in m){
-    if(typeof m[k].lastSeen !== 'undefined' && m[k].lastSeen) return true;
-    if(m[k].correctCount || m[k].wrongCount) return true;
-  }
-  return false;
-}
-function variationMarkIntroduced(drillId){
-  /* Touch the first variant's stat with a timestamp so the introduce screen
-     doesn't show again. Doesn't grant any streak — user still has to type. */
-  const st = variationStatFor(drillId, 0);
-  st.lastSeen = now();
-  save();
-  render();
-}
-window.variationMarkIntroduced = variationMarkIntroduced;
-
-function variationDrillFullyRetired(drillId){
-  const drill = VARIATION_POOL.find(d => d.id === drillId);
-  if(!drill) return false;
-  for(let i = 0; i < drill.variants.length; i++){
-    const st = variationStatPeek(drillId, i);
-    if(!st || !st.retired) return false;
-  }
-  return true;
-}
-
-function buildVariationPool(){
-  const eligible = VARIATION_POOL.filter(d => !variationDrillFullyRetired(d.id));
-  if(!eligible.length) return shuffleFY(VARIATION_POOL.slice()).slice(0, VARIATION_SESSION_TARGET);
-  return shuffleFY(eligible).slice(0, VARIATION_SESSION_TARGET);
-}
-
-function variationCounts(){
-  let totalVariants = 0, retiredVariants = 0, drillsDone = 0;
-  for(const d of VARIATION_POOL){
-    let allRet = true;
-    for(let i = 0; i < d.variants.length; i++){
-      totalVariants++;
-      const st = variationStatPeek(d.id, i);
-      if(st?.retired) retiredVariants++; else allRet = false;
-    }
-    if(allRet) drillsDone++;
-  }
-  return {totalDrills: VARIATION_POOL.length, drillsDone, totalVariants, retiredVariants};
-}
-
-/* Match the user's loose input against ANY variant in the drill. Returns
-   the matched variant index, or -1 if no match. */
-function variationCheck(input, drill){
-  if(!input) return -1;
-  const norm = normJPLoose(input);
-  for(let i = 0; i < drill.variants.length; i++){
-    if(normJPLoose(drill.variants[i].jp) === norm) return i;
-  }
-  return -1;
-}
-
-function startVariationBlitz(){
-  if(!state.variationStats) state.variationStats = {};
-  const pool = buildVariationPool();
-  if(!pool.length){
-    showToast('No variations to drill.', 'success');
-    return;
-  }
-  state.variationBlitz = {
-    active:true, complete:false,
-    pool, idx:0, submitted:false, input:'', matchedIdx:-1,
-    tally:{correct:0, wrong:0, retired:0, total:pool.length}
-  };
-  nav('variationBlitz');
-}
-window.startVariationBlitz = startVariationBlitz;
-
-function variationBlitzCurrent(){
-  if(!state.variationBlitz || !state.variationBlitz.active) return null;
-  return state.variationBlitz.pool[state.variationBlitz.idx] || null;
-}
-
-function variationBlitzSubmit(){
-  if(!state.variationBlitz || state.variationBlitz.submitted) return;
-  const drill = variationBlitzCurrent();
-  if(!drill) return;
-  const inp = $('#variationBlitzInput');
-  state.variationBlitz.input = inp?.value || '';
-  const matchedIdx = variationCheck(state.variationBlitz.input, drill);
-  state.variationBlitz.matchedIdx = matchedIdx;
-  state.variationBlitz.submitted = true;
-  const correct = matchedIdx >= 0;
-  updateStreak(correct);
-  if(correct){
-    const st = variationStatFor(drill.id, matchedIdx);
-    st.lastSeen = now();
-    st.streak++;
-    st.correctCount++;
-    if(st.streak >= VARIATION_RETIRE_STREAK && !st.retired){
-      st.retired = true;
-      st.retiredAt = now();
-      state.variationBlitz.tally.retired++;
-    }
-    state.variationBlitz.tally.correct++;
-  } else {
-    /* Wrong — touch the drill's first variant stat so the introduce screen
-       won't fire again, and bump wrongCount on variant 0 as a proxy. */
-    const st = variationStatFor(drill.id, 0);
-    st.lastSeen = now();
-    st.wrongCount++;
-    st.streak = 0;
-    state.variationBlitz.tally.wrong++;
-  }
-  /* v7.45 — word-level attempt log (drill.id is the parent wordId). */
-  recordAttempt(drill.id, correct, 'variation', { variantIdx: matchedIdx });
-  save();
-  render();
-  setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
-}
-window.variationBlitzSubmit = variationBlitzSubmit;
-
-function variationBlitzReveal(){
-  if(!state.variationBlitz || state.variationBlitz.submitted) return;
-  const drill = variationBlitzCurrent();
-  if(!drill) return;
-  const inp = $('#variationBlitzInput');
-  state.variationBlitz.input = inp?.value || '';
-  state.variationBlitz.matchedIdx = -1;
-  state.variationBlitz.submitted = true;
-  const st = variationStatFor(drill.id, 0);
-  st.lastSeen = now();
-  st.wrongCount++;
-  state.variationBlitz.tally.wrong++;
-  /* v7.45 — log the give-up as a wrong attempt against the parent word. */
-  recordAttempt(drill.id, false, 'variation', { variantIdx: -1, revealed: true });
-  save();
-  render();
-  setTimeout(() => $('#variationBlitzContinue')?.focus(), 30);
-}
-window.variationBlitzReveal = variationBlitzReveal;
-
-function variationBlitzSkip(){
-  if(!state.variationBlitz) return;
-  state.variationBlitz.submitted = false;
-  state.variationBlitz.input = '';
-  state.variationBlitz.matchedIdx = -1;
-  state.variationBlitz.idx++;
-  if(state.variationBlitz.idx >= state.variationBlitz.pool.length){
-    state.variationBlitz.active = false;
-    state.variationBlitz.complete = true;
-  }
-  render();
-  setTimeout(() => $('#variationBlitzInput')?.focus(), 30);
-}
-window.variationBlitzSkip = variationBlitzSkip;
-
-function variationBlitzAdvance(){
-  if(!state.variationBlitz) return;
-  state.variationBlitz.idx++;
-  state.variationBlitz.submitted = false;
-  state.variationBlitz.input = '';
-  state.variationBlitz.matchedIdx = -1;
-  if(state.variationBlitz.idx >= state.variationBlitz.pool.length){
-    state.variationBlitz.active = false;
-    state.variationBlitz.complete = true;
-  }
-  save();
-  render();
-  setTimeout(() => $('#variationBlitzInput')?.focus(), 30);
-}
-window.variationBlitzAdvance = variationBlitzAdvance;
-
-function variationBlitzEnd(){
-  state.variationBlitz = null;
-  nav('variations');
-}
-window.variationBlitzEnd = variationBlitzEnd;
-
-function renderVariations(){
-  const counts = variationCounts();
-  const items = VARIATION_POOL.map(d => {
-    const dr = state.variationStats?.[d.id];
-    let retCount = 0;
-    for(let i = 0; i < d.variants.length; i++){
-      if(dr?.[i]?.retired) retCount++;
-    }
-    const fully = retCount === d.variants.length;
-    const dot = fully ? '✓' : (retCount ? `${retCount}/${d.variants.length}` : '○');
-    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-        <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(d.en)}</div>
-        <span class="muted" style="font-size:11px;white-space:nowrap">${dot}</span>
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:2px">${d.variants.map(v => esc(v.jp)).join(' · ')}</div>
-    </div>`;
-  }).join('');
-
-  return `
-    <div class="card">
-      <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
-        One thing in English, several ways in Japanese — casual, polite, softened, past, alternate phrasing. Type any one variant; the others reveal afterward so you absorb new ways naturally.
-      </div>
-      <div class="stats-row" style="margin-top:12px">
-        <div class="stat-box"><div class="stat-num">${counts.drillsDone}</div><div class="stat-label">Mastered</div></div>
-        <div class="stat-box"><div class="stat-num">${counts.retiredVariants}</div><div class="stat-label">Variants done</div></div>
-        <div class="stat-box"><div class="stat-num">${counts.totalVariants}</div><div class="stat-label">Total variants</div></div>
-        <div class="stat-box"><div class="stat-num">${counts.totalDrills}</div><div class="stat-label">Intents</div></div>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startBuildModeVariationSpam()">🎙️ Spam variations (~30, hands-free)</button>
-      <div style="height:6px"></div>
-      <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startVariationBlitz()">⌨ Typed drill variations</button>
-    </div>
-    <div class="card">
-      <h3 style="margin-top:0">Browse all intents</h3>
-      ${items}
-    </div>
-  `;
-}
-
-function renderVariationBlitz(){
-  const vb = state.variationBlitz;
-  if(!vb){
-    return `<div class="card"><div class="muted">No active variation drill.</div>
-      <button class="btn btn-primary" style="margin-top:12px" onclick="nav('variations')">Back to variations</button></div>`;
-  }
-  if(vb.complete){
-    const t = vb.tally;
-    const attempts = t.correct + t.wrong;
-    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
-    const counts = variationCounts();
-    return `<div class="card">
-      <h2 style="margin-top:0">Variation drill complete</h2>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
-      </div>
-      <div class="muted" style="text-align:center;margin-top:10px;font-size:13px">
-        <b>${counts.drillsDone}</b> / ${counts.totalDrills} intents fully mastered · ${counts.retiredVariants} / ${counts.totalVariants} variants retired
-      </div>
-      <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startVariationBlitz()">Drill again</button>
-      <div class="spacer"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="variationBlitzEnd()">Back to variations</button>
-    </div>`;
-  }
-
-  const drill = variationBlitzCurrent();
-  if(!drill) return `<div class="card"><div class="muted">No drill.</div></div>`;
-  const total = vb.pool.length;
-  const pos = vb.idx + 1;
-
-  /* Per-variant retired count for header context */
-  let retCount = 0;
-  for(let i = 0; i < drill.variants.length; i++){
-    if(state.variationStats?.[drill.id]?.[i]?.retired) retCount++;
-  }
-
-  const head = `<div class="card" style="padding:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <span class="muted" style="font-size:13px">Intent ${pos} / ${total}</span>
-      <span class="muted" style="font-size:12px">${retCount} / ${drill.variants.length} variants retired</span>
-    </div>
-  </div>`;
-
-  /* Introduce phase: never-seen drill gets all variants exposed first. */
-  if(!vb.submitted && !variationDrillIsIntroduced(drill.id)){
-    if(vb._lastIntroAutoplay !== drill.id){
-      vb._lastIntroAutoplay = drill.id;
-      setTimeout(() => { try{ speakJP(drill.variants[0].jp); }catch(e){} }, 300);
-    }
-    return head + `<div class="card">
-      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">New intent</div>
-      <div style="font-size:20px;text-align:center;color:var(--text);margin-bottom:14px;line-height:1.4">${esc(drill.en)}</div>
-      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:8px">${drill.variants.length} ways to say this</div>
-      ${drill.variants.map(v => `
-        <div style="border-left:3px solid var(--accent);padding:8px 12px;margin:8px 0;background:rgba(255,255,255,0.02);border-radius:4px">
-          <div class="jp" style="font-size:18px;font-weight:600">${esc(v.jp)}</div>
-          <div class="muted" style="font-size:12px;font-style:italic">${esc(kanaToRomaji(v.jp))}</div>
-          <div class="muted" style="font-size:12px;margin-top:4px"><b>${esc(v.register)}</b> — ${esc(v.note)}</div>
-          <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(v.jp)}')">🔊</button></div>
-        </div>
-      `).join('')}
-      <div class="spacer"></div>
-      <div class="muted" style="font-size:12px;text-align:center;margin-bottom:10px">Read each, hear each, then drill — type any one variant. The others surface as you go.</div>
-      <button class="btn btn-primary" style="width:100%" onclick="variationMarkIntroduced('${jsEsc(drill.id)}')">Got it — drill me</button>
-      <div class="spacer"></div>
-      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="variationBlitzSkip()">Skip this intent</button>
-    </div>`;
-  }
-
-  if(!vb.submitted){
-    return head + `<div class="card">
-      <div style="font-size:22px;text-align:center;font-weight:600;line-height:1.4;padding:20px 8px;color:var(--text)">${esc(drill.en)}</div>
-      <div class="muted" style="text-align:center;font-size:12px;margin-bottom:8px">type any one Japanese variant</div>
-      <input id="variationBlitzInput" class="input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="kana or romaji" onkeydown="if(event.key==='Enter'){event.preventDefault();variationBlitzSubmit();}">
-      <div class="spacer"></div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="variationBlitzReveal()">Reveal</button>
-        <button class="btn btn-primary" onclick="variationBlitzSubmit()">Submit</button>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="variationBlitzSkip()">Skip this intent</button>
-    </div>`;
-  }
-
-  /* Feedback: show user's input result + reveal all variants with notes. */
-  const matched = vb.matchedIdx;
-  const correct = matched >= 0;
-  return head + `<div class="card" style="border:2px solid var(--${correct ? 'green' : 'red'})">
-    <div style="font-size:18px;text-align:center;color:var(--text);margin-bottom:6px">${esc(drill.en)}</div>
-    <div style="text-align:center;font-size:18px;color:var(--${correct?'green':'red'});font-weight:700;margin-bottom:8px">
-      ${correct ? `✓ matched variant ${matched+1}` : '✗ no match'}
-    </div>
-    ${vb.input ? `<div class="feedback-smart" style="margin-top:6px">You wrote: <b>${esc(vb.input)}</b></div>` : ''}
-    <div class="spacer"></div>
-    <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">All ways to say it</div>
-    ${drill.variants.map((v, i) => {
-      const st = variationStatPeek(drill.id, i);
-      const isMatched = i === matched;
-      const isRetired = st?.retired;
-      const streak = st?.streak || 0;
-      return `<div style="border-left:3px solid ${isMatched ? 'var(--green)' : (isRetired ? 'var(--accent)' : 'var(--border)')};padding:8px 12px;margin:6px 0;background:rgba(255,255,255,0.02);border-radius:4px">
-        <div class="jp" style="font-size:17px;font-weight:600">${esc(v.jp)} ${isMatched ? '<span style="color:var(--green);font-size:12px">← you wrote this</span>' : ''}${isRetired ? '<span style="color:var(--accent);font-size:11px"> · retired</span>' : ''}</div>
-        <div class="muted" style="font-size:12px;font-style:italic">${esc(kanaToRomaji(v.jp))}</div>
-        <div class="muted" style="font-size:12px;margin-top:4px"><b>${esc(v.register)}</b> — ${esc(v.note)} <span style="opacity:0.7">· streak ${streak}/${VARIATION_RETIRE_STREAK}</span></div>
-        <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(v.jp)}')">🔊</button></div>
-      </div>`;
-    }).join('')}
-    <div class="spacer"></div>
-    <button id="variationBlitzContinue" class="btn btn-primary" style="width:100%" onclick="variationBlitzAdvance()">Continue</button>
-  </div>`;
-}
-
 /* =========================================================================
-   SIMILAR (v6.22) — multiple-choice discrimination over near-synonym sets.
-   No API: each set has 2-4 confusable JP words with concise glosses + nuance
-   notes. A round shows ONE item's English gloss; user picks the matching JP
-   from the set. Reveal shows all items so the user learns the contrast every
-   round. Per-(setId, itemIdx) streak-to-retire (3 in a row), independent of
-   vocab SRS. Addresses the deferred Julius #5 ask from PLAN_v6.12 — built
-   the no-API 3-way version, not the API-walled rationale generator.
+   SIMILAR DATA — near-synonym confusable sets, 2-4 JP words with concise
+   glosses + nuance notes each. Stage E (v8.11) deleted the standalone
+   typed-drill Similar mode; this data + similarSetById/similarStatFor now
+   exist solely to feed buildMode's 'similar' step type (Similar Spam +
+   inline discrimination steps) — the hands-free audio-led counterpart.
+   Per-(setId, itemIdx) streak-to-retire (SIMILAR_RETIRE_STREAK) still
+   applies there. Do not delete: it feeds the never-break voice loop.
    ========================================================================= */
 
 const SIMILAR_SETS = [
@@ -13062,8 +12545,6 @@ const SIMILAR_SETS = [
 ];
 
 const SIMILAR_RETIRE_STREAK = 3;
-const SIMILAR_SESSION_TARGET = 12;
-const SIMILAR_MAINTENANCE_DAYS = 7;
 
 function similarSetById(id){ return SIMILAR_SETS.find(s => s.id === id) || null; }
 
@@ -13075,276 +12556,6 @@ function similarStatFor(setId, itemIdx){
   }
   return state.similarStats[setId][itemIdx];
 }
-
-function similarStatPeek(setId, itemIdx){
-  return state.similarStats?.[setId]?.[itemIdx] || null;
-}
-
-function similarItemDueForMaintenance(setId, itemIdx){
-  const st = similarStatPeek(setId, itemIdx);
-  if(!st || !st.retired) return false;
-  const days = (now() - (st.retiredAt || 0)) / (1000*60*60*24);
-  return days >= SIMILAR_MAINTENANCE_DAYS;
-}
-
-function similarCounts(){
-  let totalItems = 0, retired = 0, learning = 0, unseen = 0, setsDone = 0;
-  for(const set of SIMILAR_SETS){
-    let setRet = 0;
-    for(let i = 0; i < set.items.length; i++){
-      totalItems++;
-      const st = similarStatPeek(set.id, i);
-      if(!st){ unseen++; continue; }
-      if(st.retired){ retired++; setRet++; }
-      else learning++;
-    }
-    if(setRet === set.items.length) setsDone++;
-  }
-  return {totalSets: SIMILAR_SETS.length, setsDone, totalItems, retired, learning, unseen};
-}
-
-function buildSimilarPool(){
-  /* Build a session pool of (setId, itemIdx) targets. Prioritise unseen +
-     learning + maintenance-due. Within that, weight struggling items more
-     heavily so wrong-answers resurface. */
-  const candidates = [];
-  for(const set of SIMILAR_SETS){
-    for(let i = 0; i < set.items.length; i++){
-      const st = similarStatPeek(set.id, i);
-      if(!st){ candidates.push({setId:set.id, itemIdx:i, weight:2.0}); continue; }
-      if(st.retired){
-        if(similarItemDueForMaintenance(set.id, i)){
-          candidates.push({setId:set.id, itemIdx:i, weight:1.0});
-        }
-        continue;
-      }
-      const w = 1 + (st.wrongCount || 0) * 0.5;
-      candidates.push({setId:set.id, itemIdx:i, weight:w});
-    }
-  }
-  if(!candidates.length){
-    /* Everything retired and not yet due — let the user practise anyway. */
-    for(const set of SIMILAR_SETS){
-      for(let i = 0; i < set.items.length; i++){
-        candidates.push({setId:set.id, itemIdx:i, weight:1.0});
-      }
-    }
-  }
-  /* Weighted shuffle: expand by weight, shuffle, dedup, take target.
-     shuffleFY returns a new array (non-mutating), so capture the result. */
-  const expanded = [];
-  for(const c of candidates){
-    const reps = Math.max(1, Math.round(c.weight * 2));
-    for(let r = 0; r < reps; r++) expanded.push(c);
-  }
-  const shuffled = shuffleFY(expanded);
-  const seen = new Set();
-  const out = [];
-  for(const c of shuffled){
-    const key = c.setId + '|' + c.itemIdx;
-    if(seen.has(key)) continue;
-    seen.add(key);
-    out.push(c);
-    if(out.length >= SIMILAR_SESSION_TARGET) break;
-  }
-  return out;
-}
-
-function startSimilar(){
-  if(!state.similarStats) state.similarStats = {};
-  const pool = buildSimilarPool();
-  if(!pool.length){
-    showToast('Nothing to drill — no similar sets defined.', {tone:'warn'});
-    return;
-  }
-  state.similar = {
-    active:true, complete:false,
-    pool,
-    idx:0,
-    submitted:false,
-    chosenIdx:null,
-    correct:null,
-    tally:{correct:0, wrong:0, retired:0, total:pool.length}
-  };
-  clearNextTimer();
-  nav('similar');
-}
-window.startSimilar = startSimilar;
-
-function similarCurrent(){
-  const s = state.similar;
-  if(!s || !s.active) return null;
-  return s.pool[s.idx] || null;
-}
-
-function similarSubmit(chosenIdx){
-  const s = state.similar;
-  if(!s || s.submitted) return;
-  const cur = similarCurrent();
-  if(!cur) return;
-  const correct = chosenIdx === cur.itemIdx;
-  s.chosenIdx = chosenIdx;
-  s.correct = correct;
-  s.submitted = true;
-  const st = similarStatFor(cur.setId, cur.itemIdx);
-  st.lastSeen = now();
-  if(correct){
-    st.correctCount = (st.correctCount || 0) + 1;
-    st.streak = (st.streak || 0) + 1;
-    s.tally.correct++;
-    if(!st.retired && st.streak >= SIMILAR_RETIRE_STREAK){
-      st.retired = true;
-      st.retiredAt = now();
-      s.tally.retired++;
-    }
-  } else {
-    st.wrongCount = (st.wrongCount || 0) + 1;
-    st.streak = 0;
-    if(st.retired){ st.retired = false; st.retiredAt = null; }
-    s.tally.wrong++;
-  }
-  updateStreak(correct);
-  save();
-  render();
-  setTimeout(() => $('#similarContinue')?.focus(), 30);
-}
-window.similarSubmit = similarSubmit;
-
-function similarAdvance(){
-  const s = state.similar;
-  if(!s) return;
-  s.idx++;
-  s.submitted = false;
-  s.chosenIdx = null;
-  s.correct = null;
-  if(s.idx >= s.pool.length){
-    s.active = false;
-    s.complete = true;
-  }
-  render();
-}
-window.similarAdvance = similarAdvance;
-
-function similarEnd(){
-  state.similar = null;
-  nav('home');
-}
-window.similarEnd = similarEnd;
-
-function renderSimilar(){
-  const s = state.similar;
-  const counts = similarCounts();
-  if(!s){
-    /* Landing screen — overview + start */
-    const browse = SIMILAR_SETS.map(set => {
-      let ret = 0;
-      for(let i = 0; i < set.items.length; i++){
-        if(similarStatPeek(set.id, i)?.retired) ret++;
-      }
-      const fully = ret === set.items.length;
-      const dot = fully ? '✓' : (ret ? `${ret}/${set.items.length}` : '○');
-      return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-          <div style="font-size:14px;font-weight:600">${esc(set.title)}</div>
-          <span class="muted" style="font-size:11px;white-space:nowrap">${dot}</span>
-        </div>
-        <div class="muted" style="font-size:12px;margin-top:2px">${set.items.map(it => esc(it.jp)).join(' · ')}</div>
-      </div>`;
-    }).join('');
-    return `
-      <div class="card">
-        <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
-          Confusable JP words paired with concise nuance notes. Each round shows one English gloss — pick the matching Japanese. Reveal shows the whole set so the contrast lands every round. 3-in-a-row retires an item; misses resurface it.
-        </div>
-        <div class="stats-row" style="margin-top:12px">
-          <div class="stat-box"><div class="stat-num">${counts.setsDone}</div><div class="stat-label">Sets done</div></div>
-          <div class="stat-box"><div class="stat-num">${counts.retired}</div><div class="stat-label">Items retired</div></div>
-          <div class="stat-box"><div class="stat-num">${counts.totalItems}</div><div class="stat-label">Total items</div></div>
-          <div class="stat-box"><div class="stat-num">${counts.totalSets}</div><div class="stat-label">Sets</div></div>
-        </div>
-        <div class="spacer"></div>
-        <button class="btn btn-primary" style="width:100%" onclick="startBuildModeSimilarSpam()">🎙️ Spam similar (~30, hands-free)</button>
-        <div style="height:6px"></div>
-        <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startSimilar()">⌨ Typed multi-choice drill</button>
-      </div>
-      <div class="card">
-        <h3 style="margin-top:0">Browse all sets</h3>
-        ${browse}
-      </div>
-    `;
-  }
-  if(s.complete){
-    const t = s.tally;
-    const attempts = t.correct + t.wrong;
-    const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
-    return `<div class="card">
-      <h2 style="margin-top:0">Similar drill complete</h2>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
-        <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
-        <div class="stat-box"><div class="stat-num">${t.wrong}</div><div class="stat-label">Revisited</div></div>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startSimilar()">Drill again</button>
-      <div class="spacer"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="similarEnd()">Back home</button>
-    </div>`;
-  }
-  const cur = similarCurrent();
-  if(!cur) return `<div class="card"><div class="muted">No item.</div></div>`;
-  const set = similarSetById(cur.setId);
-  if(!set) return `<div class="card"><div class="muted">Unknown set.</div></div>`;
-  const target = set.items[cur.itemIdx];
-  const total = s.pool.length;
-  const pos = s.idx + 1;
-  const head = `<div class="card" style="padding:12px">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-      <span class="muted" style="font-size:13px">Item ${pos} / ${total} · ${esc(set.title)}</span>
-    </div>
-  </div>`;
-
-  if(!s.submitted){
-    /* Order options identically every round (set-defined order) so the user
-       builds spatial memory of where each option sits — this aids the
-       contrast learning. */
-    const opts = set.items.map((it, i) => `
-      <button class="btn btn-secondary" style="width:100%;text-align:left;padding:14px;font-size:18px;margin-bottom:8px" onclick="similarSubmit(${i})">
-        <span class="jp" style="font-weight:600">${esc(it.jp)}</span>
-      </button>
-    `).join('');
-    return head + `<div class="card">
-      <div class="muted" style="text-align:center;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Which Japanese means…</div>
-      <div style="font-size:22px;text-align:center;font-weight:600;line-height:1.4;padding:16px 8px;color:var(--text)">${esc(target.en)}</div>
-      <div class="spacer"></div>
-      ${opts}
-    </div>`;
-  }
-  /* Reveal — show all options with their notes; highlight correct + chosen */
-  const reveal = set.items.map((it, i) => {
-    const isCorrect = i === cur.itemIdx;
-    const isChosen = i === s.chosenIdx;
-    let border = 'var(--border)', bg = 'rgba(255,255,255,0.02)';
-    if(isCorrect){ border = 'var(--green)'; bg = 'rgba(80,200,120,0.08)'; }
-    if(isChosen && !isCorrect){ border = 'var(--red)'; bg = 'rgba(220,80,80,0.08)'; }
-    const tag = isCorrect ? ' <span style="color:var(--green);font-size:12px">✓ correct</span>' : (isChosen ? ' <span style="color:var(--red);font-size:12px">✗ your pick</span>' : '');
-    return `<div style="border-left:3px solid ${border};background:${bg};padding:10px 12px;margin:8px 0;border-radius:4px">
-      <div class="jp" style="font-size:18px;font-weight:600">${esc(it.jp)}${tag}</div>
-      <div class="muted" style="font-size:12px;margin-top:2px"><b>${esc(it.en)}</b></div>
-      <div class="muted" style="font-size:12px;margin-top:4px">${esc(it.note)}</div>
-      <div style="margin-top:6px"><button class="audio-btn" style="font-size:11px;padding:3px 10px" onclick="speakJP('${jsEsc(it.jp)}')">🔊</button></div>
-    </div>`;
-  }).join('');
-  const verdict = s.correct
-    ? `<div style="text-align:center;color:var(--green);font-weight:600;font-size:16px;margin:8px 0">Correct ✓</div>`
-    : `<div style="text-align:center;color:var(--red);font-weight:600;font-size:16px;margin:8px 0">Not quite — see the contrast below</div>`;
-  return head + `<div class="card">
-    ${verdict}
-    ${reveal}
-    <div class="spacer"></div>
-    <button id="similarContinue" class="btn btn-primary" style="width:100%" onclick="similarAdvance()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();similarAdvance();}">Continue ↵</button>
-  </div>`;
-}
-window.renderSimilar = renderSimilar;
 
 /* =========================================================================
    BUILD MODE — Paul Noble-style audio-led sentence construction
@@ -18631,7 +17842,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', particles:'Particles', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', library:'Library', variations:'Variations', variationBlitz:'Variations', similar:'Similar words', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -19374,7 +18585,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -19396,11 +18607,6 @@ function nav(screen, data, fromPop){
      genuinely first-run profiles. Placed after the today->home alias so
      both entry points funnel through one normalization site. */
   if(screen === 'home' && !state.settings.onboard.done) screen = 'onboard';
-  /* v6.5 — re-shuffle on each entry so re-opening Particles doesn't resume
-     the same deck. v6.7 — swap to multi-blank session model. */
-  if(screen === 'particles' && state.screen !== 'particles'){
-    state.particleSession = null; /* ensureParticleSession will rebuild fresh */
-  }
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -20107,8 +19313,6 @@ function renderPractice(){
   const fc = formCounts();
   const pc = phraseCounts();
   const scc = sentenceBlitzCounts();
-  const vc = variationCounts();
-  const simC = similarCounts();
   const masteredReady = active.filter(w => {
     if(suspendedSet.has(w.id)) return false;
     if(masteredSet.has(w.id)) return true;
@@ -20664,679 +19868,8 @@ function renderCollections(){
   return intro + cards;
 }
 
-/* ---------- LIBRARY (v6.10) ----------
-   Per-word management surface for Vocab Blitz. List + search + sort + filter.
-   Each row tappable → expand-tray with Focus / Suspend / Mark mastered / Reset.
-   Affects only Vocab Blitz drilling; other modes still use the word as content. */
-
-function libraryUpdateUi(field, value){
-  state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null, view:'topic', openThemes:[]};
-  state._libraryUi[field] = value;
-  if(field !== 'search') render(); /* search re-render is handled inline to keep focus in input */
-}
-window.libraryUpdateUi = libraryUpdateUi;
-
-function librarySearchInput(){
-  const v = $('#libSearch')?.value || '';
-  state._libraryUi = state._libraryUi || {};
-  state._libraryUi.search = v;
-  /* Live re-render only the list, not the whole screen, to keep input focused. */
-  const list = $('#libList');
-  if(list) list.innerHTML = libraryRenderList();
-  /* tally + filter chips don't change with search, so no full re-render. */
-}
-window.librarySearchInput = librarySearchInput;
-
-function libraryToggleExpand(id){
-  state._libraryUi = state._libraryUi || {};
-  state._libraryUi.expandedId = (state._libraryUi.expandedId === id) ? null : id;
-  render();
-}
-window.libraryToggleExpand = libraryToggleExpand;
-
-function libraryToggleTheme(t){
-  state._libraryUi = state._libraryUi || {};
-  const open = new Set(state._libraryUi.openThemes || []);
-  if(open.has(t)) open.delete(t); else open.add(t);
-  state._libraryUi.openThemes = [...open];
-  /* List-only refresh so the accordion keeps its scroll position. */
-  const list = $('#libList');
-  if(list) list.innerHTML = libraryRenderList();
-}
-window.libraryToggleTheme = libraryToggleTheme;
-
-function libraryStatusBadge(status, focused){
-  const colors = {
-    new: 'background:var(--card2);color:var(--dim)',
-    learning: 'background:#1e3a5f;color:#93c5fd',
-    mature: 'background:#14532d;color:#86efac',
-    suspended: 'background:#3f3f46;color:#a1a1aa',
-    mastered: 'background:#581c87;color:#d8b4fe',
-  };
-  const label = {new:'New', learning:'Learning', mature:'Mature', suspended:'Suspended', mastered:'Mastered'}[status] || status;
-  const focusBit = focused ? `<span class="pill" style="background:var(--orange);color:#fff;margin-right:4px">⭐ Focus</span>` : '';
-  return focusBit + `<span class="pill" style="${colors[status] || ''}">${esc(label)}</span>`;
-}
-
-/* v7.40 — Library "Topics" view. Each word already carries a `theme`; this
-   maps every theme to a display label + emoji and a learner-friendly order.
-   Unknown themes fall back to a title-cased label and sort to the end. */
-const THEME_META = {
-  greetings:{label:'Greetings',emoji:'👋'},
-  phrases:{label:'Handy phrases',emoji:'💬'},
-  daily:{label:'Daily life',emoji:'📅'},
-  people:{label:'People',emoji:'🧑'},
-  family:{label:'Family',emoji:'👨‍👩‍👧'},
-  body:{label:'Body',emoji:'🫀'},
-  health:{label:'Health',emoji:'🩺'},
-  feelings:{label:'Feelings',emoji:'😊'},
-  food:{label:'Food & drink',emoji:'🍙'},
-  home:{label:'Home',emoji:'🏠'},
-  clothing:{label:'Clothing',emoji:'👕'},
-  objects:{label:'Objects',emoji:'📦'},
-  animals:{label:'Animals',emoji:'🐾'},
-  nature:{label:'Nature',emoji:'🌿'},
-  weather:{label:'Weather',emoji:'🌤️'},
-  colors:{label:'Colors',emoji:'🎨'},
-  numbers:{label:'Numbers',emoji:'🔢'},
-  counters:{label:'Counters',emoji:'🧮'},
-  time:{label:'Time',emoji:'⏰'},
-  places:{label:'Places',emoji:'📍'},
-  travel:{label:'Travel',emoji:'✈️'},
-  school:{label:'School',emoji:'🏫'},
-  work:{label:'Work',emoji:'💼'},
-  tech:{label:'Technology',emoji:'💻'},
-  adjectives:{label:'Adjectives',emoji:'✏️'},
-  adverbs:{label:'Adverbs',emoji:'⚡'},
-  verbpairs:{label:'Verb pairs',emoji:'🔁'},
-  onomatope:{label:'Onomatopoeia',emoji:'💥'},
-  grammar:{label:'Grammar',emoji:'🔤'},
-  mnn:{label:'みんな',emoji:'📘'},
-};
-const THEME_ORDER = ['greetings','phrases','daily','people','family','body','health','feelings','food','home','clothing','objects','animals','nature','weather','colors','numbers','counters','time','places','travel','school','work','tech','adjectives','adverbs','verbpairs','onomatope','grammar'];
-function themeMeta(t){
-  return THEME_META[t] || {label: t ? (t.charAt(0).toUpperCase() + t.slice(1)) : 'Other', emoji:'•'};
-}
-function themeRank(t){
-  const i = THEME_ORDER.indexOf(t);
-  return i === -1 ? 999 : i;
-}
-
-function libraryRenderList(){
-  const ui = state._libraryUi || {search:'', sort:'en', filter:'all'};
-  const allActive = getActiveWords();
-  const focusSet = new Set(state.settings.focusWords || []);
-  const q = (ui.search || '').trim().toLowerCase();
-  let words = allActive.slice();
-
-  /* Filter chip */
-  if(ui.filter !== 'all'){
-    words = words.filter(w => {
-      const st = libraryWordStatus(w);
-      if(ui.filter === 'focus') return focusSet.has(w.id);
-      return st === ui.filter;
-    });
-  }
-
-  /* Search query — match across EN, JP, romaji */
-  if(q){
-    words = words.filter(w => {
-      const en = (w.en || '').toLowerCase();
-      const jp = (w.jp || '').toLowerCase();
-      const rom = (w.romaji || kanaToRomaji(w.jp) || '').toLowerCase();
-      return en.includes(q) || jp.includes(q) || rom.includes(q);
-    });
-  }
-
-  /* Sort */
-  const sortFns = {
-    en: (a,b) => (a.en || '').localeCompare(b.en || '', 'en', {sensitivity:'base'}),
-    jp: (a,b) => (a.jp || '').localeCompare(b.jp || '', 'ja'),
-    seen: (a,b) => (state.stats[b.id]?.lastSeen || 0) - (state.stats[a.id]?.lastSeen || 0),
-    struggle: (a,b) => {
-      const wA = (state.stats[a.id]?.attempts || []).slice(-10).filter(x => !x.correct).length;
-      const wB = (state.stats[b.id]?.attempts || []).slice(-10).filter(x => !x.correct).length;
-      return wB - wA;
-    },
-  };
-  if(!words.length){
-    return `<div class="muted" style="text-align:center;padding:30px 10px">No words match.</div>`;
-  }
-
-  const expandedId = ui.expandedId;
-  const cardHtml = (w) => {
-    const status = libraryWordStatus(w);
-    const focused = focusSet.has(w.id);
-    const romaji = w.romaji || kanaToRomaji(w.jp) || '';
-    const expanded = (expandedId === w.id);
-    const st = state.stats[w.id];
-    const attempts = st?.attempts?.length || 0;
-    const correctCount = st?.attempts?.filter(a => a.correct).length || 0;
-    const next = (st && st.smInterval) ? smIntervalLabel(st.smInterval) : '—';
-
-    const tray = !expanded ? '' : `
-      <div style="border-top:1px solid var(--border);padding:10px 4px 4px;margin-top:8px">
-        <div class="muted" style="font-size:12px;margin-bottom:8px">
-          ${attempts} attempts · ${correctCount} correct · next ${esc(next)}
-        </div>
-        <div class="btn-row">
-          <button class="btn ${focused ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="libraryFocusToggle('${jsEsc(w.id)}')">${focused ? '⭐ Unfocus' : '⭐ Focus'}</button>
-          <button class="btn ${status === 'suspended' ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="librarySuspendToggle('${jsEsc(w.id)}')">${status === 'suspended' ? '▶ Activate' : '⏸ Suspend'}</button>
-        </div>
-        <div class="btn-row">
-          <button class="btn ${status === 'mastered' ? 'btn-primary' : 'btn-secondary'}" style="font-size:12px;padding:10px" onclick="libraryMasterToggle('${jsEsc(w.id)}')">${status === 'mastered' ? '↩ Un-master' : '🎓 Mastered'}</button>
-          <button class="btn btn-secondary" style="font-size:12px;padding:10px" onclick="libraryResetWord('${jsEsc(w.id)}')">🔄 Reset</button>
-        </div>
-        <div class="audio-row" style="margin-top:6px">
-          <button class="audio-btn" style="font-size:12px;padding:10px" onclick="speakJP('${jsEsc(w.jp)}')">🔊 Listen</button>
-        </div>
-      </div>`;
-
-    return `<div class="card" style="padding:10px 12px;margin-bottom:6px;cursor:pointer" onclick="libraryToggleExpand('${jsEsc(w.id)}')">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(w.en || '')}</div>
-          <div class="muted" style="font-size:13px;margin-top:2px">
-            <span class="jp" style="color:var(--text);font-size:14px">${esc(w.jp)}</span>
-            ${romaji ? ` <span style="font-style:italic">· ${esc(romaji)}</span>` : ''}
-          </div>
-        </div>
-        <div style="text-align:right;white-space:nowrap">${libraryStatusBadge(status, focused)}</div>
-      </div>
-      ${tray}
-    </div>`;
-  };
-
-  /* Topics view — collapsible accordion grouped by `theme`. Collapsed
-     sections render only a header so the DOM stays light; an active search
-     auto-opens every group that has a match. */
-  if(ui.view === 'topic'){
-    const groups = new Map();
-    for(const w of words){
-      const t = w.theme || 'other';
-      if(!groups.has(t)) groups.set(t, []);
-      groups.get(t).push(w);
-    }
-    const searching = !!q;
-    const open = new Set(ui.openThemes || []);
-    const keys = [...groups.keys()].sort((a, b) => {
-      const ra = themeRank(a), rb = themeRank(b);
-      if(ra !== rb) return ra - rb;
-      return themeMeta(a).label.localeCompare(themeMeta(b).label);
-    });
-    let budget = 400;
-    return keys.map(t => {
-      const list = groups.get(t).sort(sortFns[ui.sort] || sortFns.en);
-      const meta = themeMeta(t);
-      const isOpen = searching || open.has(t);
-      const head = `<div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;margin-bottom:6px;cursor:pointer" onclick="libraryToggleTheme('${jsEsc(t)}')">
-        <div style="font-size:15px;font-weight:700;color:var(--text)">${meta.emoji} ${esc(meta.label)}</div>
-        <div class="muted" style="font-size:13px;white-space:nowrap">${list.length}&nbsp;&nbsp;${isOpen ? '▾' : '▸'}</div>
-      </div>`;
-      if(!isOpen) return head;
-      let body;
-      if(budget <= 0){
-        body = `<div class="muted" style="padding:4px 0 10px;font-size:12px">Too many words open — collapse a topic or search to narrow.</div>`;
-      } else {
-        const slice = list.slice(0, budget);
-        budget -= slice.length;
-        body = slice.map(cardHtml).join('') + (list.length > slice.length
-          ? `<div class="muted" style="text-align:center;padding:8px;font-size:12px">+${list.length - slice.length} more — search to narrow</div>` : '');
-      }
-      return head + `<div style="padding:0 2px 14px">${body}</div>`;
-    }).join('');
-  }
-
-  /* Flat list — sorted, capped at 400 to keep the DOM light. */
-  words.sort(sortFns[ui.sort] || sortFns.en);
-  const MAX = 400;
-  const overflow = words.length > MAX;
-  return words.slice(0, MAX).map(cardHtml).join('')
-    + (overflow ? `<div class="muted" style="text-align:center;padding:10px;font-size:12px">+${words.length - MAX} more — refine search to see them</div>` : '');
-}
-
-function libraryRenderTally(){
-  const all = getActiveWords();
-  const total = all.length;
-  let mature = 0, learning = 0, fresh = 0;
-  const focusSet = new Set(state.settings.focusWords || []);
-  const suspended = (state.settings.suspendedWords || []).length;
-  const mastered = (state.settings.masteredWords || []).length;
-  for(const w of all){
-    const st = libraryWordStatus(w);
-    if(st === 'mature') mature++;
-    else if(st === 'learning') learning++;
-    else if(st === 'new') fresh++;
-  }
-  const focus = focusSet.size;
-  return `<div class="stats-row" style="flex-wrap:wrap;gap:6px">
-    <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-label">Total</div></div>
-    <div class="stat-box"><div class="stat-num">${fresh}</div><div class="stat-label">New</div></div>
-    <div class="stat-box"><div class="stat-num">${learning}</div><div class="stat-label">Learning</div></div>
-    <div class="stat-box"><div class="stat-num">${mature}</div><div class="stat-label">Mature</div></div>
-    <div class="stat-box" style="background:rgba(245,158,11,0.15)"><div class="stat-num">${focus}</div><div class="stat-label">⭐ Focus</div></div>
-    <div class="stat-box"><div class="stat-num">${suspended}</div><div class="stat-label">Suspended</div></div>
-    <div class="stat-box"><div class="stat-num">${mastered}</div><div class="stat-label">Mastered</div></div>
-  </div>`;
-}
-
-function renderLibrary(){
-  const ui = state._libraryUi = state._libraryUi || {search:'', sort:'en', filter:'all', expandedId:null, view:'topic', openThemes:[]};
-  if(!ui.view) ui.view = 'topic';
-  if(!ui.openThemes) ui.openThemes = [];
-
-  const filterChip = (key, label) => `<button class="tag${ui.filter === key ? ' active' : ''}" onclick="libraryUpdateUi('filter', '${key}')">${esc(label)}</button>`;
-  const sortOption = (key, label) => `<option value="${key}"${ui.sort === key ? ' selected' : ''}>${esc(label)}</option>`;
-  const viewBtn = (key, label) => `<button class="tag${ui.view === key ? ' active' : ''}" onclick="libraryUpdateUi('view', '${key}')">${esc(label)}</button>`;
-
-  return `
-    ${libraryRenderTally()}
-
-    <div class="card">
-      <input id="libSearch" class="input" type="text" placeholder="Search EN, JP, or romaji" autocomplete="off" autocorrect="off" spellcheck="false" oninput="librarySearchInput()" value="${esc(ui.search || '')}">
-      <div class="spacer"></div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span class="muted" style="font-size:12px">View:</span>
-        ${viewBtn('topic', '📚 Topics')}
-        ${viewBtn('list', '☰ List')}
-      </div>
-      <div class="spacer"></div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="muted" style="font-size:12px">Sort:</span>
-        <select class="input" style="width:auto;padding:6px 10px;font-size:13px" onchange="libraryUpdateUi('sort', this.value)">
-          ${sortOption('en', 'EN A→Z')}
-          ${sortOption('jp', 'JP あ→ん')}
-          ${sortOption('seen', 'Last seen')}
-          ${sortOption('struggle', 'Needs another look')}
-        </select>
-      </div>
-      <div class="spacer"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${filterChip('all', 'All')}
-        ${filterChip('new', 'New')}
-        ${filterChip('learning', 'Learning')}
-        ${filterChip('mature', 'Mature')}
-        ${filterChip('focus', '⭐ Focus')}
-        ${filterChip('suspended', 'Suspended')}
-        ${filterChip('mastered', 'Mastered')}
-      </div>
-    </div>
-
-    <div id="libList">${libraryRenderList()}</div>
-  `;
-}
-
 let _nextTimer = null;
 function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer = null; } }
-
-/* ---------- PARTICLES ----------
-   v6.7 — multi-blank rework. Each (drillIdx, blankIdx) pair is an independent
-   pool item with its own retire streak, so the user can't pattern-match from
-   "the answer to this sentence was X last time" — the next blank in the same
-   sentence is a separate question. Retire after PARTICLE_RETIRE_STREAK
-   consecutive correct on that exact pair. */
-const PARTICLE_RETIRE_STREAK = 2;
-const PARTICLE_SESSION_TARGET = 16;
-const PARTICLE_OPTIONS = ['は','が','を','に','で','へ','と','も','の','から','まで','や'];
-
-/* v6.20 — teacher's "3 uses per particle" framework. Each row is one cell of
-   the breakdown grid. Display order = particle order, then use order within
-   particle. Cells with zero tagged drills are intentionally omitted. */
-const PARTICLE_USES = [
-  {particle:'は', use:'topic',       label:'Topic'},
-  {particle:'は', use:'contrast',    label:'Contrast'},
-  {particle:'が', use:'stative_obj', label:'Stative object (好き / ほしい)'},
-  {particle:'が', use:'existence',   label:'Existence (ある / いる)'},
-  {particle:'を', use:'dobj',        label:'Direct object'},
-  {particle:'を', use:'path',        label:'Path traversed'},
-  {particle:'に', use:'time',        label:'Time point'},
-  {particle:'に', use:'target',      label:'Destination / target'},
-  {particle:'に', use:'becoming',    label:'Becoming (なる)'},
-  {particle:'で', use:'location',    label:'Location of action'},
-  {particle:'で', use:'means',       label:'Means / instrument'},
-  {particle:'へ', use:'direction',   label:'Direction'},
-  {particle:'と', use:'with',        label:'With (companion)'},
-  {particle:'と', use:'and',         label:'And (concrete nouns)'},
-  {particle:'も', use:'also',        label:'Also / too'},
-  {particle:'の', use:'possessive',  label:'Possessive'},
-  {particle:'から', use:'from',      label:'From (origin)'}
-];
-const PARTICLE_ORDER = ['は','が','を','に','で','へ','と','も','の','から','まで'];
-
-function particleBlanks(d){
-  if(d.blanks) return d.blanks;
-  /* Defensive fallback for any legacy single-blank shape that slips through. */
-  return [{answer:d.blank, accept:d.accept, explain:d.explain}];
-}
-function particleAccept(blank){
-  return blank.accept || [blank.answer];
-}
-function particleJP(d, activeIdx){
-  /* Render JP with all blanks shown as ＿＿＿; the active blank gets a highlight. */
-  const parts = d.jp.split('___');
-  let out = esc(parts[0] || '');
-  for(let i = 0; i < parts.length - 1; i++){
-    if(i === activeIdx){
-      out += '<span class="p-blank-active" style="background:var(--accent);color:#000;padding:2px 8px;border-radius:6px;font-weight:700">＿＿＿</span>';
-    } else {
-      out += '<span class="p-blank-other" style="opacity:0.5">＿＿＿</span>';
-    }
-    out += esc(parts[i+1] || '');
-  }
-  return out;
-}
-function particleJPRevealed(d, activeIdx, picked, isCorrect){
-  /* JP with the active blank filled by user's pick (other blanks remain ＿＿＿). */
-  const parts = d.jp.split('___');
-  const colorVar = isCorrect ? '--green' : '--red';
-  let out = esc(parts[0] || '');
-  for(let i = 0; i < parts.length - 1; i++){
-    if(i === activeIdx){
-      out += `<b style="color:var(${colorVar})">${esc(picked)}</b>`;
-    } else {
-      out += '<span style="opacity:0.5">＿＿＿</span>';
-    }
-    out += esc(parts[i+1] || '');
-  }
-  return out;
-}
-function particleJPFilled(d){
-  const blanks = particleBlanks(d);
-  let i = 0;
-  return d.jp.replace(/___/g, () => (blanks[i++] || {}).answer || '');
-}
-
-function particleStatFor(drillIdx, blankIdx){
-  if(!state.particleStats) state.particleStats = {};
-  if(!state.particleStats[drillIdx]) state.particleStats[drillIdx] = {};
-  if(!state.particleStats[drillIdx][blankIdx]){
-    state.particleStats[drillIdx][blankIdx] = {streak:0, retired:false, retiredAt:null, correctCount:0, wrongCount:0, lastSeen:null};
-  }
-  return state.particleStats[drillIdx][blankIdx];
-}
-function particleStatPeek(drillIdx, blankIdx){
-  return state.particleStats?.[drillIdx]?.[blankIdx] || null;
-}
-
-/* v6.20 — scope = {} for all-particles, {particle} for one particle's uses,
-   {particle, use} for a single bucket. Empty scope preserves v6.19 behavior. */
-function blankMatchesScope(blank, scope){
-  if(!scope || (!scope.particle && !scope.use)) return true;
-  if(scope.particle && blank.particle !== scope.particle) return false;
-  if(scope.use && blank.use !== scope.use) return false;
-  return true;
-}
-
-/* v6.36 — particle confusables. When the user drills a single particle, the
-   pool used to be 100% that particle, so they could pattern-match "the answer
-   is に" without reading the sentence. Mix in ~30% drills from commonly
-   confused particles so the answer isn't pre-decided. Tracking still applies
-   per-blank globally, so confusable hits also count toward retirement. */
-const PARTICLE_CONFUSABLES = {
-  'は': ['が'],          // topic vs subject
-  'が': ['は', 'を'],    // subject vs topic vs object
-  'を': ['が'],          // object vs subject (esp. with potential)
-  'に': ['で', 'へ'],    // existence-loc vs action-loc; destination
-  'で': ['に'],          // action-loc vs existence-loc
-  'へ': ['に'],          // direction vs destination
-  'と': ['や'],          // exhaustive and vs partial and
-  'や': ['と'],
-  'も': ['は'],          // also vs topic
-  'の': ['が'],          // possessive vs subject in relative clauses
-  'から': ['まで'],
-  'まで': ['から'],
-};
-
-function buildParticlePoolScoped(scope){
-  const pairs = [];
-  for(let di = 0; di < PARTICLE_DRILLS.length; di++){
-    const blanks = particleBlanks(PARTICLE_DRILLS[di]);
-    for(let bi = 0; bi < blanks.length; bi++){
-      if(!blankMatchesScope(blanks[bi], scope)) continue;
-      const st = particleStatPeek(di, bi);
-      if(!st || !st.retired) pairs.push({drillIdx:di, blankIdx:bi});
-    }
-  }
-  if(!pairs.length){
-    /* All retired in scope — sample everything in scope for review. */
-    for(let di = 0; di < PARTICLE_DRILLS.length; di++){
-      const blanks = particleBlanks(PARTICLE_DRILLS[di]);
-      for(let bi = 0; bi < blanks.length; bi++){
-        if(blankMatchesScope(blanks[bi], scope)) pairs.push({drillIdx:di, blankIdx:bi});
-      }
-    }
-  }
-  /* v6.36 — mix in confusable-particle drills when scoped to a single
-     particle (no use sub-scope). Otherwise the answer is always the scoped
-     particle and the user pattern-matches the scope, not the sentence. */
-  let confusables = [];
-  if(scope && scope.particle && !scope.use){
-    const confList = PARTICLE_CONFUSABLES[scope.particle] || [];
-    for(let di = 0; di < PARTICLE_DRILLS.length; di++){
-      const blanks = particleBlanks(PARTICLE_DRILLS[di]);
-      for(let bi = 0; bi < blanks.length; bi++){
-        if(confList.includes(blanks[bi].particle)) confusables.push({drillIdx:di, blankIdx:bi});
-      }
-    }
-    confusables = shuffleFY(confusables);
-    /* Aim for ~30% of the session being confusables. */
-    const want = Math.round(PARTICLE_SESSION_TARGET * 0.3);
-    confusables = confusables.slice(0, want);
-  }
-  const inScope = shuffleFY(pairs).slice(0, Math.max(1, PARTICLE_SESSION_TARGET - confusables.length));
-  return shuffleFY(inScope.concat(confusables));
-}
-
-function buildParticlePool(){ return buildParticlePoolScoped({}); }
-
-function particleCountsScoped(scope){
-  let total = 0, retired = 0;
-  for(let di = 0; di < PARTICLE_DRILLS.length; di++){
-    const blanks = particleBlanks(PARTICLE_DRILLS[di]);
-    for(let bi = 0; bi < blanks.length; bi++){
-      if(!blankMatchesScope(blanks[bi], scope)) continue;
-      total++;
-      if(particleStatPeek(di, bi)?.retired) retired++;
-    }
-  }
-  return {total, retired};
-}
-
-function particleCounts(){ return particleCountsScoped({}); }
-
-function ensureParticleSession(scope){
-  if(!state.particleSession || !state.particleSession.pool?.length){
-    state.particleSession = {pool: buildParticlePoolScoped(scope || {}), idx: 0, answer: null, scope: scope || {}, active: true};
-  }
-}
-
-function startParticleScope(scope){
-  state.particleSession = {pool: buildParticlePoolScoped(scope || {}), idx: 0, answer: null, scope: scope || {}, active: true};
-  if(!state.particleSession.pool.length){
-    showToast('No drills in this scope.', 'success');
-    state.particleSession = null;
-    render();
-    return;
-  }
-  save();
-  render();
-}
-window.startParticleScope = startParticleScope;
-
-function exitParticleSession(){
-  state.particleSession = null;
-  render();
-}
-window.exitParticleSession = exitParticleSession;
-
-function scopeLabel(scope){
-  if(!scope) return 'All particles';
-  if(scope.particle && scope.use){
-    const row = PARTICLE_USES.find(r => r.particle === scope.particle && r.use === scope.use);
-    return `${scope.particle} · ${row ? row.label : scope.use}`;
-  }
-  if(scope.particle) return `${scope.particle} · all uses`;
-  return 'All particles';
-}
-
-function renderParticlesIndex(){
-  const totals = particleCountsScoped({});
-  const ui = state._particlesUi = state._particlesUi || {expanded:null};
-  const expanded = ui.expanded;
-
-  const allBtn = `<button class="btn btn-primary" style="width:100%" onclick="startParticleScope({})">▶ Drill all particles · ${totals.retired}/${totals.total} retired</button>`;
-
-  const cards = PARTICLE_ORDER.map(p => {
-    const uses = PARTICLE_USES.filter(r => r.particle === p);
-    if(!uses.length) return '';
-    const pCounts = particleCountsScoped({particle:p});
-    const isOpen = expanded === p;
-    const useRows = isOpen ? uses.map(r => {
-      const c = particleCountsScoped({particle:r.particle, use:r.use});
-      const remaining = c.total - c.retired;
-      return `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-        <button class="btn btn-secondary" style="flex:1;font-size:13px;padding:8px 10px;text-align:left" onclick="startParticleScope({particle:'${jsEsc(r.particle)}',use:'${jsEsc(r.use)}'})">
-          <span style="display:inline-block;min-width:34px;font-weight:700">${esc(r.particle)}</span>
-          <span style="opacity:0.85">${esc(r.label)}</span>
-        </button>
-        <span class="muted" style="font-size:12px;min-width:60px;text-align:right">${c.retired}/${c.total}${remaining===0?' ✓':''}</span>
-      </div>`;
-    }).join('') : '';
-    const drillAllBtn = isOpen
-      ? `<button class="btn btn-primary" style="width:100%;margin-top:10px;font-size:13px;padding:9px" onclick="startParticleScope({particle:'${jsEsc(p)}'})">Drill all uses of ${esc(p)}</button>`
-      : '';
-    return `<div class="card" style="padding:12px">
-      <div onclick="particlesToggleExpand('${jsEsc(p)}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px">
-        <div style="display:flex;align-items:baseline;gap:10px">
-          <span class="jp" style="font-size:22px;font-weight:700">${esc(p)}</span>
-          <span class="muted" style="font-size:12px">${uses.length} use${uses.length>1?'s':''}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="muted" style="font-size:12px">${pCounts.retired}/${pCounts.total} retired</span>
-          <span class="collapsible-arrow" style="transform:${isOpen?'rotate(90deg)':'none'};transition:transform 0.2s">›</span>
-        </div>
-      </div>
-      ${isOpen ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${useRows}${drillAllBtn}</div>` : ''}
-    </div>`;
-  }).join('');
-
-  return `
-    <div class="card">
-      <div class="muted" style="font-size:13px;line-height:1.5;margin-top:0">
-        Three uses per particle, the way your teacher taught it. Tap a particle to see its uses, then drill one use, all uses, or every particle.
-      </div>
-      <div class="spacer"></div>
-      ${allBtn}
-    </div>
-    ${cards}
-  `;
-}
-
-function particlesToggleExpand(p){
-  const ui = state._particlesUi = state._particlesUi || {expanded:null};
-  ui.expanded = (ui.expanded === p) ? null : p;
-  render();
-}
-window.particlesToggleExpand = particlesToggleExpand;
-
-function renderParticles(){
-  /* v6.20 — index view when no session is active; drill view when one is. */
-  if(!state.particleSession || !state.particleSession.active) return renderParticlesIndex();
-
-  const sess = state.particleSession;
-  if(sess.idx >= sess.pool.length){
-    /* Pool exhausted — bounce back to the index with a friendly note. */
-    return `<div class="card">
-      <h2 style="margin-top:0">Drill complete</h2>
-      <div class="muted" style="font-size:13px">${esc(scopeLabel(sess.scope))} — ${sess.pool.length} drills done.</div>
-      <div class="spacer"></div>
-      <button class="btn btn-primary" style="width:100%" onclick="startParticleScope(${JSON.stringify(sess.scope||{})})">Drill again</button>
-      <div class="spacer"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="exitParticleSession()">Back to particles</button>
-    </div>`;
-  }
-
-  const cur = sess.pool[sess.idx];
-  const d = PARTICLE_DRILLS[cur.drillIdx];
-  const blanks = particleBlanks(d);
-  const blank = blanks[cur.blankIdx];
-  const accept = particleAccept(blank);
-  const ans = sess.answer;
-  const isCorrect = ans && accept.includes(ans);
-  const stPeek = particleStatPeek(cur.drillIdx, cur.blankIdx);
-  const streak = stPeek?.streak || 0;
-  const blankLabel = blanks.length > 1 ? `Blank ${cur.blankIdx+1} of ${blanks.length}` : 'Fill in the blank';
-
-  return `
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <h3 style="margin:0">Particle drills · ${sess.idx+1} / ${sess.pool.length}</h3>
-        <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px" onclick="exitParticleSession()">↩ Back</button>
-      </div>
-      <div class="muted" style="font-size:13px;margin-top:4px">${esc(scopeLabel(sess.scope))} · streak ${streak} / ${PARTICLE_RETIRE_STREAK}</div>
-    </div>
-    <div class="drill-card">
-      <div class="drill-cat">${esc(blankLabel)}${accept.length>1?' · multiple acceptable':''}</div>
-      <div class="drill-prompt jp" style="line-height:1.7">${particleJP(d, cur.blankIdx)}</div>
-      <div class="drill-sub">${esc(d.en)}</div>
-    </div>
-    ${ans ? '' : `<div class="tags" style="justify-content:center">
-      ${PARTICLE_OPTIONS.map(p => `<button class="tag" onclick="answerParticle('${jsEsc(p)}')">${p}</button>`).join('')}
-    </div>`}
-    ${ans ? `<div class="feedback-card ${isCorrect?'correct':'miss'}">
-      <div class="feedback-head">${isCorrect?'✓ Correct':'→ Also accepted: '+accept.map(esc).join(' / ')}</div>
-      <div class="feedback-body" style="line-height:1.7">${particleJPRevealed(d, cur.blankIdx, ans, isCorrect)}</div>
-      ${!isCorrect ? `<div class="feedback-smart">${esc(blank.explain)}</div>` : ''}
-    </div>
-    <div class="audio-row">
-      <button class="audio-btn" onclick="speakJP('${jsEsc(particleJPFilled(d))}')">🔊 Listen (full sentence)</button>
-    </div>
-    <button class="btn btn-primary" style="width:100%" onclick="nextParticle()">Next →</button>` : ''}
-  `;
-}
-
-function answerParticle(p){
-  ensureParticleSession();
-  const sess = state.particleSession;
-  if(sess.answer) return; /* already answered this blank */
-  const cur = sess.pool[sess.idx];
-  const d = PARTICLE_DRILLS[cur.drillIdx];
-  const blank = particleBlanks(d)[cur.blankIdx];
-  const accept = particleAccept(blank);
-  const correct = accept.includes(p);
-  sess.answer = p;
-  const st = particleStatFor(cur.drillIdx, cur.blankIdx);
-  st.lastSeen = now();
-  if(correct){
-    st.streak++;
-    st.correctCount++;
-    if(st.streak >= PARTICLE_RETIRE_STREAK && !st.retired){
-      st.retired = true;
-      st.retiredAt = now();
-    }
-  } else {
-    st.streak = 0;
-    st.wrongCount++;
-    st.retired = false;
-    st.retiredAt = null;
-  }
-  log('particle_attempt', {drillIdx:cur.drillIdx, blankIdx:cur.blankIdx, correct, chose:p});
-  save();
-  render();
-}
-
-function nextParticle(){
-  if(!state.particleSession) return;
-  const sess = state.particleSession;
-  sess.answer = null;
-  sess.idx++;
-  /* v6.20 — when scope pool is exhausted, leave idx >= pool.length so the
-     renderer shows the completion card; user picks "Drill again" or "Back". */
-  save();
-  render();
-}
-window.answerParticle = answerParticle;
-window.nextParticle = nextParticle;
 
 /* ---------- SETTINGS ---------- */
 function renderSettings(){
@@ -21345,49 +19878,21 @@ function renderSettings(){
   const posList = [...new Set(state.words.map(w=>w.pos).filter(Boolean))].sort();
   const regList = ['casual','neutral','polite'];
 
+  /* Stage E (v8.11) — Settings slimmed into three named groups (Voice /
+     Learning / Data) per the Delve 4 decision that killed the BYO-API-key
+     cards (Claude API + Whisper key inputs — no hosted backend yet, so
+     asking a paying customer to paste a personal API key doesn't work).
+     Removing the cards does NOT touch buildMode: whisperKey()/whisperStatus()
+     still read state.settings.openaiKey if an existing user already has one
+     saved, and gracefully fall back to the browser's Web Speech recognizer
+     when there is none — the hands-free voice loop is untouched either way.
+     `modules` (guided unlock path) stays buried below the three groups,
+     default-off, reachable only via the collapsed Advanced disclosure. */
+  const groupHeader = (label) => `<div class="h8-section" style="margin:16px 4px 8px">${esc(label)}</div>`;
+
   return `
     <div class="settings-v2">
-    <div class="card">
-      <h3>Study filters</h3>
-      <div class="muted" style="margin-bottom:10px">Themes — tap to include (empty = all)</div>
-      <div class="tags">
-        ${themes.map(t => `<button class="tag ${s.activeThemes.includes(t)?'active':''}" onclick="toggleFilter('activeThemes','${jsEsc(t)}')">${t}</button>`).join('')}
-      </div>
-      <div class="muted" style="margin:10px 0">Parts of speech</div>
-      <div class="tags">
-        ${posList.map(p => `<button class="tag ${s.activePOS.includes(p)?'active':''}" onclick="toggleFilter('activePOS','${jsEsc(p)}')">${p}</button>`).join('')}
-      </div>
-      <div class="muted" style="margin:10px 0">Register</div>
-      <div class="tags">
-        ${regList.map(r => `<button class="tag ${s.activeRegister.includes(r)?'active':''}" onclick="toggleFilter('activeRegister','${jsEsc(r)}')">${r}</button>`).join('')}
-      </div>
-      <button class="btn btn-ghost" onclick="clearFilters()">Clear all filters</button>
-    </div>
-
-    <div class="card">
-      <h3>Preferences</h3>
-      <label class="word-row"><div class="word-main"><div class="word-jp">N5 pack enabled</div><div class="word-en">${N5_PACK.length} words</div></div>
-        <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Advanced pack (N4/N3)</div><div class="word-en">${ADV_PACK.length} step-up words — vague, troublesome, give up, reconsider… all hiragana/katakana, with nuance notes. Great fresh material for Focus.</div></div>
-        <input type="checkbox" ${s.advPackEnabled!==false?'checked':''} onchange="toggleSetting('advPackEnabled')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
-        <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'}</div></div>
-        <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
-    </div>
-
-    <div class="card">
-      <h3>✨ AI Focus sentences</h3>
-      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">
-        In <b>Focus</b>, the default example sentences are templates and can read oddly. With an Anthropic API key set, the <b>✨ Generate</b> button on each word writes genuinely natural, nuance-rich sentences — kanji-free, then <b>cached on this device forever</b> (works offline after, never regenerates unasked). Always uses <b>Claude Haiku 4.5</b> (fast, ~a tenth of a cent per word) regardless of the chat model below.
-      </div>
-      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.anthropicKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${(s.anthropicKey||'').trim() ? '#22c55e' : '#a78bfa'};line-height:1.5">
-        ${(s.anthropicKey||'').trim() ? '✅ API key is set — the ✨ Generate button is live in Focus.' : '⚠️ No API key yet. Add one in the <b>Anthropic API key</b> card below (shared with the 🤖 chat bubble) to unlock generation.'}
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
-      <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
-    </div>
-
+    ${groupHeader('Voice')}
     <div class="card">
       <h3>Build Mode pacing</h3>
       <div class="muted" style="font-size:12px;margin-bottom:8px">Paul Noble-style hands-off cadence: prompt plays, you say it aloud, JP reveals automatically, next step incoming. Pause anytime mid-lesson.</div>
@@ -21441,6 +19946,49 @@ function renderSettings(){
         <button class="btn btn-ghost" onclick="testJpVoice()">🔊 Test JP</button>
         <button class="btn btn-ghost" onclick="testEnVoice()">🔊 Test EN</button>
       </div>
+      <div class="muted" style="font-size:11px;margin-top:10px">${whisperAvailable() ? '🎤 Whisper transcription active for this device.' : '📢 Using the browser\'s built-in speech recognizer.'}</div>
+      <label class="word-row" style="margin-top:8px"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'}</div></div>
+        <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
+    </div>
+
+    ${groupHeader('Learning')}
+    <div class="card">
+      <h3>Study filters</h3>
+      <div class="muted" style="margin-bottom:10px">Themes — tap to include (empty = all)</div>
+      <div class="tags">
+        ${themes.map(t => `<button class="tag ${s.activeThemes.includes(t)?'active':''}" onclick="toggleFilter('activeThemes','${jsEsc(t)}')">${t}</button>`).join('')}
+      </div>
+      <div class="muted" style="margin:10px 0">Parts of speech</div>
+      <div class="tags">
+        ${posList.map(p => `<button class="tag ${s.activePOS.includes(p)?'active':''}" onclick="toggleFilter('activePOS','${jsEsc(p)}')">${p}</button>`).join('')}
+      </div>
+      <div class="muted" style="margin:10px 0">Register</div>
+      <div class="tags">
+        ${regList.map(r => `<button class="tag ${s.activeRegister.includes(r)?'active':''}" onclick="toggleFilter('activeRegister','${jsEsc(r)}')">${r}</button>`).join('')}
+      </div>
+      <button class="btn btn-ghost" onclick="clearFilters()">Clear all filters</button>
+    </div>
+
+    <div class="card">
+      <h3>Preferences</h3>
+      <label class="word-row"><div class="word-main"><div class="word-jp">N5 pack enabled</div><div class="word-en">${N5_PACK.length} words</div></div>
+        <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Advanced pack (N4/N3)</div><div class="word-en">${ADV_PACK.length} step-up words — vague, troublesome, give up, reconsider… all hiragana/katakana, with nuance notes. Great fresh material for Focus.</div></div>
+        <input type="checkbox" ${s.advPackEnabled!==false?'checked':''} onchange="toggleSetting('advPackEnabled')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
+        <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
+    </div>
+
+    <div class="card">
+      <h3>✨ AI Focus sentences</h3>
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">
+        In <b>Focus</b>, the default example sentences are templates and can read oddly. The <b>✨ Generate</b> button writes genuinely natural, nuance-rich sentences — kanji-free, then <b>cached on this device forever</b> (works offline after, never regenerates unasked).
+      </div>
+      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.anthropicKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${(s.anthropicKey||'').trim() ? '#22c55e' : '#a78bfa'};line-height:1.5">
+        ${(s.anthropicKey||'').trim() ? '✅ Generation is live in Focus on this device.' : '⚠️ Generation is unavailable on this device right now — the templated example sentences below still work fine.'}
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
+      <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
     </div>
 
     <div class="card">
@@ -21455,67 +20003,16 @@ function renderSettings(){
     </div>
 
     <div class="card">
-      <h3>🤖 Claude API</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:8px">Your Anthropic API key enables the 🤖 bubble. Stored only in this device's localStorage. Never sent to the repo or anywhere but api.anthropic.com.</div>
-      <input class="input" id="anthropicKeyInput" type="password" placeholder="sk-ant-..." value="${esc(s.anthropicKey||'')}">
-      <div class="spacer"></div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveAnthropicKey()">Save key</button>
-        <button class="btn btn-ghost" onclick="clearAnthropicKey()">Clear</button>
-      </div>
-      <div class="spacer"></div>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Model</div><div class="word-en">Haiku = cheap/fast · Sonnet = more nuanced</div></div>
-        <select class="input" style="width:auto" onchange="setAnthropicModel(this.value)">
-          <option value="claude-haiku-4-5-20251001" ${(s.anthropicModel||'').includes('haiku')?'selected':''}>Haiku 4.5</option>
-          <option value="claude-sonnet-4-6" ${(s.anthropicModel||'')==='claude-sonnet-4-6'?'selected':''}>Sonnet 4.6</option>
-        </select>
-      </label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🤖 AI conversation in Build Mode</div><div class="word-en">${voiceSupported() ? 'On: Q&amp;A steps listen via speech, send to Claude, speak a real reply. ~$0.001 per turn on Haiku. Falls back to scripted answers on any failure.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
-        <input type="checkbox" ${s.buildAiQa?'checked':''} onchange="toggleSetting('buildAiQa')"></label>
-      <div class="muted" style="font-size:11px;margin-top:6px">Get a key: console.anthropic.com → API Keys. You'll need account credits.</div>
+      <h3>Removed words (${(state.settings.removedWords||[]).length})</h3>
+      <div class="muted" style="margin-bottom:8px">Words you've removed from the active pool. Tap to restore.</div>
+      ${(state.settings.removedWords||[]).length ? (state.settings.removedWords||[]).map(id => {
+        const w = state.words.find(x=>x.id===id);
+        if(!w) return '';
+        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="restoreWord('${jsEsc(id)}')">Restore</button></div>`;
+      }).join('') : '<div class="muted">None.</div>'}
     </div>
 
-    <div class="card">
-      <h3>🎤 Voice recognition (Whisper)</h3>
-      ${(() => {
-        /* v8.01 — banner now reflects the REAL gate (whisperStatus), not just key
-           presence. The old key-only check went green even when Whisper couldn't
-           actually run, so the drill silently used the browser engine while this
-           said "active". Three honest states: no key / key-but-blocked / live. */
-        const hasKey = (s.openaiKey||'').trim();
-        const st = whisperStatus();
-        const tone = st.ok ? {bg:'rgba(34,197,94,0.10)', br:'#22c55e'}
-                   : hasKey ? {bg:'rgba(239,68,68,0.10)', br:'#ef4444'}
-                            : {bg:'rgba(245,158,11,0.10)', br:'#f59e0b'};
-        const body = st.ok
-          ? '✅ Whisper is active — voice mode uses OpenAI Whisper for transcription (vastly more accurate than the browser).'
-          : hasKey
-            ? ('⛔ Key saved, but Whisper can\'t run right now: <b>' + esc(st.reason) + '</b>. Voice mode is falling back to your browser\'s recognizer (the clipped / misheard one) until this is resolved.')
-            : '⚠️ No OpenAI key yet — voice mode currently uses your browser\'s built-in recognizer, which is the source of the clipped / misheard verdicts. Add a key to switch to Whisper.';
-        return '<div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:' + tone.bg + ';border-left:3px solid ' + tone.br + ';line-height:1.5">' + body + '</div>';
-      })()}
-      ${(() => {
-        /* v8.02 — last spoken-answer outcome. Read this AFTER a drill to see
-           exactly what happened on your most recent voice answer. */
-        const d = _sttDebugGet();
-        if(!d) return '<div class="muted" style="font-size:11px;margin-top:8px;opacity:0.7">Last voice attempt: <i>none yet — run a drill and speak one answer, then come back here.</i></div>';
-        const engN = d.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech';
-        const secs = Math.max(0, Math.round((Date.now() - (d.ts||0)) / 1000));
-        const ago = secs < 60 ? secs + 's ago' : Math.round(secs/60) + 'm ago';
-        return '<div class="muted" style="font-size:11px;margin-top:8px;padding:6px 8px;background:var(--card2);border-radius:6px;line-height:1.5">'
-          + '<b>Last voice attempt</b> (' + ago + '): ' + engN + ' · ' + esc(d.event)
-          + (d.detail ? '<br><span style="opacity:0.7">' + esc(d.detail) + '</span>' : '') + '</div>';
-      })()}
-      <div class="muted" style="font-size:12px;margin:10px 0 8px">Why this matters: the browser\'s Web Speech API often clips the front of words (you say <b>いそがしい</b>, it hears <b>いい</b>). Whisper is OpenAI\'s speech model — best-in-class for Japanese, doesn\'t clip, and we tell it your deck words so it favours them. ~$0.006/min audio, roughly <b>$1-3/month</b> for daily practice. Round-trip latency ~1-2 sec per attempt. Falls back to the browser recognizer when offline.</div>
-      <input class="input" id="openaiKeyInput" type="password" placeholder="sk-..." value="${esc(s.openaiKey||'')}">
-      <div class="spacer"></div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="saveOpenaiKey()">Save key</button>
-        <button class="btn btn-ghost" onclick="clearOpenaiKey()">Clear</button>
-      </div>
-      <div class="muted" style="font-size:11px;margin-top:6px">Get a key: platform.openai.com → API keys. Key stays in this device\'s localStorage; audio is sent directly to api.openai.com.</div>
-    </div>
-
+    ${groupHeader('Data')}
     <div class="card">
       <h3>Data</h3>
       <button class="btn btn-blue" onclick="exportJSON()">⬇ Export all data (JSON)</button>
@@ -21533,16 +20030,6 @@ function renderSettings(){
     </div>
 
     <div class="card">
-      <h3>Removed words (${(state.settings.removedWords||[]).length})</h3>
-      <div class="muted" style="margin-bottom:8px">Words you've removed from the active pool. Tap to restore.</div>
-      ${(state.settings.removedWords||[]).length ? (state.settings.removedWords||[]).map(id => {
-        const w = state.words.find(x=>x.id===id);
-        if(!w) return '';
-        return `<div class="word-row"><div class="word-main"><div class="word-jp">${esc(w.jp)} <span class="word-r">${esc(w.romaji||'')}</span></div><div class="word-en">${esc(w.en)}</div></div><button class="btn btn-sm btn-secondary" onclick="restoreWord('${jsEsc(id)}')">Restore</button></div>`;
-      }).join('') : '<div class="muted">None.</div>'}
-    </div>
-
-    <div class="card">
       <h3>About</h3>
       <div class="muted">
         Isshin · v${APP_VERSION}<br>
@@ -21551,6 +20038,14 @@ function renderSettings(){
         Built for Julius. Designed around active recall + voice output + teacher-verified content.
       </div>
     </div>
+
+    <details style="margin:16px 4px 4px">
+      <summary class="muted" style="font-size:12px;cursor:pointer">⚙ Advanced</summary>
+      <div class="card" style="margin-top:8px">
+        <label class="word-row"><div class="word-main"><div class="word-jp">Module path (guided unlock)</div><div class="word-en">Off by default — every topic is always open. On: browse/reorder/unlock modules from Practice.</div></div>
+          <input type="checkbox" ${s.modulesEnabled?'checked':''} onchange="toggleModulesEnabled()"></label>
+      </div>
+    </details>
     </div>
   `;
 }
@@ -21563,45 +20058,6 @@ function toggleFilter(field, val){
 }
 function clearFilters(){ state.settings.activeThemes=[]; state.settings.activePOS=[]; state.settings.activeRegister=[]; save(); render(); }
 function toggleSetting(k){ state.settings[k] = !state.settings[k]; save(); load(); render(); }
-function saveAnthropicKey(){
-  const raw = ($('#anthropicKeyInput')?.value || '');
-  const v = raw.replace(/\s+/g,'').trim();
-  state.settings.anthropicKey = v;
-  save();
-  const looksValid = /^sk-ant-/.test(v);
-  alert(v ? (looksValid ? 'Key saved. Tap the 🤖 bubble to chat.' : 'Saved, but this does not look like an Anthropic key (expected sk-ant-...). Double-check.') : 'Key cleared.');
-  render();
-}
-function clearAnthropicKey(){
-  state.settings.anthropicKey = '';
-  save(); render();
-}
-function setAnthropicModel(m){
-  state.settings.anthropicModel = m;
-  save();
-}
-/* v7.46 — OpenAI key handlers (Whisper STT). Mirror the Anthropic flow.
-   v7.48 — Key is now ALSO written to its own dedicated localStorage entry
-   (LS.openaiKey), independent of the settings JSON blob. This shields it
-   from partial-writes, settings-schema corruption, and iOS PWA storage
-   eviction quirks that were wiping it between sessions. Belt-and-braces:
-   we keep state.settings.openaiKey in sync so existing readers
-   (whisperKey, settings card UI) keep working. */
-function saveOpenaiKey(){
-  const raw = ($('#openaiKeyInput')?.value || '');
-  const v = raw.replace(/\s+/g,'').trim();
-  state.settings.openaiKey = v;
-  try { v ? localStorage.setItem(LS.openaiKey, v) : localStorage.removeItem(LS.openaiKey); } catch(e){}
-  save();
-  const looksValid = /^sk-/.test(v);
-  alert(v ? (looksValid ? 'Key saved. Voice mode will now use Whisper.' : 'Saved, but this does not look like an OpenAI key (expected sk-...). Double-check.') : 'Key cleared.');
-  render();
-}
-function clearOpenaiKey(){
-  state.settings.openaiKey = '';
-  try { localStorage.removeItem(LS.openaiKey); } catch(e){}
-  save(); render();
-}
 function setVoiceName(key, name){
   state.settings[key] = name || '';
   save(); render();
@@ -21678,11 +20134,6 @@ window.setBuildTtsRate = setBuildTtsRate;
 window.setBuildEnTtsRate = setBuildEnTtsRate;
 function testJpVoice(){ speakJP('こんにちは。わたしは にほんごを べんきょうしています。'); }
 function testEnVoice(){ _buildSpeakEN('Hello. This is a test of the English voice.', true); }
-window.saveAnthropicKey = saveAnthropicKey;
-window.saveOpenaiKey = saveOpenaiKey;
-window.clearOpenaiKey = clearOpenaiKey;
-window.clearAnthropicKey = clearAnthropicKey;
-window.setAnthropicModel = setAnthropicModel;
 window.setVoiceName = setVoiceName;
 window.setTtsRate = setTtsRate;
 window.testJpVoice = testJpVoice;
@@ -21902,7 +20353,7 @@ function openAskClaude(){
       <h2>🤖 Ask Claude</h2>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
-    ${!hasKey ? `<div class="chat-msg err" style="margin-bottom:8px">No API key yet. Add one in Settings → 🤖 Claude API.<br><button class="btn btn-primary" style="margin-top:8px;width:100%" onclick="closeModal();nav('settings')">Open Settings</button></div>` : ''}
+    ${!hasKey ? `<div class="chat-msg err" style="margin-bottom:8px">This AI connection isn't available on this device right now.</div>` : ''}
     <div class="chat-log" id="chatLog">
       ${msgs.length === 0 ? `<div class="muted" style="padding:8px;font-size:13px">Ask about a word, a grammar point, how to say something, or get a quick correction. Replies use hiragana only.</div>` : ''}
       ${msgs.map(renderChatMsg).join('')}
