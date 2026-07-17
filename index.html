@@ -620,6 +620,29 @@ body:has(.home-v8) .header{display:none}
 .cat-tile-play:disabled{opacity:.3;cursor:not-allowed;color:var(--faint)}
 .cat-group{margin-bottom:16px}
 .cat-group-label{font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);margin:0 4px 9px}
+/* ===== Stage B (v8.08) — Onboarding OB-0..OB-4 ===== */
+.ob-wrap{display:flex;min-height:60vh;align-items:center;justify-content:center;padding:24px 4px}
+.ob-screen{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px 24px;text-align:center;box-shadow:0 16px 44px rgba(0,0,0,.35)}
+.ob-emoji{font-size:40px;margin-bottom:10px}
+.ob-title{font-weight:900;font-size:20px;color:var(--text);letter-spacing:-.2px}
+.ob-jp{font-weight:900;font-size:22px;color:var(--text);letter-spacing:-.2px;line-height:1.4}
+.ob-sub{font-size:13px;color:var(--faint);margin-top:6px;font-weight:600}
+.ob-body{font-size:13px;color:var(--faint);margin-top:14px;line-height:1.55}
+.ob-turn-meta{font-size:10.5px;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-top:12px;font-weight:800}
+.ob-cta{margin-top:20px;width:100%;padding:15px;border:none;border-radius:16px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 10px 26px rgba(157,92,255,.35)}
+.ob-cta:active{transform:scale(.97)}
+.ob-cta.ob-mic{background:linear-gradient(100deg,#ff5d9e,#ff8a3d)}
+.ob-listening{margin-top:20px;padding:15px;border-radius:16px;background:rgba(255,93,158,.14);border:1px solid rgba(255,93,158,.35);color:var(--text);font-weight:800;font-size:14px}
+.ob-input{margin-top:18px;width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-family:inherit;font-weight:700;font-size:15px;text-align:center;outline:none;box-sizing:border-box}
+.ob-skip{margin-top:14px;width:100%;padding:10px;border:none;background:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.ob-path-card{display:block;width:100%;text-align:left;margin-top:14px;padding:18px;border:1px solid var(--border);border-radius:18px;background:rgba(255,255,255,.03);cursor:pointer}
+.ob-path-card:active{transform:scale(.98)}
+.ob-path-em{font-size:24px}
+.ob-path-t{font-weight:800;font-size:15px;color:var(--text);margin-top:6px}
+.ob-path-s{font-size:12px;color:var(--faint);margin-top:4px;line-height:1.4}
+.ob-chip-row{display:flex;flex-direction:column;gap:9px;margin-top:18px}
+.ob-chip{padding:13px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+.ob-chip:active{transform:scale(.97)}
 </style>
 </head>
 <body>
@@ -650,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.07';
+const APP_VERSION = '8.08';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2931,7 +2954,8 @@ const DEFAULT_SETTINGS = {
   convoXp:0,                  // oshaberi — XP toward the next convoLevel
   leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
   userName:'Julius',          // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
-  showCoverageMeter:true      // v7.96 — display the vocabulary coverage/reach meter on the home screen
+  showCoverageMeter:true,     // v7.96 — display the vocabulary coverage/reach meter on the home screen
+  onboard:{ done:false, path:null, placedStage:null }  // Stage B (v8.08) — first-run onboarding record. Additive; boot-time backfill in load() marks existing users done:true so they never see OB-0. path: 'beginner'|'router'. placedStage: router-derived starting stage (display-only, non-locking).
 };
 
 /* =========================================================================
@@ -3091,6 +3115,11 @@ let state = {
    *  Fields: scene, messages, pool, freeSet, turn, maxTurns, current, listening,
    *          interim, viaVoice, loading, error, peekGloss, results, done */
   convo:null,
+  /** Stage B (v8.08) — transient in-memory onboarding pass state. NOT
+   *  persisted (the durable record is state.settings.onboard.{done,path,
+   *  placedStage}); rebuilt fresh via _obEnsure() each time the onboarding
+   *  screen is entered. null when no pass is in progress. */
+  onboard:null,
 };
 
 /* =========================================================================
@@ -3410,6 +3439,17 @@ function load(){
       state.settings._topicsFirstV1 = true;
     }
     state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
+    /* Stage B (v8.08) — onboarding boot-time backfill. Additive: onboard is
+       already guaranteed present via the DEFAULT_SETTINGS merge above. Runs
+       on EVERY load (not gated behind a first-install flag) so it keeps
+       working even if a future migration ever recreates the settings blob.
+       Existing users (non-empty stats OR convoXp>0) never see OB-0. Only
+       ever flips done false->true — an already-true done can never be
+       reset back to false here. */
+    if(!state.settings.onboard) state.settings.onboard = {done:false, path:null, placedStage:null};
+    if(!state.settings.onboard.done && (Object.keys(state.stats).length > 0 || (state.settings.convoXp || 0) > 0)){
+      state.settings.onboard.done = true;
+    }
     state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
     state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
     state.streak = {...state.streak, ...(JSON.parse(localStorage.getItem(LS.streak)||'{}'))};
@@ -18493,7 +18533,10 @@ function renderTopbar(){
      settings icon) — the generic back-button topbar stays hidden for both,
      same as the pre-Stage-A behavior for 'home' (topics) and the now-removed
      'today' alias. */
-  if(state.screen === 'home' || state.screen === 'practice') return '';
+  /* Stage B — onboarding draws its own full-screen chrome (ob-screen cards
+     with in-flow skip/continue controls) and must not offer the generic
+     back-arrow, which would let a tap exit the scripted flow mid-pass. */
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard') return '';
   let title = SCREEN_TITLES[state.screen];
   if(state.screen === 'formDrill'){
     const f = FORMS.find(x => x.id === state._navData);
@@ -18862,7 +18905,7 @@ function renderProgress(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, particles:renderParticles, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, variations:renderVariations, variationBlitz:renderVariationBlitz, library:renderLibrary, modules:renderModules, similar:renderSimilar, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -18878,6 +18921,12 @@ function nav(screen, data, fromPop){
      pathGo()'s bail-detection (which compares state.screen==='home') all keep
      seeing one canonical string instead of a second stale 'today'. */
   if(screen === 'today') screen = 'home';
+  /* Stage B (v8.08) — Home routes to onboarding until the first-run flow
+     completes. Boot-time backfill in load() already marks existing users
+     (non-empty stats or convoXp>0) done:true, so this only ever fires for
+     genuinely first-run profiles. Placed after the today->home alias so
+     both entry points funnel through one normalization site. */
+  if(screen === 'home' && !state.settings.onboard.done) screen = 'onboard';
   /* v6.5 — re-shuffle on each entry so re-opening Particles doesn't resume
      the same deck. v6.7 — swap to multi-blank session model. */
   if(screen === 'particles' && state.screen !== 'particles'){
@@ -18904,7 +18953,10 @@ function goBack(){
 function updateBackFab(){
   const fab = document.getElementById('backFab');
   if(!fab) return;
-  fab.classList.toggle('show', state.screen !== 'home');
+  /* Stage B — onboarding is a linear scripted flow with its own in-screen
+     skip/continue controls; the global back-FAB would let a user escape
+     mid-script into a half-onboarded state, so it's hidden there too. */
+  fab.classList.toggle('show', state.screen !== 'home' && state.screen !== 'onboard');
 }
 function updateNav(){
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen));
@@ -19118,6 +19170,341 @@ function renderHome(){
       ${ladder}
       ${extras}
     </div>`;
+}
+
+/* =========================================================================
+   ONBOARDING — Stage B (v8.08): OB-0..OB-4 first-run scripted exchange.
+
+   Flow: OB-0 (promise) -> OB-1 (one-question path pick) -> OB-2 (meet the
+   partner + mic pre-prompt, runs exactly once per pass on BOTH paths) ->
+   OB-3A (beginner: scripted 3-turn exchange, local TTS + STT-as-turn-
+   trigger, canned lines, typed name field) OR OB-3B (router: skippable
+   <=3-question chip flow) -> OB-4 (first-win card, no score/signup) -> Home.
+
+   Durable record: state.settings.onboard.{done,path,placedStage} (additive,
+   backfilled at boot for existing users — see load()).
+   Transient pass state: state.onboard (in-memory only, see _obEnsure()).
+
+   Invariants: kana-only new JP copy; STT is a turn-trigger/optional echo
+   ONLY — never scored, never written to state.stats/SRS; never touches
+   buildMode's voice-loop code paths.
+   ========================================================================= */
+
+/* Canned script — identical copy is reused by BOTH the spoken (STT) branch
+   and the chips-only fallback branch, per the OB-2 fallback requirement.
+   kind:'name' -> typed field only, NEVER populated via STT.
+   kind:'chip' -> spoken turn-trigger in voice mode, tap-to-advance chip in
+   chips-only mode; `chip` is the exact label shown on the fallback button. */
+const OB_SCRIPT_BEGINNER = [
+  { jp:'はじめまして！わたしは みさきです。', en:"Nice to meet you! I'm Misaki.", kind:'intro' },
+  { jp:'おなまえを おしえて ください。', en:'Please tell me your name.', kind:'name' },
+  { jp:'にほんごの べんきょう、たのしみですか？', en:'Are you excited to learn Japanese?', kind:'chip', chip:'はい、たのしみです！' },
+  { jp:'じゃあ、いっしょに がんばりましょう！', en:"Then let's do our best together!", kind:'chip', chip:'がんばります！' }
+];
+
+/* Router — skippable, <=3 chip questions. Each answer's `stage` feeds the
+   display-only placedStage (Stage C's advisory spine reads it; non-locking
+   per ADR-003 — it never gates or restricts content). */
+const OB_ROUTER_QUESTIONS = [
+  { jp:'にほんごは はじめて ですか？', en:'Is Japanese completely new to you?',
+    opts:[ {label:'はい、はじめてです', stage:1}, {label:'すこし わかります', stage:2}, {label:'けっこう わかります', stage:3} ] },
+  { jp:'ひらがなは よめますか？', en:'Can you read hiragana?',
+    opts:[ {label:'よめません', stage:1}, {label:'すこし よめます', stage:2}, {label:'よめます', stage:3} ] },
+  { jp:'はなす れんしゅうを した ことが ありますか？', en:'Have you practiced speaking before?',
+    opts:[ {label:'ありません', stage:1}, {label:'すこし あります', stage:2}, {label:'よく します', stage:3} ] }
+];
+
+/* Transient pass state — created on first entry to the onboarding screen,
+   torn down (nulled) once OB-4 hands off to Home. Not persisted; only the
+   durable state.settings.onboard fields survive a reload mid-pass (which
+   simply restarts the pass from OB-0, an acceptable Stage-B simplification). */
+function _obEnsure(){
+  if(!state.onboard){
+    state.onboard = {
+      step:'ob0',
+      path:null,            // 'beginner' | 'router'
+      micAsked:false,        // OB-2 gate — pre-prompt resolves exactly once per pass
+      micGranted:null,       // true | false | null
+      turnIdx:0,             // OB-3A canned-line index
+      name:'',               // typed name (OB-3A) — never STT-populated
+      routerIdx:0,           // OB-3B question index
+      stageVotes:[],         // OB-3B collected `stage` picks -> placedStage
+      listening:false,
+      _t0:now()               // timing-marker base for console evidence
+    };
+    _obLog('ob_start', {});
+  }
+  return state.onboard;
+}
+/* Timestamped console markers — acceptance evidence for the sprint's
+   cold-profile-to-spoken-exchange timing requirement (<=90s router path,
+   <=60s beginner path). Also mirrored into the normal log() ring buffer. */
+function _obLog(evt, data){
+  const ob = state.onboard;
+  const elapsed = ob ? (now() - ob._t0) : 0;
+  try{ console.log('[onboard] +' + elapsed + 'ms ' + evt, data || {}); }catch(e){}
+  log('onboard_' + evt, Object.assign({}, data, {elapsedMs:elapsed}));
+}
+function obGoto(step){
+  const ob = _obEnsure();
+  if(step === 'ob2'){
+    if(ob.micAsked){
+      /* Gate: OB-2 only ever resolves once per pass. Back-navigation or a
+         re-render must not re-show (or re-ask) it — skip straight through
+         to the exchange the current path leads to. */
+      step = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
+    } else if(!voiceSupported()){
+      /* Fallback (b): STT API absent — skip the mic ask SCREEN entirely
+         (never rendered, no permission prompt of any kind is ever
+         attempted), landing straight in the chips-only exchange with the
+         identical script/copy the voice branch would have used. */
+      ob.micGranted = false;
+      ob.micAsked = true;
+      _obLog('mic_skipped_unsupported', {});
+      step = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
+    }
+  }
+  ob.step = step;
+  _obLog('step_' + step, {path:ob.path});
+  render();
+}
+window.obGoto = obGoto;
+
+function obSelectPath(path){
+  const ob = _obEnsure();
+  ob.path = path;
+  _obLog('path_selected', {path});
+  obGoto('ob2');
+}
+window.obSelectPath = obSelectPath;
+
+/* OB-2 mic ask. Only ever called from a tap (never auto-fires) so the
+   permission prompt is always attached to a user gesture. Reuses the
+   existing _voicePreflightMic() preflight helper (same one Build Mode's
+   voice-mode toggle uses) rather than inventing a second getUserMedia path. */
+async function obMicAllow(){
+  const ob = _obEnsure();
+  if(ob._micPending) return;
+  ob._micPending = true;
+  const granted = await _voicePreflightMic();
+  ob._micPending = false;
+  ob.micGranted = !!granted;
+  ob.micAsked = true;
+  _obLog('mic_result', {granted:ob.micGranted});
+  const target = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
+  ob.step = target;
+  _obLog('step_' + target, {path:ob.path, mode: ob.micGranted ? 'voice' : 'chips'});
+  render();
+}
+window.obMicAllow = obMicAllow;
+
+function _obRenderOb0(){
+  _obEnsure();
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">💬</div>
+      <div class="ob-title">まちがえても だいじょうぶ</div>
+      <div class="ob-sub">It's okay to make mistakes.</div>
+      <div class="ob-body">Isshin is a real, zero-judgment conversation partner — not a quiz. We'll ease you in with one short spoken exchange, no score, no signup.</div>
+      <button class="ob-cta" onclick="obGoto('ob1')">はじめる →</button>
+    </div>`;
+}
+function _obRenderOb1(){
+  _obEnsure();
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">🎌</div>
+      <div class="ob-title">どちらから はじめますか？</div>
+      <div class="ob-sub">Where should we start?</div>
+      <button class="ob-path-card" onclick="obSelectPath('beginner')">
+        <div class="ob-path-em">🔰</div>
+        <div class="ob-path-t">はじめて — Beginner</div>
+        <div class="ob-path-s">Total beginner — meet your partner &amp; try one spoken exchange</div>
+      </button>
+      <button class="ob-path-card" onclick="obSelectPath('router')">
+        <div class="ob-path-em">⚡</div>
+        <div class="ob-path-t">すこし わかる — I know a little</div>
+        <div class="ob-path-s">Answer up to 3 quick questions so we place you right (skippable)</div>
+      </button>
+    </div>`;
+}
+function _obRenderOb2(){
+  const ob = _obEnsure();
+  /* Fallback (b) — STT-API-absent — is handled upstream in obGoto(), which
+     never routes here at all when !voiceSupported(); it jumps straight to
+     the chips exchange. This defensive branch only guards against a caller
+     landing on 'ob2' some other way (e.g. a future direct render() call). */
+  if(!voiceSupported()){
+    ob.micGranted = false;
+    ob.micAsked = true;
+    return `
+      <div class="ob-screen">
+        <div class="ob-emoji">🙋</div>
+        <div class="ob-title">みさきに あいましょう</div>
+        <div class="ob-sub">Meet your partner</div>
+        <div class="ob-body">Your browser doesn't support voice input here, so we'll do this with taps instead of your mic.</div>
+        <button class="ob-cta" onclick="obGoto('${ob.path==='beginner'?'ob3a':'ob3b'}')">つづける →</button>
+      </div>`;
+  }
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">🙋</div>
+      <div class="ob-title">みさきに あいましょう</div>
+      <div class="ob-sub">Meet your partner</div>
+      <div class="ob-body">We're about to talk a little. Is it okay to use your microphone? If not, chips work just as well.</div>
+      <button class="ob-cta" onclick="obMicAllow()">🎤 マイクを つかう</button>
+    </div>`;
+}
+
+/* OB-3A — beginner scripted exchange. Renders one canned turn at a time from
+   OB_SCRIPT_BEGINNER. Voice mode (mic granted) shows a tap-to-listen mic
+   button; chips-only mode (denied OR unsupported) shows the SAME jp/en
+   script text with a tap-to-advance chip — identical copy either way. */
+function _obTurnAdvance(heard){
+  const ob = state.onboard;
+  if(!ob) return;
+  ob.listening = false;
+  if(heard) _obLog('turn_heard', {turnIdx:ob.turnIdx, heard:String(heard).slice(0,80)});
+  ob.turnIdx++;
+  if(ob.turnIdx >= OB_SCRIPT_BEGINNER.length){ obGoto('ob4'); return; }
+  render();
+}
+window._obTurnAdvance = _obTurnAdvance;
+function obNameSubmit(){
+  const ob = state.onboard;
+  if(!ob) return;
+  const el = document.getElementById('obNameInput');
+  const typed = el ? String(el.value || '').trim().slice(0, 24) : '';
+  ob.name = typed; /* typed field ONLY — never populated from STT, per spec */
+  if(typed) state.settings.userName = typed; /* reuse existing convo field, esc()'d on every later render */
+  _obLog('name_submitted', {len:typed.length});
+  _obTurnAdvance(null);
+}
+window.obNameSubmit = obNameSubmit;
+/* Tap-to-listen mic turn-trigger. Mirrors the app-wide "STT is a
+   turn-trigger + optional echo, never a grader" convention (see
+   _buildVoiceListenStep) but is a fully separate, self-contained
+   implementation — it never touches buildMode state or SRS stats. */
+function obListenTurn(){
+  const ob = state.onboard;
+  if(!ob || ob.listening) return;
+  ob.listening = true;
+  render();
+  const finish = (heard) => { if(state.onboard === ob) _obTurnAdvance(heard); };
+  try{
+    startVoice(
+      (alts) => finish((alts && alts[0] && alts[0].transcript) || ''),
+      () => { if(ob.listening) finish(null); },
+      'ja-JP'
+    );
+  }catch(e){ finish(null); return; }
+  setTimeout(() => { if(ob.listening){ try{ stopVoice(); }catch(e){} finish(null); } }, (state.settings.voiceListenSec || 6) * 1000);
+}
+window.obListenTurn = obListenTurn;
+function _obRenderOb3a(){
+  const ob = _obEnsure();
+  const voiceMode = ob.micGranted === true && voiceSupported();
+  const turn = OB_SCRIPT_BEGINNER[ob.turnIdx] || OB_SCRIPT_BEGINNER[OB_SCRIPT_BEGINNER.length - 1];
+  if(turn && ob._spokenTurnIdx !== ob.turnIdx){
+    speakJP(turn.jp);
+    ob._spokenTurnIdx = ob.turnIdx;
+    if(ob.turnIdx === 0) _obLog('spoken_exchange_reached', {mode: voiceMode ? 'voice' : 'chips'});
+  }
+  let control;
+  if(turn.kind === 'name'){
+    control = `
+      <input id="obNameInput" class="ob-input" type="text" maxlength="24" placeholder="Name" value="${esc(ob.name)}" autocomplete="off">
+      <button class="ob-cta" onclick="obNameSubmit()">すすむ →</button>`;
+  } else if(voiceMode && turn.kind === 'chip'){
+    control = ob.listening
+      ? `<div class="ob-listening">🎤 きいています…</div>`
+      : `<button class="ob-cta ob-mic" onclick="obListenTurn()">🎤 はなす</button>`;
+  } else {
+    control = `<button class="ob-cta" onclick="_obTurnAdvance(null)">${esc(turn.chip || 'つづける')}</button>`;
+  }
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">💬</div>
+      <div class="ob-jp">${esc(turn.jp)}</div>
+      <div class="ob-sub">${esc(turn.en)}</div>
+      <div class="ob-turn-meta">${ob.turnIdx + 1} / ${OB_SCRIPT_BEGINNER.length}${voiceMode ? '' : ' · chips mode'}</div>
+      ${control}
+      <button class="ob-skip" onclick="obGoto('ob4')">スキップ</button>
+    </div>`;
+}
+
+/* OB-3B — skippable <=3-question router. Chip-only (no STT needed); each
+   pick records a display-only stage vote. Skippable at every question. */
+function obRouterAnswer(stage){
+  const ob = state.onboard;
+  if(!ob) return;
+  ob.stageVotes.push(stage);
+  _obLog('router_answer', {q:ob.routerIdx, stage});
+  ob.routerIdx++;
+  if(ob.routerIdx >= OB_ROUTER_QUESTIONS.length){ obRouterFinish(); return; }
+  render();
+}
+window.obRouterAnswer = obRouterAnswer;
+function obRouterFinish(){
+  const ob = state.onboard;
+  if(!ob) return;
+  const votes = ob.stageVotes.length ? ob.stageVotes : [1];
+  ob.placedStage = Math.round(votes.reduce((a,b)=>a+b,0) / votes.length);
+  _obLog('router_done', {placedStage:ob.placedStage, answered:votes.length});
+  obGoto('ob4');
+}
+window.obRouterFinish = obRouterFinish;
+function _obRenderOb3b(){
+  const ob = _obEnsure();
+  if(ob.routerIdx === 0) _obLog('spoken_exchange_reached', {mode:'router'});
+  const q = OB_ROUTER_QUESTIONS[ob.routerIdx];
+  if(!q){ obRouterFinish(); return ''; }
+  const opts = q.opts.map(o => `<button class="ob-chip" onclick="obRouterAnswer(${o.stage})">${esc(o.label)}</button>`).join('');
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">❓</div>
+      <div class="ob-jp">${esc(q.jp)}</div>
+      <div class="ob-sub">${esc(q.en)}</div>
+      <div class="ob-turn-meta">${ob.routerIdx + 1} / ${OB_ROUTER_QUESTIONS.length}</div>
+      <div class="ob-chip-row">${opts}</div>
+      <button class="ob-skip" onclick="obRouterFinish()">スキップ</button>
+    </div>`;
+}
+
+/* OB-4 — first-win card. Celebration only: no numeric score/accuracy/%,
+   no signup/login prompt. Marks the durable record done and hands off to
+   Home (which now routes normally since onboard.done is true). */
+function obFinish(){
+  const ob = state.onboard || {};
+  state.settings.onboard.done = true;
+  state.settings.onboard.path = ob.path || null;
+  state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : null;
+  save();
+  _obLog('finish', {path:ob.path, placedStage:state.settings.onboard.placedStage});
+  state.onboard = null;
+  nav('home');
+}
+window.obFinish = obFinish;
+function _obRenderOb4(){
+  const ob = state.onboard || {};
+  const name = ob.name ? esc(ob.name) : esc(state.settings.userName || '');
+  return `
+    <div class="ob-screen">
+      <div class="ob-emoji">🎉</div>
+      <div class="ob-title">はじめの いっぽ！</div>
+      <div class="ob-sub">${name ? name + '、' : ''}よく できました！</div>
+      <div class="ob-body">First step done. No score, no pressure — just conversation practice, whenever you're ready.</div>
+      <button class="ob-cta" onclick="obFinish()">ホームへ →</button>
+    </div>`;
+}
+
+function renderOnboard(){
+  const ob = _obEnsure();
+  const body = ({
+    ob0:_obRenderOb0, ob1:_obRenderOb1, ob2:_obRenderOb2,
+    ob3a:_obRenderOb3a, ob3b:_obRenderOb3b, ob4:_obRenderOb4
+  }[ob.step] || _obRenderOb0)();
+  return `<div class="ob-wrap">${body}</div>`;
 }
 
 /* ---------- PRACTICE (topics browser — former Home, Stage A renamed) ----------
@@ -21235,6 +21622,17 @@ function init(){
   /* keep header version label in sync with APP_VERSION so it never goes stale */
   const _vLabel = document.getElementById('appVersionLabel');
   if(_vLabel) _vLabel.textContent = '一心 · v' + APP_VERSION;
+  /* Stage B (v8.08) — first-run redirect for the very first render. Boot-time
+     backfill in load() already marked existing users done:true, so this only
+     ever fires for a genuinely first-run profile. nav()'s own 'home'->
+     'onboard' normalization (added Stage B) also covers every LATER call to
+     nav('home'); this line just makes the initial state.screen agree with it
+     before the first render() call below, and keeps the seeded history entry
+     honest. */
+  if(state.screen === 'home' && !state.settings.onboard.done){
+    state.screen = 'onboard';
+    try{ history.replaceState({screen:'onboard'}, '', '#onboard'); }catch(e){}
+  }
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
