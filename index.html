@@ -9318,7 +9318,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '- suggested must contain exactly ' + _lvInfo.chips + ' short kana replies the learner could actually say next — prefer WORD_POOL words, but fitting the live conversation wins.',
     '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
     '- judged.score: 2 = you UNDERSTOOD the learner — any comprehensible unaided speech, on ANY topic, pool word or not. 1 = partly understood, you want one gentle retry. 0 = chip tap, or you could not extract any meaning at all. Never give comprehensible speech a 0 just because it used no pool word or left the scene.',
-    '- sceneDone = true only when the scene has reached a natural close (≥3 turns).',
+    '- sceneDone = true ONLY when the learner is clearly saying goodbye / ending the conversation (e.g. またね, バイバイ, さようなら, おわり, or an equivalent farewell). Never set it true just because several turns have passed — the conversation should keep going as long as the learner wants.',
     '- Output raw JSON only — no markdown fences, no preamble.',
   ]).filter(l => l !== undefined).join('\n');
 }
@@ -9352,6 +9352,12 @@ async function _convoCall(messages, systemStr){
  * No-key / offline scripted fallback returning the same five-key schema shape
  * as a live _convoCall response. Pool word normalization uses _kataToHira +
  * _stripKanji to match the spec's STT-kanji normalization requirement.
+ *
+ * Delve 6 T2 (endless): turnIdx cycles the bank by modulo forever — the old
+ * `turnIdx >= 4` hard-end is gone, and no bank entry force-sets sceneDone true
+ * on reaching the end of the list. A keyless session ends the SAME way a live
+ * session does: the learner saying a farewell (see _isConvoFarewell), never by
+ * exhausting the script.
  */
 function _convoScript(scene, turnIdx){
   const idx = (turnIdx || 0) % _CONVO_SCRIPT_TURNS.length;
@@ -9366,20 +9372,48 @@ function _convoScript(scene, turnIdx){
     glossEn: turn.glossEn || 'What do you like?',
     suggested: normalizedSuggested,
     judged: { usedWords: [], score: 0 },
-    sceneDone: !!(turn.sceneDone) || (turnIdx >= 4),
+    sceneDone: !!(turn.sceneDone),
   };
   /* Return as JSON string so _aiJsonExtract can parse it uniformly */
   return JSON.stringify(obj);
 }
 
-/* Scripted turn bank for the offline fallback */
+/* Scripted turn bank for the offline fallback. Cycles endlessly via modulo in
+   _convoScript — no entry here force-ends the session; ending is via farewell
+   (client-side token match) only. The bank's closing line still OFFERS またね
+   as a suggested chip, which naturally triggers the farewell matcher if tapped. */
 const _CONVO_SCRIPT_TURNS = [
   { jp:'こんにちは！おなまえはなんですか', glossEn:'Hello! What is your name?', suggested:['わたしはイシンです','はじめまして','よろしくおねがいします'], sceneDone:false },
   { jp:'すきなたべものはなんですか', glossEn:'What food do you like?', suggested:['すしがすきです','ラーメンがすきです','おかしがすきです'], sceneDone:false },
   { jp:'まいにちなにをしますか', glossEn:'What do you do every day?', suggested:['がっこうにいきます','しごとをします','うちにいます'], sceneDone:false },
   { jp:'どこにすんでいますか', glossEn:'Where do you live?', suggested:['とうきょうにすんでいます','おおさかです','ここにいます'], sceneDone:false },
-  { jp:'またはなしましょう！', glossEn:'Let\'s talk again!', suggested:['ありがとうございます','またね','さようなら'], sceneDone:true },
+  { jp:'またはなしましょう！', glossEn:'Let\'s talk again!', suggested:['ありがとうございます','またね','さようなら'], sceneDone:false },
 ];
+
+/**
+ * CONVO_FAREWELL_TOKENS / _isConvoFarewell(text) — Delve 6 T2 deterministic
+ * end path. The model's sceneDone flag is re-semanticized to "true only on
+ * goodbye" but is NEVER the sole end path (spec: OR'd with a client-side
+ * check) — this is that check, run against the learner's own transcript
+ * (STT or chip tap) on every turn.
+ *
+ * Whole-word / utterance-final match only — NOT a raw substring test, so a
+ * word that merely CONTAINS a farewell token (e.g. またねむい, "sleepy
+ * again") does not false-positive an end. Text is normalized the same way
+ * pool-word matching already normalizes STT output (_kataToHira +
+ * _stripKanji), then punctuation/whitespace is stripped before comparing.
+ */
+const CONVO_FAREWELL_TOKENS = ['またね', 'バイバイ', 'さようなら', 'おわり'];
+function _isConvoFarewell(text){
+  const raw = (text || '').trim();
+  if(!raw) return false;
+  const norm = _kataToHira(_stripKanji(raw)).replace(/[\s、。！？!?・「」『』.,~〜]/g, '');
+  if(!norm) return false;
+  return CONVO_FAREWELL_TOKENS.some(tok => {
+    const t = _kataToHira(tok);
+    return norm === t || norm.endsWith(t);
+  });
+}
 
 /* ===================== END CONVO HELPERS ===================== */
 
@@ -9442,9 +9476,15 @@ async function _convoOpenProbe(){
   const cv = state.convo; if(!cv) return;
   cv.loading = true; cv.error = null; render();
   const key = (state.settings.anthropicKey || '').trim();
+  /* Delve 6 T2 (もどる resume): if this session was seeded with a prior
+     session's message window (see startConvo/convoResume), thread it into
+     the opening API call so the AI's first reply actually continues that
+     context, instead of always opening cold with []. Fresh sessions have an
+     empty cv.messages here, so this is a no-op for the normal start path. */
+  const seedWindow = (cv.messages && cv.messages.length) ? cv.messages.slice(-6) : [];
   let rawStr;
   try {
-    rawStr = key ? await _convoCall([], cv.preamble) : _convoScript(cv.sceneId, 0);
+    rawStr = key ? await _convoCall(seedWindow, cv.preamble) : _convoScript(cv.sceneId, 0);
   } catch(e){
     cv.loading = false;
     cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
@@ -9461,6 +9501,7 @@ async function _convoOpenProbe(){
   }
   cv.current = parsed;
   cv.messages.push({ role:'assistant', content: parsed.jp || '' });
+  _convoCapMessages(cv);
   cv.loading = false;
   save();
   render();
@@ -9471,8 +9512,26 @@ async function _convoOpenProbe(){
   }
 }
 
-/* startConvo — seed pool, reset state.convo, nav, kick opening probe */
-function startConvo(sceneId){
+/* _convoCapMessages(cv) — Delve 6 T2 endless-session memory guard. Keeps
+   cv.messages (the in-memory session log) at or under 40 entries, dropping
+   the OLDEST role-pair (one assistant + one user turn) at a time via
+   splice(0,2) so a pair is never split. The per-turn API payload window
+   (cv.messages.slice(-6)) is a different, already-capped view and is
+   untouched by this — this only bounds how much the session accumulates
+   in memory over a long (40+ turn) conversation. */
+function _convoCapMessages(cv){
+  if(!cv || !Array.isArray(cv.messages)) return;
+  while(cv.messages.length > 40){
+    cv.messages.splice(0, 2);
+  }
+}
+
+/* startConvo — seed pool, reset state.convo, nav, kick opening probe.
+   seedMessages (Delve 6 T2, もどる resume) — optional prior 6-message window
+   carried into the new session so 「もどる」 resumes with context intact
+   instead of a cold, context-free restart. Omitted/empty for a normal fresh
+   start (all existing callers are unaffected). */
+function startConvo(sceneId, seedMessages){
   stopVoice();
   /* Tier info is needed regardless of scene branch (maxTurns/chips/ttsRate below). */
   const info = convoLevelInfo();
@@ -9500,7 +9559,9 @@ function startConvo(sceneId){
     partner: partner,        /* the character hosting this session (name/emoji/color/persona) */
     pool: pool,
     preamble: preamble,
-    messages: [],
+    /* Delve 6 T2 (もどる resume): seed with the prior session's last 6-message
+       window when provided (see convoResume), else a fresh empty log. */
+    messages: (seedMessages && seedMessages.length) ? seedMessages.slice(-6) : [],
     turn: 0,
     maxTurns: info.maxTurns,
     chips: info.chips,      /* tier chip count — governs fallback + preamble guidance */
@@ -9526,6 +9587,7 @@ function startConvo(sceneId){
     voiceMissStreak: 0,      /* Stage D (v8.10) — double-miss rule: consecutive voice turns that landed no pool word */
     forceChips: false,       /* Stage D (v8.10) — true for exactly one turn right after a double-miss: hides the mic, chips only */
     lastLatencyMs: null,     /* Stage D (v8.10) — dev-only: last AI-turn round-trip latency, see _isDevMode() */
+    atSoftCap: false,        /* Delve 6 T2: true once cv.turn reaches maxTurns — a UI nudge only, never a terminating condition */
   };
   save();
   nav('convo');
@@ -9539,6 +9601,11 @@ async function convoTurn(userText, viaVoice){
   if(!cv || cv.loading || cv.done) return;
   const text = (userText || '').trim();
   if(!text) return;
+
+  /* Delve 6 T2 — deterministic client-side farewell check, run against the
+     learner's own transcript on every turn (STT or chip tap alike). This is
+     one of the two OR'd end paths (never the model's sceneDone alone). */
+  const learnerFarewell = _isConvoFarewell(text);
 
   /* Apply SRS score for the PREVIOUS AI judged object.
      On the first user turn cv.judged is null → null guard fires, no write. */
@@ -9563,6 +9630,7 @@ async function convoTurn(userText, viaVoice){
 
   /* Append user turn — text placed only as content field, never interpolated into system */
   cv.messages.push({ role:'user', content: userText });
+  _convoCapMessages(cv);
 
   /* Window to last 6 messages before calling API (cap before invocation) */
   const windowed = cv.messages.slice(-6);
@@ -9631,6 +9699,7 @@ async function convoTurn(userText, viaVoice){
     cv.turn++;
     didAdvance = true;
     cv.messages.push({ role:'assistant', content: aiJP });
+    _convoCapMessages(cv);
     cv.current = parsed;
     cv.error = null;
   } else if(parsed.landed === 1){
@@ -9638,11 +9707,13 @@ async function convoTurn(userText, viaVoice){
     cv.error = parsed.glossEn ? 'ヒント: ' + parsed.glossEn : 'もう いちど？';
     cv.current = parsed; /* chips still accessible */
     cv.messages.push({ role:'assistant', content: aiJP });
+    _convoCapMessages(cv);
   } else {
     /* (c) Low landed: correct and advance */
     cv.turn++;
     didAdvance = true;
     cv.messages.push({ role:'assistant', content: aiJP });
+    _convoCapMessages(cv);
     cv.current = parsed;
     cv.error = null;
   }
@@ -9653,8 +9724,17 @@ async function convoTurn(userText, viaVoice){
   /* Apology overrides whatever the ladder set — double-miss always wins the display */
   if(_apology) cv.error = _apology;
 
-  /* Check end condition after potential advance */
-  if(cv.turn >= cv.maxTurns || parsed.sceneDone){
+  /* Delve 6 T2 (endless engine): maxTurns is a SOFT cap now, not a terminating
+     condition — reaching it alone no longer ends the session, it only flips a
+     UI nudge flag (see renderConvo's turn counter). The session now ends via
+     EXACTLY two OR'd deterministic-or-model paths: the re-semanticized model
+     sceneDone flag (true only on a goodbye the model perceived), OR the
+     client-side farewell-token match against what the learner actually said
+     (learnerFarewell, computed above) — so the model flag alone can never be
+     the sole end path, and reaching turn count alone never ends it either. */
+  cv.atSoftCap = cv.turn >= cv.maxTurns;
+
+  if(parsed.sceneDone || learnerFarewell){
     cv.loading = false;
     save();
     convoEnd();
@@ -9729,7 +9809,10 @@ function convoApplyScore(judged, viaVoice){
 }
 window.convoApplyScore = convoApplyScore;
 
-/* convoEnd — build recap on turn cap or sceneDone */
+/* convoEnd — build recap. Delve 6 T2: reached only via the model's
+   re-semanticized sceneDone (goodbye) OR the client-side farewell-token
+   match, or an explicit tap-to-end / silence-sleep path elsewhere — never by
+   turn count alone (maxTurns is a soft-cap UI nudge, see cv.atSoftCap). */
 function convoEnd(){
   const cv = state.convo; if(!cv) return;
   cv.done = true;
@@ -9893,6 +9976,23 @@ function convoFresh(sceneId){
   startConvo(sceneId || (SCENES[0] && SCENES[0].id));
 }
 window.convoFresh = convoFresh;
+
+/* convoResume — Delve 6 T2 「もどる」: trust + cheap undo. Any wrong end
+   (farewell fired early, learner tapped Stop by mistake, etc.) costs exactly
+   ONE tap to recover — no confirm dialog. Starts a brand-new session but
+   pre-seeds it with the SAME 6-message window that was live at end-of-
+   session (cv.messages.slice(-6)), so the resumed session's opening API call
+   (see _convoOpenProbe's seedWindow) actually carries the prior context
+   forward instead of a context-free restart. */
+function convoResume(){
+  const cv = state.convo;
+  if(!cv) return;
+  const seed = Array.isArray(cv.messages) ? cv.messages.slice(-6) : [];
+  const sceneId = cv.sceneId || (SCENES[0] && SCENES[0].id);
+  state.convo = null;
+  startConvo(sceneId, seed);
+}
+window.convoResume = convoResume;
 
 /* convoTogglePeek — show/hide English gloss under AI's kana line */
 function convoTogglePeek(){
@@ -10432,7 +10532,7 @@ function renderConvo(){
         <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
         ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
       </div>
-      <div style="font-size:11px;color:#6f6688;flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}</div>
+      <div style="font-size:11px;color:${cv.atSoftCap ? '#fcd34d' : '#6f6688'};flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}${cv.atSoftCap ? ' 🌙' : ''}</div>
     </div>
     ${aiLine}
     ${errBlock}
@@ -10448,7 +10548,10 @@ function renderConvo(){
    Gated by convoEnd() setting both flags; never shown mid-session.
    Displays: total turns, spoken✅ vs tapped breakdown, +XP gained, optional
    level-up celebration (r.leveledUpTo — consumed by convoEnd, won't re-fire),
-   XP/level recap strip, 「もう いちど」 again button (convoFresh), and drill-missed button.
+   XP/level recap strip, 「もう いちど」 fresh-restart button (convoFresh),
+   「もどる」 resume button (convoResume — Delve 6 T2, unconditional on every
+   recap, no confirm dialog, threads the ended session's last 6-message
+   window into a brand-new session), and drill-missed button.
    Security: all state-derived strings use esc() (equivalent safe setter per CWE-79). */
 function _renderConvoRecap(cv){
   const r = cv.recap;
@@ -10499,6 +10602,7 @@ function _renderConvoRecap(cv){
     </div><br>
     ${notesBlock}
     <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
+    <button onclick="convoResume()" title="同じ話のつづきから、すぐ再開" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">もどる ↩</button>
     ${drillBtn}
     <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ホームへ</button>
   </div>`;
