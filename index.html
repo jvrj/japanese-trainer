@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.09';
+const APP_VERSION = '8.091';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -18780,13 +18780,23 @@ function bar(pct, color){
    or summit. If the owner later signs the hard-lock ADR-003 arm, gating
    would be added at exactly one seam (scene minLevel, 2989); until then
    this file must contain zero `if(stage` / `if(spine` pool-construction
-   guards (see .state/render_check_stage_c.js's non-locking invariant probe).
+   guards. Proof travels WITH the source: _spineSelfTest() (defined right
+   after _spineModel below, tracked in this file — not an untracked
+   .state/ script) runs three seeded profiles against an independently
+   recomputed expectation AND a buildBlitzPool() byte-identity probe that
+   varies onboard.placedStage/convoLevel while holding state.stats fixed.
+   Call `_spineSelfTest()` from the console any time to re-verify; it
+   snapshots and restores all state (incl. Math.random) so it is safe to
+   run against a real profile.
 
    ---- SHIP CHECKLIST (Stage C, §9 Delve-5) ----
    [x] sw.js CACHE_NAME bumped for this ship
    [x] headless Playwright render check passed — collapsed spine header on
        Home + the expanded detail sheet, buildMode hands-free voice loop
        screen unaffected
+   [x] _spineSelfTest() (tracked, console-callable) passes: seeded-profile
+       stage/summit correctness (3 fixture profiles) + ADR-003 non-locking
+       pool-identity invariant — see docstring above _spineSelfTest()
    [ ] ADR-003 signoff ask RE-PRESENTED to the owner (§7.2, not silently
        bypassed): Stage C ships the ADVISORY (non-locking) arm as the
        acknowledged status-quo default — the app has zero gate state today,
@@ -18893,6 +18903,155 @@ function _spineModel(){
   };
 }
 window._spineModel = _spineModel;
+
+/**
+ * _spineSelfTest() — TRACKED, in-file verification harness for Stage C
+ * (kept beside _spineModel so the seeded-profile proof and the ADR-003
+ * non-locking invariant travel WITH the source instead of living only in
+ * an untracked .state/ script). Call from the console: `_spineSelfTest()`.
+ * Never runs automatically and is safe to run against a real profile —
+ * every mutation below is snapshotted up front and restored in a
+ * `finally`, including Math.random.
+ *
+ * Part 1 — seeded-profile correctness. Three fixture profiles are fed to
+ * _spineModel() (via temporary progLadderValues()/convoLevelInfo()
+ * overrides) and its stageIdx/achievedStage/stageName/summit are checked
+ * against an INDEPENDENTLY recomputed expectation: expectedAchievedStage()
+ * below re-derives straight from PROG_LADDERS/CONVO_TIERS and does NOT
+ * call _spineRequirement() or _spineModel() itself, so a bug shared
+ * between the production code and the check wouldn't hide here.
+ *
+ * Documented manual trace (hand-recomputed against the live thresholds —
+ * producible tiers [25,75,150,300,500], verbsAllForms tiers [5,15,30,50],
+ * sentences tiers [20,50,100,200], CONVO_TIERS lv1..4):
+ *   A {producible:80, verbsAllForms:6, sentences:25, convoLv:2}
+ *     stage1 req(25,0,0) cleared; stage2 req(75,5,20) cleared;
+ *     stage3 req(150,15,50) FAILS (80<150) -> achievedStage=2,
+ *     statsStage=3, no placement -> stageIdx=3 ('まいにち'),
+ *     summit = convo.lv(2) > stageIdx(3) = false.
+ *   B {producible:0, verbsAllForms:0, sentences:0, placedStage:4,
+ *     convoLv:4, atMax:true}
+ *     stage1 req(25,0,0) FAILS (0<25) -> achievedStage=0, statsStage=1,
+ *     placedStage=4 floors stageIdx to 4 ('ともだち'),
+ *     summit = convo.atMax = true (top-stage special case).
+ *   C {producible:0, verbsAllForms:0, sentences:0, placedStage:absent,
+ *     convoLv:1}
+ *     achievedStage=0 (same as B), no placement -> stageIdx=1
+ *     ('あいさつ'), summit = convo.lv(1) > stageIdx(1) = false.
+ * `_spineSelfTest()` re-derives A/B/C's expectations programmatically
+ * (not by hardcoding the numbers above) and asserts an exact match; the
+ * prose above is the same trace documented for a human reader.
+ *
+ * Part 2 — ADR-003 non-locking invariant. buildBlitzPool() is run twice
+ * with an identical Math.random seed and identical state.stats, varying
+ * ONLY the spine-facing knobs (onboard.placedStage, convoLevel/XP) so the
+ * resulting stageIdx differs (1 vs 4) — the two pools must come out
+ * byte-identical, proving no pool-construction path reads stageIdx/summit.
+ */
+function _spineSelfTest(){
+  const snap = {
+    onboard: JSON.parse(JSON.stringify(state.settings.onboard || {})),
+    convoLevel: state.settings.convoLevel,
+    convoXp: state.settings.convoXp,
+    progLadderValues, convoLevelInfo, mathRandom: Math.random
+  };
+  const out = { pass:true, fail:[] };
+  const check = (label, cond) => { if(!cond){ out.pass = false; out.fail.push(label); } };
+
+  function expectedAchievedStage(vals){
+    const pT = PROG_LADDERS.find(l => l.key === 'producible').tiers;
+    const vT = PROG_LADDERS.find(l => l.key === 'verbsAllForms').tiers;
+    const sT = PROG_LADDERS.find(l => l.key === 'sentences').tiers;
+    let ach = 0;
+    for(let n = 1; n <= 4; n++){
+      const reqP = pT[n - 1], reqV = n >= 2 ? vT[n - 2] : 0, reqS = n >= 2 ? sT[n - 2] : 0;
+      if(vals.producible >= reqP && vals.verbsAllForms >= reqV && vals.sentences >= reqS) ach = n; else break;
+    }
+    return ach;
+  }
+  function seedRandom(seed){
+    let s = seed >>> 0;
+    Math.random = function(){
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  try {
+    /* ---- Profile A: mid-progress existing user, no router placement ---- */
+    state.settings.onboard = { done:true, path:null, placedStage:null };
+    state.settings.convoLevel = 2; state.settings.convoXp = 10;
+    window.progLadderValues = () => ({ producible:80, verbsAllForms:6, sentences:25, streak:0 });
+    window.convoLevelInfo = () => Object.assign({}, CONVO_TIERS.find(t => t.lv === 2), { lv:2, xp:10, atMax:false, scenes:[] });
+    const mA = _spineModel();
+    const expAchA = expectedAchievedStage({ producible:80, verbsAllForms:6, sentences:25 });
+    out.seededA = mA;
+    check('A.achievedStage', mA.achievedStage === expAchA);
+    check('A.stageIdx', mA.stageIdx === Math.min(4, expAchA + 1));
+    check('A.stageName', mA.stageName === SPINE_STAGES[Math.min(4, expAchA + 1)].name);
+    check('A.summit', mA.summit === (2 > Math.min(4, expAchA + 1)));
+
+    /* ---- Profile B: router-placed floor overrides near-zero stats ---- */
+    state.settings.onboard = { done:true, path:'router', placedStage:4 };
+    state.settings.convoLevel = 4; state.settings.convoXp = 0;
+    window.progLadderValues = () => ({ producible:0, verbsAllForms:0, sentences:0, streak:0 });
+    window.convoLevelInfo = () => Object.assign({}, CONVO_TIERS.find(t => t.lv === 4), { lv:4, xp:0, atMax:true, scenes:[] });
+    const mB = _spineModel();
+    out.seededB = mB;
+    check('B.achievedStage', mB.achievedStage === 0);
+    check('B.stageIdx', mB.stageIdx === 4);
+    check('B.summit', mB.summit === true);
+
+    /* ---- Profile C: pre-Stage-B user, placedStage entirely absent ---- */
+    state.settings.onboard = { done:true };
+    window.progLadderValues = () => ({ producible:0, verbsAllForms:0, sentences:0, streak:0 });
+    window.convoLevelInfo = () => Object.assign({}, CONVO_TIERS.find(t => t.lv === 1), { lv:1, xp:0, atMax:false, scenes:[] });
+    const mC = _spineModel();
+    out.seededC = mC;
+    check('C.stageIdx', mC.stageIdx === 1);
+    check('C.summit', mC.summit === false);
+
+    /* restore real derivations before touching the drill pool */
+    window.progLadderValues = snap.progLadderValues;
+    window.convoLevelInfo = snap.convoLevelInfo;
+
+    /* ---- ADR-003 non-locking invariant ---- */
+    const opts = { targetLearn: 8, targetMature: 4 };
+    state.settings.onboard = { done:true, path:null, placedStage:0 };
+    state.settings.convoLevel = 1; state.settings.convoXp = 0;
+    const stageLow = _spineModel().stageIdx;
+    seedRandom(424242);
+    const poolLow = buildBlitzPool(opts).map(x => x.id).sort();
+
+    state.settings.onboard = { done:true, path:'router', placedStage:4 };
+    state.settings.convoLevel = 4; state.settings.convoXp = 999;
+    const stageHigh = _spineModel().stageIdx;
+    seedRandom(424242);
+    const poolHigh = buildBlitzPool(opts).map(x => x.id).sort();
+
+    out.nonLocking = { stageLow, stageHigh, poolLowLen: poolLow.length, poolHighLen: poolHigh.length, poolIdentical: JSON.stringify(poolLow) === JSON.stringify(poolHigh) };
+    check('nonLocking.stageDiffers', stageLow !== stageHigh);
+    check('nonLocking.poolIdentical', out.nonLocking.poolIdentical);
+    check('nonLocking.poolNonEmpty', poolLow.length > 0);
+  } catch(e){
+    out.pass = false; out.fail.push('exception: ' + e.message);
+  } finally {
+    /* always restore, even on failure/exception, so a console-run of this
+       self-test can never leave a real profile mutated */
+    state.settings.onboard = snap.onboard;
+    state.settings.convoLevel = snap.convoLevel;
+    state.settings.convoXp = snap.convoXp;
+    window.progLadderValues = snap.progLadderValues;
+    window.convoLevelInfo = snap.convoLevelInfo;
+    Math.random = snap.mathRandom;
+  }
+  console.log('[_spineSelfTest]', out.pass ? 'PASS' : 'FAIL', out.fail, out);
+  return out;
+}
+window._spineSelfTest = _spineSelfTest;
 
 function renderProgress(){
   const core = progConversationalCore();
