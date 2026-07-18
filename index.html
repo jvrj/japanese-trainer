@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.14';
+const APP_VERSION = '8.15';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20423,6 +20423,16 @@ function renderSettings(){
 
   return `
     <div class="settings-v2">
+    <div class="card" style="border:1px solid rgba(167,139,250,.35)">
+      <h3>🔌 AI connection</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">おしゃべり and the AI coach run on your own Claude API key until accounts exist (Phase 1). The key is stored only on this device — enter it once per device. Get one at <b>console.anthropic.com</b>.</div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Claude API key</div><div class="word-en">${(s.anthropicKey||'').trim() ? '✅ Key saved on this device.' : '⚠️ No key — おしゃべり can only run a canned script without one.'}</div></div>
+        <input type="password" value="${esc(s.anthropicKey||'')}" oninput="setAnthropicKey(this.value)" placeholder="sk-ant-…" autocomplete="off" style="width:150px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:13px"></label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <button class="btn" onclick="testAnthropicKey()" style="padding:9px 14px;font-size:13px">Test connection</button>
+        <span id="keyTestStatus" class="muted" style="font-size:12px"></span>
+      </div>
+    </div>
     ${groupHeader('Voice')}
     <div class="card">
       <h3>Build Mode pacing</h3>
@@ -20636,6 +20646,37 @@ function setUserName(v){
   /* no re-render: avoid yanking focus from the text field while typing */
 }
 window.setUserName = setUserName;
+
+/* setAnthropicKey / testAnthropicKey — v8.15 owner unblock. The Stage-E slim
+   deleted the BYO-key card, orphaning the sole user who still needs one until
+   the Phase-1 hosted proxy exists (Delve 7 §5.3 designs the full connect flow;
+   this is its minimal early slice). Key lives only in this device's localStorage. */
+function setAnthropicKey(v){
+  state.settings.anthropicKey = String(v || '').trim();
+  save();
+  /* no re-render: avoid yanking focus from the field while pasting/typing */
+}
+window.setAnthropicKey = setAnthropicKey;
+
+async function testAnthropicKey(){
+  const el = $('#keyTestStatus');
+  const key = (state.settings.anthropicKey || '').trim();
+  if(!key){ if(el) el.textContent = 'No key entered yet — paste it above first.'; return; }
+  if(el) el.textContent = 'testing…';
+  try{
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: state.settings.anthropicModel || 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role:'user', content:'こんにちは' }] })
+    });
+    if(el) el.textContent = res.ok
+      ? '✅ Connected — the real conversation is live on this device.'
+      : ('❌ Rejected (' + res.status + ') — check the key and try again.');
+  } catch(e){
+    if(el) el.textContent = '❌ Network error — check your connection and try again.';
+  }
+}
+window.testAnthropicKey = testAnthropicKey;
 
 function setVoiceListenSec(r){
   const v = parseInt(r, 10);
