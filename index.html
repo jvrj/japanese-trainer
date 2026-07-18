@@ -517,6 +517,10 @@ body{letter-spacing:-.005em}
 @keyframes riseIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:none}}
 /* Sentence Coach + Recall: mic-listening pulse ring and AI "thinking" dots. */
 @keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(255,93,158,.5)}70%{box-shadow:0 0 0 12px rgba(255,93,158,0)}100%{box-shadow:0 0 0 0 rgba(255,93,158,0)}}
+/* F2 (Delve 7 §3.4) — the confirm/recast gold pulse: one warm 450ms bloom, IDENTICAL
+   for confirm and recast (never a distinguishable "corrected" state). Applied to the
+   partner header emoji (default) or the orb canvas (orbMode) — whichever is live. */
+@keyframes convoGoldBloom{0%{filter:drop-shadow(0 0 0 rgba(255,200,80,0))}35%{filter:drop-shadow(0 0 16px rgba(255,200,80,.9))}100%{filter:drop-shadow(0 0 0 rgba(255,200,80,0))}}
 @keyframes pulseDot{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 .home-v8{animation:none}
 .home-v8>*{animation:riseIn .5s cubic-bezier(.16,1,.3,1) both}
@@ -673,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.16';
+const APP_VERSION = '8.17';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2795,7 +2799,9 @@ const DEFAULT_SETTINGS = {
   showCoverageMeter:true,     // v7.96 — display the vocabulary coverage/reach meter on the home screen
   onboard:{ done:false, path:null, placedStage:null },  // Stage B (v8.08) — first-run onboarding record. Additive; boot-time backfill in load() marks existing users done:true so they never see OB-0. path: 'beginner'|'router'. placedStage: router-derived starting stage (display-only, non-locking).
   convoRecapNotes:true,       // Stage D (v8.10) — judgment-free copy sweep: show up to 3 content-derived "did-you-mean" notes on the おしゃべり recap. Default ON; toggle in Settings hides them (celebration-only recap when off).
-  hideStreak:false            // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
+  hideStreak:false,           // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
+  convoStyle:'friend',        // F2 (Delve 7 §3.5) — conversation style. Hard-shipped at 'friend' (full confirm/recast/clarify repertoire); the 3-position Settings dial is DEFERRED until a demand signal. 'just-talk' forces feedback none client-side.
+  recastPeeked:false          // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
 };
 
 /* =========================================================================
@@ -9232,7 +9238,7 @@ async function _coachCall(promptStr){
  *   (b) WORD_POOL — word ids + jp forms from the pool argument
  *   (c) scene context line (scene argument interpolated directly) — replaced by
  *       the free-talk directive when sceneId === 'free' (Delve 6 T2)
- *   (d) per-turn JSON schema naming all five locked keys
+ *   (d) per-turn JSON schema naming all six locked keys (feedback added F2, Delve 7 §3.2)
  * Security: pool words are serialised via JSON.stringify per-entry so a crafted
  * word with "\nrole:" cannot inject a message-boundary marker. The scene value
  * has newlines collapsed to spaces for the same reason. sceneId is checked with
@@ -9304,14 +9310,23 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '',
     levelLine,
     '',
-    'Each reply MUST be a single JSON object with exactly these five keys and no others:',
+    'Each reply MUST be a single JSON object with exactly these six keys and no others:',
     '{',
     '  "jp": "<your short kana-only question or reaction for this turn>",',
     '  "glossEn": "<brief English gloss of jp so the learner can peek>",',
     '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
     '  "judged": {"usedWords": ["<wordId of each pool word the learner used>"], "score": <0|1|2>},',
-    '  "sceneDone": <true|false>',
+    '  "sceneDone": <true|false>,',
+    '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>"}',
     '}',
+    '',
+    'FEEDBACK — respond the way a patient native friend does:',
+    '- "confirm": the learner\'s words landed (score 2) and there is nothing to fix — use their own word/phrase back naturally inside jp. This is the majority move.',
+    '- "recast": the learner was understood (score 2) AND there is ONE small form/word-choice nuance. Put the natural form INSIDE jp — better MUST appear verbatim inside jp, woven in as a genuine reply. Never quote it as a correction, never prefix with "actually".',
+    '- "clarify": you only partly understood (score 1), or the words look garbled. jp IS your friendly question about what they meant — own the confusion, like 「ごめん、〜って いった?」. better is null.',
+    '- At most ONE move per turn. In doubt between recast and clarify, choose clarify. In doubt between clarify and none, choose none. Never invent a correction.',
+    '- The learner\'s words arrive via speech recognition and may be mis-heard. Only offer recast when the utterance is a plausible thing a learner would say AND the fix is a real form/word-choice nuance. If it looks garbled, truncated, or semantically impossible, use clarify and ask. NEVER treat a possible transcription artifact as a learner mistake.',
+    '- note is peek-only English describing the nuance (e.g. "past tense: tabeta"). Describe the nuance, never a verdict — words like wrong, incorrect, mistake, error, failed must not appear in it.',
     '',
     'Guidelines:',
     '- Keep jp to one short sentence (≤10 kana).',
@@ -9346,7 +9361,7 @@ async function _convoCall(messages, systemStr){
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model, max_tokens: 400, system: systemStr || '', messages: messages }),
+      body: JSON.stringify({ model, max_tokens: 500, system: systemStr || '', messages: messages }),
       signal: ctrl ? ctrl.signal : undefined
     });
   } finally {
@@ -9423,6 +9438,77 @@ function _isConvoFarewell(text){
     const t = _kataToHira(tok);
     return norm === t || norm.endsWith(t);
   });
+}
+
+/**
+ * _convoNormFeedback(cv, parsed, transcript, forceNone) — F2 (Delve 7 §3.3/§3.6).
+ * The ONE place the six-key contract's feedback object is normalized and gated.
+ * Everything here is client-side and deterministic — the model's feedback claim
+ * is never trusted raw (numeric SR confidence is banned as an input; L6):
+ *   1. Absent / malformed / unknown type → {type:'none'} (keyless _convoScript
+ *      output therefore needs zero changes to stay coherent).
+ *   2. forceNone → none (the opening probe has no learner utterance; CR-5).
+ *   3. Score cross-check (QA-2): recast survives ONLY when parsed.landed >= 2;
+ *      score 1 keeps only a model-emitted clarify; score 0 is always none.
+ *   4. Echo guard (DA-3): recast whose `heard` shares no content overlap with the
+ *      real transcript is a phantom — BOTH sides run the SAME _kataToHira +
+ *      _stripKanji normalization (Android STT returns kanji-heavy finals that
+ *      strip to sparse kana; asymmetric comparison would spuriously zero overlap).
+ *      If either side strips to <2 kana the guard ABSTAINS (unverifiable → recast
+ *      stands, the score gate already passed). A firing guard downgrades recast →
+ *      confirm — the gold pulse survives, only the highlight/peek drops (QA-6).
+ *   5. Session throttle (QA-3): at most one rendered recast in any 3 consecutive
+ *      turns; overflow downgrades to confirm. Near-constant correction reads as
+ *      grading no matter how warm the framing.
+ *   6. `better` must actually appear inside jp (the recast lives IN the reply,
+ *      L3) — otherwise there is nothing to highlight; downgrade to confirm.
+ *   7. note is scrubbed against the ADR-009 banned-word list (verdict words never
+ *      reach the peek sheet, even if the model slips).
+ * Mutates parsed.feedback in place to a safe {type, heard, better, note} object.
+ */
+function _convoNormFeedback(cv, parsed, transcript, forceNone){
+  const NONE = { type:'none', heard:'', better:null, note:'' };
+  if(!parsed || typeof parsed !== 'object') return;
+  const fb = parsed.feedback;
+  if(forceNone || !fb || typeof fb !== 'object' || Array.isArray(fb)){ parsed.feedback = NONE; return; }
+  const type = fb.type;
+  if(type !== 'confirm' && type !== 'recast' && type !== 'clarify'){ parsed.feedback = NONE; return; }
+  /* Style gate (§3.5): 'just-talk' forces none client-side. Hard-default 'friend'. */
+  if((state.settings.convoStyle || 'friend') === 'just-talk'){ parsed.feedback = NONE; return; }
+  const score = (typeof parsed.landed === 'number') ? parsed.landed : 0;
+  const heard = String(fb.heard || '').slice(0, 80);
+  const rawNote = String(fb.note || '').slice(0, 80);
+  const note = /\b(wrong|incorrect|failed|fail|mistake|error|score|accuracy|grade|graded)\b/i.test(rawNote) ? '' : rawNote;
+  /* 3. Score cross-check — deterministic, client-owned */
+  if(score <= 0){ parsed.feedback = NONE; return; }
+  if(score === 1){
+    parsed.feedback = (type === 'clarify') ? { type:'clarify', heard, better:null, note } : NONE;
+    return;
+  }
+  /* score >= 2 from here */
+  if(type === 'clarify'){ parsed.feedback = { type:'clarify', heard, better:null, note }; return; }
+  if(type === 'confirm'){ parsed.feedback = { type:'confirm', heard, better:null, note:'' }; return; }
+  /* recast path */
+  const better = (fb.better != null) ? String(fb.better).trim().slice(0, 80) : '';
+  const jp = String(parsed.jp || '');
+  let ok = !!better && jp.indexOf(better) !== -1;                   /* 6. lives inside jp */
+  if(ok){
+    /* 4. Echo guard — symmetric normalization, bigram overlap, abstain when thin */
+    const _n = s => _kataToHira(_stripKanji(String(s || ''))).replace(/[\s、。！？!?・「」『』.,~〜]/g, '');
+    const tx = _n(transcript), hd = _n(heard);
+    if(tx.length >= 2 && hd.length >= 2){
+      let overlap = false;
+      for(let i = 0; i + 2 <= hd.length; i++){
+        if(tx.indexOf(hd.slice(i, i + 2)) !== -1){ overlap = true; break; }
+      }
+      if(!overlap) ok = false;
+    }
+  }
+  /* 5. 1-in-3 throttle — this turn's number will be cv.turn+1 (recast implies advance) */
+  if(ok && cv && cv._lastRecastTurn != null && ((cv.turn || 0) + 1) - cv._lastRecastTurn < 3) ok = false;
+  parsed.feedback = ok
+    ? { type:'recast', heard, better, note }
+    : { type:'confirm', heard, better:null, note:'' };              /* downgrade keeps the pulse */
 }
 
 /* ===================== END CONVO HELPERS ===================== */
@@ -9509,6 +9595,11 @@ async function _convoOpenProbe(){
     cv.current = { jp:'', glossEn:'', suggested: _convoFallbackChips(cv), sceneDone:false };
     render(); return;
   }
+  /* F2 (CR-5): the opener has no learner utterance — normalizer runs force-none
+     so confirm/recast/clarify semantics never fire on the opening probe. */
+  _convoNormFeedback(cv, parsed, '', true);
+  cv.feedback = parsed.feedback;
+  cv._recastPeek = false; cv._recastFirst = false;
   cv.current = parsed;
   cv.messages.push({ role:'assistant', content: parsed.jp || '' });
   _convoCapMessages(cv);
@@ -9598,6 +9689,12 @@ function startConvo(sceneId, seedMessages){
     forceChips: false,       /* Stage D (v8.10) — true for exactly one turn right after a double-miss: hides the mic, chips only */
     lastLatencyMs: null,     /* Stage D (v8.10) — dev-only: last AI-turn round-trip latency, see _isDevMode() */
     atSoftCap: false,        /* Delve 6 T2: true once cv.turn reaches maxTurns — a UI nudge only, never a terminating condition */
+    feedback: null,          /* F2 (Delve 7 §3) — this turn's normalized feedback move; ephemeral, replaced every turn, never accumulates */
+    recastLog: [],           /* F2 (§3.7) — in-session {heard,better,note} log (cap 10, newest-first); the ONLY route from feedback to review, via the recap's opt-in notes */
+    _recastPeek: false,      /* F2 (§3.4) — recast peek sheet open flag; auto-dismissed on next turn */
+    _recastFirst: false,     /* F2 (QA-4) — true only on the learner's first-ever recast (adds the friendly explainer line to the peek) */
+    _pulseTs: null,          /* F2 (§3.4) — timestamp of the last confirm/recast gold pulse; render window <700ms so re-renders never replay it */
+    _lastRecastTurn: null,   /* F2 (QA-3) — cv.turn value of the last RENDERED recast; drives the 1-in-3 throttle in _convoNormFeedback */
   };
   save();
   nav('convo');
@@ -9682,6 +9779,11 @@ async function convoTurn(userText, viaVoice){
   const score = (parsed.judged && typeof parsed.judged.score === 'number') ? parsed.judged.score : 0;
   parsed.landed = score;
 
+  /* F2 (Delve 7 §3.3) — normalize the feedback move BEFORE the ladder reads it:
+     score cross-check, echo guard vs the real transcript, 1-in-3 throttle. */
+  _convoNormFeedback(cv, parsed, text, false);
+  const fb = parsed.feedback;
+
   /* Stage D (v8.10) double-miss rule (spec 5.4) — track consecutive VOICE turns
      that landed no pool word (score 0). On the 2nd consecutive miss the partner
      apologizes and the NEXT probe switches to chip-only input (cv.forceChips) —
@@ -9703,6 +9805,7 @@ async function convoTurn(userText, viaVoice){
   /* Downshift ladder — three distinct paths on judged.landed */
   const aiJP = parsed.jp || '';
   let didAdvance = false;
+  let speakClarify = false;
 
   if(parsed.landed >= 2){
     /* (a) Pass path: high landed — use model's JP reply and advance turn counter */
@@ -9713,8 +9816,17 @@ async function convoTurn(userText, viaVoice){
     cv.current = parsed;
     cv.error = null;
   } else if(parsed.landed === 1){
-    /* (b) Intermediate path: mid landed — surface English nudge, do NOT advance */
-    cv.error = parsed.glossEn ? 'ヒント: ' + parsed.glossEn : 'もう いちど？';
+    /* (b) Intermediate path: mid landed — do NOT advance the turn counter.
+       F2 (CR-3): when the model sent a clarify move, the clarification question
+       jp IS spoken and rendered as the partner's turn — the highest-repair-rate
+       move must not be silent on exactly the turns it targets. The English
+       ヒント: string remains the fallback when no clarify came back. */
+    if(fb && fb.type === 'clarify' && aiJP){
+      cv.error = null;
+      speakClarify = true;
+    } else {
+      cv.error = parsed.glossEn ? 'ヒント: ' + parsed.glossEn : 'もう いちど？';
+    }
     cv.current = parsed; /* chips still accessible */
     cv.messages.push({ role:'assistant', content: aiJP });
     _convoCapMessages(cv);
@@ -9726,6 +9838,28 @@ async function convoTurn(userText, viaVoice){
     _convoCapMessages(cv);
     cv.current = parsed;
     cv.error = null;
+  }
+
+  /* F2 (Delve 7 §3.4/§3.7) — feedback bookkeeping. Ephemeral by design: each
+     turn's feedback REPLACES the last; nothing accumulates visibly (no counters,
+     no streaks — the only persistence is recastLog → the recap's opt-in notes). */
+  cv.feedback = fb;
+  cv._recastPeek = false; cv._recastFirst = false;
+  if(fb && (fb.type === 'confirm' || fb.type === 'recast')){
+    /* One warm gold pulse, IDENTICAL for confirm and recast — "that landed".
+       Render window <700ms so later re-renders (mic arm etc.) never replay it. */
+    cv._pulseTs = Date.now();
+  }
+  if(fb && fb.type === 'recast'){
+    cv._lastRecastTurn = cv.turn;              /* post-increment — feeds the 1-in-3 throttle */
+    cv.recastLog = cv.recastLog || [];
+    cv.recastLog.unshift({ heard: fb.heard, better: fb.better, note: fb.note });
+    if(cv.recastLog.length > 10) cv.recastLog.length = 10;
+    if(!state.settings.recastPeeked){
+      /* QA-4 first-encounter explainer: auto-open the peek once, ever */
+      cv._recastPeek = true; cv._recastFirst = true;
+      state.settings.recastPeeked = true;
+    }
   }
 
   /* Store judged for the next convoApplyScore call */
@@ -9756,8 +9890,9 @@ async function convoTurn(userText, viaVoice){
   render();
 
   /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free).
-     Stage D (v8.10): skip the auto-mic when forceChips is set (double-miss) — that turn is chip-only. */
-  if(aiJP && didAdvance){
+     Stage D (v8.10): skip the auto-mic when forceChips is set (double-miss) — that turn is chip-only.
+     F2 (CR-3): a spoken clarify ALSO speaks + re-arms the mic — the retry turn stays hands-free. */
+  if(aiJP && (didAdvance || speakClarify)){
     _convoSpeakJP(aiJP, () => {
       if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen();
     });
@@ -9841,9 +9976,19 @@ function convoEnd(){
   const _missedPoolWords = (cv.pool || []).filter(w => !_usedSet.has(w.id));
   const _missedWordIds = _missedPoolWords.map(w => w.id);
   /* Stage D (v8.10) — celebration-first recap notes: content-derived, capped
-     at 3, drawn straight from the seeded pool (no new AI/SRS call). Gated at
-     render time by state.settings.convoRecapNotes. */
-  const _recapNotes = _missedPoolWords.slice(0, 3).map(w => ({ id:w.id, jp:w.jp, en:w.en, romaji:w.romaji||'' }));
+     at 3, no new AI/SRS call. Gated at render time by state.settings.convoRecapNotes.
+     F2 (Delve 7 §3.7): the session's ACTUAL form gaps (cv.recastLog) fill the
+     notes FIRST — jp is the natural form, en is the nuance note — then the
+     missed-pool-word fallback tops up to 3. This is the ONLY route from
+     feedback to review, it is opt-in, and it feeds the existing missed-drill
+     pathway unchanged (drill ids still come from missedWordIds alone). */
+  const _recastNotes = (cv.recastLog || []).slice(0, 3)
+    .map(r => ({ id:null, jp:r.better || '', en:r.note || '', romaji:'' }))
+    .filter(n => n.jp);
+  const _recapNotes = _recastNotes.concat(
+    _missedPoolWords.slice(0, Math.max(0, 3 - _recastNotes.length))
+      .map(w => ({ id:w.id, jp:w.jp, en:w.en, romaji:w.romaji||'' }))
+  );
   /* Snapshot level/xp/leveledUpTo into recap BEFORE clearing the transient flag */
   const info = convoLevelInfo();
   cv.recap = {
@@ -10053,6 +10198,18 @@ function convoTogglePeek(){
 }
 window.convoTogglePeek = convoTogglePeek;
 
+/* convoRecastPeek — F2 (Delve 7 §3.4): toggle the recast peek sheet
+   (「あなた: {heard}」→「しぜんな いいかた: {better}」+ nuance note).
+   Auto-dismissed on the next turn (cv._recastPeek is reset in convoTurn);
+   never stacks — there is at most one live recast at a time. */
+function convoRecastPeek(){
+  const cv = state.convo; if(!cv || !cv.feedback || cv.feedback.type !== 'recast') return;
+  cv._recastPeek = !cv._recastPeek;
+  cv._recastFirst = false; /* the explainer line shows only on the auto-opened first peek */
+  render();
+}
+window.convoRecastPeek = convoRecastPeek;
+
 /* convoReplay — replay AI's kana question at normal TTS rate */
 function convoReplay(){
   const cv = state.convo; if(!cv || !cv.current || !cv.current.jp) return;
@@ -10104,8 +10261,12 @@ window.convoStartMissedDrill = convoStartMissedDrill;
 /* Avatar + name header for the session's host character (CONVO_PARTNERS). */
 function _convoPartnerHeader(cv){
   const p = (cv && cv.partner) || CONVO_PARTNERS[0];
+  /* F2 (CR-2 non-orb fallback): the confirm/recast gold pulse blooms on the header
+     emoji when the orb isn't mounted — the default user perceives every confirm.
+     <700ms render window so re-renders never replay the animation. */
+  const _bloom = (cv && cv._pulseTs && (Date.now() - cv._pulseTs) < 700) ? 'animation:convoGoldBloom .45s ease-out;' : '';
   return `<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
-    <div style="width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:25px;background:${esc(p.color)}22;border:2px solid ${esc(p.color)}">${esc(p.emoji)}</div>
+    <div style="${_bloom}width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:25px;background:${esc(p.color)}22;border:2px solid ${esc(p.color)}">${esc(p.emoji)}</div>
     <div style="min-width:0">
       <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
       <div style="font-weight:800;font-size:17px;font-family:'Noto Sans JP';line-height:1.15">${esc(p.name)}</div>
@@ -10118,8 +10279,11 @@ function _convoPartnerHeader(cv){
    bindScreen() picks up #orbCanvas and calls _orbInit on it after every render(). */
 function _convoOrbHeader(cv){
   const p = (cv && cv.partner) || CONVO_PARTNERS[0];
+  /* F2 (§3.4): same gold pulse as the non-orb header, applied as a CSS bloom on the
+     canvas element — identical for confirm and recast, no orb-internal state added. */
+  const _bloom = (cv && cv._pulseTs && (Date.now() - cv._pulseTs) < 700) ? 'animation:convoGoldBloom .45s ease-out;' : '';
   return `<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:13px">
-    <canvas id="orbCanvas" aria-hidden="true" style="width:min(72vw,300px);height:min(72vw,300px);max-width:100%;display:block"></canvas>
+    <canvas id="orbCanvas" aria-hidden="true" style="${_bloom}width:min(72vw,300px);height:min(72vw,300px);max-width:100%;display:block"></canvas>
     <div style="text-align:center;margin-top:4px">
       <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
       <div style="font-weight:800;font-size:15px;font-family:'Noto Sans JP';margin-top:2px">${esc(p.name)}</div>
@@ -10550,9 +10714,32 @@ function renderConvo(){
   }
 
   /* ── LIVE PROBE ── */
+  /* F2 (Delve 7 §3.4) — recast rendering: the `better` substring inside the rendered
+     jp line gets a soft underline glow in gold — never red, never strikethrough.
+     Tap it → peek sheet 「あなた: {heard}」→「しぜんな いいかた: {better}」+ note.
+     esc() is applied per-segment so the highlight span never re-opens an HTML sink. */
+  const _fb = cv.feedback;
+  let jpHtml = cur && cur.jp ? esc(cur.jp) : '';
+  const _hasRecast = !!(_fb && _fb.type === 'recast' && _fb.better && cur && cur.jp && cur.jp.indexOf(_fb.better) !== -1);
+  if(_hasRecast){
+    const _ri = cur.jp.indexOf(_fb.better);
+    jpHtml = esc(cur.jp.slice(0, _ri))
+      + `<span onclick="convoRecastPeek()" style="cursor:pointer;border-bottom:2px solid rgba(255,200,80,.7);text-shadow:0 0 10px rgba(255,200,80,.4);padding-bottom:1px">${esc(_fb.better)}</span>`
+      + esc(cur.jp.slice(_ri + _fb.better.length));
+  }
+  /* Peek sheet — auto-opened once ever on the first recast (QA-4 explainer),
+     otherwise tap-to-open; auto-dismissed on the next turn; never stacks. */
+  const recastSheet = (_hasRecast && cv._recastPeek)
+    ? `<div style="background:rgba(255,200,80,.07);border:1px solid rgba(255,200,80,.35);border-radius:14px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.7">
+        ${cv._recastFirst ? `<div style="font-family:'Noto Sans JP';font-weight:700;color:#ffd98a;margin-bottom:7px">これは しぜんな いいかた だよ — まちがい じゃ ない よ！</div>` : ''}
+        <div style="color:#c9bfd8"><span style="font-size:11px;color:#9a8fb8">あなた:</span> <span style="font-family:'Noto Sans JP';font-weight:700">${esc(_fb.heard || '')}</span></div>
+        <div style="color:#ffe1a8"><span style="font-size:11px;color:#cdae6e">しぜんな いいかた:</span> <span style="font-family:'Noto Sans JP';font-weight:800">${esc(_fb.better)}</span></div>
+        ${_fb.note ? `<div class="muted" style="font-size:11px;margin-top:5px;opacity:.8">${esc(_fb.note)}</div>` : ''}
+        <button onclick="convoRecastPeek()" style="margin-top:8px;padding:6px 12px;border-radius:10px;border:1px solid rgba(255,200,80,.35);background:none;color:#ffd98a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer">とじる</button>
+      </div>` : '';
   const aiLine = cur && cur.jp
     ? `<div class="convo-turn them" style="margin-bottom:4px">
-        <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
+        <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${jpHtml}</div>
         ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cur.glossEn)}</div>` : ''}
        </div>
        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
@@ -10560,6 +10747,7 @@ function renderConvo(){
          <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="ゆっくり" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
          <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'いみをかくす' : 'いみをみる'}</button>
        </div>
+       ${recastSheet}
        ${convoWordGloss(cv, cur)}`
     : '';
 
