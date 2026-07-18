@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.17';
+const APP_VERSION = '8.18';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9441,6 +9441,20 @@ function _isConvoFarewell(text){
 }
 
 /**
+ * _convoErrMsg(e) — F3 (Delve 7 §5.2): distinct, honest error copy per cause.
+ * No-key ≠ offline ≠ bad key — each failure names its real cause in plain kana
+ * and points at its one fix. A keyed session must NEVER silently fall back to
+ * the script mid-conversation (L11) — failures surface here instead.
+ */
+function _convoErrMsg(e){
+  const m = (e && e.message) || '';
+  if(m === 'nokey') return 'AI が つながって いない よ — Settings で つないでね 🔌';
+  if(m.indexOf('http 401') === 0 || m.indexOf('http 403') === 0) return 'キーが ただしくない みたい — Settings で たしかめてね 🔑';
+  if(m.indexOf('http ') === 0) return 'AI が いま こたえられない みたい (' + m.replace('http ', '') + ') — もういちど ためしてね';
+  return 'インターネットが ない みたい — もういちど ためしてね 🌐';
+}
+
+/**
  * _convoNormFeedback(cv, parsed, transcript, forceNone) — F2 (Delve 7 §3.3/§3.6).
  * The ONE place the six-key contract's feedback object is normalized and gated.
  * Everything here is client-side and deterministic — the model's feedback claim
@@ -9583,7 +9597,7 @@ async function _convoOpenProbe(){
     rawStr = key ? await _convoCall(seedWindow, cv.preamble) : _convoScript(cv.sceneId, 0);
   } catch(e){
     cv.loading = false;
-    cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
+    cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
     render(); return;
   }
   /* Retry-once on same raw string */
@@ -9695,6 +9709,7 @@ function startConvo(sceneId, seedMessages){
     _recastFirst: false,     /* F2 (QA-4) — true only on the learner's first-ever recast (adds the friendly explainer line to the peek) */
     _pulseTs: null,          /* F2 (§3.4) — timestamp of the last confirm/recast gold pulse; render window <700ms so re-renders never replay it */
     _lastRecastTurn: null,   /* F2 (QA-3) — cv.turn value of the last RENDERED recast; drives the 1-in-3 throttle in _convoNormFeedback */
+    scriptEnded: false,      /* F3 (§5.1) — keyless demo played its one full script cycle; renderConvo shows the honest end card */
   };
   save();
   nav('convo');
@@ -9743,6 +9758,21 @@ async function convoTurn(userText, viaVoice){
   const windowed = cv.messages.slice(-6);
 
   const key = (state.settings.anthropicKey || '').trim();
+
+  /* F3 (Delve 7 §5.1, AMENDS-D6): the keyless demo is HONEST — one full script
+     cycle (the bank, once), then the script-end card with connect/drills CTAs.
+     Never an endless fake conversation (the Praktika ad-vs-reality trap).
+     Farewell taps above still end it earlier the normal way. Keyed sessions
+     never reach this branch and never script-fallback mid-conversation (L11). */
+  if(!key && cv.turn >= _CONVO_SCRIPT_TURNS.length){
+    cv.loading = false;
+    if(learnerFarewell){ save(); convoEnd(); return; }  /* a goodbye still gets the normal recap */
+    cv.scriptEnded = true;
+    _orbSet('idle', null);
+    save(); render();
+    return;
+  }
+
   let rawStr;
   const _t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   try {
@@ -9750,7 +9780,7 @@ async function convoTurn(userText, viaVoice){
     rawStr = key ? await _convoCall(windowed, cv.preamble) : _convoScript(cv.sceneId, cv.turn);
   } catch(e){
     cv.loading = false;
-    cv.error = e && e.message && e.message.startsWith('http ') ? 'error ' + e.message.replace('http ','') : 'error';
+    cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
     /* orb seam (5/5, sprint: orb): error path -> idle */
     _orbSet('idle', null);
     render(); return;
@@ -10671,20 +10701,37 @@ function _orbSet(newState, meta){
 }
 /* ===================== END ORB PRESENCE ===================== */
 
-/* _convoScriptedBanner — honest-mode disclosure (owner field-note 2026-07-18).
-   With no API key on this device, おしゃべり silently served the canned
-   _convoScript loop and the owner spent a session believing the AI was
-   ignoring him. Never fake the AI: whenever the key is absent, every convo
-   render carries this banner. Static copy only — no state-derived strings. */
+/* _convoScriptedBanner — honest-mode disclosure (owner field-note 2026-07-18;
+   F3 reword per Delve 7 §5.2: capability-framing over apology, one line, one
+   link). Renders on every keyless convo screen, so the disclosure exists
+   BEFORE the first exchange, not only during. Static copy only. */
 function _convoScriptedBanner(){
   if((state.settings.anthropicKey || '').trim()) return '';
-  return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b>Scripted practice mode</b> — no AI is connected on this device, so replies follow a fixed script and can't respond to what you actually say. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Add your API key in Settings</button> to unlock the real conversation.</div>`;
+  return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b style="font-family:'Noto Sans JP'">スクリプトれんしゅう</b> — Scripted practice: replies follow a fixed script. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Connect AI</button> for a real conversation.</div>`;
+}
+
+/* _renderConvoScriptEnd — F3 (Delve 7 §5.1): the honest end of the keyless demo.
+   One full script cycle has played; instead of silently looping (the Praktika
+   ad-vs-reality trap in miniature), the demo says plainly that the script is
+   over and offers the two real paths forward. Static copy + two CTAs only. */
+function _renderConvoScriptEnd(cv){
+  return `<div style="padding:2px 2px 24px">
+    ${_convoHeader(cv)}
+    <div class="card" style="border:1px solid rgba(251,191,36,.4);text-align:center;padding:22px 18px">
+      <div style="font-size:34px;margin-bottom:8px">🎬</div>
+      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:19px;margin-bottom:8px">スクリプトは ここまで！</div>
+      <div class="muted" style="font-size:13px;line-height:1.65;margin-bottom:16px">That's the whole practice script. Connect an AI and this becomes a <b>real conversation</b> that listens and responds to what you actually say.</div>
+      <button onclick="nav('settings')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">AI をつなぐ 🔌</button>
+      <button onclick="nav('practice')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ドリルへ 📚</button>
+    </div>
+  </div>`;
 }
 
 function renderConvo(){
   const cv = state.convo;
   if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
   if(cv.done && cv.recap) return _renderConvoRecap(cv);
+  if(cv.scriptEnded) return _renderConvoScriptEnd(cv);   /* F3 §5.1 — keyless demo played its one cycle */
 
   const cur = cv.current;
   const chips = ((cur && Array.isArray(cur.suggested) && cur.suggested.filter(Boolean).length)
@@ -20664,11 +20711,18 @@ function renderSettings(){
   return `
     <div class="settings-v2">
     <div class="card" style="border:1px solid rgba(167,139,250,.35)">
-      <h3>🔌 AI connection</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:8px">おしゃべり and the AI coach run on your own Claude API key until accounts exist (Phase 1). The key is stored only on this device — enter it once per device. Get one at <b>console.anthropic.com</b>.</div>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Claude API key</div><div class="word-en">${(s.anthropicKey||'').trim() ? '✅ Key saved on this device.' : '⚠️ No key — おしゃべり can only run a canned script without one.'}</div></div>
-        <input type="password" value="${esc(s.anthropicKey||'')}" oninput="setAnthropicKey(this.value)" placeholder="sk-ant-…" autocomplete="off" style="width:150px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:13px"></label>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+      <h3>🔌 AI をつなぐ</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${(s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and おしゃべり becomes a real conversation. The key is stored only on this device.'}</div>
+      <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
+        <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
+        <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
+      </div>
+      <div style="display:flex;gap:9px;align-items:center;margin-bottom:9px">
+        <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">2</span>
+        <input type="password" value="${esc(s.anthropicKey||'')}" oninput="setAnthropicKey(this.value)" placeholder="paste the key: sk-ant-…" autocomplete="off" style="flex:1;min-width:0;padding:9px 11px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:13px">
+      </div>
+      <div style="display:flex;gap:9px;align-items:center">
+        <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">3</span>
         <button class="btn" onclick="testAnthropicKey()" style="padding:9px 14px;font-size:13px">Test connection</button>
         <span id="keyTestStatus" class="muted" style="font-size:12px"></span>
       </div>
@@ -20909,11 +20963,23 @@ async function testAnthropicKey(){
       headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'content-type': 'application/json' },
       body: JSON.stringify({ model: state.settings.anthropicModel || 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role:'user', content:'こんにちは' }] })
     });
-    if(el) el.textContent = res.ok
-      ? '✅ Connected — the real conversation is live on this device.'
-      : ('❌ Rejected (' + res.status + ') — check the key and try again.');
+    /* F3 (Delve 7 §5.3): failure names its ONE real cause in plain words, each
+       with its one fix — wrong key / no credit on the account / no internet. */
+    if(res.ok){
+      if(el) el.textContent = '✅ つながった! — the real conversation is live on this device.';
+    } else {
+      let bodyTxt = '';
+      try{ bodyTxt = await res.text(); }catch(_e){}
+      if(res.status === 401 || res.status === 403){
+        if(el) el.textContent = '❌ The key isn\'t right — copy it again from console.anthropic.com.';
+      } else if(/credit|billing/i.test(bodyTxt)){
+        if(el) el.textContent = '❌ No credit on the Anthropic account — add billing at console.anthropic.com.';
+      } else {
+        if(el) el.textContent = '❌ Rejected (' + res.status + ') — check the key and try again.';
+      }
+    }
   } catch(e){
-    if(el) el.textContent = '❌ Network error — check your connection and try again.';
+    if(el) el.textContent = '❌ No internet — check your connection and try again.';
   }
 }
 window.testAnthropicKey = testAnthropicKey;
