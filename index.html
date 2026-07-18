@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.20';
+const APP_VERSION = '8.21';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5144,17 +5144,54 @@ function _showTtsMuteHint(){
   setTimeout(() => el.remove(), 5000);
 }
 
+/* ── Universal-phone TTS hardening (v8.21) ───────────────────────────────
+   _ssPrep: iOS Safari can wedge speechSynthesis in a paused state where
+   speak() queues but never plays; resume() is a safe no-op everywhere else.
+   _ttsFireGuard: wraps a TTS-chain continuation so it fires EXACTLY once —
+   via onend/onerror, or via a duration-scaled watchdog when the engine
+   drops the utterance without firing either (silent iOS failure mode).
+   Without the watchdog the hands-free loop stalls forever on that silence.
+   The watchdog never cancels audio; in the healthy case onend clears it. */
+function _ssPrep(ss){ try{ if(ss && ss.paused) ss.resume(); }catch(e){} }
+function _ttsFireGuard(u, cont, text, rate){
+  let fired = false, timer = null;
+  const fire = () => { if(fired) return; fired = true; if(timer) clearTimeout(timer); cont(); };
+  const ms = Math.max(4000, Math.ceil(String(text || '').length * 350 / (rate || 0.9)) + 2000);
+  timer = setTimeout(fire, ms);
+  u.onend = fire; u.onerror = fire;
+  return fire;
+}
+
+let _jaVoiceWarned = false;
+function _maybeWarnNoJaVoice(){
+  /* Voices are loaded but none is Japanese — utterances come out silent or
+     English-accented gibberish with no explanation. One-time device-setup
+     hint (English on purpose: phone-settings chrome, like the mute hint). */
+  if(_jaVoiceWarned) return;
+  if(!('speechSynthesis' in window)) return;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if(!voices.length) return;            /* list not populated yet — can't judge */
+  if(_listVoicesByLang('ja').length) return;
+  _jaVoiceWarned = true;
+  const el = document.createElement('div');
+  el.textContent = "🗣️ No Japanese voice installed — audio may be missing or sound wrong. Add one in your phone's text-to-speech settings (e.g. Google Text-to-Speech → Japanese).";
+  el.style.cssText = 'position:fixed;bottom:80px;left:12px;right:12px;background:#b45309;color:#fff;padding:12px;border-radius:12px;font-size:13px;text-align:center;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 9000);
+}
+
 function speakJP(text, rate){
   try{
     if(!('speechSynthesis' in window)) return;
     const utter = () => {
       try{
         const ss = window.speechSynthesis;
+        _ssPrep(ss);
         if(ss.speaking || ss.pending) ss.cancel();
         const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
         u.rate = rate || state.settings.ttsRate || 0.9;
         const v = _pickJaVoice();
-        if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
+        if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; _maybeWarnNoJaVoice(); }
         let started = false;
         u.onstart = () => { started = true; speakingFlag = true; updateSpeakBtn(); };
         u.onend = () => {
@@ -5244,7 +5281,21 @@ function startVoice(onResult, onEnd, lang){
   };
   rec.onerror = (e)=>{ state.voiceListening=false; log('voice_err',{err:e.error}); onEnd && onEnd(e); };
   rec.onend = ()=>{ state.voiceListening=false; onEnd && onEnd(null); updateVoiceBtn(); };
-  try{ rec.start(); updateVoiceBtn(); }catch(e){ state.voiceListening=false; onEnd && onEnd(e); }
+  try{ rec.start(); updateVoiceBtn(); }catch(e){
+    /* Wedged-recognizer self-heal (v8.21): the cached recognizer can throw
+       InvalidStateError on a hot restart (iOS Safari especially) and then
+       stay wedged for the whole session. Rebuild once and retry; report
+       failure only if the fresh instance also refuses to start. */
+    const h = { lang: rec.lang, onresult: rec.onresult, onerror: rec.onerror, onend: rec.onend };
+    try{ rec.abort && rec.abort(); }catch(_e){}
+    _rec = null;
+    const rec2 = getRecognition();
+    if(rec2){
+      rec2.lang = h.lang; rec2.onresult = h.onresult; rec2.onerror = h.onerror; rec2.onend = h.onend;
+      try{ rec2.start(); updateVoiceBtn(); return; }catch(_e2){}
+    }
+    state.voiceListening=false; onEnd && onEnd(e);
+  }
 }
 function stopVoice(){ try{ _rec && _rec.stop(); }catch(e){} state.voiceListening=false; updateVoiceBtn(); }
 function updateVoiceBtn(){
@@ -9612,6 +9663,7 @@ function _convoSpeakJP(text, onDone){
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
+    _ssPrep(ss);
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
@@ -9620,13 +9672,12 @@ function _convoSpeakJP(text, onDone){
          speechSynthesis prosody allows on Android Chrome. */
       u.rate = Math.max(0.5, Math.min(1.2, ttsRate + (Math.random() * 0.08 - 0.04)));
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
-      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
+      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; _maybeWarnNoJaVoice(); }
       if(onDone){
-        let fired = false;
         /* orb seam (2/5, sprint: orb): onend/onerror -> listening, via the same
-           fire() the existing hands-free chain already calls onDone through. */
-        const fire = () => { if(fired) return; fired = true; _orbSet('listening', null); onDone(); };
-        u.onend = fire; u.onerror = fire;
+           continuation the hands-free chain calls onDone through. Watchdog-
+           guarded so a dropped utterance can't stall the loop (v8.21). */
+        _ttsFireGuard(u, () => { _orbSet('listening', null); onDone(); }, text, u.rate);
       }
       ss.speak(u);
     };
@@ -9677,7 +9728,7 @@ async function _convoOpenProbe(){
   render();
   if(parsed.jp){
     _convoSpeakJP(parsed.jp, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen(true);
     });
   }
 }
@@ -10011,7 +10062,7 @@ async function convoTurn(userText, viaVoice){
      F2 (CR-3): a spoken clarify ALSO speaks + re-arms the mic — the retry turn stays hands-free. */
   if(aiJP && (didAdvance || speakClarify)){
     _convoSpeakJP(aiJP, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen(true);
     });
   } else {
     /* orb seam (5/5, sprint: orb): response render, non-advancing (intermediate hint)
@@ -10190,11 +10241,17 @@ window.convoStopListen = convoStopListen;
 
 /* convoToggleListen — arms the patient mic for the hands-free loop.
    Used as the _buildSpeakJP onDone callback and the 🎙 button. */
-function convoToggleListen(){
+function convoToggleListen(auto){
   const cv = state.convo; if(!cv || cv.loading || cv.done) return;
   /* F4: the completion card owns the turn — no invisible auto-mic under it.
      Dismissing the card (もっと はなす) restores the normal hands-free loop. */
   if(cv.moduleDone && !cv._moduleCardGone) return;
+  /* Universal-phone (v8.21): once the mic is blocked at the OS/browser level
+     (not-allowed), every hands-free auto re-arm would just re-fail into the
+     same banner each turn. Latch it: auto arms skip silently (chips carry
+     the session); a manual mic tap clears the latch and genuinely retries. */
+  if(auto === true && cv._micBlocked) return;
+  if(auto !== true) cv._micBlocked = false;
   if(cv.listening){
     /* Stuck-state self-heal: UI thinks it's listening but the shared
        recognizer is dead — reset and reopen. A live recognizer means a
@@ -10261,7 +10318,7 @@ function convoToggleListen(){
         /* Window expired / cap hit / fatal error: quiet close — an error
            banner only for the fatal (mic-permission) case, never for silence. */
         cv.listening = false; cv._listenUntil = 0;
-        if(fatal) cv.error = _sttErrMsg(err);
+        if(fatal){ cv.error = _sttErrMsg(err); cv._micBlocked = true; }
         _orbSet('idle', null);
         render();
       },
@@ -10282,7 +10339,7 @@ function convoContinue(){
   const cur = cv.current;
   if(cur && cur.jp){
     _convoSpeakJP(cur.jp, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen();
+      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen) convoToggleListen(true);
     });
   }
 }
@@ -15692,6 +15749,7 @@ function _buildSpeakEN(text, force, onDone){
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     if(!force && state.settings && state.settings.enTtsOn === false){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
+    _ssPrep(ss);
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
     // Faster default — the previous 0.9 felt sluggish in spam-mode loops where
@@ -15699,11 +15757,7 @@ function _buildSpeakEN(text, force, onDone){
     u.rate = (state.settings && state.settings.buildEnTtsRate) || 1.15;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
     if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
-    if(onDone){
-      let fired = false;
-      const fire = () => { if(fired) return; fired = true; onDone(); };
-      u.onend = fire; u.onerror = fire;
-    }
+    if(onDone) _ttsFireGuard(u, onDone, text, u.rate);
     ss.speak(u);
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
@@ -15712,17 +15766,14 @@ function _buildSpeakJP(text, onDone){
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
+    _ssPrep(ss);
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
       u.rate = state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
-      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
-      if(onDone){
-        let fired = false;
-        const fire = () => { if(fired) return; fired = true; onDone(); };
-        u.onend = fire; u.onerror = fire;
-      }
+      if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; _maybeWarnNoJaVoice(); }
+      if(onDone) _ttsFireGuard(u, onDone, text, u.rate);
       ss.speak(u);
     };
     if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
@@ -15757,16 +15808,14 @@ function _buildSpeakJPThenEN(jp, en, onDone){
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
+    _ssPrep(ss);
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(jp).replace(/\s+/g,''));
       u.rate = state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; }
-      let finished = false;
-      const chain = () => { if(finished) return; finished = true; setTimeout(() => _buildSpeakEN(en, false, onDone), 250); };
-      u.onend = chain;
-      u.onerror = chain;
+      _ttsFireGuard(u, () => setTimeout(() => _buildSpeakEN(en, false, onDone), 250), jp, u.rate);
       ss.speak(u);
     };
     if(typeof _ttsVoicesReady !== 'undefined' && _ttsVoicesReady) utter();
