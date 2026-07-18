@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.21';
+const APP_VERSION = '8.22';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -7588,7 +7588,7 @@ function exampleStrip(w){
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
         <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(w.ex)}')" title="Listen">🔊</button>
-        <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();var e=document.getElementById('${trId}');if(e)e.style.display=(e.style.display==='none'?'block':'none');" title="Meaning">いみ</button>
+        <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();var e=document.getElementById('${trId}');if(e)e.style.display=(e.style.display==='none'?'block':'none');" title="Meaning">EN</button>
       </div>
     </div>
   </div>`;
@@ -9545,16 +9545,17 @@ function _convoSystemStr(cv){
 
 /**
  * _convoErrMsg(e) — F3 (Delve 7 §5.2): distinct, honest error copy per cause.
- * No-key ≠ offline ≠ bad key — each failure names its real cause in plain kana
- * and points at its one fix. A keyed session must NEVER silently fall back to
- * the script mid-conversation (L11) — failures surface here instead.
+ * No-key ≠ offline ≠ bad key — each failure names its real cause in plain
+ * English (chrome, so a day-1 learner can read it) and points at its one fix.
+ * A keyed session must NEVER silently fall back to the script mid-conversation
+ * (L11) — failures surface here instead.
  */
 function _convoErrMsg(e){
   const m = (e && e.message) || '';
-  if(m === 'nokey') return 'AI が つながって いない よ — Settings で つないでね 🔌';
-  if(m.indexOf('http 401') === 0 || m.indexOf('http 403') === 0) return 'キーが ただしくない みたい — Settings で たしかめてね 🔑';
-  if(m.indexOf('http ') === 0) return 'AI が いま こたえられない みたい (' + m.replace('http ', '') + ') — もういちど ためしてね';
-  return 'インターネットが ない みたい — もういちど ためしてね 🌐';
+  if(m === 'nokey') return 'AI isn\'t connected — set it up in Settings 🔌';
+  if(m.indexOf('http 401') === 0 || m.indexOf('http 403') === 0) return 'That key doesn\'t look right — check it in Settings 🔑';
+  if(m.indexOf('http ') === 0) return 'The AI can\'t answer right now (' + m.replace('http ', '') + ') — try once more';
+  return 'Looks like there\'s no internet — try once more 🌐';
 }
 
 /**
@@ -9711,7 +9712,7 @@ async function _convoOpenProbe(){
   if(!parsed) parsed = _aiJsonExtract(rawStr);
   if(!parsed){
     cv.loading = false;
-    cv.error = 'もう いちど？';
+    cv.error = 'One more time?';
     cv.current = { jp:'', glossEn:'', suggested: _convoFallbackChips(cv), sceneDone:false };
     render(); return;
   }
@@ -9920,7 +9921,7 @@ async function convoTurn(userText, viaVoice){
   if(!parsed){
     /* Persistent null — surface recovery, clear loading, render and return */
     cv.loading = false;
-    cv.error = 'もう いちど？';
+    cv.error = 'One more time?';
     /* cv.current preserved so chips remain visible */
     /* orb seam (5/5, sprint: orb): error/parse-fail path -> idle */
     _orbSet('idle', null);
@@ -9984,7 +9985,7 @@ async function convoTurn(userText, viaVoice){
       cv.error = null;
       speakClarify = true;
     } else {
-      cv.error = parsed.glossEn ? 'ヒント: ' + parsed.glossEn : 'もう いちど？';
+      cv.error = parsed.glossEn ? 'Hint: ' + parsed.glossEn : 'One more time?';
     }
     cv.current = parsed; /* chips still accessible */
     cv.messages.push({ role:'assistant', content: aiJP });
@@ -10422,7 +10423,7 @@ window.convoModulePick = convoModulePick;
 function convoArcPeek(){
   const cv = state.convo; if(!cv || !cv.target) return;
   const left = Math.max(0, cv.target - (cv.mTurn || 0));
-  if(typeof showToast === 'function') showToast('あと ' + left, {tone:'info', duration:2000});
+  if(typeof showToast === 'function') showToast(left + ' to go', {tone:'info', duration:2000});
 }
 window.convoArcPeek = convoArcPeek;
 
@@ -10492,7 +10493,7 @@ function _convoPartnerHeader(cv){
   return `<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
     ${_avatarWrapped}
     <div style="min-width:0">
-      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">TALK 💬</div>
       <div style="font-weight:800;font-size:17px;font-family:'Noto Sans JP';line-height:1.15">${esc(p.name)}</div>
     </div>
   </div>`;
@@ -10516,7 +10517,7 @@ function _convoOrbHeader(cv){
   return `<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:13px">
     <canvas id="orbCanvas" aria-hidden="true" style="${_bloom}width:min(72vw,300px);height:min(72vw,300px);max-width:100%;display:block"></canvas>
     <div style="text-align:center;margin-top:4px">
-      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">TALK 💬</div>
       <div style="font-weight:800;font-size:15px;font-family:'Noto Sans JP';margin-top:2px">${esc(p.name)}</div>
       ${_arcBar}
     </div>
@@ -10909,7 +10910,7 @@ function _orbSet(newState, meta){
    BEFORE the first exchange, not only during. Static copy only. */
 function _convoScriptedBanner(){
   if((state.settings.anthropicKey || '').trim()) return '';
-  return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b style="font-family:'Noto Sans JP'">スクリプトれんしゅう</b> — Scripted practice: replies follow a fixed script. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Connect AI</button> for a real conversation.</div>`;
+  return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b>Scripted practice</b> — replies follow a fixed script. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Connect AI</button> for a real conversation.</div>`;
 }
 
 /* _renderConvoScriptEnd — F3 (Delve 7 §5.1): the honest end of the keyless demo.
@@ -10921,10 +10922,10 @@ function _renderConvoScriptEnd(cv){
     ${_convoHeader(cv)}
     <div class="card" style="border:1px solid rgba(251,191,36,.4);text-align:center;padding:22px 18px">
       <div style="font-size:34px;margin-bottom:8px">🎬</div>
-      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:19px;margin-bottom:8px">スクリプトは ここまで！</div>
+      <div style="font-weight:800;font-size:19px;margin-bottom:8px">That's the end of the script!</div>
       <div class="muted" style="font-size:13px;line-height:1.65;margin-bottom:16px">That's the whole practice script. Connect an AI and this becomes a <b>real conversation</b> that listens and responds to what you actually say.</div>
-      <button onclick="nav('settings')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">AI をつなぐ 🔌</button>
-      <button onclick="nav('practice')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ドリルへ 📚</button>
+      <button onclick="nav('settings')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">Connect AI 🔌</button>
+      <button onclick="nav('practice')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">Go to drills 📚</button>
     </div>
   </div>`;
 }
@@ -10940,14 +10941,14 @@ function renderConvo(){
     const _mods = SCENES.filter(s => s.minLevel <= _lv);
     return `<div style="padding:2px 2px 24px">
       <div style="margin-bottom:14px">
-        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">おしゃべり 💬</div>
-        <div class="muted" style="font-size:12px;margin-top:2px">はなしたい ことを えらんでね</div>
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">Talk 💬</div>
+        <div class="muted" style="font-size:12px;margin-top:2px">Pick something to talk about</div>
       </div>
       ${_convoScriptedBanner()}
-      <button onclick="startConvo('free')" style="width:100%;padding:17px;border:none;border-radius:16px;font-family:'Noto Sans JP',inherit;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:12px;text-align:left">🗣 フリートーク<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:3px">なんでも はなそう</div></button>
+      <button onclick="startConvo('free')" style="width:100%;padding:17px;border:none;border-radius:16px;font-family:'Noto Sans JP',inherit;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:12px;text-align:left">🗣 Free talk<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:3px">Talk about anything · フリートーク</div></button>
       ${_mods.map(m => `<button onclick="startConvo('${jsEsc(m.id)}')" style="width:100%;display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:13px 15px;border:1px solid rgba(157,92,255,.3);border-radius:13px;background:rgba(157,92,255,.07);color:#e8def8;font-family:inherit;cursor:pointer;margin-bottom:7px;text-align:left">
-        <span style="font-family:'Noto Sans JP';font-weight:800;font-size:15px;flex-shrink:0">${esc(m.nameJP)}</span>
-        <span style="font-family:'Noto Sans JP';font-size:11px;color:#a99fc7;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.goalJP || m.en || '')}</span>
+        <span style="font-weight:800;font-size:15px;flex-shrink:0">${esc(m.en || m.nameJP)}</span>
+        <span style="font-family:'Noto Sans JP';font-size:11px;color:#a99fc7;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.nameJP)}</span>
       </button>`).join('')}
     </div>`;
   }
@@ -10968,16 +10969,16 @@ function renderConvo(){
       ${_convoHeader(cv)}
       ${_convoScriptedBanner()}
       <div style="margin-bottom:12px">
-        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
-        ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.en) || 'Conversation')}</div>
+        ${cv.scene && cv.scene.nameJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.nameJP)}</div>` : ''}
       </div>
       <div class="convo-turn them" style="margin-bottom:6px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${esc(cur.jp)}</div>
       </div>
       ${convoWordGloss(cv, cur)}
       <div style="display:flex;flex-wrap:wrap;margin-bottom:16px">${chipBtns}</div>
-      <button onclick="convoContinue()" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">つづける ▶</button>
-      <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">はじめから</button>
+      <button onclick="convoContinue()" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:16px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:8px">Continue ▶</button>
+      <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:13px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:700;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">Start over</button>
     </div>`;
   }
 
@@ -10999,11 +11000,11 @@ function renderConvo(){
      otherwise tap-to-open; auto-dismissed on the next turn; never stacks. */
   const recastSheet = (_hasRecast && cv._recastPeek)
     ? `<div style="background:rgba(255,200,80,.07);border:1px solid rgba(255,200,80,.35);border-radius:14px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.7">
-        ${cv._recastFirst ? `<div style="font-family:'Noto Sans JP';font-weight:700;color:#ffd98a;margin-bottom:7px">これは しぜんな いいかた だよ — まちがい じゃ ない よ！</div>` : ''}
-        <div style="color:#c9bfd8"><span style="font-size:11px;color:#9a8fb8">あなた:</span> <span style="font-family:'Noto Sans JP';font-weight:700">${esc(_fb.heard || '')}</span></div>
-        <div style="color:#ffe1a8"><span style="font-size:11px;color:#cdae6e">しぜんな いいかた:</span> <span style="font-family:'Noto Sans JP';font-weight:800">${esc(_fb.better)}</span></div>
+        ${cv._recastFirst ? `<div style="font-weight:700;color:#ffd98a;margin-bottom:7px">A natural way to say it — not a mistake!</div>` : ''}
+        <div style="color:#c9bfd8"><span style="font-size:11px;color:#9a8fb8">You said:</span> <span style="font-family:'Noto Sans JP';font-weight:700">${esc(_fb.heard || '')}</span></div>
+        <div style="color:#ffe1a8"><span style="font-size:11px;color:#cdae6e">More natural:</span> <span style="font-family:'Noto Sans JP';font-weight:800">${esc(_fb.better)}</span></div>
         ${_fb.note ? `<div class="muted" style="font-size:11px;margin-top:5px;opacity:.8">${esc(_fb.note)}</div>` : ''}
-        <button onclick="convoRecastPeek()" style="margin-top:8px;padding:6px 12px;border-radius:10px;border:1px solid rgba(255,200,80,.35);background:none;color:#ffd98a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer">とじる</button>
+        <button onclick="convoRecastPeek()" style="margin-top:8px;padding:6px 12px;border-radius:10px;border:1px solid rgba(255,200,80,.35);background:none;color:#ffd98a;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer">Close</button>
       </div>` : '';
   const aiLine = cur && cur.jp
     ? `<div class="convo-turn them" style="margin-bottom:4px">
@@ -11011,9 +11012,9 @@ function renderConvo(){
         ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cur.glossEn)}</div>` : ''}
        </div>
        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-         <button onclick="convoReplay()" title="もういちど" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🔊</button>
-         <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="ゆっくり" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
-         <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'いみをかくす' : 'いみをみる'}</button>
+         <button onclick="convoReplay()" title="Replay" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🔊</button>
+         <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="Slower" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
+         <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'hide meaning' : 'show meaning'}</button>
        </div>
        ${recastSheet}
        ${convoWordGloss(cv, cur)}`
@@ -11023,7 +11024,7 @@ function renderConvo(){
     ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
         <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · ゆっくり で いいよ</div>
+          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · TAKE YOUR TIME</div>
           <div id="convoInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px">${esc(cv.interim||'…')}</div>
         </div>
         <button onclick="convoStopListen()" style="padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
@@ -11038,7 +11039,7 @@ function renderConvo(){
   /* Mic button uses convoToggleListen (not convoStartListen) for the hands-free belt-and-braces pattern.
      Stage D (v8.10) double-miss rule: cv.forceChips hides the mic for exactly one turn — chips only. */
   const micBtn = (!cv.loading && !cv.forceChips)
-    ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 はなす'}</button>` : '';
+    ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 Speak'}</button>` : '';
 
   /* Dev-only latency readout (Stage D v8.10) — gated by _isDevMode(), never shown to normal end users */
   const devLatency = (typeof _isDevMode === 'function' && _isDevMode() && cv.lastLatencyMs != null)
@@ -11053,10 +11054,11 @@ function renderConvo(){
   const moduleCard = _doneScene
     ? `<div class="card" style="border:1px solid rgba(255,200,80,.45);text-align:center;padding:18px 16px;margin-bottom:12px">
         <div style="font-size:30px;margin-bottom:6px">🎉</div>
-        <div style="font-family:'Noto Sans JP';font-weight:800;font-size:16px;line-height:1.5;margin-bottom:12px">${esc(_doneScene.goalJP || '')} — たくさん はなした ね！</div>
-        <button onclick="convoModuleMore()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:7px">もっと はなす 💬</button>
-        <button onclick="convoModulePick()" style="width:100%;padding:12px;border:1px solid rgba(157,92,255,.35);border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:13px;color:#d6c2ff;background:rgba(157,92,255,.08);cursor:pointer;margin-bottom:7px">べつの モジュール</button>
-        <button onclick="convoEnd()" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,.15);border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:13px;color:#cdbfe8;background:rgba(255,255,255,.05);cursor:pointer">またね 👋</button>
+        <div style="font-weight:800;font-size:16px;line-height:1.5;margin-bottom:4px">You talked a lot — nice!</div>
+        ${_doneScene.goalJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#cdae6e;margin-bottom:12px">${esc(_doneScene.goalJP)}</div>` : '<div style="margin-bottom:8px"></div>'}
+        <button onclick="convoModuleMore()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:7px">Keep talking 💬</button>
+        <button onclick="convoModulePick()" style="width:100%;padding:12px;border:1px solid rgba(157,92,255,.35);border-radius:14px;font-family:inherit;font-weight:700;font-size:13px;color:#d6c2ff;background:rgba(157,92,255,.08);cursor:pointer;margin-bottom:7px">Pick another topic</button>
+        <button onclick="convoEnd()" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,.15);border-radius:14px;font-family:inherit;font-weight:700;font-size:13px;color:#cdbfe8;background:rgba(255,255,255,.05);cursor:pointer">Wrap up 👋</button>
       </div>`
     : '';
 
@@ -11064,10 +11066,10 @@ function renderConvo(){
     ${_convoHeader(cv)}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
       <div>
-        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
-        ${cv.target && cv.scene && cv.scene.goalJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#cdae6e;margin-top:1px">${esc(cv.scene.goalJP)}</div>` : (cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : '')}
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.en) || 'Conversation')}</div>
+        ${cv.target && cv.scene && cv.scene.goalJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#cdae6e;margin-top:1px">${esc(cv.scene.goalJP)}</div>` : (cv.scene && cv.scene.nameJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.nameJP)}</div>` : '')}
       </div>
-      <div style="font-size:11px;color:${cv.atSoftCap ? '#fcd34d' : '#6f6688'};flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}${cv.atSoftCap ? ' 🌙' : ''}</div>
+      <div style="font-size:11px;color:${cv.atSoftCap ? '#fcd34d' : '#6f6688'};flex-shrink:0">Turn ${cv.turn} / ${cv.maxTurns}${cv.atSoftCap ? ' 🌙' : ''}</div>
     </div>
     ${_convoScriptedBanner()}
     ${aiLine}
@@ -11099,7 +11101,7 @@ function _renderConvoRecap(cv){
      pathway (convoStartMissedDrill -> startRandomDrill), content-derived from this
      session's pool. No new grading/auto-SRS write happens here. */
   const drillBtn = missed.length
-    ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">これを れんしゅう 🔁 (${missed.length})</button>`
+    ? `<button onclick="convoStartMissedDrill()" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">Practice these 🔁 (${missed.length})</button>`
     : '';
   /* Stage D (v8.10) — celebration-first "did-you-mean" notes: at most 3, content-
      derived (r.notes, built in convoEnd from the seeded pool — no new AI call).
@@ -11119,29 +11121,29 @@ function _renderConvoRecap(cv){
      r.leveledUpTo is a hardcoded kana string from CONVO_TIERS, esc()-escaped below. */
   const levelUpBlock = r.leveledUpTo
     ? `<div style="background:linear-gradient(100deg,rgba(157,92,255,.2),rgba(255,93,158,.15));border:2px solid rgba(157,92,255,.55);border-radius:16px;padding:14px 18px;margin-bottom:14px">
-        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:5px">🎊 レベルアップ！</div>
-        <div style="font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo)} に なりました！${(CONVO_TIERS.find(t=>t.name===r.leveledUpTo)||{}).en ? ' <span style="opacity:.7">(' + esc((CONVO_TIERS.find(t=>t.name===r.leveledUpTo)||{}).en) + ')</span>' : ''}</div>
+        <div style="font-weight:800;font-size:15px;color:#fff;margin-bottom:5px">🎊 Level up!</div>
+        <div style="font-size:13px;color:#c9b3ff">You're now <b>${esc((CONVO_TIERS.find(t=>t.name===r.leveledUpTo)||{}).en || r.leveledUpTo)}</b>! <span style="font-family:'Noto Sans JP';opacity:.7">(${esc(r.leveledUpTo)})</span></div>
        </div>`
     : '';
   /* xpToNext from recap snapshot (may be Infinity at atMax — show ∞ in that case) */
   const xpToNextDisplay = (r.xpToNext === Infinity || !isFinite(r.xpToNext)) ? '∞' : r.xpToNext;
   return `<div style="padding:2px 2px 24px;text-align:center">
     <div style="font-weight:800;font-size:32px;margin:24px 0 8px">🎉</div>
-    <div style="font-weight:800;font-size:22px;margin-bottom:8px">よくできました！</div>
-    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} ターン · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
+    <div style="font-weight:800;font-size:22px;margin-bottom:8px">Nice work!</div>
+    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} turns · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
     ${levelUpBlock}
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:inline-flex;gap:24px;justify-content:center">
-      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 はなした</div></div>
-      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 タップ</div></div>
+      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 SPOKEN</div></div>
+      <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 TAPPED</div></div>
     </div><br>
     <div style="background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.3);border-radius:16px;padding:16px;margin-bottom:20px;display:inline-block;min-width:200px">
-      <div style="font-weight:700;font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo ? 'NEW: ' : '')}レベル ${r.convoLevel} · ${r.convoXp} / ${xpToNextDisplay} XP</div>
+      <div style="font-weight:700;font-size:13px;color:#c9b3ff">${esc(r.leveledUpTo ? 'NEW: ' : '')}Level ${r.convoLevel} · ${r.convoXp} / ${xpToNextDisplay} XP</div>
     </div><br>
     ${notesBlock}
-    <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">もう いちど 🔄</button>
-    <button onclick="convoResume()" title="同じ話のつづきから、すぐ再開" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">もどる ↩</button>
+    <button onclick="convoFresh('${jsEsc(cv.sceneId)}')" style="width:100%;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:10px">Talk again 🔄</button>
+    <button onclick="convoResume()" title="Pick up right where the conversation left off" style="width:100%;padding:14px;border:1px solid rgba(157,92,255,.4);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#d6c2ff;background:rgba(157,92,255,.1);cursor:pointer;margin-bottom:8px">Resume ↩</button>
     ${drillBtn}
-    <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">ホームへ</button>
+    <button onclick="nav('home')" style="width:100%;padding:14px;border:1px solid rgba(255,255,255,.15);border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#cdbfe8;background:rgba(255,255,255,.06);cursor:pointer">Home</button>
   </div>`;
 }
 /* ===================== END OSHABERI TURN ENGINE ===================== */
@@ -11219,7 +11221,7 @@ function renderSentenceCoach(){
   const listenBanner = sc.listening
     ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
         <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
-        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · はなして</div><div id="scInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sc.interim || '…')}</div></div>
+        <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · SPEAK WHEN READY</div><div id="scInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sc.interim || '…')}</div></div>
         <button onclick="scToggleListen()" style="flex:0 0 auto;padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
       </div>`
     : '';
@@ -11283,7 +11285,7 @@ function renderSentenceCoach(){
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <button onclick="scKanaToggle()" title="Type romaji and have it become kana — no Japanese keyboard needed" style="font-weight:800;font-size:10.5px;letter-spacing:.3px;color:${kanaAssistOn ? '#fff' : '#a99fc7'};border:1px solid ${kanaAssistOn ? 'transparent' : 'rgba(255,255,255,.16)'};border-radius:999px;padding:6px 12px;background:${kanaAssistOn ? 'linear-gradient(100deg,#9d5cff,#ff5d9e)' : 'rgba(255,255,255,.05)'};cursor:pointer;font-family:inherit">あ Romaji → kana · ${kanaAssistOn ? 'ON' : 'OFF'}</button>
     </div>
-    <textarea id="scInput" oninput="scOnInput(this.value)" placeholder="${kanaAssistOn ? (free ? 'type romaji — it becomes kana…' : 'type romaji, e.g. eki ni ikitai…') : (free ? 'ここに にほんごを かいてみて…' : 'type your Japanese here…')}" rows="2" style="width:100%;padding:14px 15px;border-radius:16px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:18px;line-height:1.5;outline:none;resize:none;margin-bottom:12px">${esc(sc.input || '')}</textarea>
+    <textarea id="scInput" oninput="scOnInput(this.value)" placeholder="${kanaAssistOn ? (free ? 'type romaji — it becomes kana…' : 'type romaji, e.g. eki ni ikitai…') : (free ? 'type your Japanese here…' : 'type your Japanese here…')}" rows="2" style="width:100%;padding:14px 15px;border-radius:16px;border:2px solid rgba(157,92,255,.4);background:rgba(157,92,255,.06);color:#f5f2ff;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:18px;line-height:1.5;outline:none;resize:none;margin-bottom:12px">${esc(sc.input || '')}</textarea>
     ${listenBanner}
     ${actionRow}
     ${sttErr}${voiceHint}${loading}${errBlock}${resultBlock}
@@ -11468,7 +11470,7 @@ function renderRecall(){
   if(r.phase === 'recall'){
     const canType = !r.listening && (r.input || '').trim().length > 0;
     const listenBanner = r.listening
-      ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px"><span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · にほんごで</div><div id="rcInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.interim || '…')}</div></div><button onclick="rcToggleListen()" style="flex:0 0 auto;padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button></div>`
+      ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px"><span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · IN JAPANESE</div><div id="rcInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.interim || '…')}</div></div><button onclick="rcToggleListen()" style="flex:0 0 auto;padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button></div>`
       : '';
     const micStyle = r.listening
       ? 'flex:1;padding:14px;border-radius:14px;border:none;background:#ff5d9e;color:#fff;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;box-shadow:0 10px 24px rgba(255,93,158,.42)'
@@ -17866,7 +17868,7 @@ function renderSpeakDrills(){
     <div class="home-v8">
       <div class="h8-bar">
         <button class="h8-icon-btn" onclick="goBack()" title="Back">←</button>
-        <div class="h8-mark">はなす<span class="r">Speak drills</span></div>
+        <div class="h8-mark">Speak drills<span class="r">はなす</span></div>
         <span style="width:36px"></span>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:14px">
@@ -18052,7 +18054,7 @@ function renderDrillComplete(){
     <div class="home-v8">
       <div class="h8-bar">
         <button class="h8-icon-btn" onclick="endDrillSession()" title="Back">←</button>
-        <div class="h8-mark">かんりょう<span class="r">complete</span></div>
+        <div class="h8-mark">Complete<span class="r">かんりょう</span></div>
         <span style="width:36px"></span>
       </div>
       <div style="text-align:center;padding:40px 20px">
@@ -19438,7 +19440,7 @@ function _convoWeeklyCardHtml(){
   if(!s) return '';
   return `
     <div class="card">
-      <h3 style="margin-top:0">💬 This week's おしゃべり</h3>
+      <h3 style="margin-top:0">💬 This week's conversations</h3>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.sessions}</div><div class="muted" style="font-size:10px">SESSIONS</div></div>
         <div style="flex:1;min-width:70px;text-align:center"><div style="font-size:20px;font-weight:800">${s.minutes}</div><div class="muted" style="font-size:10px">MINUTES</div></div>
@@ -19540,7 +19542,7 @@ function renderProgress(){
       <h3 style="margin-top:0">🔥 Consistency</h3>
       <div style="display:flex;gap:6px">
         ${state.settings.hideStreak ? '' : `
-        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">いっしょ の ひ</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">DAYS TOGETHER</div></div>
         <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${longest}</div><div class="muted" style="font-size:10px">LONGEST</div></div>`}
         <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${curWeek.att}</div><div class="muted" style="font-size:10px">REVIEWS THIS WK</div></div>
       </div>
@@ -19719,7 +19721,7 @@ function _dailyPathModel(){
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
     { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
-    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
+    { key:'convo',    mode:'Talk',           title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
   ];
   steps.forEach(s => { s._done = !!_dp.done[s.key] || !!s.auto; });
   const curIdx = steps.findIndex(s => !s._done);
@@ -19851,12 +19853,12 @@ function renderHome(){
   const heroCard = `
     <div class="h8-hero">
       <div class="h8-hero-deco emoji">💬</div>
-      <div class="h8-hero-eyebrow">おしゃべり</div>
-      <div class="h8-hero-title">${esc(_convoInfo.name)}${_convoInfo.en ? ` <span style="font-size:13px;font-weight:600;opacity:.75">· ${esc(_convoInfo.en)}</span>` : ''}</div>
+      <div class="h8-hero-eyebrow">TALK</div>
+      <div class="h8-hero-title">${esc(_convoInfo.en || _convoInfo.name)}${_convoInfo.name ? ` <span style="font-family:'Noto Sans JP';font-size:13px;font-weight:600;opacity:.75">· ${esc(_convoInfo.name)}</span>` : ''}</div>
       <div class="h8-hero-meta">Talk it out — AI-led, multi-turn, zero judgment</div>
       <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:12px"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
       <div style="font-size:11px;color:rgba(255,255,255,.72);margin-top:4px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
-      <button class="h8-hero-cta" style="margin-top:12px" onclick="nav('convo')">💬 Start おしゃべり</button>
+      <button class="h8-hero-cta" style="margin-top:12px" onclick="nav('convo')">💬 Start talking</button>
     </div>`;
 
   const dp = _dailyPathModel();
@@ -20024,10 +20026,10 @@ function _obRenderOb0(){
   return `
     <div class="ob-screen">
       <div class="ob-emoji">💬</div>
-      <div class="ob-title">まちがえても だいじょうぶ</div>
-      <div class="ob-sub">It's okay to make mistakes.</div>
+      <div class="ob-title">It's okay to make mistakes</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">まちがえても だいじょうぶ</div>
       <div class="ob-body">Isshin is a real, zero-judgment conversation partner — not a quiz. We'll ease you in with one short spoken exchange, no score, no signup.</div>
-      <button class="ob-cta" onclick="obGoto('ob1')">はじめる →</button>
+      <button class="ob-cta" onclick="obGoto('ob1')">Start →</button>
     </div>`;
 }
 function _obRenderOb1(){
@@ -20035,16 +20037,16 @@ function _obRenderOb1(){
   return `
     <div class="ob-screen">
       <div class="ob-emoji">🎌</div>
-      <div class="ob-title">どちらから はじめますか？</div>
-      <div class="ob-sub">Where should we start?</div>
+      <div class="ob-title">Where should we start?</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">どちらから はじめますか？</div>
       <button class="ob-path-card" onclick="obSelectPath('beginner')">
         <div class="ob-path-em">🔰</div>
-        <div class="ob-path-t">はじめて — Beginner</div>
+        <div class="ob-path-t">Beginner — はじめて</div>
         <div class="ob-path-s">Total beginner — meet your partner &amp; try one spoken exchange</div>
       </button>
       <button class="ob-path-card" onclick="obSelectPath('router')">
         <div class="ob-path-em">⚡</div>
-        <div class="ob-path-t">すこし わかる — I know a little</div>
+        <div class="ob-path-t">I know a little — すこし わかる</div>
         <div class="ob-path-s">Answer up to 3 quick questions so we place you right (skippable)</div>
       </button>
     </div>`;
@@ -20061,19 +20063,19 @@ function _obRenderOb2(){
     return `
       <div class="ob-screen">
         <div class="ob-emoji">🙋</div>
-        <div class="ob-title">みさきに あいましょう</div>
-        <div class="ob-sub">Meet your partner</div>
+        <div class="ob-title">Meet Misaki</div>
+        <div class="ob-sub" style="font-family:'Noto Sans JP'">みさきに あいましょう</div>
         <div class="ob-body">Your browser doesn't support voice input here, so we'll do this with taps instead of your mic.</div>
-        <button class="ob-cta" onclick="obGoto('${ob.path==='beginner'?'ob3a':'ob3b'}')">つづける →</button>
+        <button class="ob-cta" onclick="obGoto('${ob.path==='beginner'?'ob3a':'ob3b'}')">Continue →</button>
       </div>`;
   }
   return `
     <div class="ob-screen">
       <div class="ob-emoji">🙋</div>
-      <div class="ob-title">みさきに あいましょう</div>
-      <div class="ob-sub">Meet your partner</div>
+      <div class="ob-title">Meet Misaki</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">みさきに あいましょう</div>
       <div class="ob-body">We're about to talk a little. Is it okay to use your microphone? If not, chips work just as well.</div>
-      <button class="ob-cta" onclick="obMicAllow()">🎤 マイクを つかう</button>
+      <button class="ob-cta" onclick="obMicAllow()">🎤 Use my mic</button>
     </div>`;
 }
 
@@ -20135,13 +20137,13 @@ function _obRenderOb3a(){
   if(turn.kind === 'name'){
     control = `
       <input id="obNameInput" class="ob-input" type="text" maxlength="24" placeholder="Name" value="${esc(ob.name)}" autocomplete="off">
-      <button class="ob-cta" onclick="obNameSubmit()">すすむ →</button>`;
+      <button class="ob-cta" onclick="obNameSubmit()">Next →</button>`;
   } else if(voiceMode && turn.kind === 'chip'){
     control = ob.listening
-      ? `<div class="ob-listening">🎤 きいています…</div>`
-      : `<button class="ob-cta ob-mic" onclick="obListenTurn()">🎤 はなす</button>`;
+      ? `<div class="ob-listening">🎤 Listening…</div>`
+      : `<button class="ob-cta ob-mic" onclick="obListenTurn()">🎤 Speak</button>`;
   } else {
-    control = `<button class="ob-cta" onclick="_obTurnAdvance(null)">${esc(turn.chip || 'つづける')}</button>`;
+    control = `<button class="ob-cta" onclick="_obTurnAdvance(null)">${esc(turn.chip || 'Continue →')}</button>`;
   }
   return `
     <div class="ob-screen">
@@ -20150,7 +20152,7 @@ function _obRenderOb3a(){
       <div class="ob-sub">${esc(turn.en)}</div>
       <div class="ob-turn-meta">${ob.turnIdx + 1} / ${OB_SCRIPT_BEGINNER.length}${voiceMode ? '' : ' · chips mode'}</div>
       ${control}
-      <button class="ob-skip" onclick="obGoto('ob4')">スキップ</button>
+      <button class="ob-skip" onclick="obGoto('ob4')">Skip</button>
     </div>`;
 }
 
@@ -20188,7 +20190,7 @@ function _obRenderOb3b(){
       <div class="ob-sub">${esc(q.en)}</div>
       <div class="ob-turn-meta">${ob.routerIdx + 1} / ${OB_ROUTER_QUESTIONS.length}</div>
       <div class="ob-chip-row">${opts}</div>
-      <button class="ob-skip" onclick="obRouterFinish()">スキップ</button>
+      <button class="ob-skip" onclick="obRouterFinish()">Skip</button>
     </div>`;
 }
 
@@ -20212,10 +20214,10 @@ function _obRenderOb4(){
   return `
     <div class="ob-screen">
       <div class="ob-emoji">🎉</div>
-      <div class="ob-title">はじめの いっぽ！</div>
-      <div class="ob-sub">${name ? name + '、' : ''}よく できました！</div>
-      <div class="ob-body">First step done. No score, no pressure — just conversation practice, whenever you're ready.</div>
-      <button class="ob-cta" onclick="obFinish()">ホームへ →</button>
+      <div class="ob-title">First step done!</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">${name ? name + '、' : ''}よく できました！</div>
+      <div class="ob-body">No score, no pressure — just conversation practice, whenever you're ready.</div>
+      <button class="ob-cta" onclick="obFinish()">Go home →</button>
     </div>`;
 }
 
@@ -20453,7 +20455,7 @@ function renderPractice(){
     { key:'sentence', mode:'Sentence Coach', title:'Build a sentence',            meta: 'say one out loud, get coached' },
     { key:'nuance',   mode:'Nuance',         title:'Spot the difference',         meta: 'one tricky look-alike' },
     { key:'memory',   mode:'Memory',         title:'Check your memory',           meta: 'see what’s coming back' },
-    { key:'convo',    mode:'おしゃべり',    title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
+    { key:'convo',    mode:'Talk',           title:'Conversation practice',        meta: 'AI-led · multi-turn · voice-led' }
   ];
   const isDone = s => !!_dp.done[s.key] || !!s.auto;
   let curIdx = pathSteps.findIndex(s => !isDone(s)); if(curIdx < 0) curIdx = -1;
@@ -20487,7 +20489,7 @@ function renderPractice(){
       <button class="h8-row" onclick="nav('convo')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,107,186,.30);flex-shrink:0">💬</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">おしゃべり <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.name)}${_convoInfo.en ? ' · ' + esc(_convoInfo.en) : ''}</span></div>
+          <div class="h8-row-title">Talk <span style="font-size:11px;font-weight:600;color:#c9b3ff;margin-left:4px">${esc(_convoInfo.en || _convoInfo.name)}${_convoInfo.name ? ' · ' + esc(_convoInfo.name) : ''}</span></div>
           <div class="h8-row-meta" style="margin-bottom:4px">AI-led · multi-turn · voice-led</div>
           <div style="height:4px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;width:100%"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
           <div style="font-size:10px;color:#6f6688;margin-top:2px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
@@ -20518,7 +20520,7 @@ function renderPractice(){
   const streakBox = _hideStreak ? '' : `
       <div class="h8-stat">
         <div class="h8-stat-num flame">${streak}</div>
-        <div class="h8-stat-label">いっしょ の ひ</div>
+        <div class="h8-stat-label">Days together</div>
       </div>`;
   const statsRow = `
     <div class="h8-stats" style="${_hideStreak ? 'grid-template-columns:1fr 1fr' : ''}">
@@ -20575,7 +20577,7 @@ function renderPractice(){
      topic picker — still one tap away if you want lesson-by-lesson study. No
      vocabulary is removed; every word is reachable by its topic. */
   const textbookBlock = melChips
-    ? `<details class="textbook-sets"><summary>📘 Textbook lessons (みんな) · ${melCols.length}</summary><div class="scope-row" style="padding-bottom:4px">${melChips}</div></details>`
+    ? `<details class="textbook-sets"><summary>📘 Textbook lessons (Minna no Nihongo) · ${melCols.length}</summary><div class="scope-row" style="padding-bottom:4px">${melChips}</div></details>`
     : '';
   const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· tap ▶ to go hands-free</span></div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
@@ -20941,8 +20943,8 @@ function renderSettings(){
   return `
     <div class="settings-v2">
     <div class="card" style="border:1px solid rgba(167,139,250,.35)">
-      <h3>🔌 AI をつなぐ</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">${(s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and おしゃべり becomes a real conversation. The key is stored only on this device.'}</div>
+      <h3>🔌 Connect AI</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${(s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.'}</div>
       <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
         <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
         <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
@@ -20968,15 +20970,15 @@ function renderSettings(){
         <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">🎙️ Voice mode (works on every drill)</div><div class="word-en">${voiceSupported() ? 'Universal switch — when on, Build Mode and Vocab Blitz both listen for your spoken answer and submit it for you. Close matches count as correct. After 2 STT misses on a card, it falls back to typing so you\'re never stranded. Designed for driving.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
         <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in おしゃべり conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 Talk hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
         <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">💬 recap notes</div><div class="word-en">On: the おしゃべり wrap-up shows up to 3 "words worth another listen" notes + a one-tap practice button. Off: recap is celebration-only, no notes.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 Recap notes</div><div class="word-en">On: the conversation wrap-up shows up to 3 "words worth another listen" notes + a one-tap practice button. Off: recap is celebration-only, no notes.</div></div>
         <input type="checkbox" ${s.convoRecapNotes!==false?'checked':''} onchange="toggleSetting('convoRecapNotes')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🔮 おしゃべり orb (beta)</div><div class="word-en">On: replaces the character avatar in おしゃべり with an animated presence orb that mirrors listening / thinking / speaking. Off: classic avatar header (default).</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔮 Talk orb (beta)</div><div class="word-en">On: replaces the character avatar in conversation mode with an animated presence orb that mirrors listening / thinking / speaking. Off: classic avatar header (default).</div></div>
         <input type="checkbox" ${s.orbMode?'checked':''} onchange="toggleSetting('orbMode')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🔥 「いっしょ の ひ」 streak</div><div class="word-en">Off: hide the daily-practice streak from Home / Practice / Progress. It still counts quietly in the background either way.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔥 "Days together" streak</div><div class="word-en">Off: hide the daily-practice streak from Home / Practice / Progress. It still counts quietly in the background either way.</div></div>
         <input type="checkbox" ${s.hideStreak?'':'checked'} onchange="toggleSetting('hideStreak')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">💬 おしゃべり your name</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 Your name in conversation</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
         <input type="text" value="${esc(s.userName||'')}" oninput="setUserName(this.value)" placeholder="your name" style="width:120px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:14px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
@@ -21060,7 +21062,7 @@ function renderSettings(){
 
     <div class="card">
       <h3>Add a word</h3>
-      <input class="input" id="addJP" placeholder="にほんご (hiragana)">
+      <input class="input" id="addJP" placeholder="hiragana word (e.g. たべる)">
       <div class="spacer"></div>
       <input class="input" id="addEN" placeholder="English meaning">
       <div class="spacer"></div>
@@ -21196,7 +21198,7 @@ async function testAnthropicKey(){
     /* F3 (Delve 7 §5.3): failure names its ONE real cause in plain words, each
        with its one fix — wrong key / no credit on the account / no internet. */
     if(res.ok){
-      if(el) el.textContent = '✅ つながった! — the real conversation is live on this device.';
+      if(el) el.textContent = '✅ Connected! — the real conversation is live on this device.';
     } else {
       let bodyTxt = '';
       try{ bodyTxt = await res.text(); }catch(_e){}
