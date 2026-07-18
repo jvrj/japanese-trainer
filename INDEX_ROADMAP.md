@@ -14,14 +14,15 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 - **Phase 0.5 · Talk-mode orb front door** — canvas orb presence + endless session + Talk-as-boot-screen, gated: the L12a interim probe after stage T2 decides whether the IA flips. **L12a probe status: UNKEYED-TAINTED (2026-07-18 field test ran the canned script) — re-runs KEYED per Delve 7 §8.** → **spec + forge brief: `docs/delve-cycles/6-talk-mode-presence.md`** (Delve 6, round 1 synthesized; forge brief = its §8; ADR-010 pending).
 - **Phase 0.6 · Feedback soul + conversation feel** — **F-TRAIN COMPLETE, all five stages SHIPPED 2026-07-18**: F1 patient mic v8.16 · F2 feedback layer v8.17 · F3 honest modes v8.18 · F4 modules v8.19 · F5 anti-robotic v8.20 (OQ-4 injection review PASS → closed). Awaiting: owner keyed field session on v8.20 (= the Delve-7 calibration verdict + start of the keyed L12a probe), then OQ-1 ladder tuning + OQ-3 non-Pixel probe. → **spec: `docs/delve-cycles/7-feedback-soul.md`** (ADR-011 pending).
 - **Phase 1 · Capped AI proxy + auth** — Supabase Edge Functions proxy w/ global spend ceiling + rate-limit; account/auth; remove BYO-key Settings cards. → `docs/decisions/ADR-004`, `ADR-005`.
-- **Phase 2 · Store-readiness product polish** — onboarding, empty states, world-class UX pass, offline behavior, universal-phone (non-Pixel STT/TTS fallbacks — **runtime hardening shipped early v8.21** 2026-07-18: TTS stall watchdog, paused-synth nudge, no-JA-voice hint, recognizer self-heal, mic-block latch; OQ-3 physical-device probe still open).
+- **Phase 2 · Store-readiness product polish** — onboarding, empty states, world-class UX pass, offline behavior, universal-phone (non-Pixel STT/TTS fallbacks — **runtime hardening shipped early v8.21** 2026-07-18; OQ-3 physical-device probe still open). Competitive punch-list items 5–8 fold in here → `docs/competitive-punch-list-2026-07-18.md`.
 - **Phase 3 · iOS mic spike** — prove WKWebView `getUserMedia` capture works. **GATES the whole native plan.** → `ADR-007`.
 - **Phase 4 · Native wrap + IAP** — Capacitor + RevenueCat entitlement gate (StoreKit 2 / Play Billing). → `ADR-006`, `ADR-007`.
 - **Phase 5 · Store submission** — Apple sign-in (Guideline 4.8), ATT + SKAdNetwork, privacy policy, in-app account deletion. → `docs/delve-cycles/4-market-facts.md`.
 
 ## Investigation backlog
 
-- **UI chrome language for absolute beginners** — owner field-note (2026-07-18): kana labels (はなす etc.) fine for HIM, but a paying day-1 beginner can't read any kana; needs a decision (EN chrome w/ JP content? level-gated labels?) before Phase 2 store polish. → fold into Phase-2 UX pass.
+- **Japanese STT benchmark** (~$50, ~1wk): Whisper Large-v3 vs Deepgram Nova vs Google on learner audio — gates the Phase-1 transcribe-provider choice. → punch-list item 1.
+- **Hosted-TTS decision** (ElevenLabs / CosyVoice 2 vs device-only) — TTS warmth carries the judgment-free feel; weakest on non-Pixel. → punch-list item 6, folds into Phase 1/2.
 
 ## Live decisions (awaiting owner signoff)
 
@@ -35,6 +36,7 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Recently closed
 
+- **UI chrome language decided + shipped** (v8.22, 2026-07-18): owner call — English-primary chrome, kana demoted to accents; learning content stays kana-only.
 - Example sentences for 134 function words + 💬 peek (v8.06, **uncommitted**).
 - Vocab dedupe + gloss cleanup → 1702 words (v8.04–8.05).
 - STT downgraded to a turn-trigger, not a grader (v8.03).
