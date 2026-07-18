@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.13';
+const APP_VERSION = '8.14';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -10455,6 +10455,16 @@ function _orbSet(newState, meta){
 }
 /* ===================== END ORB PRESENCE ===================== */
 
+/* _convoScriptedBanner — honest-mode disclosure (owner field-note 2026-07-18).
+   With no API key on this device, おしゃべり silently served the canned
+   _convoScript loop and the owner spent a session believing the AI was
+   ignoring him. Never fake the AI: whenever the key is absent, every convo
+   render carries this banner. Static copy only — no state-derived strings. */
+function _convoScriptedBanner(){
+  if((state.settings.anthropicKey || '').trim()) return '';
+  return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b>Scripted practice mode</b> — no AI is connected on this device, so replies follow a fixed script and can't respond to what you actually say. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Add your API key in Settings</button> to unlock the real conversation.</div>`;
+}
+
 function renderConvo(){
   const cv = state.convo;
   if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
@@ -10472,6 +10482,7 @@ function renderConvo(){
   if(cv._frozen && cur && cur.jp){
     return `<div style="padding:2px 2px 24px">
       ${_convoHeader(cv)}
+      ${_convoScriptedBanner()}
       <div style="margin-bottom:12px">
         <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
         ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
@@ -10534,6 +10545,7 @@ function renderConvo(){
       </div>
       <div style="font-size:11px;color:${cv.atSoftCap ? '#fcd34d' : '#6f6688'};flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}${cv.atSoftCap ? ' 🌙' : ''}</div>
     </div>
+    ${_convoScriptedBanner()}
     ${aiLine}
     ${errBlock}
     ${loadingDots}
