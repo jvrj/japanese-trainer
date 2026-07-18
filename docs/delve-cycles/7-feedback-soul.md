@@ -717,6 +717,14 @@ Running any probe before F1 would re-measure the mic pain, not the design.
 - **OQ-4:** `cv.facts` prompt-injection surface — learner utterances enter the system
   string. Mitigation sketch (kana-normalized, punctuation-stripped, 40-char cap per
   fact) needs the code-reviewer's eye.
+  **CLOSED 2026-07-18 (F5 ship, v8.20): independent security review PASS.** Shipped
+  mitigation is STRICTER than the sketch — kata-folded strict kana whitelist
+  `[^ぁ-ゖー]` (ASCII/digits/quotes/newlines/kanji all stripped; `_stripKanji` alone
+  would have passed ASCII through), 40-char cap, max 10, dupe-skip, quote-framing
+  label + post-facts constraint restatement (reviewer finding #8 sandwich pattern).
+  Residual: hiragana-phrased imperatives survive by design (unclosable by character
+  filtering); reviewer judged containment adequate, blast radius = one broken turn,
+  no HTML sink. Revisit alongside Phase-1 hosted keys (reviewer findings #7/#9).
 - **OQ-5:** Module `poolBias` (topic-tagged pool seeding) — parked; revisit after v1
   modules prove felt-purpose without it.
 - **OQ-6:** Style-dial position adoption — if >50% of early users pick 「ただ はなす」,
