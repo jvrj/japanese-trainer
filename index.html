@@ -673,7 +673,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.15';
+const APP_VERSION = '8.16';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9337,11 +9337,21 @@ async function _convoCall(messages, systemStr){
   const key = (state.settings.anthropicKey || '').trim();
   if(!key) throw new Error('nokey');
   const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify({ model, max_tokens: 400, system: systemStr || '', messages: messages })
-  });
+  /* F1 (v8.16): 30s hard timeout — a hung fetch on flaky mobile network left
+     cv.loading true forever, which hid the mic and made every tap a no-op. */
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), 30000) : null;
+  let res;
+  try{
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model, max_tokens: 400, system: systemStr || '', messages: messages }),
+      signal: ctrl ? ctrl.signal : undefined
+    });
+  } finally {
+    if(timer) clearTimeout(timer);
+  }
   if(!res.ok) throw new Error('http ' + res.status);
   const data = await res.json();
   return (data && data.content || []).map(c => c.text || '').join('').trim();
@@ -9882,75 +9892,117 @@ function convoChipTap(chipText){ convoTapChip(chipText); }
 window.convoChipTap = convoChipTap;
 
 /* convoStartListen / convoStopListen — STT integration (low-level; prefer convoToggleListen for hands-free loop) */
-function convoStartListen(){
-  const cv = state.convo; if(!cv || cv.loading || cv.done || cv.listening) return;
-  if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
-  cv.listening = true; cv.interim = ''; cv._best = ''; cv._ended = false; cv.error = null;
-  render();
-  startVoice(
-    (alts) => {
-      const t = (alts && alts[0] && alts[0].transcript) || '';
-      if(t){ cv._best = t; const el = document.getElementById('convoInterim'); if(el) el.textContent = t; }
-    },
-    (err) => {
-      if(!cv || cv._ended) return; cv._ended = true; cv.listening = false;
-      if(err){ cv.error = _sttErrMsg(err); render(); return; }
-      const heard = (cv._best || '').trim();
-      if(heard) convoTurn(heard, true); else render();
-    },
-    'ja-JP'
-  );
-}
+/* ── F1 patient mic (Delve 7 §4.2, v8.16) ─────────────────────────────────
+   A beginner needs 15–30s to COMPOSE a sentence; Android SR gives up after
+   ~5s of silence. The patient window owns lifecycle state ABOVE the
+   per-recognition guards (Delve 7 QA-7): the recognizer may end as many
+   times as it likes inside the 90s window — we silently re-arm it (250ms
+   gap, cap 20) until the learner speaks, taps Stop, or the window expires.
+   Benign ends (no-speech / aborted / clean end with no transcript) show NO
+   error and never surface as failure. Once speech lands, the 6s post-speech
+   finalize timer governs — speech-then-silence still submits fast. The 90s
+   value + silent-restart claim are contingent on the OQ-3 non-Pixel device
+   probe (L8); tune the constants, not the shape. */
+const CONVO_LISTEN_WINDOW_MS = 90000;
+const CONVO_RESTART_GAP_MS = 250;
+const CONVO_RESTART_CAP = 20;
+
+function convoStartListen(){ convoToggleListen(); }
 window.convoStartListen = convoStartListen;
 
 function convoStopListen(){
   const cv = state.convo; if(!cv) return;
+  cv._listenUntil = 0;                              /* close the patient window */
+  cv._listenToken = (cv._listenToken || 0) + 1;     /* invalidate queued re-arms + stale recognizer callbacks */
   if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
-  stopVoice(); cv.listening = false; render();
+  if(cv._restartTimer){ clearTimeout(cv._restartTimer); cv._restartTimer = null; }
+  stopVoice(); cv.listening = false;
+  /* Preserve speech-then-stop submit: whatever was heard rides the turn */
+  const heard = (cv._best || '').trim(); cv._best = '';
+  if(heard){ convoTurn(heard, true); return; }      /* convoTurn renders */
+  _orbSet('idle', null);
+  render();
 }
 window.convoStopListen = convoStopListen;
 
-/* convoToggleListen — arms the mic for the hands-free loop.
-   Used as the _buildSpeakJP onDone callback (replaces direct convoStartListen calls).
-   Sets a ~6-second hard-silence timeout (belt-and-braces, matching spam-mode pattern):
-   if STT returns no speech within 6 s the mic closes automatically. The timer is reset
-   each time STT delivers any interim transcript, so continuous speech holds the mic open. */
+/* convoToggleListen — arms the patient mic for the hands-free loop.
+   Used as the _buildSpeakJP onDone callback and the 🎙 button. */
 function convoToggleListen(){
-  const cv = state.convo; if(!cv || cv.loading || cv.done || cv.listening) return;
+  const cv = state.convo; if(!cv || cv.loading || cv.done) return;
+  if(cv.listening){
+    /* Stuck-state self-heal: UI thinks it's listening but the shared
+       recognizer is dead — reset and reopen. A live recognizer means a
+       hands-free double-fire: ignore the call. */
+    if(state.voiceListening) return;
+    cv.listening = false;
+  }
   if(!voiceSupported()){ cv.error = 'Mic unavailable — tap a chip.'; render(); return; }
   if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
-  cv.listening = true; cv.interim = ''; cv._best = ''; cv._ended = false; cv.error = null;
+  if(cv._restartTimer){ clearTimeout(cv._restartTimer); cv._restartTimer = null; }
+  cv._listenUntil = Date.now() + CONVO_LISTEN_WINDOW_MS;
+  cv._restarts = 0;
+  const token = cv._listenToken = (cv._listenToken || 0) + 1;
+  cv.listening = true; cv.interim = ''; cv._best = ''; cv.error = null;
   /* orb seam (3/5, sprint: orb): the synchronous cv.listening=true set above -> listening */
   _orbSet('listening', null);
   render();
-  /* Arm the belt-and-braces silence guard */
-  const _armSilenceTimer = () => {
+
+  /* Finalize 6s after the LAST speech activity — armed only once speech
+     exists, so pre-speech thinking time is governed by the 90s window alone. */
+  const armSilenceTimer = () => {
     if(cv._silenceTimer) clearTimeout(cv._silenceTimer);
     cv._silenceTimer = setTimeout(() => {
       cv._silenceTimer = null;
-      if(state.convo && state.convo.listening) convoStopListen();
+      if(state.convo === cv && cv.listening && cv._listenToken === token) convoStopListen();
     }, 6000);
   };
-  _armSilenceTimer();
-  startVoice(
-    (alts) => {
-      const t = (alts && alts[0] && alts[0].transcript) || '';
-      if(t){
-        cv._best = t;
-        _armSilenceTimer(); /* reset 6 s window on any speech activity */
-        const el = document.getElementById('convoInterim');
-        if(el) el.textContent = t;
-      }
-    },
-    (err) => {
-      if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
-      if(!cv || cv._ended) return; cv._ended = true; cv.listening = false;
-      if(err){ cv.error = _sttErrMsg(err); render(); return; }
-      const heard = (cv._best || '').trim();
-      if(heard) convoTurn(heard, true); else render();
-    },
-    'ja-JP'
-  );
+
+  const arm = () => {
+    if(state.convo !== cv || cv._listenToken !== token || !cv.listening) return;
+    cv._ended = false;                              /* per-recognition guard reset (QA-7) */
+    startVoice(
+      (alts) => {
+        const t = (alts && alts[0] && alts[0].transcript) || '';
+        if(t){
+          cv._best = t;
+          armSilenceTimer();                        /* speech happened — post-speech finalize governs now */
+          const el = document.getElementById('convoInterim');
+          if(el) el.textContent = t;
+        }
+      },
+      (err) => {
+        if(state.convo !== cv || cv._listenToken !== token) return;
+        if(cv._ended) return; cv._ended = true;
+        const heard = (cv._best || '').trim();
+        if(heard){                                  /* got speech: submit, window done */
+          if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
+          cv._listenUntil = 0; cv.listening = false; cv._best = '';
+          convoTurn(heard, true);
+          return;
+        }
+        const code = err && err.error;
+        const fatal = code === 'not-allowed' || code === 'service-not-allowed';
+        const windowOpen = Date.now() < (cv._listenUntil || 0);
+        if(!fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
+          cv._restarts++;
+          try{ stopVoice(); }catch(_e){}
+          cv._restartTimer = setTimeout(() => {
+            cv._restartTimer = null;
+            arm();                                  /* silent re-arm: the learner is thinking, not failing */
+          }, CONVO_RESTART_GAP_MS);
+          return;
+        }
+        /* Window expired / cap hit / fatal error: quiet close — an error
+           banner only for the fatal (mic-permission) case, never for silence. */
+        cv.listening = false; cv._listenUntil = 0;
+        if(fatal) cv.error = _sttErrMsg(err);
+        _orbSet('idle', null);
+        render();
+      },
+      'ja-JP'
+    );
+  };
+  arm();
 }
 window.convoToggleListen = convoToggleListen;
 
@@ -10515,7 +10567,7 @@ function renderConvo(){
     ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
         <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · はなして</div>
+          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · ゆっくり で いいよ</div>
           <div id="convoInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px">${esc(cv.interim||'…')}</div>
         </div>
         <button onclick="convoStopListen()" style="padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
