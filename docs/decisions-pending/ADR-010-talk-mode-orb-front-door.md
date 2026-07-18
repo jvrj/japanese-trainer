@@ -68,3 +68,14 @@ mood. A rejection at the L12a gate is not a reversal — nothing shipped to reve
   accepted cost ≤1 gesture vs today, resume chip pinned topmost in the drawer.
 - ADR-008's index row and status line are updated only at promotion time (human step —
   this file's presence in `docs/decisions-pending/` changes nothing in `docs/decisions/`).
+
+## Pointer — L12a probe status (Delve 7, 2026-07-18)
+
+The owner's 2026-07-18 field test is **UNKEYED-TAINTED as L12a evidence**: his phone
+had no API key, so every session silently ran the canned `_CONVO_SCRIPT_TURNS` script
+— the "no difference / doesn't respond to what I said" read measured the script, not
+the endless engine. That run is **void** for this gate (neither a positive nor a
+rejecting read). L12a re-runs **KEYED**, in two touches per Delve 7
+(`docs/delve-cycles/7-feedback-soul.md` §8): a calibration session immediately after
+Stage F1 (mic patience), then the full ≥5-session probe after F1+F2. Pointer only —
+the gate's numbers and consequences above are unchanged.
