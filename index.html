@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.18';
+const APP_VERSION = '8.19';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2857,18 +2857,26 @@ function _convoSafeName(){
 
 /**
  * SCENES — closed bank of conversation scenarios for oshaberi.
- * Each entry: { id, nameJP, minLevel }
+ * Each entry: { id, nameJP, minLevel } + F4 module fields (Delve 7 §6):
  *   id        — machine key used as LS discriminator
  *   nameJP    — kana-only display label (no kanji — project invariant)
  *   minLevel  — minimum convoLevel required to unlock this scene
+ *   goalJP    — felt purpose, shown once at session start (kana-only)
+ *   target    — communicated exchanges (cv.mTurn) to module completion
+ *   directive — one preamble line steering the conversation (static, trusted)
+ * A "module" is a DATA ROW consumed by the one talk loop — never a mode, never
+ * a screen, never an engine (L13). The identifier stays SCENES: a top-level
+ * `const MODULES` already exists (vocab-progression, CR-1) — "module" is
+ * learner-facing UX vocabulary for the talk sheet only. FREE_SCENE stays
+ * target-less and goal-less: free talk is NOT a module (§6.2).
  */
 const SCENES = [
-  { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1 },
-  { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1 },
-  { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1 },
-  { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2 },
-  { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2 },
-  { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3 },
+  { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1, goalJP:'じぶんの ことを はなせる',   target:6, directive:'Steer gently toward self-introduction: name, where they live, what they like.' },
+  { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1, goalJP:'たべものの はなしが できる', target:6, directive:'Steer gently toward food: likes, dislikes, what they ate today.' },
+  { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1, goalJP:'かぞくの はなしが できる',   target:6, directive:'Steer gently toward family: who is in it, what they do together.' },
+  { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2, goalJP:'まちの はなしが できる',     target:8, directive:'Steer gently toward the town: places, going somewhere, what is nearby.' },
+  { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2, goalJP:'まいにちの ことを はなせる', target:8, directive:'Steer gently toward daily life: mornings, work or school, evenings.' },
+  { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3, goalJP:'すきな ことを はなせる',     target:8, directive:'Steer gently toward hobbies: what they enjoy, when, with whom.' },
 ];
 
 /**
@@ -9665,7 +9673,16 @@ function startConvo(sceneId, seedMessages){
   const pool = _buildSpamPick(getActiveWords(), 8);
   /* Pick a random character to host this session (gives the AI an identity, not "Isshin") */
   const partner = _convoPickPartner();
-  const preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner, scene.id);
+  let preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner, scene.id);
+  /* F4 (Delve 7 §6.3): module directive + wrap flavor. Static trusted strings
+     from the SCENES const only. The wrap directive is FLAVOR — completion is
+     client-owned and deterministic (cv.mTurn >= target, QA-5), never hung on
+     the model obeying this line. FOLLOW THE LEARNER still wins inside it. */
+  if(scene.directive && scene.target){
+    preamble += '\n\nMODULE FOCUS: ' + scene.directive
+      + ' The FOLLOW THE LEARNER rule still wins — if the learner goes elsewhere, go with them, and only drift back gently.'
+      + ' When you two have talked a lot about this topic, celebrate what you talked about and ask if they want to keep chatting.';
+  }
   /* (b) Fresh reset — never merge over a prior session.
      maxTurns, and other tier params come from convoLevelInfo() (not hardcoded). */
   state.convo = {
@@ -9710,6 +9727,11 @@ function startConvo(sceneId, seedMessages){
     _pulseTs: null,          /* F2 (§3.4) — timestamp of the last confirm/recast gold pulse; render window <700ms so re-renders never replay it */
     _lastRecastTurn: null,   /* F2 (QA-3) — cv.turn value of the last RENDERED recast; drives the 1-in-3 throttle in _convoNormFeedback */
     scriptEnded: false,      /* F3 (§5.1) — keyless demo played its one full script cycle; renderConvo shows the honest end card */
+    mTurn: 0,                /* F4 (§6.3, QA-1) — communicated exchanges: score-2 non-clarify turns ONLY (cv.turn semantics untouched); drives the module arc + target */
+    target: scene.target || null,  /* F4 — module completion target; null (free talk / legacy) = no arc, never wraps */
+    moduleDone: false,       /* F4 (QA-5) — client-owned deterministic completion flag, set once at mTurn >= target */
+    _moduleCardGone: false,  /* F4 — completion card dismissed (もっと はなす chose to keep going) */
+    _completedModule: null,  /* F4 — module id recorded on completion; appended to this session's convoLog row */
   };
   save();
   nav('convo');
@@ -9841,6 +9863,10 @@ async function convoTurn(userText, viaVoice){
     /* (a) Pass path: high landed — use model's JP reply and advance turn counter */
     cv.turn++;
     didAdvance = true;
+    /* F4 (QA-1): the module counter counts COMMUNICATED exchanges only —
+       score-2 turns whose feedback is not clarify. cv.turn (which also
+       advances on score-0 turns) keeps its session semantics untouched. */
+    if(!fb || fb.type !== 'clarify') cv.mTurn = (cv.mTurn || 0) + 1;
     cv.messages.push({ role:'assistant', content: aiJP });
     _convoCapMessages(cv);
     cv.current = parsed;
@@ -9894,6 +9920,15 @@ async function convoTurn(userText, viaVoice){
 
   /* Store judged for the next convoApplyScore call */
   cv.judged = parsed.judged || null;
+
+  /* F4 (Delve 7 §6.3, QA-5): module completion is CLIENT-OWNED and deterministic
+     — it fires at mTurn >= target regardless of whether the model obeyed the
+     wrap directive (the directive is flavor, never the trigger). Free talk and
+     legacy sessions have no target and never wrap. */
+  if(cv.target && !cv.moduleDone && (cv.mTurn || 0) >= cv.target){
+    cv.moduleDone = true;
+    cv._completedModule = cv.sceneId;
+  }
 
   /* Apology overrides whatever the ladder set — double-miss always wins the display */
   if(_apology) cv.error = _apology;
@@ -10044,6 +10079,7 @@ function convoEnd(){
     minutes: _minutes,
     spokenTurns: cv.spokenTurns || 0,
     newWordsSpoken: (cv.usedUnaidedly || []).length,
+    module: cv._completedModule || null,  /* F4 (§6.3) — module id when a module completed this session */
   });
   if(state.convoLog.length > 60) state.convoLog = state.convoLog.slice(-60);
   save();
@@ -10104,6 +10140,9 @@ window.convoStopListen = convoStopListen;
    Used as the _buildSpeakJP onDone callback and the 🎙 button. */
 function convoToggleListen(){
   const cv = state.convo; if(!cv || cv.loading || cv.done) return;
+  /* F4: the completion card owns the turn — no invisible auto-mic under it.
+     Dismissing the card (もっと はなす) restores the normal hands-free loop. */
+  if(cv.moduleDone && !cv._moduleCardGone) return;
   if(cv.listening){
     /* Stuck-state self-heal: UI thinks it's listening but the shared
        recognizer is dead — reset and reopen. A live recognizer means a
@@ -10240,6 +10279,44 @@ function convoRecastPeek(){
 }
 window.convoRecastPeek = convoRecastPeek;
 
+/* ── F4 module completion actions (Delve 7 §6.3) ─────────────────────────
+   Exit/re-entry is judgment-free: leaving mid-module is a normal session end,
+   no persisted debt, no "resume module?" nag — re-entering starts fresh. */
+
+/* もっと はなす — convert the session to free talk IN PLACE: same messages
+   window, same partner, no restart. The module id is already recorded for
+   this session's convoLog row. */
+function convoModuleMore(){
+  const cv = state.convo; if(!cv || !cv.moduleDone) return;
+  cv._moduleCardGone = true;
+  cv.sceneId = 'free';
+  cv.scene = FREE_SCENE;
+  cv.target = null;
+  /* Strip the module steer from the preamble — from here it is free talk */
+  cv.preamble = String(cv.preamble || '').split('\n\nMODULE FOCUS:')[0];
+  save(); render();
+}
+window.convoModuleMore = convoModuleMore;
+
+/* べつの モジュール — normal session end (SRS/log applied via convoEnd), then
+   straight to the picker instead of the recap card. */
+function convoModulePick(){
+  const cv = state.convo; if(!cv) return;
+  convoEnd();
+  state.convo = null;
+  save(); render();
+}
+window.convoModulePick = convoModulePick;
+
+/* convoArcPeek — tap the progress arc → volume peek 「あと N」. No numbers on
+   the arc by default; never accuracy language (ADR-009). */
+function convoArcPeek(){
+  const cv = state.convo; if(!cv || !cv.target) return;
+  const left = Math.max(0, cv.target - (cv.mTurn || 0));
+  if(typeof showToast === 'function') showToast('あと ' + left, {tone:'info', duration:2000});
+}
+window.convoArcPeek = convoArcPeek;
+
 /* convoReplay — replay AI's kana question at normal TTS rate */
 function convoReplay(){
   const cv = state.convo; if(!cv || !cv.current || !cv.current.jp) return;
@@ -10295,8 +10372,16 @@ function _convoPartnerHeader(cv){
      emoji when the orb isn't mounted — the default user perceives every confirm.
      <700ms render window so re-renders never replay the animation. */
   const _bloom = (cv && cv._pulseTs && (Date.now() - cv._pulseTs) < 700) ? 'animation:convoGoldBloom .45s ease-out;' : '';
+  /* F4 (§6.3): thin module progress arc around the avatar — production VOLUME,
+     never accuracy (ADR-009); no numbers on it; tap → 「あと N」 peek. Sessions
+     with no target (free talk / legacy) render no arc. */
+  const _arcFrac = (cv && cv.target) ? Math.max(0, Math.min(1, (cv.mTurn || 0) / cv.target)) : null;
+  const _avatar = `<div style="${_bloom}width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:25px;background:${esc(p.color)}22;border:2px solid ${esc(p.color)}">${esc(p.emoji)}</div>`;
+  const _avatarWrapped = (_arcFrac !== null)
+    ? `<div onclick="convoArcPeek()" style="width:54px;height:54px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;background:conic-gradient(rgba(255,200,80,.85) ${Math.round(_arcFrac*360)}deg, rgba(255,255,255,.08) 0)">${_avatar}</div>`
+    : _avatar;
   return `<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
-    <div style="${_bloom}width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:25px;background:${esc(p.color)}22;border:2px solid ${esc(p.color)}">${esc(p.emoji)}</div>
+    ${_avatarWrapped}
     <div style="min-width:0">
       <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
       <div style="font-weight:800;font-size:17px;font-family:'Noto Sans JP';line-height:1.15">${esc(p.name)}</div>
@@ -10312,11 +10397,19 @@ function _convoOrbHeader(cv){
   /* F2 (§3.4): same gold pulse as the non-orb header, applied as a CSS bloom on the
      canvas element — identical for confirm and recast, no orb-internal state added. */
   const _bloom = (cv && cv._pulseTs && (Date.now() - cv._pulseTs) < 700) ? 'animation:convoGoldBloom .45s ease-out;' : '';
+  /* F4 (§6.3): orb-mode module progress — same volume-only arc semantics as the
+     avatar ring, rendered as a thin fill bar under the orb name (the canvas
+     itself is never touched). Tap → 「あと N」 peek. */
+  const _arcFrac = (cv && cv.target) ? Math.max(0, Math.min(1, (cv.mTurn || 0) / cv.target)) : null;
+  const _arcBar = (_arcFrac !== null)
+    ? `<div onclick="convoArcPeek()" style="width:120px;height:4px;border-radius:4px;margin:7px auto 0;cursor:pointer;background:rgba(255,255,255,.08);overflow:hidden"><div style="width:${Math.round(_arcFrac*100)}%;height:100%;border-radius:4px;background:linear-gradient(90deg,rgba(255,200,80,.85),#ffd98a)"></div></div>`
+    : '';
   return `<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:13px">
     <canvas id="orbCanvas" aria-hidden="true" style="${_bloom}width:min(72vw,300px);height:min(72vw,300px);max-width:100%;display:block"></canvas>
     <div style="text-align:center;margin-top:4px">
       <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">おしゃべり 💬</div>
       <div style="font-weight:800;font-size:15px;font-family:'Noto Sans JP';margin-top:2px">${esc(p.name)}</div>
+      ${_arcBar}
     </div>
   </div>`;
 }
@@ -10729,7 +10822,26 @@ function _renderConvoScriptEnd(cv){
 
 function renderConvo(){
   const cv = state.convo;
-  if(!cv) return `<div class="card"><div class="muted">セッションがありません。</div><button class="btn btn-primary" style="margin-top:12px" onclick="startConvo('intro')">はじめる</button></div>`;
+  /* F4 (Delve 7 §6.2) — the talk sheet: フリートーク first (default, visually
+     primary), then the module rows — one line each (nameJP + goalJP), gated by
+     tier. A module is a data row into the one loop; this list iterates SCENES
+     and FREE_SCENE stays deliberately outside it. */
+  if(!cv){
+    const _lv = convoLevelInfo().lv;
+    const _mods = SCENES.filter(s => s.minLevel <= _lv);
+    return `<div style="padding:2px 2px 24px">
+      <div style="margin-bottom:14px">
+        <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">おしゃべり 💬</div>
+        <div class="muted" style="font-size:12px;margin-top:2px">はなしたい ことを えらんでね</div>
+      </div>
+      ${_convoScriptedBanner()}
+      <button onclick="startConvo('free')" style="width:100%;padding:17px;border:none;border-radius:16px;font-family:'Noto Sans JP',inherit;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:12px;text-align:left">🗣 フリートーク<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:3px">なんでも はなそう</div></button>
+      ${_mods.map(m => `<button onclick="startConvo('${jsEsc(m.id)}')" style="width:100%;display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:13px 15px;border:1px solid rgba(157,92,255,.3);border-radius:13px;background:rgba(157,92,255,.07);color:#e8def8;font-family:inherit;cursor:pointer;margin-bottom:7px;text-align:left">
+        <span style="font-family:'Noto Sans JP';font-weight:800;font-size:15px;flex-shrink:0">${esc(m.nameJP)}</span>
+        <span style="font-family:'Noto Sans JP';font-size:11px;color:#a99fc7;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.goalJP || m.en || '')}</span>
+      </button>`).join('')}
+    </div>`;
+  }
   if(cv.done && cv.recap) return _renderConvoRecap(cv);
   if(cv.scriptEnded) return _renderConvoScriptEnd(cv);   /* F3 §5.1 — keyless demo played its one cycle */
 
@@ -10823,12 +10935,28 @@ function renderConvo(){
   const devLatency = (typeof _isDevMode === 'function' && _isDevMode() && cv.lastLatencyMs != null)
     ? `<div class="muted" style="font-size:10px;text-align:right;margin-top:2px;opacity:.6">⏱ dev: last turn ${cv.lastLatencyMs}ms</div>` : '';
 
+  /* F4 (§6.3) — client-owned completion card: renders once mTurn >= target
+     resolved (deterministic; the model's in-character wrap is flavor). Replaces
+     the input area until dismissed: keep going (free talk, in place), pick
+     another module, or wrap up with the recap. */
+  const _doneScene = (cv.moduleDone && !cv._moduleCardGone)
+    ? (SCENES.find(s => s.id === cv._completedModule) || cv.scene || {}) : null;
+  const moduleCard = _doneScene
+    ? `<div class="card" style="border:1px solid rgba(255,200,80,.45);text-align:center;padding:18px 16px;margin-bottom:12px">
+        <div style="font-size:30px;margin-bottom:6px">🎉</div>
+        <div style="font-family:'Noto Sans JP';font-weight:800;font-size:16px;line-height:1.5;margin-bottom:12px">${esc(_doneScene.goalJP || '')} — たくさん はなした ね！</div>
+        <button onclick="convoModuleMore()" style="width:100%;padding:14px;border:none;border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:800;font-size:15px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer;margin-bottom:7px">もっと はなす 💬</button>
+        <button onclick="convoModulePick()" style="width:100%;padding:12px;border:1px solid rgba(157,92,255,.35);border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:13px;color:#d6c2ff;background:rgba(157,92,255,.08);cursor:pointer;margin-bottom:7px">べつの モジュール</button>
+        <button onclick="convoEnd()" style="width:100%;padding:12px;border:1px solid rgba(255,255,255,.15);border-radius:14px;font-family:'Noto Sans JP',inherit;font-weight:700;font-size:13px;color:#cdbfe8;background:rgba(255,255,255,.05);cursor:pointer">またね 👋</button>
+      </div>`
+    : '';
+
   return `<div style="padding:2px 2px 24px">
     ${_convoHeader(cv)}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
       <div>
         <div style="font-weight:800;font-size:22px;letter-spacing:-.4px">${esc((cv.scene && cv.scene.nameJP) || 'かいわ')}</div>
-        ${cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : ''}
+        ${cv.target && cv.scene && cv.scene.goalJP ? `<div style="font-family:'Noto Sans JP';font-size:12px;color:#cdae6e;margin-top:1px">${esc(cv.scene.goalJP)}</div>` : (cv.scene && cv.scene.en ? `<div style="font-size:12px;color:#9a8fb8;margin-top:1px">${esc(cv.scene.en)}</div>` : '')}
       </div>
       <div style="font-size:11px;color:${cv.atSoftCap ? '#fcd34d' : '#6f6688'};flex-shrink:0">ターン ${cv.turn} / ${cv.maxTurns}${cv.atSoftCap ? ' 🌙' : ''}</div>
     </div>
@@ -10836,9 +10964,10 @@ function renderConvo(){
     ${aiLine}
     ${errBlock}
     ${loadingDots}
-    ${listenBanner}
-    <div class="convo-list" style="flex-wrap:wrap;display:flex;margin-bottom:12px">${chipBtns}</div>
-    <div style="text-align:center">${micBtn}</div>
+    ${moduleCard}
+    ${moduleCard ? '' : listenBanner}
+    ${moduleCard ? '' : `<div class="convo-list" style="flex-wrap:wrap;display:flex;margin-bottom:12px">${chipBtns}</div>
+    <div style="text-align:center">${micBtn}</div>`}
     ${devLatency}
   </div>`;
 }
