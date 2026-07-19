@@ -11136,9 +11136,42 @@ function renderConvo(){
       + `<span onclick="convoRecastPeek()" style="cursor:pointer;border-bottom:2px solid rgba(255,200,80,.7);text-shadow:0 0 10px rgba(255,200,80,.4);padding-bottom:1px">${esc(_fb.better)}</span>`
       + esc(cur.jp.slice(_ri + _fb.better.length));
   }
+  /* S1 (ADR-013 §4.4) — teach card: evidence-first auto-open surfacing for
+     teach-grade turns. STRICTLY gated on cv.feedback.teach === true — never
+     merely on a `why` string existing (teach:false stays completely inert
+     here even with why/note populated; that data only ever feeds teachLog).
+     The nuance line (feedback.note) is MANDATORY per the pairing doctrine: a
+     falsy note means no card at all — full stop, early guard clause below —
+     and rendering falls back untouched to the ordinary underline+peek path
+     (recastSheet, further down) exactly as it behaves for every other recast.
+     Ephemeral by construction, same lifecycle class as _recastPeek: cv.feedback
+     (and this card with it) is wholesale replaced every turn in convoTurn, so
+     no stale card can ever survive past the turn that earned it — no separate
+     dismiss flag is needed. English-primary chrome labels pair with the two
+     spec-mandated kana phrases (きこえたのは / しぜんな いいかた) as accents,
+     never the other way around; every model-derived field is esc()-only. */
+  const _teachGrade = !!(_fb && _fb.type === 'recast' && _fb.teach === true);
+  const _teachCardEligible = _teachGrade && !!_fb.note;
+  const teachCard = _teachCardEligible
+    ? `<div style="background:rgba(157,92,255,.08);border:1px solid rgba(157,92,255,.4);border-radius:14px;padding:13px 16px;margin-bottom:10px;font-size:13px;line-height:1.75">
+        <div style="font-weight:800;font-size:11px;letter-spacing:.8px;color:#c9b3ff;margin-bottom:9px">HOW TO SAY IT NATURALLY</div>
+        <div style="font-size:11px;font-weight:700;color:#9a8fb8;letter-spacing:.3px">HEARD <span style="font-family:'Noto Sans JP'">「きこえたのは」</span></div>
+        <div style="font-family:'Noto Sans JP';font-weight:700;color:#c9bfd8;margin:2px 0 8px">${esc(_fb.heard || '')}</div>
+        <div style="font-size:11px;font-weight:700;color:#cdae6e;letter-spacing:.3px">NATURAL WAY <span style="font-family:'Noto Sans JP'">しぜんな いいかた</span></div>
+        <div style="font-family:'Noto Sans JP';font-weight:800;color:#ffe1a8;margin:2px 0 8px">${esc(_fb.better || '')}</div>
+        <div style="font-size:11px;font-weight:700;color:#a99fc7;letter-spacing:.3px">WHY</div>
+        <div style="color:#e8def8;margin:2px 0 8px">${esc(_fb.why || '')}</div>
+        <div style="font-size:11px;font-weight:700;color:#a99fc7;letter-spacing:.3px">NUANCE</div>
+        <div class="muted" style="margin-top:2px;opacity:.85">${esc(_fb.note)}</div>
+      </div>`
+    : '';
+
   /* Peek sheet — auto-opened once ever on the first recast (QA-4 explainer),
-     otherwise tap-to-open; auto-dismissed on the next turn; never stacks. */
-  const recastSheet = (_hasRecast && cv._recastPeek)
+     otherwise tap-to-open; auto-dismissed on the next turn; never stacks.
+     Untouched for every non-teach recast; the teach card above takes over
+     the auto-open slot on teach-grade turns instead (coexistence gate only —
+     added `!_teachCardEligible`, the rest of this branch is unchanged). */
+  const recastSheet = (!_teachCardEligible && _hasRecast && cv._recastPeek)
     ? `<div style="background:rgba(255,200,80,.07);border:1px solid rgba(255,200,80,.35);border-radius:14px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.7">
         ${cv._recastFirst ? `<div style="font-weight:700;color:#ffd98a;margin-bottom:7px">A natural way to say it — not a mistake!</div>` : ''}
         <div style="color:#c9bfd8"><span style="font-size:11px;color:#9a8fb8">You said:</span> <span style="font-family:'Noto Sans JP';font-weight:700">${esc(_fb.heard || '')}</span></div>
@@ -11156,6 +11189,7 @@ function renderConvo(){
          <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="Slower" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
          <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'hide meaning' : 'show meaning'}</button>
        </div>
+       ${teachCard}
        ${recastSheet}
        ${convoWordGloss(cv, cur)}`
     : '';
