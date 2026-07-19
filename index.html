@@ -11151,7 +11151,11 @@ function renderConvo(){
      spec-mandated kana phrases (きこえたのは / しぜんな いいかた) as accents,
      never the other way around; every model-derived field is esc()-only. */
   const _teachGrade = !!(_fb && _fb.type === 'recast' && _fb.teach === true);
-  const _teachCardEligible = _teachGrade && !!_fb.note;
+  /* Mandatory-nuance guard uses a TRIMMED check — a whitespace-only note
+     (' ', '\n', etc.) is falsy-in-spirit and must not slip a visually-blank
+     nuance line past the "card without a nuance line cannot render" rule. */
+  const _teachNote = (_teachGrade && typeof _fb.note === 'string') ? _fb.note.trim() : '';
+  const _teachCardEligible = _teachGrade && !!_teachNote;
   const teachCard = _teachCardEligible
     ? `<div style="background:rgba(157,92,255,.08);border:1px solid rgba(157,92,255,.4);border-radius:14px;padding:13px 16px;margin-bottom:10px;font-size:13px;line-height:1.75">
         <div style="font-weight:800;font-size:11px;letter-spacing:.8px;color:#c9b3ff;margin-bottom:9px">HOW TO SAY IT NATURALLY</div>
@@ -11162,7 +11166,7 @@ function renderConvo(){
         <div style="font-size:11px;font-weight:700;color:#a99fc7;letter-spacing:.3px">WHY</div>
         <div style="color:#e8def8;margin:2px 0 8px">${esc(_fb.why || '')}</div>
         <div style="font-size:11px;font-weight:700;color:#a99fc7;letter-spacing:.3px">NUANCE</div>
-        <div class="muted" style="margin-top:2px;opacity:.85">${esc(_fb.note)}</div>
+        <div class="muted" style="margin-top:2px;opacity:.85">${esc(_teachNote)}</div>
       </div>`
     : '';
 
