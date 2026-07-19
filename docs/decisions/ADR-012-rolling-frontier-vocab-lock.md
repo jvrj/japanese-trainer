@@ -1,6 +1,6 @@
 # ADR-012 — Vocabulary access becomes a rolling-frontier hard lock at the deck choke point
 
-- **Status:** Proposed (PENDING — filed by Delve 8 synthesis; not promoted to `docs/decisions/`; awaiting owner signoff)
+- **Status:** Accepted (owner signoff 2026-07-19 — **FRONTIER_N = 80**, option (a) of the explicit signoff item below)
 - **Date:** 2026-07-19
 - **Source:** Delve 8 — `docs/delve-cycles/8-sensei-vocab.md` (§3, L1–L5, Round 1 synthesis)
 - **Supersedes / superseded by:** resolves and supersedes pending **ADR-003** (non-locking coverage meter) via ADR-003's own reversal trigger — "the user explicitly requests access-locking" — which fired on the owner call of 2026-07-19. ADR-003's permanent wins are preserved (v7.69 module-gate force-off stays; no `getDrillableWords` rewiring; the v7.68 empty-pool bug class must stay impossible).

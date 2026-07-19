@@ -1,6 +1,6 @@
 # ADR-013 — The sensei layer: explicit teaching surface (amends Delve 7 invisibility; stacks on PENDING ADR-011)
 
-- **Status:** Proposed (PENDING — filed by Delve 8 synthesis; awaiting owner signoff. **Flag: this ADR stacks on ADR-011, which is itself pending an un-run keyed acceptance gate** — one keyed field session validates both layers; this ADR deliberately mints no second un-runnable gate.)
+- **Status:** Accepted (owner signoff 2026-07-19. **Standing flag: stacks on ADR-011, which is itself pending an un-run keyed acceptance gate** — one keyed field session after S1+S2 validates both layers; this ADR deliberately mints no second un-runnable gate.)
 - **Date:** 2026-07-19
 - **Source:** Delve 8 — `docs/delve-cycles/8-sensei-vocab.md` (§4, L6–L10, Round 1 synthesis)
 - **Supersedes / superseded by:** AMENDS the surfacing posture of Delve 7 lock L4 (recast invisibility) — machinery kept, surfacing amended. ADR-009 (judgment-free) is inherited untouched; `docs/specs/correction-copy-style-guide.md` governs all new strings.

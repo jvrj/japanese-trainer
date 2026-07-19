@@ -1,6 +1,6 @@
 # ADR-003 — Progressive vocabulary access ships as a non-locking coverage meter
 
-- **Status:** Proposed (PENDING — filed by Delve 2 synthesis; not promoted to `docs/decisions/`; awaiting user signoff)
+- **Status:** Superseded by ADR-012 (2026-07-19 — its own reversal trigger fired: owner explicitly requested access-locking; permanent wins preserved per ADR-012 header)
 - **Date:** 2026-06-27
 - **Source:** Delve 2 — `docs/delve-cycles/2-progressive-vocab.md` (Round 1 synthesis, §14)
 - **Supersedes / superseded by:** consolidates the primary doc's framed ADR-P1 + ADR-P2 (P2 demoted to a decision-note)

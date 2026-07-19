@@ -14,7 +14,7 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 - **Phase 0.5 · Talk-mode orb front door** — canvas orb presence + endless session + Talk-as-boot-screen, gated: the L12a interim probe after stage T2 decides whether the IA flips. **L12a probe status: UNKEYED-TAINTED (2026-07-18 field test ran the canned script) — re-runs KEYED per Delve 7 §8.** → **spec + forge brief: `docs/delve-cycles/6-talk-mode-presence.md`** (Delve 6, round 1 synthesized; forge brief = its §8; ADR-010 pending).
 - **Phase 0.6 · Feedback soul + conversation feel** — **F-TRAIN COMPLETE, all five stages SHIPPED 2026-07-18**: F1 patient mic v8.16 · F2 feedback layer v8.17 · F3 honest modes v8.18 · F4 modules v8.19 · F5 anti-robotic v8.20 (OQ-4 injection review PASS → closed). Awaiting: owner keyed field session on **v8.23+** (v8.20–8.22 keyed convo 400-ed on every turn — empty/assistant-first API window, fixed v8.23; the 2026-07-19 field attempt hit this) = the Delve-7 calibration verdict + start of the keyed L12a probe, then OQ-1 ladder tuning + OQ-3 non-Pixel probe. → **spec: `docs/delve-cycles/7-feedback-soul.md`** (ADR-011 pending).
 - **Phase 1 · Capped AI proxy + auth** — Supabase Edge Functions proxy w/ global spend ceiling + rate-limit; account/auth; remove BYO-key Settings cards. **Owner-sequenced 2026-07-19: runs AFTER talk-loop depth + store-polish (below).** Pricing working assumption: chess.com-shaped tier — drills free/unlimited, 1 full AI conversation/day free, ~$8.99/mo unlimited; trial length = launch A/B. → `docs/decisions/ADR-004`, `ADR-005`, punch-list items 2–4.
-- **Phase 0.7 · Sensei layer + vocab frontier lock** — Delve 8 locks (r1 synthesized 2026-07-19): forge stages S1 card → S2 breath → keyed probe → S3 lock → S4 recap close. → **spec + forge brief: `docs/delve-cycles/8-sensei-vocab.md` §6** (ADR-012/ADR-013 pending).
+- **Phase 0.7 · Sensei layer + vocab frontier lock** — Delve 8 locks (r1 synthesized 2026-07-19): forge stages S1 card → S2 breath → keyed probe → S3 lock → S4 recap close. → **spec + forge brief: `docs/delve-cycles/8-sensei-vocab.md` §6** (ADR-012/ADR-013 **Accepted 2026-07-19**, FRONTIER_N=80; S1+S2 forge next, S3 gated on the keyed probe).
 - **Phase 2 · Store-readiness product polish** — **first sweep SHIPPED v8.25 2026-07-19**: correction-copy style guide (`docs/specs/correction-copy-style-guide.md`, punch item 5) + audit fixes (speak-drill badge, alerts→toasts), store-listing copy draft (`docs/store-listing-copy.md`, item 8), 320px no-overflow verified. Still open: item 7 JP-silence tuning (**waits for keyed field data**, = OQ-1), item 6 hosted-TTS (backlog, needs backend), OQ-3 physical-device probe, offline behavior pass. → `docs/competitive-punch-list-2026-07-18.md`.
 - **Phase 3 · iOS mic spike** — prove WKWebView `getUserMedia` capture works. **GATES the whole native plan.** → `ADR-007`.
 - **Phase 4 · Native wrap + IAP** — Capacitor + RevenueCat entitlement gate (StoreKit 2 / Play Billing). → `ADR-006`, `ADR-007`.
@@ -28,14 +28,12 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Live decisions (awaiting owner signoff)
 
-- **ADR-003 · Progressive vocab access** — its reversal trigger FIRED (owner explicit lock request, 2026-07-19); resolution proposed as ADR-012 below. → `docs/decisions-pending/ADR-003`.
-- **ADR-012 · Rolling-frontier vocab hard lock** — resolves/supersedes ADR-003; **explicit signoff item inside: FRONTIER_N 80 vs the owner's verbatim 1,500**. → `docs/decisions-pending/ADR-012-rolling-frontier-vocab-lock.md`.
-- **ADR-013 · Sensei teaching layer** — teach card + spoken breath, AMENDS Delve-7 invisibility; stacks on PENDING ADR-011 (one keyed session validates both). → `docs/decisions-pending/ADR-013-sensei-teaching-layer.md`.
 - **ADR-010 · Talk-mode orb front door** — supersedes ADR-008's two-door portion, evidence-gated (L12a probe after T2; L12 7-day verdict; L12a re-runs keyed — see its Delve-7 pointer). → `docs/decisions-pending/ADR-010`.
 - **ADR-011 · Corrective-feedback layer** — amends ADR-009 rule 5 (judgment-free feedback IN the conversation); owner-authority pre-cohort amendment, keyed-probe acceptance gate. → `docs/decisions-pending/ADR-011`.
 
 ## Recently decided
 
+- ADR-012 (rolling-frontier vocab lock, **FRONTIER_N=80** owner-chosen) + ADR-013 (sensei teaching layer) — **Accepted, promoted 2026-07-19** → `docs/decisions/`; ADR-003 superseded by ADR-012 (its reversal trigger fired). Build order per Delve 8 §6: S1+S2 → keyed probe → S3+S4.
 - ADR-008 (two-door IA) + ADR-009 (judgment-free spec) — **Accepted, promoted 2026-07-17** → `docs/decisions/`; deletion veto collected same day (all 4 modes cleared for Stage-E removal).
 
 ## Recently closed
