@@ -9411,7 +9411,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
     '  "judged": {"usedWords": ["<wordId of each pool word the learner used>"], "score": <0|1|2>},',
     '  "sceneDone": <true|false>,',
-    '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>"}',
+    '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>", "why": "<OPTIONAL, recast-only, ≤25 English words: the because, naming the nuance direction (e.g. formality/tense/direction/state-vs-event) — never a verdict>"}',
     '}',
     '',
     'FEEDBACK — respond the way a patient native friend does:',
@@ -9421,6 +9421,13 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '- At most ONE move per turn. In doubt between recast and clarify, choose clarify. In doubt between clarify and none, choose none. Never invent a correction.',
     '- The learner\'s words arrive via speech recognition and may be mis-heard. Only offer recast when the utterance is a plausible thing a learner would say AND the fix is a real form/word-choice nuance. If it looks garbled, truncated, or semantically impossible, use clarify and ask. NEVER treat a possible transcription artifact as a learner mistake.',
     '- note is peek-only English describing the nuance (e.g. "past tense: tabeta"). Describe the nuance, never a verdict — words like wrong, incorrect, mistake, error, failed must not appear in it.',
+    '',
+    'WHY (optional, recast-only — the deeper explanation, §4.2):',
+    '- why is ONLY ever present when type is "recast". Never include why for confirm, clarify, or none — leave it out entirely (omit the key) rather than sending an empty string.',
+    '- why is ≤25 English words. It names the BECAUSE — the reason the natural form is used — and explicitly names the nuance direction (e.g. formality, tense, direction, state-vs-event), not just a restatement of note. Use kana for any Japanese example inside why.',
+    '- Offer why ONLY when you are confident the learner actually said what "heard" claims. Speech recognition may mishear: when you are not sure heard is accurate, OMIT why entirely (send the recast without it) or fall back to "clarify" instead of guessing.',
+    '- why explains the Japanese — it never evaluates or judges the learner. It is a teaching note about the language, not a comment on how the learner did.',
+    '- The SAME banned-word list that governs note applies to why, verbatim: wrong, incorrect, failed, fail, mistake, error, score, accuracy, grade, graded must never appear in why.',
     '',
     'Guidelines:',
     '- REACT THEN ASK: open every jp with a genuine, VARIED reaction fragment to what the learner just said (へえ！/ いいね / そうなんだ / ほんと？/ わあ). Never open two consecutive turns with the same word. Never re-ask a question the learner already answered.',
@@ -9489,7 +9496,7 @@ async function _convoCall(messages, systemStr){
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
       headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model, max_tokens: 500, system: systemStr || '', messages: messages }),
+      body: JSON.stringify({ model, max_tokens: 560, system: systemStr || '', messages: messages }),
       signal: ctrl ? ctrl.signal : undefined
     });
   } finally {
