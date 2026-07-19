@@ -9803,6 +9803,71 @@ function _convoSpeakJP(text, onDone){
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
+/**
+ * _convoTeachLineEligible(cv) — S2 (ADR-013 §6.4 / delve-8 §6): pure, side-
+ * effect-free gate deciding whether the spoken teach breath should fire for
+ * the CURRENT turn's cv. Separated out from the call site so it is unit-
+ * testable on synthetic fixtures (mirrors how _convoNormFeedback is tested)
+ * without needing a live convoTurn/TTS round trip for every skip condition.
+ * true only when: a session exists and hasn't ended (!cv.done — a recap
+ * never reaches teach-line territory), this turn isn't chip-only
+ * (!cv.forceChips — double-miss), the style dial isn't 'just-talk' (defense-
+ * in-depth — the normalizer already forces feedback:none there so teach can
+ * never be true via that path, but the dial is checked here too rather than
+ * relying solely on it), and cv.feedback is a teach-grade recast
+ * (type==='recast' && teach===true — never merely a `why` string existing).
+ */
+function _convoTeachLineEligible(cv){
+  return !!(cv && !cv.done && !cv.forceChips
+    && (state.settings.convoStyle || 'friend') !== 'just-talk'
+    && cv.feedback && cv.feedback.type === 'recast' && cv.feedback.teach === true);
+}
+
+/**
+ * _speakTeachLine(fb, onDone) — S2 (ADR-013 §6.4 / delve-8 §6): the spoken half
+ * of teach surfacing. Speaks ONE evidence-first English line assembled from
+ * fb.heard / fb.better / fb.note through FIXED template slots ONLY. fb.why (or
+ * any other raw/free-text model-authored field) is NEVER read here — that is
+ * this S2 TTS path's OWN containment against a model trying to smuggle extra
+ * instructions, verdict language, or arbitrary-length content into what is
+ * actually spoken, independent of the S1 card's esc() escaping (esc() guards
+ * HTML rendering; it does nothing for a text-to-speech surface). The heard
+ * form is always in the line (never just `better`) so audio-only users get
+ * the same evidence the visual card shows. Hard word-capped at 12 AFTER
+ * assembly so no input shape (long kana phrases, a note trailer) can ever
+ * blow the budget — the cap is enforced on the assembled line, not trusted
+ * to already-short inputs. Mirrors _convoSpeakJP / _buildSpeakEN's graceful
+ * no-op (missing speechSynthesis, or nothing sayable) via setTimeout(onDone,0)
+ * so a caller's mic-arm chain always still proceeds.
+ */
+function _speakTeachLine(fb, onDone){
+  const done = () => { if(onDone) onDone(); };
+  const heard = (fb && typeof fb.heard === 'string') ? fb.heard.trim() : '';
+  const better = (fb && typeof fb.better === 'string') ? fb.better.trim() : '';
+  if(!heard || !better){ setTimeout(done, 0); return; }
+  /* Fixed template — heard + better only ever land in these two named slots.
+     note is an optional short trailer (first 2 words only, its own fixed
+     slot) — never concatenated verbatim, never fb.why. */
+  const noteWords = (fb && typeof fb.note === 'string')
+    ? fb.note.trim().split(/\s+/).filter(Boolean).slice(0, 2) : [];
+  let line = `I heard: ${heard} — more natural: ${better}.`;
+  if(noteWords.length) line += ' ' + noteWords.join(' ');
+  const words = line.split(/\s+/).filter(Boolean);
+  if(words.length > 12) line = words.slice(0, 12).join(' ');
+  try{
+    if(!('speechSynthesis' in window)){ setTimeout(done, 0); return; }
+    const ss = window.speechSynthesis;
+    _ssPrep(ss);
+    if(ss.speaking || ss.pending) ss.cancel();
+    const u = new SpeechSynthesisUtterance(line);
+    u.rate = (state.settings && state.settings.buildEnTtsRate) || 1.0;
+    const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
+    if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
+    _ttsFireGuard(u, done, line, u.rate);
+    ss.speak(u);
+  }catch(e){ setTimeout(done, 0); }
+}
+
 /* _convoOpenProbe — AI asks the first question (no user turn) */
 async function _convoOpenProbe(){
   const cv = state.convo; if(!cv) return;
@@ -10189,10 +10254,25 @@ async function convoTurn(userText, viaVoice){
 
   /* Speak AI reply then auto-open mic via convoToggleListen on advancing paths (hands-free).
      Stage D (v8.10): skip the auto-mic when forceChips is set (double-miss) — that turn is chip-only.
-     F2 (CR-3): a spoken clarify ALSO speaks + re-arms the mic — the retry turn stays hands-free. */
+     F2 (CR-3): a spoken clarify ALSO speaks + re-arms the mic — the retry turn stays hands-free.
+     S2 (ADR-013 §6.4/delve-8 §6): the spoken teach breath is sequenced INSIDE this
+     same onDone, strictly AFTER jp TTS finishes and strictly BEFORE the mic re-arm
+     below — mic never fights TTS, and the patient window only opens once the teach
+     line (when there is one) has actually finished playing. Gated on teach-grade
+     (cv.feedback.teach === true, never merely a `why` string), and skipped on every
+     path that already skips the S1 card / hands-free loop: forceChips (double-miss,
+     chip-only), the just-talk dial (defense-in-depth — the normalizer already forces
+     feedback:none there so teach can never be true, but the dial is checked here too
+     rather than relying solely on that), and cv.done (a session that ended in recap
+     via convoEnd() never reaches this block, but the guard is explicit). This is the
+     ONLY call site — deleting it (and the helper above) is the complete pull lever. */
   if(aiJP && (didAdvance || speakClarify)){
     _convoSpeakJP(aiJP, () => {
-      if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen(true);
+      const _convoArmMic = () => {
+        if(state.settings.convoHandsFree && state.convo && !state.convo.done && !state.convo._frozen && !state.convo.forceChips) convoToggleListen(true);
+      };
+      if(_convoTeachLineEligible(state.convo)) _speakTeachLine(state.convo.feedback, _convoArmMic);
+      else _convoArmMic();
     });
   } else {
     /* orb seam (5/5, sprint: orb): response render, non-advancing (intermediate hint)
