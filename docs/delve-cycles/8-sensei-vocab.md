@@ -148,21 +148,40 @@ unlocked(w) =
   `FRONTIER_N = 80` unstarted words. Not tiers, not topic packs (§3.2c). 80
   satisfies ADR-003's day-one variety floor (≥ ~80 unique drillable words,
   ADR-003:26) *by construction* — a brand-new profile's deck is exactly the
-  frontier.
+  frontier. **Owner-signoff flag (synthesis; promoted from OQ-1 on an
+  adversary catch):** the owner's verbatim is "only 1,500 words unlocked" —
+  a ~12% trim of the 1,702-word deck — while frontier-80 is a ~95% cut for a
+  fresh profile. The frontier MECHANIC is N-agnostic; the 80-vs-1,500 gap is
+  a product call this delve cannot settle for the owner. ADR-012 presents
+  both readings side-by-side as an explicit signoff item; 80 ships as the
+  proposal, never a fait accompli.
 - **Earn mechanic = doing, through SRS state that already exists.** A word
   leaves the frontier the moment it is started — by a drill attempt OR by
-  being spoken unaided in conversation (`convoApplyScore` already writes
-  `recordAttempt`+`smGrade` on voice turns, 10179–10181). The frontier then
-  refills from the ordered remainder. No new counters, no new earn currency:
-  **progress in the app IS the unlock mechanic.** Conversation and drills feed
-  it equally because they both write `state.stats`.
+  being spoken unaided in conversation. **Corrected at synthesis (the panel's
+  unanimous FATAL):** `convoApplyScore` writes `recordAttempt`+`smGrade` on
+  voice turns (10179–10181) **for pool words only** — it resolves
+  `judged.usedWords` solely against `cv.pool` and silently drops anything
+  unresolved (10175), and the model contract only asks for pool-word ids
+  (9412). As shipped, speech unlocks nothing outside the seeded 8-word pool.
+  **S3 therefore REQUIRES two widening changes (§6 S3) before the
+  speech-promotes path is true:** (i) the contract's `usedWords` line grows
+  to admit the kana surface of ANY word the learner clearly used, pool or
+  not; (ii) `convoApplyScore` gains a fallback resolver over the full word
+  registry (`state.words`) using the existing normalized-kana match,
+  accepting only a UNIQUE match (homonym-ambiguous surfaces stay dropped —
+  never guess an id). Writes stay gated exactly as today (`viaVoice` +
+  score ≥ 1). The frontier then refills from the ordered remainder. No new
+  counters, no new earn currency: **progress in the app IS the unlock
+  mechanic.** Conversation and drills feed it equally once (i)+(ii) land —
+  until then, only drills do.
 - **FOLLOW-THE-LEARNER wins — structurally, not by exception (the
   lock-frustration answer).** The lock has **no refusal path**:
   1. The conversation never consults the lock for comprehension or response —
      the partner responds to anything (preamble rule at 9400–9403, untouched).
      Off-pool speech is *promoted*, not blocked: speaking a locked word writes
      an attempt → the word is now started → unlocked. **Using a word IS
-     unlocking it.**
+     unlocking it** — contingent on the S3 resolver widening above (a
+     REQUIRED build item; not shipped behavior).
   2. Browse/search shows locked words greyed with a 🔒→tap-to-add affordance
      (one tap appends to `unlockedExtra`). A learner who needs 「びょういん」
      today gets it in one tap — the #1 store-review complaint genre ("the app
@@ -202,15 +221,23 @@ pass):
 | Consumer | Route today | Under the lock |
 |---|---|---|
 | Spam loop | `vocabSectionFilter(getActiveWords())` (15556) | unlocked deck ∩ topic, with the §3.5 widening rung |
-| Random Drill | raw `getActiveWords()` (15107 region) | unlocked deck — ≥80 words guaranteed by frontier size |
+| Random Drill | raw `getActiveWords()` (call at 15630, fn `startRandomDrill` at 15606 — the r1 "15107" was ADR-003's older-revision line, corrected at synthesis) | unlocked deck — floor guaranteed by the §3.5 choke-point backstop |
+| Vocab Blitz (home primary) | `vocabSectionFilter(getActiveWords())` (`blitzCounts` 7150 + session pool, same route) | **inherits the lock — by design** (row missing in r1; adversary catch): due words are started ⇒ unlocked ⇒ unaffected; NEW-card intake narrows to the frontier — exactly the pacing the lock exists to provide |
 | Convo WORD_POOL | `_buildSpamPick(getActiveWords(), 8)` (9839) | due-first 8 from the unlocked deck — the partner automatically anchors in words the learner is absorbing; frontier words rotate in as they start |
 | Chips | model-suggested from WORD_POOL + live context (9429) | unchanged — chips inherit the pool's frontier bias for free |
-| Coverage meter | `vocabAccessStats()` over active words (6777) | same derivation, re-labelled `unlocked / total` |
+| Coverage meter | `vocabAccessStats()` over active words (6777; `total: active.length` at 6791) | re-labelled `unlocked / total` — **the denominator must bypass the lock** (adversary catch: with the filter inside `getActiveWords()`, `total` would collapse to the unlocked count and the meter would read 100% immediately): `vocabAccessStats` reads `getActiveWords({ignoreLock:true})` for `total` |
 | SRS / stats | `state.stats` keyed by word id | **untouched** — the lock reads SRS state, never writes it |
-| Forms / particles / other drills | independent scopes (7141, 7205) | **untouched in v1** — verb-form and particle drills teach grammar over small closed sets, not deck breadth; locking them adds risk for no felt control |
+| Forms / particles / other drills | independent scope via `formEligibleVerbs` (7086) + `startFormDrill` (8230) — re-verified at synthesis: no `getActiveWords()` route (the r1 "7141, 7205" were ADR-003's older-revision lines) | **untouched in v1** — verb-form and particle drills teach grammar over small closed sets, not deck breadth; locking them adds risk for no felt control |
 
-One filter, added inside `getActiveWords()` behind the `vocabLock` setting.
-No selector rewiring, no second gate, no new scheduling authority.
+One filter, added inside `getActiveWords()` behind the `vocabLock` setting —
+with **one narrow, explicit bypass** (adversary catch: `getActiveWords()` is
+zero-parameter at every call site, so r1's "no rewiring" and §3.5's "relax
+the lock" contradicted each other with no specified mechanism): the function
+gains an optional options argument, `getActiveWords({ignoreLock:true})`,
+default-locked, used by EXACTLY two callers — the §3.5 choke-point backstop
+and `vocabAccessStats`'s denominator. Every existing zero-arg call site
+behaves identically; no other selector rewiring, no second scheduling gate,
+no new scheduling authority.
 
 ### 3.5 The empty-pool defense (killing the v7.68 bug class by construction)
 
@@ -219,14 +246,24 @@ words". The frontier lock composes with topic filters, so thin intersections
 WILL occur (e.g. a niche topic whose words are all beyond the frontier). The
 defense is deterministic and already half-built:
 
-- `buildGenerateVocabSpamLesson` already has a progressive-widening `tries`
-  ladder (15554–15561) that relaxes filters until `minViable` words exist. The
-  lock adds **one rung**: relax `vocabLock` last. When that rung is used, the
-  drawn words are appended to `unlockedExtra` — **demand-unlock**: tapping a
-  topic is an expression of intent, and the deck follows the learner.
+- **Corrected at synthesis (adversary catch: r1's widening rung lived on ONE
+  surface only):** the spam ladder (15554–15561) is real, but Random Drill
+  and the convo WORD_POOL have no ladder, and the frontier is computed in
+  GLOBAL deck order while `getActiveWords()` applies theme/POS/register
+  filters (3569–3572) — so frontier ∩ niche-filter could still empty a
+  non-ladder surface: the exact v7.68 shape r1 claimed to kill. The backstop
+  therefore moves **INTO the choke point itself**: inside `getActiveWords()`,
+  after the lock filter, if the surviving pool is smaller than `minViable`
+  (10), admit the next deck-ordered LOCKED words that pass the other active
+  filters until the floor is met, appending them to `unlockedExtra` —
+  **demand-unlock at the choke point**. Every consumer (spam, Random Drill,
+  Blitz, WORD_POOL) inherits the floor with zero per-surface code; the spam
+  ladder keeps its own rungs above it unchanged (they widen section/mastered
+  filters, which the choke point cannot see).
 - Invariant (acceptance-gate material): **no drill surface can ever render
-  fewer words under the lock than `minViable`** — the widening rung makes an
-  empty locked pool unrepresentable, not merely unlikely.
+  fewer words under the lock than `minViable`** — enforced at the single
+  choke point, so an empty locked pool is unrepresentable on EVERY surface,
+  not merely on the one that had a widening ladder.
 
 ### 3.6 Existing-user migration (the owner's 1,702-word profile)
 
@@ -302,13 +339,16 @@ offered **only** when you are confident the learner actually said `heard`
 `why` explains the Japanese, never evaluates the learner; the ADR-009 banned
 list applies to `why` verbatim.
 
-**Cost sizing (the latency attack, pre-answered):** +~6 preamble lines ≈ +70
+**Cost sizing (the latency attack — design ESTIMATES, not measurements;
+re-labelled at synthesis on an adversary catch):** +~6 preamble lines ≈ +70
 input tokens on a ~1.4k preamble. Output: `why` ≈ +30–40 tokens, on recast
 turns only (≤1-in-3 by the existing throttle). `max_tokens` in `_convoCall`
 (9492) bumps 500 → 560. Worst-case RTT impact ≈ +0.2–0.4s on teach turns —
-inside ADR-009's 5s max, masked by the think ladder. **First cut on any
-measured regression is `why`** (falls back to Delve-7 note-only recast); the
-schema stays.
+inside ADR-009's 5s max, masked by the think ladder. These figures are
+unmeasured arithmetic; **S1's acceptance includes measuring the actual keyed
+RTT delta on teach turns** before S2 ships. **First cut on any measured
+regression is `why`** (falls back to Delve-7 note-only recast); the schema
+stays.
 
 ### 4.3 When a teach fires — a STRICTER gate than the recast it rides
 
@@ -331,6 +371,21 @@ unverifiable evidence is exactly the phantom-error lecture the charter bans, so
 abstain now caps surfacing at the implicit tier. Clarify-degrade is thereby
 strengthened, not weakened: the mishear ladder gains a rung *below* teach
 before anything is explained.
+
+**What the echo guard does and does NOT corroborate (scoped honestly at
+synthesis; adversary catch):** the guard (9684–9689) compares the TRANSCRIPT
+to the model's `heard` — two renderings of the same STT output — so a
+positive match proves only that the model reasoned about what STT delivered
+(it kills a model-INVENTED `heard`), never that STT heard the learner
+correctly. An STT-level mishear, where transcript and `heard` carry the same
+error, passes the gate by construction. The containment for THAT class is
+not the gate but the evidence surfaces: the card's 「きこえたのは」 line, the
+spoken breath naming the heard form (§4.6), the model-side
+plausibility/clarify rules (9422), and the 1-in-3 throttle. §4.5 cases 1 and
+4 are exactly this residual, and they are accepted BECAUSE the evidence
+self-discloses — not because the gate prevents them. "Positive transcript
+corroboration" therefore means corroboration against the transcript-as-
+delivered, and nothing stronger.
 
 ### 4.4 Where the explanation lives — the teach card (and why the alternatives lost)
 
@@ -400,8 +455,11 @@ rendering at 11082 for that turn; ephemeral — dismissed on next turn like
   (Delve 7 L3 kept).
 - On teach-grade turns only, after `jp` finishes and **before the mic re-arms**,
   a new `_speakTeachLine` helper speaks **one English breath, ≤12 words**,
-  derived client-side from fixed templates + `note`/`better` (never raw
-  free-text): e.g. *"More natural: tabeta — past tense."* Implementation:
+  derived client-side from fixed templates + `heard`/`note`/`better` (never
+  raw free-text), and **evidence-first — the template names the heard form**
+  (synthesis fix: §4.5.4's audio-only containment depends on the spoken line
+  carrying the evidence, and the r1 template dropped it): e.g. *"I heard:
+  taberu — more natural: tabeta."* (≤12 words holds). Implementation:
   same `speechSynthesis` path with an EN voice pick (every Android/iOS ships
   EN voices; graceful no-op when TTS is unavailable, like `_convoSpeakJP`
   9732).
@@ -452,8 +510,22 @@ gates, plus the new surface:
   touches the vocab lock or the recap.
 - The keyed probe protocol (Delve 7 §8 / ADR-011 gate) extends with two
   questions: "did the explanation help you say it better?" and "did any teach
-  feel like being marked?" — the second failing twice triggers lever (2)
-  automatically (mirror of ADR-011's reversal discipline).
+  feel like being marked?" — the second failing **in ≥2 of the 5 keyed
+  sessions** (same denominator as ADR-011's "≥3 of 5" gate; synthesis fix —
+  bare "twice" was window-less and untestable) triggers lever (2)
+  automatically.
+- **Deterministic fixture gate (synthesis addition, mirroring ADR-011's own
+  ≥12-case discipline):** S1 ships with a **≥12-case fixture set** exercising
+  the teach/implicit/clarify ladder — positive echo-match, abstain
+  (kanji-stripped <2 kana), scrubbed `why`, absent `why`, over-length `why`,
+  score-1, throttle-suppressed, and banned-word probes — and the normalizer
+  must land every case on the correct rung in **100%** of runs. Client-side,
+  keyless, runnable in CI/console.
+- **Cohort honesty (named, not hidden):** the keyed probe samples the owner —
+  a 7th-year self-directed learner, not a nervous first-time beginner.
+  Auto-open teach stays defaulted ON through the probe; the beginner-
+  population check is ADR-012/ADR-013's first-real-user-cohort reversal
+  triggers, which sample exactly that population.
 
 ---
 
@@ -512,6 +584,15 @@ notes) — extended, not redesigned:
 - Grind check: on a session with zero teaches and zero unlocks, both blocks
   simply don't render (the recap shrinks to today's shipped shape) — no empty
   states, no guilt.
+- **Steady-state honesty (synthesis addition — the charter's "walk a week"
+  probe extended to the end of the road):** when the deck is exhausted (all
+  ~1,702 words started) the frontier is empty and "+N words unlocked"
+  permanently stops appearing — by the same empty-safe rule as the grind
+  check, it stops rendering rather than showing +0. That is graduation, not
+  grind: the growth number hands over to the meter's `started → mastered`
+  fill (which keeps moving for months after the last unlock), and deck growth
+  (new packs; OQ-6's ranked order) re-opens the road. No new surface needed;
+  the commercial framing (§3.7) rests on TWO axes and only one retires.
 
 ### 5.4 Owner-verbatim replay (the loop)
 
@@ -554,13 +635,25 @@ stage (new `cv.*`/settings fields guard-defaulted on read).
 
 ### Stage S3 — Rolling-frontier vocab lock
 - `getActiveWords()` (3564): `vocabLock` filter — derived unlocked set
-  (started ∪ `unlockedExtra` ∪ frontier(80), deck-ordered). Memoize per
-  render pass if profiling demands (1,702 × stats lookups is cheap but hot).
-- `buildGenerateVocabSpamLesson` tries ladder (15554–15561): +1 relax-lock
-  rung with demand-unlock write-back to `unlockedExtra` (§3.5).
+  (started ∪ `unlockedExtra` ∪ frontier(80), deck-ordered) — plus the
+  **in-function `minViable` backstop with demand-unlock write-back (§3.5)**
+  and the optional `{ignoreLock:true}` argument (two callers only, §3.4).
+  Memoize per render pass if profiling demands (1,702 × stats lookups is
+  cheap but hot).
+- **`convoApplyScore` resolver widening (§3.3 — REQUIRED for L3's
+  speech-promotes path; synthesis addition):** fallback resolution of
+  `usedWords` against the full `state.words` registry (unique
+  normalized-kana match only; ambiguous ⇒ dropped), and the `_convoPreamble`
+  `usedWords` contract line (9412) grows to admit kana surfaces of
+  clearly-used non-pool words. Without this, speech cannot unlock.
+- `buildGenerateVocabSpamLesson` tries ladder (15554–15561): unchanged above
+  the choke-point backstop (its rungs widen section/mastered filters, which
+  the choke point cannot see).
 - Browse/search word rows: greyed 🔒 state + tap-to-add for locked words.
 - Coverage meter (20736–20749): re-label to `unlocked / total`, fill =
-  started.
+  started; `vocabAccessStats` (6777) reads `getActiveWords({ignoreLock:true})`
+  for the denominator (the `total: active.length` return at 6791) so `total`
+  stays 1,702-shaped under the lock (§3.4 meter row).
 - Settings: `vocabLock` toggle row (escape hatch); default ON for new
   profiles.
 - Migration: one-time versioned flag-set `vocabLock: true` for existing
@@ -594,7 +687,7 @@ settled before the release that touches every drill pool.
 |---|---|---|
 | L1 | ADR-003 resolves to the **hard-lock arm** via its own reversal trigger (owner's explicit request, 2026-07-19); the meter's derivation machinery is retained and re-labelled | §3.1, §3.3 |
 | L2 | Lock shape = **rolling frontier at the `getActiveWords` choke point**: unlocked = started ∪ manual ∪ frontier(`FRONTIER_N`=80, deck-ordered); derived on read, no persisted word arrays beyond `unlockedExtra` | §3.3–3.4 |
-| L3 | **Demand always wins — the lock has no refusal path:** speech promotes (using = unlocking), browse tap-to-add, thin selectors demand-unlock via the widening ladder; empty-locked-pool unrepresentable by construction | §3.3, §3.5 |
+| L3 | **Demand always wins — the lock has no refusal path:** speech promotes (using = unlocking — REQUIRES the S3 `convoApplyScore` resolver widening, a named build item, NOT shipped behavior), browse tap-to-add, thin pools demand-unlock via the choke-point `minViable` backstop inside `getActiveWords()`; empty-locked-pool unrepresentable on every surface | §3.3, §3.5 |
 | L4 | Locked words render as **greyed teaser with visible horizon** ("X unlocked · Y on the road"), never invisible; `vocabLock` Settings toggle is the escape hatch; new profiles default ON | §3.3 |
 | L5 | Existing-profile migration = flag-set only; history self-unlocks through the started-derivation; forms/particle drills untouched in v1 | §3.4, §3.6 |
 | L6 | Sensei = **teach card** (auto-open, evidence-first 「きこえたのは」, better+why+nuance, esc()+scrub, ephemeral) + **one spoken EN breath ≤12 words**; partner voice never teaches; full X..Y..Z lives in the recap (AMENDS-D7 L4 surfacing) | §4.4, §4.6 |
@@ -610,7 +703,9 @@ settled before the release that touches every drill pool.
 
 - **OQ-1:** `FRONTIER_N = 80` is a design estimate anchored to ADR-003's
   variety floor — field-tune against the owner's felt "controlled" (the whole
-  point); only the frontier *mechanic* is locked.
+  point); only the frontier *mechanic* is locked. **Promoted at synthesis:**
+  the 80-vs-owner's-1,500 gap is now an explicit ADR-012 signoff item (§3.3),
+  not merely a tuning note.
 - **OQ-2:** EN TTS voice availability/quality for the spoken breath on
   non-Pixel Androids — cheap device probe alongside the existing OQ-3 (D7)
   device pass; fallback = card-only (lever 1).
@@ -679,3 +774,86 @@ settled before the release that touches every drill pool.
   STT-not-a-grader + L7 doctrines; recap composition (L12) and ship order
   (L13) are sequencing craft. None meets the costly-to-reverse bar alone;
   minting ADRs for them would be inflation.
+
+---
+
+## Synthesis (Round 1 — Delve 8)
+
+Panel: devils-advocate (FAIL, 7 findings) · qa-tester (WARN, 7) ·
+code-reviewer (FAIL, 5). Every citation was re-verified against
+`index.html` v8.25 and the named docs before adoption; the fixes for every
+**accepted** finding are applied inline above (marked "synthesis"). The
+panel's unanimous FATAL was real and is the round's headline correction.
+
+### Dispositions — devils-advocate
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| DA-1 | "Using a word IS unlocking it" false by construction (FATAL) | **accepted** | Verified: `convoApplyScore` resolves only against `cv.pool` and silently drops the rest (10175); contract asks for pool ids only (9412). r1 presented a required build change as existing behavior. Fixed: §3.3 corrected; S3 gains the resolver-widening + contract change as a REQUIRED item; L3 re-worded; carried into ADR-012's acceptance gate. |
+| DA-2 | Echo guard cannot detect STT mishears (SERIOUS) | **accepted** | Verified 9684–9689: transcript vs model-`heard` are correlated by construction; the guard only kills model-invented `heard`. Fixed: §4.3 now scopes the claim honestly — STT-level mishear containment is the evidence surfaces (card line + spoken heard-form + clarify rules + throttle), not the gate. |
+| DA-3 | Owner asked 1,500; design ships 80 and reframes the number (SERIOUS) | **accepted** | Verified charter:9 verbatim + ADR-003 Decision §6 "literal reading". The mechanic is N-agnostic but the 20× divergence is the owner's call, not the delve's. Fixed: promoted from OQ-1 to an explicit ADR-012 signoff item presented side-by-side (§3.3); 80 stays the proposal only. |
+| DA-4 | "Empty-pool unrepresentable" overclaims — rung on one surface only (SERIOUS) | **accepted** | Verified: ladder exists only in `buildGenerateVocabSpamLesson` (15554–15561); `startRandomDrill` (15606) has none; frontier-order vs `getActiveWords` filters (3569–3572) interplay was unspecified. Fixed: §3.5 moves the `minViable` backstop INTO `getActiveWords()` so every consumer inherits it; frontier declared global-deck-ordered with the choke point handling intersections. |
+| DA-5 | Audio-only teach drops the evidence line §4.5.4 depends on (SERIOUS) | **accepted** | Verified doc-internal contradiction (§4.5.4 vs §4.6's r1 template naming `better` only). Fixed: §4.6 template is now evidence-first ("I heard: taberu — more natural: tabeta."), restoring the audio-only containment. |
+| DA-6 | "Hard lock" may be a relabeled meter + narrowed draw (QUESTIONABLE) | **contested** | The meter re-labelling is display-only, but the lock's behavior deltas are concrete: a new profile's drillable deck is 80 words, not 1,702; Blitz NEW-card intake, Spam, Random Drill, and WORD_POOL all narrow to the unlocked deck; browse greys with tap-to-add. That IS deck-shape control, which is what the owner's instinct names. Whether 80-worth of control satisfies him is exactly the DA-3 signoff item — the residue of this finding folds there. |
+| DA-7 | Sensei ships before ADR-011's base is keyed-validated (QUESTIONABLE) | **accepted-deferred** | Real sequencing risk, already priced in: §6 places the keyed probe after S1+S2 and BEFORE S3; §4.8's ordered levers (incl. full F2 restore) are the containment. Resolution defers to the keyed field session by design; no doc change beyond the §4.8 strengthening already applied. |
+
+### Dispositions — qa-tester
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| QA-1 | Speech-unlock claim unsupported by cited mechanism (FATAL) | **accepted** | Same defect as DA-1/CR-1, independently confirmed with the sharpest citation (9412's "pool word" contract). Fixed as DA-1. |
+| QA-2 | Teach ladder lacks a deterministic fixture-test gate (SERIOUS) | **accepted** | Verified ADR-011:69's ≥12-case/100% precedent. Fixed: §4.8 gains a ≥12-case fixture gate over the teach/implicit/clarify ladder, 100% pass, client-side/keyless; carried into ADR-013's acceptance gate. |
+| QA-3 | "Failing twice" reversal trigger window-less (SERIOUS) | **accepted** | Verified ADR-011:75's "≥3 of 5" precedent vs r1's bare "twice". Fixed: defined as "in ≥2 of the 5 keyed sessions" (§4.8); mirrored in ADR-013. |
+| QA-4 | "15107 region" citation ~500 lines off (QUESTIONABLE) | **accepted** | Verified: actual call at 15630 (`startRandomDrill` 15606). Provenance found at synthesis: the stale numbers were inherited from ADR-003's older-revision read (its §Context cites 15107/7141/7205 against a 21,216-line index.html), i.e. recalled, not re-verified — the qa-tester's suspicion was exactly right. Table corrected. |
+| QA-5 | "Week of the loop" never walked to steady state (QUESTIONABLE) | **accepted** | True: frontier exhaustion silently retires the "+N unlocked" axis. Fixed: §5.3 steady-state note — empty-safe non-render (graduation, not grind), growth hands over to the meter's started→mastered fill; §3.7's two-axis framing keeps one axis live. |
+| QA-6 | Widening rung has no mechanism against zero-param `getActiveWords()` (QUESTIONABLE) | **accepted** | Verified zero-param signature at 3564; r1's "no rewiring" and "relax the lock" did contradict. Fixed: §3.4 specifies the single `{ignoreLock:true}` options-arg bypass (two callers) + the §3.5 in-function backstop — the invariant now has a testable mechanism. |
+| QA-7 | Beginner validation rests on an owner-only probe (NITPICK) | **accepted-deferred** | True and now named in §4.8 (cohort honesty note); the beginner-population check is deliberately the ADR-012/013 first-real-user-cohort reversal triggers — deferred to the population that can actually answer it. |
+
+### Dispositions — code-reviewer
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| CR-1 | Speech-unlock not implemented by cited code (FATAL) | **accepted** | Same as DA-1/QA-1; CR adds the decisive point that the model never even HAS an id for off-pool words. The S3 fix covers both halves (contract + resolver). |
+| CR-2 | Meter "unlocked / total" unreachable — total collapses under the lock (SERIOUS) | **accepted** | Verified: `vocabAccessStats` (6777) sets `active = getActiveWords()` (6778) and returns `total: active.length` (6791). Fixed: §3.4 meter row + S3 — denominator reads `getActiveWords({ignoreLock:true})`. |
+| CR-3 | Random Drill citation does not verify (SERIOUS) | **accepted** | Duplicate of QA-4; corrected to 15606/15630 with provenance noted. |
+| CR-4 | Forms-row citations (7141, 7205) do not verify (SERIOUS) | **accepted** | Substance verified with one correction to the finding itself: 7141 sits in `formCounts` (7128) — `blitzCounts` opens at 7150, 9 lines below CR's claim — but the material points hold: the cited lines demonstrate nothing about form drills, and Vocab Blitz DOES route through `vocabSectionFilter(getActiveWords())` (~7156) so it inherits the lock. Fixed: table row re-cited to `formEligibleVerbs` (7086, re-verified: no `getActiveWords` route — "untouched in v1" stands for forms/particles) + `startFormDrill` (8230), and a new Vocab Blitz row states the inherited lock as intended behavior (new-card intake = frontier). |
+| CR-5 | Cost figures stated with unearned confidence (QUESTIONABLE) | **accepted** | Fixed: §4.2 re-labelled as unmeasured design estimates; S1 acceptance now includes measuring the actual keyed RTT delta before S2 ships; the first-cut-is-`why` lever unchanged. |
+
+### Decision-notes (heuristic ADR gate — recorded here, no ADR minted)
+
+- **Vocab Blitz inherits the lock; forms/particles stay independent.**
+  Decision: Blitz's `getActiveWords()` route is kept under the lock (new-card
+  intake = frontier — the desired pacing); form/particle drills stay outside
+  it via `formEligibleVerbs`. Why: due words are started ⇒ unlocked, so Blitz
+  reviews are untouched; only intake narrows. Reversal cost: trivial — one
+  `{ignoreLock:true}` at Blitz's call site if field data objects.
+- **Frontier exhaustion is a graduation state, not a grind state.** Decision:
+  "+N words unlocked" simply stops rendering when the road ends; growth hands
+  over to the meter fill; no new surface. Why: empty-safe is the recap's
+  existing discipline. Reversal cost: local copy/render change only.
+- **Spoken teach line is evidence-first.** Decision: the ≤12-word template
+  names the heard form before the better form. Why: audio-only users' sole
+  mishear containment. Reversal cost: template string edit.
+- **§4.2 figures are estimates until S1 measures.** Decision: keep the
+  arithmetic, label it, gate S2 on the measured keyed RTT delta. Why:
+  unearned precision flagged by two heads. Reversal cost: none — it is a
+  measurement obligation, not a mechanism.
+
+The doc's §10 pre-declared notes stand as written: L8 (teach-gate strictness),
+L11 (teaches-don't-unlock), L12 (recap composition), L13 (ship order) remain
+inline decision-notes; none was promoted.
+
+### ADRs filed by this synthesis
+
+- **ADR-012** (`docs/decisions-pending/ADR-012-rolling-frontier-vocab-lock.md`)
+  — rolling-frontier hard lock, resolves + supersedes pending ADR-003; carries
+  the DA-1 resolver-widening as an acceptance-gate line and the DA-3
+  FRONTIER_N signoff item.
+- **ADR-013** (`docs/decisions-pending/ADR-013-sensei-teaching-layer.md`)
+  — the sensei layer, AMENDS-D7 surfacing, stacks on PENDING ADR-011 (flagged);
+  carries the QA-2 fixture gate and the QA-3 quantified reversal trigger.
+
+Foundation patches this round: `INDEX_ROADMAP.md` (backlog row resolved to
+this doc; ADR-012/013 added to live decisions; Delve-8→forge open-work row).
+ADR-003/ADR-011 pointer notes (§9) are deferred to the promotion/forge step —
+this synthesis touches no pending-ADR text other than filing the two new ones.
