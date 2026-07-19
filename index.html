@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.24';
+const APP_VERSION = '8.25';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -7298,7 +7298,7 @@ function startBlitz(){
   const poolTarget = (state.settings.blitzPoolLearning ?? 8) + (state.settings.blitzPoolMature ?? 4);
   const pool = buildBlitzPool();
   if(!pool.length){
-    alert('No words due or available. Add words or enable the N5 pack in Settings.');
+    showToast('No words due or available — add words or enable the N5 pack in Settings.', {tone:'warn'});
     return;
   }
   const direction = state.settings.blitzDirection || 'jp-en';
@@ -8229,7 +8229,7 @@ function buildFormQueue(formId, maxN){
 
 function startFormDrill(formId){
   const f = FORMS.find(x => x.id === formId);
-  if(!f){ alert('Unknown form'); return; }
+  if(!f){ showToast('Unknown form', {tone:'warn'}); return; }
   /* v6.22 — queue 15→50. v6.24 — 50→150 because user reported Form Drill
      "hasn't changed" (sessions still felt short). Form Drill stops when the
      queue runs out, so the cap translates directly to session length. With
@@ -8238,7 +8238,7 @@ function startFormDrill(formId){
      whatever is available below 150. */
   const q = buildFormQueue(formId, 150);
   if(!q.length){
-    alert(`No verbs ready for ${f.name} drill right now. All scheduled for later.`);
+    showToast(`No verbs ready for ${f.name} drill right now — all scheduled for later.`, {tone:'warn'});
     return;
   }
   const direction = state.settings.formDrillDirection || 'en-jp';
@@ -8763,13 +8763,13 @@ function formBlitzRefillIfNeeded(){
 function startFormBlitz(){
   const pairs = eligibleFormPairs();
   if(!pairs.length){
-    alert('Your deck has no verbs yet. Add a verb or enable the N5 pack in Settings.');
+    showToast('Your deck has no verbs yet — add a verb or enable the N5 pack in Settings.', {tone:'warn'});
     return;
   }
   const poolTarget = FORM_BLITZ_POOL_LEARNING + FORM_BLITZ_POOL_MATURE;
   const pool = buildFormBlitzPool();
   if(!pool.length){
-    alert('No form pairs available right now.');
+    showToast('No form pairs available right now.', {tone:'warn'});
     return;
   }
   const direction = state.settings.formBlitzDirection || 'jp-en';
@@ -9178,7 +9178,7 @@ function startKanaBlitz(scope){
   if(!state.kanaStats) state.kanaStats = {};
   const pool = buildKanaPool(scope);
   if(!pool.length){
-    alert('All kana retired! Great work. Check back in a week for maintenance.');
+    showToast('All kana retired! Great work — check back in a week for maintenance.');
     return;
   }
   state.kanaBlitz = {
@@ -11425,7 +11425,7 @@ function startRecall(){
     try { fallback = (typeof getDrillableWords === 'function' ? getDrillableWords() : getActiveWords()).slice(); } catch(e){ fallback = getActiveWords().slice(); }
     words = (typeof shuffleFY === 'function' ? shuffleFY(fallback) : fallback);
   }
-  if(!words.length){ alert('No words available. Add words or enable the N5 pack in Settings.'); return; }
+  if(!words.length){ showToast('No words available — add words or enable the N5 pack in Settings.', {tone:'warn'}); return; }
   words = words.slice(0, 12);
   state.recall = { words, i:0, phase:'recall', input:'', listening:false, interim:'', sttError:null, heard:null, via:null, pass:null, lastInterval:null, tally:{got:0, missed:0} };
   nav('recall');
@@ -18076,9 +18076,12 @@ function renderDrillReveal(p, lr){
     : tone === 'yellow'
       ? 'border-color:#b58a1a;background:rgba(220,170,40,0.08)'
       : 'border-color:#9b4242;background:rgba(220,90,90,0.08)';
+  /* v8.25 correction-copy style guide: speech surfaces own the hearing — STT
+     can mis-hear, so the miss badge reports what was heard, never a verdict
+     on the learner (the Jumpspeak false-positive anti-pattern, punch list). */
   const badge = verdict === 'correct' ? '✓ correct'
               : verdict === 'close'   ? '~ close · accepted'
-              : '✗ not quite';
+              : '✗ heard something else';
   const heardLine = lr.heard
     ? `<div style="font-size:13px;color:var(--dim);margin-top:6px">You said: <b style="color:var(--text)">${esc(lr.heardDisplay || lr.heard)}</b></div>`
     : `<div style="font-size:13px;color:var(--dim);margin-top:6px">Didn't catch what you said.</div>`;
@@ -21352,11 +21355,11 @@ function addWord(){
   const jp = ($('#addJP')?.value || '').trim();
   const en = ($('#addEN')?.value || '').trim();
   const hint = ($('#addHint')?.value || '').trim();
-  if(!jp || !en){ alert('Both Japanese and English are required.'); return; }
+  if(!jp || !en){ showToast('Both Japanese and English are required.', {tone:'warn'}); return; }
   const w = {id:'u_'+uid(), jp:esc(jp).replace(/&amp;/g,'&'), en:esc(en).replace(/&amp;/g,'&'), pos:'n', theme:'custom', register:'neutral', source:'user', verified:false, hint:hint||undefined, createdAt:now()};
   state.words.push(w);
   save(); load();
-  alert('Word added (flagged unverified).');
+  showToast('Word added (flagged unverified).');
   render();
 }
 
@@ -21452,8 +21455,8 @@ function handleImport(ev){
           }
         }
       }
-      save(); load(); alert('Import complete.'); render();
-    }catch(e){ alert('Import failed: '+e.message); }
+      save(); load(); showToast('Import complete.'); render();
+    }catch(e){ showToast('Import failed: ' + e.message, {tone:'error'}); }
   };
   r.readAsText(f);
 }
