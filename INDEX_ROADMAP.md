@@ -37,8 +37,8 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Recently closed
 
+- **Talk-loop depth pass** (v8.24, 2026-07-19): topic beats ×14, partner self-disclosure flavor, richer recap ("You said" + topic/partner/minutes) — first of the two owner-sequenced pre-backend tracks; **store-polish is next**.
 - **UI chrome language decided + shipped** (v8.22, 2026-07-18): owner call — English-primary chrome, kana demoted to accents; learning content stays kana-only.
 - Example sentences for 134 function words + 💬 peek (v8.06, **uncommitted**).
 - Vocab dedupe + gloss cleanup → 1702 words (v8.04–8.05).
 - STT downgraded to a turn-trigger, not a grader (v8.03).
-- Conversation mode (おしゃべり) + progressive-vocab meter — **built & shipped**.
