@@ -1,4 +1,5 @@
-const CACHE_NAME = 'jp-trainer-v826';
+const CACHE_NAME = 'jp-trainer-v827';
+const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
@@ -20,7 +21,23 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  if (url.origin !== location.origin) return;
+  /* v8.27 offline pass — Google Fonts are the only cross-origin assets; cache
+     them cache-first after the first online visit so typography survives
+     offline. All other cross-origin requests (the AI APIs) stay untouched. */
+  if (url.origin !== location.origin) {
+    if (FONT_HOSTS.includes(url.hostname) && req.method === 'GET') {
+      event.respondWith(
+        caches.match(req).then(cached => cached || fetch(req).then(res => {
+          if (res.ok || res.type === 'opaque') {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, copy));
+          }
+          return res;
+        }))
+      );
+    }
+    return;
+  }
 
   if (req.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname.endsWith('/')) {
     event.respondWith(

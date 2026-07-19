@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.26';
+const APP_VERSION = '8.27';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9486,6 +9486,12 @@ function _convoApiWindow(msgs, cap){
 async function _convoCall(messages, systemStr){
   const key = (state.settings.anthropicKey || '').trim();
   if(!key) throw new Error('nokey');
+  /* v8.27 offline pass — fail instantly with the honest no-internet copy
+     instead of burning a doomed fetch (+ its 30s ceiling) when the device
+     KNOWS it is offline. onLine === false is trustworthy (never a false
+     negative); onLine === true guarantees nothing, so the fetch path below
+     still owns the flaky-network case. */
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('offline');
   const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
   /* F1 (v8.16): 30s hard timeout — a hung fetch on flaky mobile network left
      cv.loading true forever, which hid the mic and made every tap a no-op. */
@@ -9627,6 +9633,7 @@ function _convoSystemStr(cv){
 function _convoErrMsg(e){
   const m = (e && e.message) || '';
   if(m === 'nokey') return 'AI isn\'t connected — set it up in Settings 🔌';
+  if(m === 'offline') return 'Looks like there\'s no internet — try once more 🌐';
   if(m.indexOf('http 401') === 0 || m.indexOf('http 403') === 0) return 'That key doesn\'t look right — check it in Settings 🔑';
   if(m.indexOf('http ') === 0) return 'The AI can\'t answer right now (' + m.replace('http ', '') + ') — try once more';
   return 'Looks like there\'s no internet — try once more 🌐';
