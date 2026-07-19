@@ -9633,7 +9633,8 @@ function _convoErrMsg(e){
 }
 
 /**
- * _convoNormFeedback(cv, parsed, transcript, forceNone) — F2 (Delve 7 §3.3/§3.6).
+ * _convoNormFeedback(cv, parsed, transcript, forceNone) — F2 (Delve 7 §3.3/§3.6),
+ * extended by S1 (ADR-013 §4.3, delve-8 §6) with the teach eligibility gate.
  * The ONE place the six-key contract's feedback object is normalized and gated.
  * Everything here is client-side and deterministic — the model's feedback claim
  * is never trusted raw (numeric SR confidence is banned as an input; L6):
@@ -9642,24 +9643,44 @@ function _convoErrMsg(e){
  *   2. forceNone → none (the opening probe has no learner utterance; CR-5).
  *   3. Score cross-check (QA-2): recast survives ONLY when parsed.landed >= 2;
  *      score 1 keeps only a model-emitted clarify; score 0 is always none.
+ *      No teach can exist below score 2 — the clarify/none branches below
+ *      never compute teach and always emit teach:false.
  *   4. Echo guard (DA-3): recast whose `heard` shares no content overlap with the
  *      real transcript is a phantom — BOTH sides run the SAME _kataToHira +
  *      _stripKanji normalization (Android STT returns kanji-heavy finals that
  *      strip to sparse kana; asymmetric comparison would spuriously zero overlap).
  *      If either side strips to <2 kana the guard ABSTAINS (unverifiable → recast
- *      stands, the score gate already passed). A firing guard downgrades recast →
- *      confirm — the gold pulse survives, only the highlight/peek drops (QA-6).
+ *      stands, the score gate already passed) — but per ADR-013 §4.3 an abstain is
+ *      NOT positive corroboration, so it caps this turn at the implicit (F2) tier:
+ *      `echoPositive` stays false and teach cannot fire, even though `ok` (the
+ *      recast survives) stays true. A firing guard (real negative overlap)
+ *      downgrades recast → confirm — the gold pulse survives, only the
+ *      highlight/peek/teach drops (QA-6).
  *   5. Session throttle (QA-3): at most one rendered recast in any 3 consecutive
- *      turns; overflow downgrades to confirm. Near-constant correction reads as
- *      grading no matter how warm the framing.
+ *      turns; overflow downgrades to confirm (and teach with it). Near-constant
+ *      correction reads as grading no matter how warm the framing.
  *   6. `better` must actually appear inside jp (the recast lives IN the reply,
  *      L3) — otherwise there is nothing to highlight; downgrade to confirm.
  *   7. note is scrubbed against the ADR-009 banned-word list (verdict words never
  *      reach the peek sheet, even if the model slips).
- * Mutates parsed.feedback in place to a safe {type, heard, better, note} object.
+ *   8. why (S1, recast-only, optional) is scrubbed against the SAME ADR-009
+ *      banned-word list, THEN hard-capped at 160 chars — scrub runs on the raw
+ *      trimmed model string BEFORE the cap so a banned word can't be smuggled
+ *      past the gate by padding characters ahead of it past the truncation
+ *      boundary. A regex match zeroes the whole string (never a partial edit).
+ *      `why` is only added to the output object when the model actually
+ *      supplied the key — its total absence leaves output byte-identical to
+ *      pre-S1 F2 shape aside from the appended `teach` key.
+ *   9. Teach gate (S1, ADR-013 §4.3) — STRICTER than the recast it rides:
+ *      feedback.teach is true iff the recast survived (3)+(4)+(5)+(6) AS A
+ *      POSITIVE echo match (not merely an abstain), AND a scrub-clean non-empty
+ *      `why` arrived. Teaches never write SRS and never unlock (unaffected by
+ *      this gate — that invariant lives entirely outside this function).
+ * Mutates parsed.feedback in place to a safe {type, heard, better, note, teach}
+ * object (recast additionally carries `why` when the model supplied one).
  */
 function _convoNormFeedback(cv, parsed, transcript, forceNone){
-  const NONE = { type:'none', heard:'', better:null, note:'' };
+  const NONE = { type:'none', heard:'', better:null, note:'', teach:false };
   if(!parsed || typeof parsed !== 'object') return;
   const fb = parsed.feedback;
   if(forceNone || !fb || typeof fb !== 'object' || Array.isArray(fb)){ parsed.feedback = NONE; return; }
@@ -9669,21 +9690,23 @@ function _convoNormFeedback(cv, parsed, transcript, forceNone){
   if((state.settings.convoStyle || 'friend') === 'just-talk'){ parsed.feedback = NONE; return; }
   const score = (typeof parsed.landed === 'number') ? parsed.landed : 0;
   const heard = String(fb.heard || '').slice(0, 80);
+  const BANNED_RE = /\b(wrong|incorrect|failed|fail|mistake|error|score|accuracy|grade|graded)\b/i;
   const rawNote = String(fb.note || '').slice(0, 80);
-  const note = /\b(wrong|incorrect|failed|fail|mistake|error|score|accuracy|grade|graded)\b/i.test(rawNote) ? '' : rawNote;
-  /* 3. Score cross-check — deterministic, client-owned */
+  const note = BANNED_RE.test(rawNote) ? '' : rawNote;
+  /* 3. Score cross-check — deterministic, client-owned. No teach below score 2. */
   if(score <= 0){ parsed.feedback = NONE; return; }
   if(score === 1){
-    parsed.feedback = (type === 'clarify') ? { type:'clarify', heard, better:null, note } : NONE;
+    parsed.feedback = (type === 'clarify') ? { type:'clarify', heard, better:null, note, teach:false } : NONE;
     return;
   }
   /* score >= 2 from here */
-  if(type === 'clarify'){ parsed.feedback = { type:'clarify', heard, better:null, note }; return; }
-  if(type === 'confirm'){ parsed.feedback = { type:'confirm', heard, better:null, note:'' }; return; }
+  if(type === 'clarify'){ parsed.feedback = { type:'clarify', heard, better:null, note, teach:false }; return; }
+  if(type === 'confirm'){ parsed.feedback = { type:'confirm', heard, better:null, note:'', teach:false }; return; }
   /* recast path */
   const better = (fb.better != null) ? String(fb.better).trim().slice(0, 80) : '';
   const jp = String(parsed.jp || '');
   let ok = !!better && jp.indexOf(better) !== -1;                   /* 6. lives inside jp */
+  let echoPositive = false;                                         /* 9. distinct from abstain — see header note 4 */
   if(ok){
     /* 4. Echo guard — symmetric normalization, bigram overlap, abstain when thin */
     const _n = s => _kataToHira(_stripKanji(String(s || ''))).replace(/[\s、。！？!?・「」『』.,~〜]/g, '');
@@ -9693,14 +9716,32 @@ function _convoNormFeedback(cv, parsed, transcript, forceNone){
       for(let i = 0; i + 2 <= hd.length; i++){
         if(tx.indexOf(hd.slice(i, i + 2)) !== -1){ overlap = true; break; }
       }
-      if(!overlap) ok = false;
+      if(!overlap) ok = false; else echoPositive = true;
     }
+    /* else: transcript or heard strips to <2 kana — guard ABSTAINS. `ok` stays
+       true (Delve 7 L4: recast still stands, unverifiable ≠ false) but
+       echoPositive stays false, which caps this turn at the implicit tier. */
   }
   /* 5. 1-in-3 throttle — this turn's number will be cv.turn+1 (recast implies advance) */
   if(ok && cv && cv._lastRecastTurn != null && ((cv.turn || 0) + 1) - cv._lastRecastTurn < 3) ok = false;
-  parsed.feedback = ok
-    ? { type:'recast', heard, better, note }
-    : { type:'confirm', heard, better:null, note:'' };              /* downgrade keeps the pulse */
+  /* 8. why scrub — scrub-before-cap-check-teach ordering (security: a banned
+     word must not be maskable by truncating first, so the regex always runs
+     on the full trimmed string, and only the ALREADY-scrubbed result is
+     capped at 160). why is recast-only and optional — the key is added to the
+     output only when the model actually supplied it. */
+  const whyProvided = (fb.why !== undefined && fb.why !== null);
+  let why = '';
+  if(whyProvided){
+    const rawWhy = String(fb.why).trim();
+    why = BANNED_RE.test(rawWhy) ? '' : rawWhy.slice(0, 160);
+  }
+  /* 9. Teach gate — ALL of: recast survived (ok), echo guard POSITIVELY
+     matched (not abstained), and a scrub-clean non-empty why arrived. */
+  const teach = ok && echoPositive && whyProvided && !!why;
+  if(!ok){ parsed.feedback = { type:'confirm', heard, better:null, note:'', teach:false }; return; }  /* downgrade keeps the pulse */
+  const recastFb = { type:'recast', heard, better, note, teach };
+  if(whyProvided) recastFb.why = why;
+  parsed.feedback = recastFb;
 }
 
 /* ===================== END CONVO HELPERS ===================== */
@@ -9898,6 +9939,7 @@ function startConvo(sceneId, seedMessages){
     atSoftCap: false,        /* Delve 6 T2: true once cv.turn reaches maxTurns — a UI nudge only, never a terminating condition */
     feedback: null,          /* F2 (Delve 7 §3) — this turn's normalized feedback move; ephemeral, replaced every turn, never accumulates */
     recastLog: [],           /* F2 (§3.7) — in-session {heard,better,note} log (cap 10, newest-first); the ONLY route from feedback to review, via the recap's opt-in notes */
+    teachLog: [],            /* S1 (ADR-013 §6) — in-session {heard,better,why} log for teach-grade turns only (cap 10, newest-first); recastLog remains the recap fallback source */
     _recastPeek: false,      /* F2 (§3.4) — recast peek sheet open flag; auto-dismissed on next turn */
     _recastFirst: false,     /* F2 (QA-4) — true only on the learner's first-ever recast (adds the friendly explainer line to the peek) */
     _pulseTs: null,          /* F2 (§3.4) — timestamp of the last confirm/recast gold pulse; render window <700ms so re-renders never replay it */
@@ -10089,9 +10131,19 @@ async function convoTurn(userText, viaVoice){
   }
   if(fb && fb.type === 'recast'){
     cv._lastRecastTurn = cv.turn;              /* post-increment — feeds the 1-in-3 throttle */
+    /* recastLog stays written unconditionally on every recast turn, unchanged
+       (recap fallback source; kept as the alias for one version per §6). */
     cv.recastLog = cv.recastLog || [];
     cv.recastLog.unshift({ heard: fb.heard, better: fb.better, note: fb.note });
     if(cv.recastLog.length > 10) cv.recastLog.length = 10;
+    if(fb.teach){
+      /* S1 (ADR-013 §6/§4.3) — cv.teachLog: teach-grade turns only, alongside
+         recastLog (data, not UI — §5.3 recap depth reads it later). Same
+         10-entry newest-first cap discipline as recastLog. */
+      cv.teachLog = cv.teachLog || [];
+      cv.teachLog.unshift({ heard: fb.heard, better: fb.better, why: fb.why || '' });
+      if(cv.teachLog.length > 10) cv.teachLog.length = 10;
+    }
     if(!state.settings.recastPeeked){
       /* QA-4 first-encounter explainer: auto-open the peek once, ever */
       cv._recastPeek = true; cv._recastFirst = true;
