@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.23';
+const APP_VERSION = '8.24';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2834,14 +2834,22 @@ const CONVO_TIERS = [
  * All names/personas are kana-only (project invariant).
  */
 const CONVO_PARTNERS = [
-  { name:'あおい', emoji:'🧑‍🎨', color:'#9d5cff', persona:'あかるくて やさしい。え が すき。' },
-  { name:'はると', emoji:'🧑‍🍳', color:'#ff5d9e', persona:'げんきで たべもの が だいすき。' },
-  { name:'ゆい',   emoji:'🧑‍🎤', color:'#5cc8ff', persona:'うた が すきで おしゃべり。' },
-  { name:'けん',   emoji:'🧑‍💻', color:'#9fe9cf', persona:'しずかで まじめ。ゲーム が すき。' },
-  { name:'さくら', emoji:'🧑‍🏫', color:'#fbbf24', persona:'やさしい せんせい みたい。' },
-  { name:'りく',   emoji:'🧑‍🚀', color:'#ff8a5c', persona:'ぼうけん が すきで げんき。' },
-  { name:'みお',   emoji:'🧑‍🌾', color:'#7ee787', persona:'のんびりで しぜん が すき。' },
-  { name:'そら',   emoji:'🧑‍✈️', color:'#c9b3ff', persona:'りょこう が すきで あかるい。' },
+  { name:'あおい', emoji:'🧑‍🎨', color:'#9d5cff', persona:'あかるくて やさしい。え が すき。',
+    flavor:'an art student who paints and sketches; loves cats, coffee, and rainy days spent drawing; gentle and curious, asks about colors and favorite things' },
+  { name:'はると', emoji:'🧑‍🍳', color:'#ff5d9e', persona:'げんきで たべもの が だいすき。',
+    flavor:'a cheerful cook; loves ramen, curry, and trying new food; always a little hungry, reacts big to any food talk, loves hearing what people ate' },
+  { name:'ゆい',   emoji:'🧑‍🎤', color:'#5cc8ff', persona:'うた が すきで おしゃべり。',
+    flavor:'a singer who hums all the time; loves pop music and karaoke; bubbly and chatty, gets genuinely excited about favorite songs and artists' },
+  { name:'けん',   emoji:'🧑‍💻', color:'#9fe9cf', persona:'しずかで まじめ。ゲーム が すき。',
+    flavor:'a quiet, thoughtful programmer; loves games (especially RPGs) and late-night snacks; speaks calmly, warm in a low-key way' },
+  { name:'さくら', emoji:'🧑‍🏫', color:'#fbbf24', persona:'やさしい せんせい みたい。',
+    flavor:'a kind teacher type; loves books, tea, and walks in the park; patient and encouraging, quietly celebrates every small win' },
+  { name:'りく',   emoji:'🧑‍🚀', color:'#ff8a5c', persona:'ぼうけん が すきで げんき。',
+    flavor:'an energetic adventurer; loves hiking, the sea, and trying anything once; upbeat, always full of plans for the weekend' },
+  { name:'みお',   emoji:'🧑‍🌾', color:'#7ee787', persona:'のんびりで しぜん が すき。',
+    flavor:'easy-going and outdoorsy; loves gardens, dogs, and slow mornings; relaxed pace, notices the weather and the seasons' },
+  { name:'そら',   emoji:'🧑‍✈️', color:'#c9b3ff', persona:'りょこう が すきで あかるい。',
+    flavor:'a traveler who has been many places; loves trains, maps, and local food; bright and open, full of little travel stories' },
 ];
 
 /** Pick a random character to host a session. */
@@ -2864,6 +2872,9 @@ function _convoSafeName(){
  *   goalJP    — felt purpose, shown once at session start (kana-only)
  *   target    — communicated exchanges (cv.mTurn) to module completion
  *   directive — one preamble line steering the conversation (static, trusted)
+ *   beats     — 4 English sub-angles the partner may wander through, one at a
+ *               time, when the current thread runs dry (v8.24 talk-loop depth;
+ *               static trusted strings, prompt-only — never rendered)
  * A "module" is a DATA ROW consumed by the one talk loop — never a mode, never
  * a screen, never an engine (L13). The identifier stays SCENES: a top-level
  * `const MODULES` already exists (vocab-progression, CR-1) — "module" is
@@ -2871,20 +2882,34 @@ function _convoSafeName(){
  * target-less and goal-less: free talk is NOT a module (§6.2).
  */
 const SCENES = [
-  { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1, goalJP:'じぶんの ことを はなせる',   target:6, directive:'Steer gently toward self-introduction: name, where they live, what they like.' },
-  { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1, goalJP:'たべものの はなしが できる', target:6, directive:'Steer gently toward food: likes, dislikes, what they ate today.' },
-  { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1, goalJP:'かぞくの はなしが できる',   target:6, directive:'Steer gently toward family: who is in it, what they do together.' },
-  { id:'weather',  nameJP:'てんき',         en:'Weather',           minLevel:1, goalJP:'てんきの はなしが できる',   target:6, directive:'Steer gently toward the weather: today\'s weather, hot or cold, rain or sun, what weather they like.' },
-  { id:'pets',     nameJP:'どうぶつ',       en:'Animals & pets',    minLevel:1, goalJP:'どうぶつの はなしが できる', target:6, directive:'Steer gently toward animals: pets they have or want, favorite animals, cats vs dogs.' },
-  { id:'feelings', nameJP:'きもち',         en:'How you feel',      minLevel:1, goalJP:'きもちを はなせる',          target:6, directive:'Steer gently toward feelings: how they are today, tired or fine, happy or sleepy, and why.' },
-  { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2, goalJP:'まちの はなしが できる',     target:8, directive:'Steer gently toward the town: places, going somewhere, what is nearby.' },
-  { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2, goalJP:'まいにちの ことを はなせる', target:8, directive:'Steer gently toward daily life: mornings, work or school, evenings.' },
-  { id:'shopping', nameJP:'かいもの',       en:'Shopping',          minLevel:2, goalJP:'かいものの はなしが できる', target:8, directive:'Steer gently toward shopping: what they want to buy, where they shop, cheap or expensive.' },
-  { id:'weekend',  nameJP:'しゅうまつ',     en:'The weekend',       minLevel:2, goalJP:'しゅうまつの ことを はなせる', target:8, directive:'Steer gently toward the weekend: what they did or will do, rest, going out, fun plans.' },
-  { id:'music',    nameJP:'おんがく',       en:'Music',             minLevel:2, goalJP:'おんがくの はなしが できる', target:8, directive:'Steer gently toward music: songs and artists they like, listening habits, singing.' },
-  { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3, goalJP:'すきな ことを はなせる',     target:8, directive:'Steer gently toward hobbies: what they enjoy, when, with whom.' },
-  { id:'travel',   nameJP:'りょこう',       en:'Travel',            minLevel:3, goalJP:'りょこうの はなしが できる', target:8, directive:'Steer gently toward travel: places they went or want to go, Japan, trains and planes.' },
-  { id:'work',     nameJP:'しごと',         en:'Work & school',     minLevel:3, goalJP:'しごとの はなしが できる',   target:8, directive:'Steer gently toward work or school: what they do, busy or free, what they like about it.' },
+  { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1, goalJP:'じぶんの ことを はなせる',   target:6, directive:'Steer gently toward self-introduction: name, where they live, what they like.',
+    beats:['their name and where they live', 'what they like and dislike', 'their age or birthday, kept light', 'one fun little fact about themselves'] },
+  { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1, goalJP:'たべものの はなしが できる', target:6, directive:'Steer gently toward food: likes, dislikes, what they ate today.',
+    beats:['what they ate today', 'favorite food and drink', 'something they do not like', 'cooking at home vs eating out'] },
+  { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1, goalJP:'かぞくの はなしが できる',   target:6, directive:'Steer gently toward family: who is in it, what they do together.',
+    beats:['who is in the family', 'brothers and sisters', 'what the family does together', 'a family member\'s favorite thing'] },
+  { id:'weather',  nameJP:'てんき',         en:'Weather',           minLevel:1, goalJP:'てんきの はなしが できる',   target:6, directive:'Steer gently toward the weather: today\'s weather, hot or cold, rain or sun, what weather they like.',
+    beats:['today\'s weather where they are', 'hot vs cold — which they prefer', 'rain — like it or not', 'tomorrow\'s weather and their plans'] },
+  { id:'pets',     nameJP:'どうぶつ',       en:'Animals & pets',    minLevel:1, goalJP:'どうぶつの はなしが できる', target:6, directive:'Steer gently toward animals: pets they have or want, favorite animals, cats vs dogs.',
+    beats:['pets they have or want', 'cats vs dogs', 'their favorite animal', 'what that animal eats or does'] },
+  { id:'feelings', nameJP:'きもち',         en:'How you feel',      minLevel:1, goalJP:'きもちを はなせる',          target:6, directive:'Steer gently toward feelings: how they are today, tired or fine, happy or sleepy, and why.',
+    beats:['how they feel right now', 'tired or fine — and why', 'what makes them happy', 'what they do when they feel sleepy'] },
+  { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2, goalJP:'まちの はなしが できる',     target:8, directive:'Steer gently toward the town: places, going somewhere, what is nearby.',
+    beats:['what is near their home', 'a place they often go', 'somewhere they want to go', 'how they get around'] },
+  { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2, goalJP:'まいにちの ことを はなせる', target:8, directive:'Steer gently toward daily life: mornings, work or school, evenings.',
+    beats:['their morning routine', 'their work or school day', 'evenings and dinner', 'what time they go to sleep'] },
+  { id:'shopping', nameJP:'かいもの',       en:'Shopping',          minLevel:2, goalJP:'かいものの はなしが できる', target:8, directive:'Steer gently toward shopping: what they want to buy, where they shop, cheap or expensive.',
+    beats:['something they want to buy', 'where they usually shop', 'cheap finds vs little treats', 'food shopping vs fun shopping'] },
+  { id:'weekend',  nameJP:'しゅうまつ',     en:'The weekend',       minLevel:2, goalJP:'しゅうまつの ことを はなせる', target:8, directive:'Steer gently toward the weekend: what they did or will do, rest, going out, fun plans.',
+    beats:['what they did last weekend', 'plans for next weekend', 'resting at home vs going out', 'the best part of a weekend'] },
+  { id:'music',    nameJP:'おんがく',       en:'Music',             minLevel:2, goalJP:'おんがくの はなしが できる', target:8, directive:'Steer gently toward music: songs and artists they like, listening habits, singing.',
+    beats:['music they like', 'a favorite song or artist', 'when and where they listen', 'singing — karaoke, yes or no'] },
+  { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3, goalJP:'すきな ことを はなせる',     target:8, directive:'Steer gently toward hobbies: what they enjoy, when, with whom.',
+    beats:['what they enjoy doing', 'when they usually do it', 'who they do it with', 'something new they want to try'] },
+  { id:'travel',   nameJP:'りょこう',       en:'Travel',            minLevel:3, goalJP:'りょこうの はなしが できる', target:8, directive:'Steer gently toward travel: places they went or want to go, Japan, trains and planes.',
+    beats:['a place they have been', 'where they want to go next', 'Japan — what they want to see', 'trains, planes, or cars'] },
+  { id:'work',     nameJP:'しごと',         en:'Work & school',     minLevel:3, goalJP:'しごとの はなしが できる',   target:8, directive:'Steer gently toward work or school: what they do, busy or free, what they like about it.',
+    beats:['what they do', 'busy or free lately', 'what they like about it', 'the people there'] },
 ];
 
 /**
@@ -9324,10 +9349,12 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
   const personaLines = [
     'YOUR IDENTITY: You are ' + p.name + ', a friendly Japanese person — NOT an app or assistant.',
     'Never call yourself "Isshin" or any English/app name. ' + p.persona,
+    (p.flavor ? 'ABOUT YOU — your own tastes and life, the well you draw self-disclosure from: ' + p.flavor + '.' : ''),
     'When the scene calls for a self-introduction, introduce yourself as 「わたしは ' + p.name + ' です」.',
     (learner
       ? ('THE LEARNER\'S NAME IS ' + learner + '. Address them by name sometimes; when THEY introduce themselves expect 「わたしは ' + learner + ' です」.')
       : 'You do not know the learner\'s name yet — you may ask 「おなまえ は?」 early on.'),
+    'BE A FRIEND, NOT AN INTERVIEWER: roughly every 2–3 turns, share your OWN short answer or reaction before asking anything — e.g. 「わたしも ネコ が すき!」 — drawn from your tastes above and consistent with them. Real conversation flows both ways; never fire question after question.',
     '',
   ];
   /* JSON.stringify each pool entry — prevents injection via embedded role/Human tokens */
@@ -9819,6 +9846,9 @@ function startConvo(sceneId, seedMessages){
      the model obeying this line. FOLLOW THE LEARNER still wins inside it. */
   if(scene.directive && scene.target){
     preamble += '\n\nMODULE FOCUS: ' + scene.directive
+      + ((scene.beats && scene.beats.length)
+        ? '\nANGLES you can wander through — ONE at a time, and only when the current thread runs dry (never a checklist, never announced): ' + scene.beats.join(' · ') + '.'
+        : '')
       + ' The FOLLOW THE LEARNER rule still wins — if the learner goes elsewhere, go with them, and only drift back gently.'
       + ' When you two have talked a lot about this topic, celebrate what you talked about and ask if they want to keep chatting.';
   }
@@ -10200,6 +10230,9 @@ function convoEnd(){
   );
   /* Snapshot level/xp/leveledUpTo into recap BEFORE clearing the transient flag */
   const info = convoLevelInfo();
+  /* v8.24 talk-loop depth — minutes computed up here so the recap can show it
+     (the convoLog push below reuses the same value). */
+  const _minutes = cv.startedTs ? Math.max(1, Math.round((Date.now() - cv.startedTs) / 60000)) : 1;
   cv.recap = {
     turns,
     xpGain,
@@ -10211,12 +10244,20 @@ function convoEnd(){
     tappedTurns: cv.tappedTurns || 0,
     missedWordIds: _missedWordIds,
     notes: _recapNotes,
+    /* v8.24 talk-loop depth — session context + the learner's own landed
+       sentences (cv.facts is already kana-whitelisted at capture, cap 10).
+       Content-derived, no new AI call; rendered esc()'d in _renderConvoRecap. */
+    sceneEn: (cv.scene && cv.scene.en) || '',
+    sceneJP: (cv.scene && cv.scene.nameJP) || '',
+    partnerName: (cv.partner && cv.partner.name) || '',
+    partnerEmoji: (cv.partner && cv.partner.emoji) || '',
+    saidHighlights: (cv.facts || []).slice(-3),
+    minutes: _minutes,
   };
   /* Consume the transient level-up flag so the celebration does not fire again on next load */
   state.settings.leveledUpTo = null;
   /* Stage D (v8.10) — additive session-volume log, capped ~60 entries, no
      accuracy/% field (judgment-free — volume language only). */
-  const _minutes = cv.startedTs ? Math.max(1, Math.round((Date.now() - cv.startedTs) / 60000)) : 1;
   state.convoLog = state.convoLog || [];
   state.convoLog.push({
     ts: Date.now(),
@@ -11167,11 +11208,26 @@ function _renderConvoRecap(cv){
     : '';
   /* xpToNext from recap snapshot (may be Infinity at atMax — show ∞ in that case) */
   const xpToNextDisplay = (r.xpToNext === Infinity || !isFinite(r.xpToNext)) ? '∞' : r.xpToNext;
+  /* v8.24 talk-loop depth — session context line (topic + partner) and the
+     learner's own landed sentences. English chrome, kana content accents
+     (v8.22 boundary); everything state-derived goes through esc(). */
+  const contextLine = r.partnerName
+    ? `<div style="color:#a99fc7;font-size:13px;margin-bottom:6px">${esc(r.sceneEn || 'Free talk')}${r.sceneJP ? ` <span class="jp" style="opacity:.7;font-size:12px">${esc(r.sceneJP)}</span>` : ''} · with ${esc(r.partnerEmoji || '')} <span class="jp" style="font-weight:700">${esc(r.partnerName)}</span></div>`
+    : '';
+  const said = r.saidHighlights || [];
+  const saidBlock = said.length
+    ? `<div style="background:rgba(159,233,207,.06);border:1px solid rgba(159,233,207,.28);border-radius:14px;padding:12px 15px;margin-bottom:16px;text-align:left">
+        <div style="font-weight:700;font-size:11px;letter-spacing:.4px;color:#9fe9cf;margin-bottom:8px;text-transform:uppercase">🗣 You said — out loud, in Japanese</div>
+        ${said.map(s => `<div class="jp" style="padding:4px 0;font-size:14px;font-weight:700">「${esc(s)}」</div>`).join('')}
+      </div>`
+    : '';
   return `<div style="padding:2px 2px 24px;text-align:center">
     <div style="font-weight:800;font-size:32px;margin:24px 0 8px">🎉</div>
     <div style="font-weight:800;font-size:22px;margin-bottom:8px">Nice work!</div>
-    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} turns · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
+    ${contextLine}
+    <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} turns${(typeof r.minutes === 'number') ? ` · ${r.minutes} min` : ''} · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
     ${levelUpBlock}
+    ${saidBlock}
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:inline-flex;gap:24px;justify-content:center">
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 SPOKEN</div></div>
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 TAPPED</div></div>
