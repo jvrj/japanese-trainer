@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.22';
+const APP_VERSION = '8.23';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2874,9 +2874,17 @@ const SCENES = [
   { id:'intro',    nameJP:'じこしょうかい', en:'Self-introduction', minLevel:1, goalJP:'じぶんの ことを はなせる',   target:6, directive:'Steer gently toward self-introduction: name, where they live, what they like.' },
   { id:'food',     nameJP:'たべもの',       en:'Food',              minLevel:1, goalJP:'たべものの はなしが できる', target:6, directive:'Steer gently toward food: likes, dislikes, what they ate today.' },
   { id:'family',   nameJP:'かぞく',         en:'Family',            minLevel:1, goalJP:'かぞくの はなしが できる',   target:6, directive:'Steer gently toward family: who is in it, what they do together.' },
+  { id:'weather',  nameJP:'てんき',         en:'Weather',           minLevel:1, goalJP:'てんきの はなしが できる',   target:6, directive:'Steer gently toward the weather: today\'s weather, hot or cold, rain or sun, what weather they like.' },
+  { id:'pets',     nameJP:'どうぶつ',       en:'Animals & pets',    minLevel:1, goalJP:'どうぶつの はなしが できる', target:6, directive:'Steer gently toward animals: pets they have or want, favorite animals, cats vs dogs.' },
+  { id:'feelings', nameJP:'きもち',         en:'How you feel',      minLevel:1, goalJP:'きもちを はなせる',          target:6, directive:'Steer gently toward feelings: how they are today, tired or fine, happy or sleepy, and why.' },
   { id:'town',     nameJP:'まち',           en:'Around town',       minLevel:2, goalJP:'まちの はなしが できる',     target:8, directive:'Steer gently toward the town: places, going somewhere, what is nearby.' },
   { id:'daily',    nameJP:'にちじょう',     en:'Daily life',        minLevel:2, goalJP:'まいにちの ことを はなせる', target:8, directive:'Steer gently toward daily life: mornings, work or school, evenings.' },
+  { id:'shopping', nameJP:'かいもの',       en:'Shopping',          minLevel:2, goalJP:'かいものの はなしが できる', target:8, directive:'Steer gently toward shopping: what they want to buy, where they shop, cheap or expensive.' },
+  { id:'weekend',  nameJP:'しゅうまつ',     en:'The weekend',       minLevel:2, goalJP:'しゅうまつの ことを はなせる', target:8, directive:'Steer gently toward the weekend: what they did or will do, rest, going out, fun plans.' },
+  { id:'music',    nameJP:'おんがく',       en:'Music',             minLevel:2, goalJP:'おんがくの はなしが できる', target:8, directive:'Steer gently toward music: songs and artists they like, listening habits, singing.' },
   { id:'hobbies',  nameJP:'しゅみ',         en:'Hobbies',           minLevel:3, goalJP:'すきな ことを はなせる',     target:8, directive:'Steer gently toward hobbies: what they enjoy, when, with whom.' },
+  { id:'travel',   nameJP:'りょこう',       en:'Travel',            minLevel:3, goalJP:'りょこうの はなしが できる', target:8, directive:'Steer gently toward travel: places they went or want to go, Japan, trains and planes.' },
+  { id:'work',     nameJP:'しごと',         en:'Work & school',     minLevel:3, goalJP:'しごとの はなしが できる',   target:8, directive:'Steer gently toward work or school: what they do, busy or free, what they like about it.' },
 ];
 
 /**
@@ -9400,6 +9408,38 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
 }
 
 /**
+ * _convoApiWindow(msgs) — sanitize the conversation window for the Messages API.
+ * The Anthropic API 400s on: an empty messages array, a first message with the
+ * assistant role, consecutive same-role messages, and empty content strings.
+ * cv.messages naturally violates the first two (the AI partner speaks FIRST, so
+ * the log is assistant-led and the opening probe has no messages at all) — this
+ * broke every keyed conversation turn with "http 400" (field report 2026-07-19;
+ * the keyless scripted path never hits the API, which is why local checks stayed
+ * green). Fix: take the last-6 window, coerce roles, merge same-role runs,
+ * backfill empty content, and prepend a synthetic kana user opener whenever the
+ * window is empty or assistant-led. The synthetic line goes only to the model —
+ * it is never rendered or stored in cv.messages.
+ */
+function _convoApiWindow(msgs, cap){
+  const src = (Array.isArray(msgs) ? msgs : []).slice(-(cap || 6));
+  const w = [];
+  for(const m of src){
+    if(!m) continue;
+    const role = (m.role === 'assistant') ? 'assistant' : 'user';
+    const content = (typeof m.content === 'string' && m.content.trim()) ? m.content : '…';
+    if(w.length && w[w.length - 1].role === role){
+      w[w.length - 1] = { role, content: w[w.length - 1].content + '\n' + content };
+    } else {
+      w.push({ role, content });
+    }
+  }
+  if(!w.length || w[0].role !== 'user'){
+    w.unshift({ role:'user', content:'（こんにちは！はなしましょう）' });
+  }
+  return w;
+}
+
+/**
  * _convoCall(messages, systemStr)
  * Multi-turn Anthropic API call. Duplicates _coachCall's fetch body deliberately
  * (spec: no in-place refactor of load-bearing _coachCall). Sends the conversation
@@ -9701,7 +9741,7 @@ async function _convoOpenProbe(){
   const seedWindow = (cv.messages && cv.messages.length) ? cv.messages.slice(-6) : [];
   let rawStr;
   try {
-    rawStr = key ? await _convoCall(seedWindow, _convoSystemStr(cv)) : _convoScript(cv.sceneId, 0);
+    rawStr = key ? await _convoCall(_convoApiWindow(seedWindow), _convoSystemStr(cv)) : _convoScript(cv.sceneId, 0);
   } catch(e){
     cv.loading = false;
     cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
@@ -9901,7 +9941,7 @@ async function convoTurn(userText, viaVoice){
     /* No-key fallback: _convoScript instead of _convoCall.
        F5 (§7.3): system string is composed per-turn — immutable preamble base
        + the neutralized cv.facts callback line (see _convoSystemStr). */
-    rawStr = key ? await _convoCall(windowed, _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn);
+    rawStr = key ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn);
   } catch(e){
     cv.loading = false;
     cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
@@ -21530,7 +21570,9 @@ async function sendAskClaude(){
 
   try{
     const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
-    const history = state.askClaude.messages.slice(-20).map(m => ({role:m.role, content:m.content}));
+    /* Same 400 guard as the talk loop: a slice can land mid-pair and start with
+       an assistant message, which the Messages API rejects. */
+    const history = _convoApiWindow(state.askClaude.messages, 20);
     const body = {
       model,
       max_tokens: 1024,
