@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.28';
+const APP_VERSION = '8.29';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3602,6 +3602,25 @@ function vocabLockMigrateV829(){
 function _vocabWordStarted(wordId){
   const st = state.stats[wordId];
   return !!(st && st.attempts && st.attempts.length > 0);
+}
+
+/* _vocabStartedOrManualIds() — S4 (ADR-013 §6, recap close) — the plain-data
+   "earned access" id list: started(w) (an actual SRS attempt landed) OR the
+   word is in state.settings.unlockedExtra (a real manual/backstop unlock).
+   Deliberately EXCLUDES pure frontier(w) membership — a frontier word is
+   already visible with zero learner action, so counting it would inflate
+   "words unlocked" every session regardless of what the learner did. Used
+   both to capture startConvo's session-open snapshot and to diff against it
+   in convoEnd for recap.unlockedDelta — read-only, never writes stats or
+   unlockedExtra itself (SRS/unlock writes stay exactly where they already
+   are: recordAttempt / getActiveWords' minViable backstop / browse tap). */
+function _vocabStartedOrManualIds(){
+  const manual = new Set(Array.isArray(state.settings.unlockedExtra) ? state.settings.unlockedExtra : []);
+  const out = [];
+  for(const w of state.words){
+    if(_vocabWordStarted(w.id) || manual.has(w.id)) out.push(w.id);
+  }
+  return out;
 }
 
 /* getActiveWords([opts]) — the SINGLE choke point for "which words is the
@@ -10095,6 +10114,15 @@ function startConvo(sceneId, seedMessages){
   }
   /* (a) Seed ~8 due-first words via _buildSpamPick */
   const pool = _buildSpamPick(getActiveWords(), 8);
+  /* S4 (ADR-013 §6, recap close) — session-open snapshot of "earned access"
+     word ids, captured AFTER the pool build above (so any minViable backstop
+     widening that build itself triggers is baked into the baseline rather
+     than misread later as something THIS session's conversation unlocked)
+     and BEFORE any convoTurn/teach logic can run (this function hasn't even
+     reached nav('convo') yet). convoEnd diffs the live set against this to
+     compute recap.unlockedDelta — a plain read, never re-derived from a
+     mutated live snapshot. */
+  const _startedSnapshot = _vocabStartedOrManualIds();
   /* Pick a random character to host this session (gives the AI an identity, not "Isshin") */
   const partner = _convoPickPartner();
   let preamble = _convoPreamble(pool, _convoFreeSetWords(), scene.nameJP + ' かいわ', partner, scene.id);
@@ -10161,6 +10189,7 @@ function startConvo(sceneId, seedMessages){
     _moduleCardGone: false,  /* F4 — completion card dismissed (もっと はなす chose to keep going) */
     _completedModule: null,  /* F4 — module id recorded on completion; appended to this session's convoLog row */
     facts: [],               /* F5 (§7.3, OQ-4) — rolling kana-whitelisted ledger of landed voice utterances (cap 10); per-turn callback line via _convoSystemStr */
+    _startedSnapshot: _startedSnapshot,  /* S4 (ADR-013 §6) — session-open "earned access" id array (plain array — this whole object is JSON-persisted via save()); read-only diff source for convoEnd's recap.unlockedDelta, never mutated after this assignment */
   };
   save();
   nav('convo');
@@ -10538,6 +10567,23 @@ function convoEnd(){
     _missedPoolWords.slice(0, Math.max(0, 3 - _recastNotes.length))
       .map(w => ({ id:w.id, jp:w.jp, en:w.en, romaji:w.romaji||'' }))
   );
+  /* S4 (ADR-013 §6, recap close) — 「What you learned today」 source: at most
+     3 teach moments straight from cv.teachLog (teach-grade recasts only,
+     already curated/newest-first — see the S1 push site). Plain data
+     derivation, no new AI/network call, matching the _recapNotes pattern
+     just above. A read-only report — this NEVER writes SRS or unlock state
+     (that already happened, if at all, via recordAttempt/convoApplyScore). */
+  const _taught = (cv.teachLog || [])
+    .filter(t => t && typeof t.better === 'string' && t.better.trim())
+    .slice(0, 3)
+    .map(t => ({ heard: t.heard || '', better: t.better, why: t.why || '' }));
+  /* S4 — unlockedDelta: word ids started-or-manually-unlocked NOW that were
+     absent from the session-open snapshot captured in startConvo. Plain Set
+     diff, read-only (recordAttempt/getActiveWords' backstop already did any
+     actual unlocking earlier in this turn/session — this only counts it). */
+  const _startedNowIds = _vocabStartedOrManualIds();
+  const _startedSnapSet = new Set(cv._startedSnapshot || []);
+  const _unlockedDeltaIds = _startedNowIds.filter(id => !_startedSnapSet.has(id));
   /* Snapshot level/xp/leveledUpTo into recap BEFORE clearing the transient flag */
   const info = convoLevelInfo();
   /* v8.24 talk-loop depth — minutes computed up here so the recap can show it
@@ -10563,6 +10609,12 @@ function convoEnd(){
     partnerEmoji: (cv.partner && cv.partner.emoji) || '',
     saidHighlights: (cv.facts || []).slice(-3),
     minutes: _minutes,
+    /* S4 (ADR-013 §6, recap close) — taught: <=3 kana-first teach moments for
+       the 「What you learned today」 block; unlockedDelta: count of words
+       newly started/unlocked this session. Both empty-safe at render (see
+       _renderConvoRecap) and neither writes SRS/unlock state itself. */
+    taught: _taught,
+    unlockedDelta: _unlockedDeltaIds.length,
   };
   /* Consume the transient level-up flag so the celebration does not fire again on next load */
   state.settings.leveledUpTo = null;
@@ -11571,6 +11623,29 @@ function _renderConvoRecap(cv){
         </div>`).join('')}
       </div>`
     : '';
+  /* S4 (ADR-013 §6, recap close) — 「What you learned today」: up to 3 teach
+     moments (r.taught, built in convoEnd from cv.teachLog — teach-grade
+     recasts only). Empty-safe: taught.length===0 renders nothing at all, no
+     empty heading/container. Better form is the bold kana headline; why is
+     the nuance line underneath (both esc()'d — model-derived text). */
+  const taught = r.taught || [];
+  const taughtBlock = taught.length
+    ? `<div style="background:rgba(157,92,255,.08);border:1px solid rgba(157,92,255,.35);border-radius:14px;padding:12px 15px;margin-bottom:16px;text-align:left">
+        <div style="font-weight:700;font-size:11px;letter-spacing:.4px;color:#c9b3ff;margin-bottom:8px;text-transform:uppercase">📘 What you learned today</div>
+        ${taught.map(t => `<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,.07)">
+          <div class="jp" style="font-weight:800;color:#ffe1a8;font-size:14px">${esc(t.better)}</div>
+          ${t.why ? `<div class="muted" style="font-size:12px;margin-top:3px;opacity:.85">${esc(t.why)}</div>` : ''}
+        </div>`).join('')}
+      </div>`
+    : '';
+  /* S4 — '+N words unlocked' line: only when recap.unlockedDelta > 0 (word
+     ids started/manually-unlocked since the session-open snapshot). Empty-
+     safe: 0 (or missing/legacy recap) renders nothing. Count only — no id
+     list, so no additional esc() surface beyond the number itself. */
+  const unlockedDelta = r.unlockedDelta || 0;
+  const unlockedLine = unlockedDelta > 0
+    ? `<div style="color:#9fe9cf;font-weight:700;font-size:13px;margin-bottom:14px">🔓 +${unlockedDelta} words unlocked</div>`
+    : '';
   /* Level-up celebration — only when the recap captured a leveledUpTo name.
      r.leveledUpTo is a hardcoded kana string from CONVO_TIERS, esc()-escaped below. */
   const levelUpBlock = r.leveledUpTo
@@ -11601,6 +11676,8 @@ function _renderConvoRecap(cv){
     <div style="color:#a99fc7;font-size:14px;margin-bottom:14px">${r.turns} turns${(typeof r.minutes === 'number') ? ` · ${r.minutes} min` : ''} · <span style="color:#9fe9cf;font-weight:700">+${r.xpGain} XP</span></div>
     ${levelUpBlock}
     ${saidBlock}
+    ${taughtBlock}
+    ${unlockedLine}
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;margin-bottom:16px;display:inline-flex;gap:24px;justify-content:center">
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#9fe9cf">${spoken}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">🗣 SPOKEN</div></div>
       <div style="text-align:center"><div style="font-weight:800;font-size:22px;color:#fcd34d">${tapped}</div><div style="font-size:10px;color:#6f6688;letter-spacing:.5px;margin-top:2px">👆 TAPPED</div></div>
