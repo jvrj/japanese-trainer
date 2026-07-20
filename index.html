@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.29';
+const APP_VERSION = '8.30';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19378,9 +19378,45 @@ function _buildInductionSkipControl(w){
   const wid = (w && w.id) || '';
   return `
     <div style="text-align:center;margin-top:14px">
-      <button class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="vocabMarkIntroduced('${jsEsc(wid)}')">I know this / skip</button>
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="buildInductionSkip('${jsEsc(wid)}')">I know this / skip</button>
     </div>`;
 }
+
+/* Real skip for the induction: mark the word introduced AND advance the LIVE
+   session past this word's remaining meet/hear/say beats to its recall step —
+   so "I know this" actually drops the word into rotation instead of re-rendering
+   the same beat (vocabMarkIntroduced alone only sets the flag + render, never
+   moves stepIdx, so it couldn't skip anything in the in-flight session). Mirrors
+   buildNextStep's timer/speech/flag cleanup, then re-arms autoplay on the landed
+   step so the hands-free chain keeps going. */
+function buildInductionSkip(wid){
+  const b = state.buildMode;
+  if(!b || !Array.isArray(b.steps)) return;
+  _buildClearTimer();
+  try{ window.speechSynthesis?.cancel(); }catch(e){}
+  const cur = b.steps[b.stepIdx];
+  const markId = (cur && cur.word_id) || wid;
+  if(markId){ try{ smStatFor(markId).introduced = true; }catch(e){} }
+  /* advance past THIS word's contiguous induction beats to its recall step */
+  const INDUCT = { meet:1, hear:1, say:1 };
+  let guard = 0;
+  while(b.stepIdx < b.steps.length - 1
+        && b.steps[b.stepIdx] && INDUCT[b.steps[b.stepIdx].type]
+        && guard++ < 12){
+    b.stepIdx++;
+  }
+  b.revealed = false;
+  b._writeAttempt = null;
+  b._similarPick = null;
+  b._lastVoice = null;
+  save();
+  render();
+  if(!b._paused){
+    const step = b.steps[b.stepIdx];
+    if(step && !b.revealed) setTimeout(() => { if(state.buildMode === b) buildAutoplayStep(step); }, 80);
+  }
+}
+window.buildInductionSkip = buildInductionSkip;
 
 /* Fire-once completion for the NATURAL (non-SKIP) path — called from
    buildNextStep()/buildAutoNext() right as the learner leaves a 'say' step
