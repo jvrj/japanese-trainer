@@ -15992,6 +15992,44 @@ function _buildSpamPick(arr, n){
   return shuffleFY(chosen);
 }
 
+/* ===================== INDUCTION INJECT + GATE (v8.xx) =====================
+   Splices a one-time meet->hear->say induction immediately before a brand-new
+   (!vocabIsIntroduced) word's recall step in the two hands-free Build-Mode
+   entry points below (Vocab Spam + Random Drill). Already-introduced words
+   are untouched — only their existing recall step is emitted, unchanged,
+   same position/fields as before. The step-type shape (word_id-keyed,
+   dispatched by renderBuildModeStep()/buildAutoplayStep()'s 'meet'/'hear'/
+   'say' cases) is the contract established by the induction-render and
+   induction-autoplay-voice sprints — reused as-is here, not redefined.
+   Fire-once completion for the natural (non-SKIP) path lives with
+   _buildInductionCompleteSay further down this file, next to the other
+   induction helpers; SKIP itself is already wired via
+   _buildInductionSkipControl's onclick (vocabMarkIntroduced directly). */
+function _buildInductionStepsFor(w){
+  return [
+    { type:'meet', word_id: w.id },
+    { type:'hear', word_id: w.id },
+    { type:'say',  word_id: w.id }
+  ];
+}
+/* Fire-and-forget cache warm for the HEAR beat's generated sentences — never
+   awaited, never blocks lesson construction. Skips words that already have a
+   cache entry (nothing to warm) so repeat sessions don't needlessly re-hit
+   the API. focusGenWord (~L4709) already guards its own no-key/offline path
+   internally (catches its own errors, shows a toast, never throws); the
+   .catch below is just a defensive belt-and-braces so an unexpected
+   rejection can never surface here as an uncaught promise. */
+function _buildInductionWarmCache(words){
+  for(const w of (words || [])){
+    try{
+      const romaji = ((w && (w.romaji || w.r)) || '').toLowerCase().trim();
+      if(!romaji || !w.id) continue;
+      if(focusGenCacheGet(romaji)) continue;
+      const p = focusGenWord(w.id);
+      if(p && typeof p.catch === 'function') p.catch(() => {});
+    }catch(e){}
+  }
+}
 function buildGenerateVocabSpamLesson(opts){
   const want = (opts && opts.count) || 30;
   const masteredSet = new Set(state.settings.masteredWords || []);
@@ -16028,7 +16066,16 @@ function buildGenerateVocabSpamLesson(opts){
      up with new words. Fixes "build mode doesn't change / isn't my words." */
   const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length));
   const sec = activeVocabSection();
-  const steps = pool.map(w => ({ type:'recall', word_id: w.id }));
+  /* v8.xx — induction-inject-gate: brand-new (!vocabIsIntroduced) words get a
+     one-time meet->hear->say induction spliced immediately before their own
+     recall step; already-introduced words are untouched (still just a single
+     recall step, same position/fields as before). */
+  _buildInductionWarmCache(pool.filter(w => !vocabIsIntroduced(w)));
+  const steps = pool.reduce((acc, w) => {
+    if(!vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
+    acc.push({ type:'recall', word_id: w.id });
+    return acc;
+  }, []);
   return {
     id: 'Gv_' + Date.now().toString(36),
     title: `Vocab Spam — ${sec.name}`,
@@ -16085,13 +16132,24 @@ function startRandomDrill(opts){
     }
     const want = (opts && opts.count) || 30;
     const picked = shuffleFY(pool.slice()).slice(0, Math.min(want, pool.length));
+    /* v8.xx — induction-inject-gate: same splice+warm as Vocab Spam above —
+       brand-new (!vocabIsIntroduced) words get a one-time meet->hear->say
+       induction spliced immediately before their own recall step; already-
+       introduced words keep their single unmodified recall step, same
+       position/fields as before. */
+    _buildInductionWarmCache(picked.filter(w => !vocabIsIntroduced(w)));
+    const randomSteps = picked.reduce((acc, w) => {
+      if(!vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
+      acc.push({ type:'recall', word_id: w.id });
+      return acc;
+    }, []);
     const lesson = {
       id: 'Gr_' + Date.now().toString(36),
       title: `Random Drill — ${picked.length} words`,
       duration_mins: Math.max(3, Math.round(picked.length * 0.4)),
       new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
       carryover_words: [],
-      cycles: [{id:'random', name:'Random · full deck', steps: picked.map(w => ({type:'recall', word_id:w.id}))}],
+      cycles: [{id:'random', name:'Random · full deck', steps: randomSteps}],
       _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
     };
     state.buildMode = buildMakeSession(lesson);
@@ -17072,6 +17130,7 @@ function buildAutoReveal(){
 function buildAutoNext(){
   const b = state.buildMode;
   if(!b || b._paused || !_buildAutoOn()) return;
+  _buildInductionCompleteSay(b.steps[b.stepIdx]); // fire-once gate — no-op unless leaving a 'say' step
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
     b.done = true;
@@ -17405,6 +17464,7 @@ window.buildSimilarPick = buildSimilarPick;
 function buildNextStep(){
   const b = state.buildMode;
   _buildClearTimer();
+  _buildInductionCompleteSay(b.steps[b.stepIdx]); // fire-once gate — no-op unless leaving a 'say' step
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
@@ -19320,6 +19380,21 @@ function _buildInductionSkipControl(w){
     <div style="text-align:center;margin-top:14px">
       <button class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="vocabMarkIntroduced('${jsEsc(wid)}')">I know this / skip</button>
     </div>`;
+}
+
+/* Fire-once completion for the NATURAL (non-SKIP) path — called from
+   buildNextStep()/buildAutoNext() right as the learner leaves a 'say' step
+   (manual "Next" tap, or the auto/linger-driven advance), which is the point
+   both the auto and hands-free-manual flows converge on regardless of voice
+   mode. No-ops for every other step type. Idempotent via the
+   vocabIsIntroduced guard, so this and the SKIP button's own direct
+   vocabMarkIntroduced call (_buildInductionSkipControl above) can never
+   double-fire for the same word — whichever happens first marks it, and
+   vocabIsIntroduced(w) then keeps it out of every future induction splice. */
+function _buildInductionCompleteSay(step){
+  if(!step || step.type !== 'say') return;
+  const w = buildWordById(step.word_id);
+  if(w && !vocabIsIntroduced(w)) vocabMarkIntroduced(w.id);
 }
 
 /* BEAT 1 — MEET IT. Modeled directly on _buildRenderIntroduce: kana headword,
