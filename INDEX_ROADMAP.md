@@ -38,6 +38,7 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Recently closed
 
+- **New-word induction (meet→hear→say)** (v8.30, 2026-07-20): first time a new word surfaces in the hands-free drill loop (Vocab Spam / Random Drill) it runs a 3-beat induction — MEET (word+meaning+nuance, spoken), HEAR (2–3 generated+cached kana sentences, EN behind peek), SAY (speak aloud, advances on any speech/timeout, never graded) — then the word enters rotation; fires once per `vocabIsIntroduced`, with an "I know this / skip" that advances the live session past the beats. Reuses the existing generator (`focusGen*`) + `introduce` step + voice-listen beat; offline/no-key falls back to static `ex`/canned kana frame. Owner /interactive decisions (2026-07-20); forge wf_27f08b3e-ce5 (3/3 sprints) + hand-fixed skip-advance bug; render harness `render_check_v830.js` green. Extends ADR-013 (sensei) — decision-note pending. Awaiting owner phone test.
 - **Talk-loop depth pass** (v8.24, 2026-07-19): topic beats ×14, partner self-disclosure flavor, richer recap ("You said" + topic/partner/minutes) — first of the two owner-sequenced pre-backend tracks; **store-polish is next**.
 - **UI chrome language decided + shipped** (v8.22, 2026-07-18): owner call — English-primary chrome, kana demoted to accents; learning content stays kana-only.
 - Example sentences for 134 function words + 💬 peek (v8.06, **uncommitted**).
