@@ -9549,7 +9549,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '- Use 「、」 inside jp where a natural pause helps — spoken lines breathe better with commas.',
     '- Keep jp to one short sentence (≤10 kana). Exception: when answering a what-does-X-mean question (ANSWER QUESTIONS above), jp may be up to two short sentences.',
     '- suggested must contain exactly ' + _lvInfo.chips + ' short kana replies the learner could actually say next — prefer WORD_POOL words, but fitting the live conversation wins.',
-    '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
+    '- judged.usedWords lists the kana surface (or wordId) of EVERY word the learner demonstrably used this turn — not just WORD_POOL, any real word the learner clearly said counts; empty array if none.',
     '- judged.score: 2 = you UNDERSTOOD the learner — any comprehensible unaided speech, on ANY topic, pool word or not. 1 = partly understood, you want one gentle retry. 0 = chip tap, or you could not extract any meaning at all. Never give comprehensible speech a 0 just because it used no pool word or left the scene.',
     '- sceneDone = true ONLY when the learner is clearly saying goodbye / ending the conversation (e.g. またね, バイバイ, さようなら, おわり, or an equivalent farewell). Never set it true just because several turns have passed — the conversation should keep going as long as the learner wants.',
     '- Output raw JSON only — no markdown fences, no preamble.',
