@@ -3613,27 +3613,19 @@ function _vocabWordStarted(wordId){
    other call site stays zero-arg, and when state.settings.vocabLock is off
    (or the escape hatch is used) the return is byte-for-byte identical to
    the pre-S3 function. */
-function getActiveWords(opts){
-  const ignoreLock = !!(opts && opts.ignoreLock === true);
+/* _vocabUnlockedSet() — the SINGLE place unlocked(w) = started(w) ∨
+   manuallyUnlocked(w) ∨ frontier(w) is computed (extracted from
+   getActiveWords so every other surface that needs a per-word lock verdict
+   — e.g. the browse/library greyed-row renderer — calls INTO this instead
+   of re-deriving frontier/started/manual membership independently, which
+   would risk browse-display and actual drill-gating silently disagreeing
+   after a future change such as FRONTIER_N). unlockedExtra entries are
+   validated against the real deck before use — a tampered/corrupted
+   localStorage array can't inject an id that isn't a real word (CWE-20).
+   Returns {unlocked, manual} — manual is exposed so getActiveWords()'s
+   minViable backstop can grow the same Set it read from. */
+function _vocabUnlockedSet(){
   const s = state.settings;
-  const removed = new Set(s.removedWords || []);
-  const includeKata = s.includeKatakana === true;
-  const basePool = state.words.filter(w => {
-    if(removed.has(w.id)) return false;
-    if(s.activeThemes.length && !s.activeThemes.includes(w.theme)) return false;
-    if(s.activePOS.length && !s.activePOS.includes(w.pos)) return false;
-    if(s.activeRegister.length && !s.activeRegister.includes(w.register)) return false;
-    if(!includeKata && hasKatakana(w.jp)) return false;
-    return true;
-  });
-  /* Absent flag is treated as ON ("absent flags mean locked-by-frontier
-     computed at read time" — ADR-012 §6) — only an explicit `false` opts out. */
-  if(ignoreLock || s.vocabLock === false) return basePool;
-
-  /* unlocked(w) = started(w) ∨ manuallyUnlocked(w) ∨ frontier(w).
-     unlockedExtra entries are validated against the real deck before use —
-     a tampered/corrupted localStorage array can't inject an id that isn't a
-     real word (CWE-20). */
   const validIds = new Set(state.words.map(w => w.id));
   const manual = new Set((Array.isArray(s.unlockedExtra) ? s.unlockedExtra : [])
     .filter(id => typeof id === 'string' && validIds.has(id)));
@@ -3649,6 +3641,37 @@ function getActiveWords(opts){
       frontierCount++;
     }
   }
+  return {unlocked, manual};
+}
+
+/* _vocabBasePool() — the theme/POS/register/katakana/removed filters,
+   extracted so the browse/library renderer can build the SAME candidate
+   pool getActiveWords() starts from (just without going through its
+   ignoreLock parameter, which stays reserved for exactly the two callers
+   the S3 lock-core probes assert). */
+function _vocabBasePool(){
+  const s = state.settings;
+  const removed = new Set(s.removedWords || []);
+  const includeKata = s.includeKatakana === true;
+  return state.words.filter(w => {
+    if(removed.has(w.id)) return false;
+    if(s.activeThemes.length && !s.activeThemes.includes(w.theme)) return false;
+    if(s.activePOS.length && !s.activePOS.includes(w.pos)) return false;
+    if(s.activeRegister.length && !s.activeRegister.includes(w.register)) return false;
+    if(!includeKata && hasKatakana(w.jp)) return false;
+    return true;
+  });
+}
+
+function getActiveWords(opts){
+  const ignoreLock = !!(opts && opts.ignoreLock === true);
+  const s = state.settings;
+  const basePool = _vocabBasePool();
+  /* Absent flag is treated as ON ("absent flags mean locked-by-frontier
+     computed at read time" — ADR-012 §6) — only an explicit `false` opts out. */
+  if(ignoreLock || s.vocabLock === false) return basePool;
+
+  const {unlocked, manual} = _vocabUnlockedSet();
   let pool = basePool.filter(w => unlocked.has(w.id));
 
   /* minViable demand-unlock backstop: if the post-lock pool would drop
@@ -21272,6 +21295,28 @@ function colToggleWord(id, wordId){
 }
 window.colToggleWord = colToggleWord;
 
+/* colUnlockWord(wordId) — S3 (ADR-012) tap-to-unlock affordance for a
+   greyed/locked row in the Collections word picker (the browse/library
+   word-list surface). Writes through the SAME manuallyUnlocked flag
+   getActiveWords()'s lock filter reads (state.settings.unlockedExtra) —
+   no parallel unlock mechanism. wordId is validated against the real deck
+   before it can reach unlockedExtra (a tampered/attacker-influenced string
+   can never get written — CWE-20), and the push is dedup-safe so repeat
+   taps on an already-unlocked row never flood the array. List-only refresh
+   so the search box keeps its text + keyboard, mirroring colToggleWord. */
+function colUnlockWord(wordId){
+  if(typeof wordId !== 'string') return;
+  if(!state.words.some(w => w.id === wordId)) return;
+  const s = state.settings;
+  if(!Array.isArray(s.unlockedExtra)) s.unlockedExtra = [];
+  if(!s.unlockedExtra.includes(wordId)) s.unlockedExtra.push(wordId);
+  save();
+  const openId = colUi().openId;
+  const list = $('#colPickList');
+  if(list && openId) list.innerHTML = colPickListHtml(openId, colUi().search);
+}
+window.colUnlockWord = colUnlockWord;
+
 function colSeedTheme(id, theme){
   if(!theme) return;
   collectionSeedFromTheme(id, theme);
@@ -21290,7 +21335,17 @@ function colPickListHtml(id, search){
   if(!c) return '';
   const member = new Set(c.wordIds || []);
   const q = (search || '').trim().toLowerCase();
-  const all = getActiveWords();
+  /* S3 (ADR-012) — browse/library rows must never hide locked words, only
+     grey them, so the source pool here is the lock-BLIND base pool (same
+     theme/POS/register/katakana filters getActiveWords() applies, via the
+     shared _vocabBasePool() helper) rather than getActiveWords() itself,
+     which would silently drop locked words from search results. Per-word
+     lock status is then read from _vocabUnlockedSet() — the SAME Set-build
+     getActiveWords()'s lock filter uses — so browse-display can never drift
+     from actual drill-gating. */
+  const lockOn = state.settings.vocabLock !== false;
+  const unlockedIds = lockOn ? _vocabUnlockedSet().unlocked : null;
+  const all = _vocabBasePool();
   const matches = all.filter(w => {
     if(!q) return true;
     return (w.jp || '').toLowerCase().includes(q)
@@ -21301,6 +21356,14 @@ function colPickListHtml(id, search){
   const shown = matches.slice(0, CAP);
   const rows = shown.map(w => {
     const on = member.has(w.id);
+    const locked = lockOn && !unlockedIds.has(w.id);
+    if(locked){
+      return `<button class="btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;border:1px dashed var(--border);background:transparent;opacity:0.55"
+          onclick="colUnlockWord('${jsEsc(w.id)}')" title="Not in your focus set yet — tap to add it to your unlocked words">
+        <span style="font-size:15px;width:18px;flex-shrink:0" aria-hidden="true">🔒</span>
+        <span style="flex:1"><b>${esc(w.jp)}</b> <span class="muted" style="font-size:12px">${esc(w.romaji||'')}</span><br><span class="muted" style="font-size:12px">${esc(w.en||'')} · tap to unlock</span></span>
+      </button>`;
+    }
     return `<button class="btn" style="width:100%;text-align:left;display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;border:1px solid ${on?'var(--blue)':'var(--border)'};background:${on?'rgba(100,150,255,0.12)':'transparent'}"
         onclick="colToggleWord('${id}','${w.id}')">
       <span style="font-size:15px;width:18px;flex-shrink:0">${on?'✓':'+'}</span>
