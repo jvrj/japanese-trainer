@@ -16431,6 +16431,12 @@ function _buildVoiceTargetForStep(step){
     const ways = (step.ways || []).map(v => v && v.jp).filter(Boolean);
     return ways.length ? ways : null;
   }
+  if(step.type === 'say'){
+    /* SAY induction beat — target is the new word's own kana headword, same
+       resolver as 'recall'. STT just needs SOMETHING to compare against for
+       the quiet "heard" echo; it's never used to score/gate. */
+    const w = buildWordById(step.word_id); return w ? w.jp : null;
+  }
   return null;
 }
 function _buildVoiceShouldListen(step){
@@ -16438,7 +16444,11 @@ function _buildVoiceShouldListen(step){
   if(!step) return false;
   if(step.type === 'introduce' || step.type === 'similar') return false;
   if(step.type === 'qa') return false; // AI path or scripted reveal owns qa
-  return _buildVoiceTargetForStep(step) != null;
+  // SAY induction beat always listens when voice mode is on — it advances on
+  // ANY speech or on STT timeout via the existing nostt/heard handling in
+  // _buildVoiceListenStep below; it never grades, so it doesn't need (and
+  // deliberately skips) the target != null gate the other step types use.
+  return step.type === 'say' || _buildVoiceTargetForStep(step) != null;
 }
 /* v7.46 — Voice-listen dispatcher. Routes to Whisper when configured and
    online; otherwise to the original Web Speech path below. Both share the
@@ -16871,6 +16881,15 @@ function _buildStateWordIdForStep(step){
 }
 function _buildPaceFactor(step){
   if(!step || step.type === 'introduce') return 1.0; /* never rush new exposures */
+  /* New-word induction — 'meet' is exposure-only, exactly like 'introduce'
+     (same never-rush guard). 'hear'/'say' are deliberately given full pace
+     too, rather than left to fall through to the length/mastery math below:
+     'hear' is actively playing 2-3 generated sentences back to back (needs
+     the full window to land), and 'say' is a first-ever production attempt
+     on a brand-new word (never rushed). Neither is a quick single-word
+     recall check, so pinning them here also sidesteps any chance of
+     _buildStepIsSingleWord ever misclassifying them as instant-or-unknown. */
+  if(step.type === 'meet' || step.type === 'hear' || step.type === 'say') return 1.0;
   /* v6.36 — split into length factor + mastery factor.
      Single-word recall/callback is "instant or unknown", so half-speed.
      Sentence steps (build/qa, sentence-only callback) keep full length so the
@@ -16980,6 +16999,58 @@ function buildAutoplayStep(step){
     /* v6.28 — speak the EN gloss as the prompt. Auto-reveal timer carries
        the user to JP reveal in normal mode. */
     _buildSpeakEN(step.en, false, onEnDone);
+  } else if(step.type === 'meet'){
+    /* New-word induction, beat 1 — MEET IT. Mirrors 'introduce' exactly:
+       speak JP then EN, and (auto only) go straight to the linger timer.
+       No voice-listen, no onEnDone think-phase — this beat is pure
+       exposure, nothing is asked of the learner yet. */
+    const w = buildWordById(step.word_id);
+    if(w){
+      _buildSpeakJPThenEN(w.jp, w.en, () => {
+        if(!auto) return;
+        _buildScheduleLinger();
+      });
+    }
+  } else if(step.type === 'hear'){
+    /* New-word induction, beat 2 — HEAR IT LIVE. Plays each resolved example
+       sentence (_buildInductionSentences: generated cache -> static ex ->
+       canned kana fallback, so this list is never empty) back to back via
+       speakJP — the same engine the per-sentence 🔊 replay buttons in
+       _buildRenderHear already use, kept consistent rather than introducing
+       a second JP-speak path. speakJP has no completion callback, so
+       sequencing uses a duration-scaled estimate (same idea as the
+       _ttsFireGuard watchdog elsewhere in this file) to know when it's safe
+       to start the next sentence without one utterance cancelling another.
+       When the sequence completes (or there are zero sentences, which
+       shouldn't happen but is handled defensively) it calls
+       _buildScheduleLinger() — never blocks, never hangs. */
+    const w = buildWordById(step.word_id);
+    const sentences = w ? _buildInductionSentences(w).slice(0, 3) : [];
+    const playHearAt = (idx) => {
+      if(state.buildMode !== b || b._paused) return;
+      if(idx >= sentences.length){ if(auto) _buildScheduleLinger(); return; }
+      const jp = sentences[idx].jp || '';
+      speakJP(jp);
+      const rate = state.settings.ttsRate || 0.9;
+      const estMs = Math.max(1200, Math.ceil(jp.length * 350 / rate) + 500);
+      setTimeout(() => playHearAt(idx + 1), estMs);
+    };
+    if(sentences.length) playHearAt(0);
+    else if(auto) _buildScheduleLinger();
+  } else if(step.type === 'say'){
+    /* New-word induction, beat 3 — SAY IT. Cue the word once more (JP
+       replay) then hand off through the SAME onEnDone routing every other
+       voice-capable step already uses: _buildVoiceShouldListen now returns
+       true for 'say' and _buildVoiceTargetForStep resolves the word's kana,
+       so onEnDone below sends this straight into _buildVoiceListenStep.
+       That path advances on ANY speech or on STT timeout using its existing
+       nostt/heard handling — no new scoring, no new SRS writes, matching
+       the "STT is never a grader" rule. If voice mode is off, onEnDone falls
+       back to its normal think-then-reveal timer, so this beat still never
+       blocks hands-free playback either way. */
+    const w = buildWordById(step.word_id);
+    if(w) _buildSpeakJP(w.jp, onEnDone);
+    else onEnDone();
   }
 }
 
@@ -17222,13 +17293,23 @@ function _buildScheduleLinger(){
   const b = state.buildMode;
   if(!b || b._paused || !_buildAutoOn()) return;
   const step = b.steps[b.stepIdx];
+  const type = step && step.type;
   // New-word introduce steps get extra time — listening, no recall, more to absorb.
-  const sec = (step && step.type === 'introduce')
-    ? (state.settings.buildIntroduceLingerSec ?? 10)
-    : (state.settings.buildLingerSec ?? 8);
-  /* v6.5 — adaptive: known words shrink linger; introduce stays full.
+  // 'meet' is the induction's own exposure beat (headword + meaning, no recall
+  // asked of the learner yet) so it earns the exact same generous dwell as
+  // 'introduce' — reuse buildIntroduceLingerSec, not a copy of the number.
+  // 'hear'/'say' get their own explicit, reasoned value rather than silently
+  // falling through to whatever the default happens to be: by the time either
+  // fires, the learner just finished listening to live example sentences (hear)
+  // or attempting/skipping a spoken production rep (say) — that's comparable
+  // to a normal reveal-linger (buildLingerSec), not a cold first exposure.
+  let sec;
+  if(type === 'introduce' || type === 'meet') sec = state.settings.buildIntroduceLingerSec ?? 10;
+  else if(type === 'hear' || type === 'say') sec = state.settings.buildLingerSec ?? 8; // explicit — same weight as a normal reveal-linger, not a silent fallthrough
+  else sec = state.settings.buildLingerSec ?? 8;
+  /* v6.5 — adaptive: known words shrink linger; introduce/meet stay full.
      Floored so the answer never flashes past before the user can read it. */
-  const lingerFloor = (step && step.type === 'introduce') ? BUILD_MIN_INTRO_LINGER_MS : BUILD_MIN_LINGER_MS;
+  const lingerFloor = (type === 'introduce' || type === 'meet') ? BUILD_MIN_INTRO_LINGER_MS : BUILD_MIN_LINGER_MS;
   const lingerMs = Math.max(lingerFloor, Math.max(0, sec) * _buildPaceFactor(step) * 1000);
   _buildSetPhase('linger', lingerMs);
   _buildSchedule(() => buildAutoNext(), lingerMs);
