@@ -2801,7 +2801,9 @@ const DEFAULT_SETTINGS = {
   convoRecapNotes:true,       // Stage D (v8.10) — judgment-free copy sweep: show up to 3 content-derived "did-you-mean" notes on the おしゃべり recap. Default ON; toggle in Settings hides them (celebration-only recap when off).
   hideStreak:false,           // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
   convoStyle:'friend',        // F2 (Delve 7 §3.5) — conversation style. Hard-shipped at 'friend' (full confirm/recast/clarify repertoire); the 3-position Settings dial is DEFERRED until a demand signal. 'just-talk' forces feedback none client-side.
-  recastPeeked:false          // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
+  recastPeeked:false,         // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
+  vocabLock:true,             // S3 (ADR-012) — rolling-frontier vocab hard lock, default ON. Escape hatch: "Vocab focus lock" row in Settings.
+  unlockedExtra:[]            // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
 };
 
 /* =========================================================================
@@ -3265,6 +3267,7 @@ function save(){
 function load(){
   try{
     state.settings = {...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS.settings)||'{}'))};
+    vocabLockMigrateV829();
     /* v7.48 — restore OpenAI key from its dedicated LS entry. Takes
        precedence over the settings-blob copy because the dedicated entry
        is the source of truth (settings blob is just a mirror for in-memory
@@ -3561,11 +3564,61 @@ function hasKatakana(s){
   return false;
 }
 
-function getActiveWords(){
+/* =========================================================================
+   S3 — ROLLING-FRONTIER VOCAB LOCK (ADR-012)
+   ========================================================================= */
+
+/* FRONTIER_N — width of the rolling "next words to meet" window; the first
+   FRONTIER_N not-yet-started, non-manually-unlocked words in deterministic
+   global deck order (state.words is already built N5_PACK-then-ADV_PACK-then-
+   user-words, so a forward walk over it IS deck order — no re-sort). */
+const FRONTIER_N = 80;
+/* MIN_VIABLE — no drill surface should ever render fewer words than this;
+   the demand-unlock backstop inside getActiveWords widens unlockedExtra to
+   guarantee it (killing the v7.68 empty-pool bug class by construction). */
+const MIN_VIABLE = 10;
+
+/* One-time, versioned, flag-set-only migration (v8.29). Only ever WRITES
+   vocabLock/unlockedExtra when they are genuinely absent from a returning
+   user's saved settings blob — never clobbers an explicit choice already
+   made (including an explicit `false`). Zero writes to state.stats. Fully
+   reversible: deleting/flipping either flag restores prior (unlocked-
+   everything) behavior with no orphaned data, since the lock is computed
+   live at read time inside getActiveWords rather than baked into any word
+   record. Called once per load() after the DEFAULT_SETTINGS merge, which
+   already fills both keys for brand-new installs — this is the explicit,
+   auditable backstop for existing saved-settings blobs from before v8.29. */
+function vocabLockMigrateV829(){
+  const s = state.settings;
+  if(s.vocabLock === undefined) s.vocabLock = true;
+  if(!Array.isArray(s.unlockedExtra)) s.unlockedExtra = [];
+}
+
+/* started(w) — true iff the word has at least one logged SRS attempt in
+   state.stats. Looks up by id (never enumerates Object.keys(state.stats)
+   directly), so a corrupted/tampered stats blob can't smuggle in a
+   '__proto__'-style key (CWE-1321), matching the existing vocabAccessStats
+   convention. */
+function _vocabWordStarted(wordId){
+  const st = state.stats[wordId];
+  return !!(st && st.attempts && st.attempts.length > 0);
+}
+
+/* getActiveWords([opts]) — the SINGLE choke point for "which words is the
+   learner allowed to see right now." Passing an ignoreLock option set to
+   true bypasses the unlocked-set filter entirely and returns the base
+   (theme/POS/register/katakana-filtered) pool, lock-blind. Exactly two call
+   sites in this file invoke that escape hatch: this function's own
+   minViable lookahead below, and vocabAccessStats()'s denominator. Every
+   other call site stays zero-arg, and when state.settings.vocabLock is off
+   (or the escape hatch is used) the return is byte-for-byte identical to
+   the pre-S3 function. */
+function getActiveWords(opts){
+  const ignoreLock = !!(opts && opts.ignoreLock === true);
   const s = state.settings;
   const removed = new Set(s.removedWords || []);
   const includeKata = s.includeKatakana === true;
-  return state.words.filter(w => {
+  const basePool = state.words.filter(w => {
     if(removed.has(w.id)) return false;
     if(s.activeThemes.length && !s.activeThemes.includes(w.theme)) return false;
     if(s.activePOS.length && !s.activePOS.includes(w.pos)) return false;
@@ -3573,6 +3626,53 @@ function getActiveWords(){
     if(!includeKata && hasKatakana(w.jp)) return false;
     return true;
   });
+  /* Absent flag is treated as ON ("absent flags mean locked-by-frontier
+     computed at read time" — ADR-012 §6) — only an explicit `false` opts out. */
+  if(ignoreLock || s.vocabLock === false) return basePool;
+
+  /* unlocked(w) = started(w) ∨ manuallyUnlocked(w) ∨ frontier(w).
+     unlockedExtra entries are validated against the real deck before use —
+     a tampered/corrupted localStorage array can't inject an id that isn't a
+     real word (CWE-20). */
+  const validIds = new Set(state.words.map(w => w.id));
+  const manual = new Set((Array.isArray(s.unlockedExtra) ? s.unlockedExtra : [])
+    .filter(id => typeof id === 'string' && validIds.has(id)));
+  const unlocked = new Set();
+  let frontierCount = 0;
+  for(const w of state.words){
+    if(_vocabWordStarted(w.id) || manual.has(w.id)){
+      unlocked.add(w.id);
+      continue;
+    }
+    if(frontierCount < FRONTIER_N){
+      unlocked.add(w.id);
+      frontierCount++;
+    }
+  }
+  let pool = basePool.filter(w => unlocked.has(w.id));
+
+  /* minViable demand-unlock backstop: if the post-lock pool would drop
+     below MIN_VIABLE, admit the next deck-ordered locked-but-in-scope words
+     by appending them to unlockedExtra (persists — a real state mutation,
+     not just a widened in-memory return), then re-derive the pool. The
+     lookahead reuses the ignoreLock escape hatch to see the true unfiltered
+     deck rather than duplicating that filter logic. Bounded to one pass
+     over state.words; a genuinely tiny deck (basePool < MIN_VIABLE) is the
+     only case that can still return fewer than MIN_VIABLE words. */
+  if(pool.length < MIN_VIABLE){
+    const fullPool = getActiveWords({ignoreLock:true});
+    const fullPoolIds = new Set(fullPool.map(w => w.id));
+    for(const w of state.words){
+      if(pool.length >= MIN_VIABLE) break;
+      if(unlocked.has(w.id)) continue;
+      if(!fullPoolIds.has(w.id)) continue;
+      unlocked.add(w.id);
+      manual.add(w.id);
+      pool.push(w);
+    }
+    s.unlockedExtra = Array.from(manual);
+  }
+  return pool;
 }
 
 /* v7.55 — Particles + bound-morpheme counters don't drill well as Vocab
@@ -6771,11 +6871,18 @@ function activeModuleWordIdSet(){
    stats without locking or gating any word. Iterates getActiveWords() (a
    trusted app-controlled source) to look up stat entries — never enumerates
    Object.keys(state.stats) directly, which would be unsafe against corrupted
-   keys like '__proto__' (CWE-1321). Dead code until wired to the home-screen
-   meter in sprint 2; placing it here keeps it alongside the other module/pool
-   helpers so the call path is obvious to a future reader. */
+   keys like '__proto__' (CWE-1321).
+   S3 (ADR-012) — now that getActiveWords() itself filters behind the
+   rolling-frontier lock, this function's denominator MUST call it with the
+   ignoreLock escape hatch (the real full deck) or `total` would silently
+   collapse to the unlocked pool size and the ratio would pin at 100%.
+   `unlocked` is the separate, lock-respecting zero-arg call — the size of
+   the pool actually surfaced to drills right now. This is one of exactly
+   two call sites in the file that use the escape hatch (the other is the
+   minViable backstop's own internal lookahead inside getActiveWords). */
 function vocabAccessStats(){
-  const active = getActiveWords();
+  const active = getActiveWords({ignoreLock:true});
+  const unlockedCount = getActiveWords().length;
   const masteredSet = new Set(state.settings.masteredWords || []);
   const M = (typeof BLITZ_MATURE_MIN === 'number') ? BLITZ_MATURE_MIN : 10080;
   let started = 0, mastered = 0;
@@ -6789,7 +6896,7 @@ function vocabAccessStats(){
       if(st.smInterval >= M) mastered++;
     }
   }
-  return { mastered, started, total: active.length };
+  return { mastered, started, unlocked: unlockedCount, total: active.length };
 }
 
 function modulesUnlockBackfill(){
@@ -20956,19 +21063,25 @@ function renderPractice(){
     + groupHtml('Textbook lessons (みんな)', melGrid)
     + `</div>`;
 
-  /* v7.96 — Coverage meter: reads SRS state, nothing is locked */
+  /* S3 (ADR-012) — re-labeled to unlocked/total (was started/total): the
+     headline % and count now track how much of the real deck is currently
+     reachable under the rolling-frontier lock, so the number moves with
+     unlocking rather than silently pinning once the pool empties. The bar
+     fill still reads "started" — actual practiced words, not raw attempt
+     counts — as the visual progress-within-what's-unlocked signal. */
   const _cvs = vocabAccessStats();
-  const _cvPct = _cvs.total > 0 ? Math.round(_cvs.started / _cvs.total * 100) : 0;
+  const _cvUnlockedPct = _cvs.total > 0 ? Math.round(_cvs.unlocked / _cvs.total * 100) : 0;
+  const _cvStartedPct = _cvs.total > 0 ? Math.round(_cvs.started / _cvs.total * 100) : 0;
   const coverageMeterHtml = state.settings.showCoverageMeter ? `
     <div class="coverage-meter" style="margin:0 2px 10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7">Vocabulary coverage</div>
-        <div style="font-size:12px;font-weight:700;color:#c9b3ff">${_cvPct}%</div>
+        <div style="font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7">Vocabulary unlocked</div>
+        <div style="font-size:12px;font-weight:700;color:#c9b3ff">${_cvUnlockedPct}%</div>
       </div>
       <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
-        <div style="height:100%;width:${_cvPct}%;border-radius:3px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);transition:width .4s"></div>
+        <div style="height:100%;width:${_cvStartedPct}%;border-radius:3px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);transition:width .4s"></div>
       </div>
-      <div style="margin-top:8px;font-size:13px;color:var(--faint)">${_cvs.started} of ${_cvs.total} words started &middot; ${_cvs.mastered} mastered</div>
+      <div style="margin-top:8px;font-size:13px;color:var(--faint)">${_cvs.unlocked} of ${_cvs.total} words unlocked &middot; ${_cvs.started} started &middot; ${_cvs.mastered} mastered</div>
     </div>` : '';
 
   return `
@@ -21368,6 +21481,8 @@ function renderSettings(){
         <input type="checkbox" ${s.advPackEnabled!==false?'checked':''} onchange="toggleSetting('advPackEnabled')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Vocab focus lock</div><div class="word-en">On: keeps drills to a rolling set of words you've already met plus the next ${FRONTIER_N} coming up, so the pool stays focused instead of the whole deck at once. New words join the set automatically as you use them — nothing is ever hidden for good. Off: every word is open right away.</div></div>
+        <input type="checkbox" ${s.vocabLock!==false?'checked':''} onchange="toggleSetting('vocabLock')"></label>
     </div>
 
     <div class="card">
