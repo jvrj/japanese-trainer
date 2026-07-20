@@ -18774,6 +18774,9 @@ function renderBuildModeStep(){
     case 'similar':    body = _buildRenderSimilar(step); break;
     case 'form_drill': body = _buildRenderFormDrill(step); break;
     case 'phrase':     body = _buildRenderPhrase(step); break;
+    case 'meet':       body = _buildRenderMeet(step); break;
+    case 'hear':       body = _buildRenderHear(step); break;
+    case 'say':        body = _buildRenderSay(step); break;
     default: body = `<div class="muted">Unknown step: ${esc(step.type)}</div>`;
   }
 
@@ -19181,6 +19184,125 @@ function _buildRenderHeard(){
       🎤 heard: <b style="color:var(--text)">${esc(display)}</b>
       ${engineBadge}
     </div>`;
+}
+
+/* ===================== NEW-WORD INDUCTION (meet / hear / say) =====================
+   v8.xx — a brand-new word gets a one-time 3-beat induction (meet it, hear it live,
+   say it) before it drops into normal recall rotation. This block is PURE ADDITION:
+   the render functions below are dispatchable from renderBuildModeStep()'s switch,
+   but nothing yet constructs a 'meet'/'hear'/'say' step — that wiring lands in a
+   later sprint. Existing steps/behaviour are completely untouched. */
+
+/* Shared sentence resolver for the induction beats. Fallback chain, in order:
+   1) the AI-generated cache for this word's romaji (focusGenCacheGet) — natural,
+      already kana-validated sentences the learner may have generated before.
+   2) the word's static curated example (w.ex/w.exEn), enriched from the master
+      deck the same way buildWordById() enriches `note` for slim lesson refs.
+   3) one hardcoded canned kana-only frame — so induction NEVER blocks even with
+      no API key, offline, and no curated example.
+   Never throws: every lookup is guarded so a missing cache/deck entry just falls
+   through to the next tier. Returns an array of {jp,en,note}. */
+function _buildInductionSentences(w){
+  if(!w) return [];
+  try{
+    const romaji = ((w.r || w.romaji || '') + '').toLowerCase().trim();
+    if(romaji){
+      const gen = focusGenCacheGet(romaji);
+      if(gen && gen.length){
+        const mapped = gen
+          .map(s => ({ jp: (s && s[0]) || '', en: (s && s[1]) || '', note: (s && s[2]) || '' }))
+          .filter(s => s.jp);
+        if(mapped.length) return mapped;
+      }
+    }
+  }catch(e){}
+  try{
+    let ex = w.ex, exEn = w.exEn;
+    if(ex === undefined && Array.isArray(state.words)){
+      const src = state.words.find(x => x.id === w.id) || state.words.find(x => x.jp === w.jp);
+      if(src && src.ex){ ex = src.ex; exEn = src.exEn; }
+    }
+    if(ex) return [{ jp: ex, en: exEn || '', note: '' }];
+  }catch(e){}
+  /* Canned last-resort frame — hiragana/katakana only, no kanji, always available. */
+  const jp = ((w && w.jp) || '') + ' を つかって みましょう。';
+  return [{ jp, en: (w && w.en) || '', note: '' }];
+}
+
+/* Shared, judgment-free SKIP control for all three induction beats: "I know this /
+   skip" marks the word introduced immediately (vocabMarkIntroduced already saves +
+   re-renders) so remaining beats are skipped and the word drops straight into
+   normal rotation, exactly like never having run the induction at all. */
+function _buildInductionSkipControl(w){
+  const wid = (w && w.id) || '';
+  return `
+    <div style="text-align:center;margin-top:14px">
+      <button class="btn btn-ghost" style="font-size:12px;padding:5px 14px" onclick="vocabMarkIntroduced('${jsEsc(wid)}')">I know this / skip</button>
+    </div>`;
+}
+
+/* BEAT 1 — MEET IT. Modeled directly on _buildRenderIntroduce: kana headword,
+   romaji, English meaning, conditional nuance note. Adds the SKIP control. */
+function _buildRenderMeet(step){
+  const w = buildWordById(step && step.word_id); if(!w) return '';
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Meet a new word — listen, then repeat aloud</div>
+    <div class="build-big-jp">${esc(w.jp)}</div>
+    <div class="build-romaji">${esc(w.r || w.romaji || '')}</div>
+    <div class="build-big-en">${esc(w.en)}</div>
+    ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
+    ${_buildInductionSkipControl(w)}
+  `;
+}
+
+/* BEAT 2 — HEAR IT LIVE. Reuses the exampleStrip peek pattern (JP shown, EN
+   hidden behind a tap, 🔊 replay via speakJP) for each resolved sentence, rather
+   than a divergent UI — exampleStrip itself only supports a single fixed w.ex, so
+   this renders the same visual pattern per-sentence with unique toggle ids. */
+function _buildRenderHear(step){
+  const w = buildWordById(step && step.word_id); if(!w) return '';
+  const sentences = _buildInductionSentences(w).slice(0, 3);
+  const rows = sentences.map((s, idx) => {
+    const trId = 'indHearTr_' + (w.id || 'x') + '_' + idx;
+    return `
+      <div style="margin-top:10px;padding:9px 11px;background:rgba(139,124,246,0.09);border-left:3px solid var(--grape,#8b7cf6);border-radius:4px">
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0">
+            <div class="jp" style="font-size:15px;color:var(--text);line-height:1.55">${esc(s.jp)}</div>
+            <div id="${trId}" class="muted" style="font-size:12px;margin-top:4px;line-height:1.4;display:none">${esc(s.en)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <button class="btn btn-ghost" style="font-size:13px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();speakJP('${jsEsc(s.jp)}')" title="Listen">🔊</button>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 8px;color:var(--muted)" onclick="event.stopPropagation();var e=document.getElementById('${trId}');if(e)e.style.display=(e.style.display==='none'?'block':'none');" title="Meaning">EN</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Hear it live — ${esc(w.jp)} in real sentences</div>
+    ${rows || `<div class="build-placeholder">no example sentences available right now</div>`}
+    ${_buildInductionSkipControl(w)}
+  `;
+}
+
+/* BEAT 3 — SAY IT. Prompts the learner to say a sentence using the word aloud,
+   using a resolved sentence as a gentle suggestion (never a required answer), and
+   reuses _buildRenderHeard() for the neutral, non-judgmental echo of whatever STT
+   heard. No scoring, no ✓/✗ — advancing on any speech or timeout is wired in the
+   injection sprint; this beat only renders. */
+function _buildRenderSay(step){
+  const w = buildWordById(step && step.word_id); if(!w) return '';
+  const sentences = _buildInductionSentences(w);
+  const suggestion = sentences[0] ? sentences[0].jp : w.jp;
+  return `
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Say it — use ${esc(w.jp)} out loud</div>
+    <div class="build-big-jp" style="font-size:30px;padding:8px 0">${esc(w.jp)}</div>
+    <div class="build-big-en" style="font-size:14px">${esc(w.en)}</div>
+    <div class="build-placeholder">say a sentence with this word — anything counts, just try</div>
+    <div class="muted" style="text-align:center;font-size:12px;margin-top:6px">for example: ${esc(suggestion)}</div>
+    ${_buildRenderHeard()}
+    ${_buildInductionSkipControl(w)}
+  `;
 }
 
 /* Override: user tells the app they said it correctly despite STT scoring
