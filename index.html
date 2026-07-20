@@ -9517,7 +9517,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '  "glossEn": "<brief English gloss of jp so the learner can peek>",',
     '  "words": [{"jp": "<kana word>", "en": "<plain English meaning>"}],',
     '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
-    '  "judged": {"usedWords": ["<wordId of each pool word the learner used>"], "score": <0|1|2>},',
+    '  "judged": {"usedWords": ["<kana surface (or wordId) of EVERY known vocab word the learner used this turn — not just WORD_POOL, ANY real word counts>"], "score": <0|1|2>},',
     '  "sceneDone": <true|false>,',
     '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>", "why": "<OPTIONAL, recast-only, ≤25 English words: the because, naming the nuance direction (e.g. formality/tense/direction/state-vs-event) — never a verdict>"}',
     '}',
@@ -10436,6 +10436,26 @@ function convoApplyScore(judged, viaVoice){
           return wNorm && norm === wNorm;
         });
         if(found) resolvedId = found.id;
+      }
+    }
+    /* S3 (ADR-012) — conversation is NEVER locked: a word the learner actually
+       spoke may fall outside the seeded 8-word cv.pool (which is drawn from the
+       lock-respecting getActiveWords()). Rather than drop it, fall back to the
+       FULL state.words deck — direct id match first, then a UNIQUE normalized-
+       kana match (an ambiguous/non-unique match is dropped, never guessed).
+       recordAttempt below then writes state.stats for this id, which is exactly
+       what makes started(w) true and promotes/unlocks it through the existing
+       getActiveWords derivation — no separate "unlock" write needed. */
+    if(!resolvedId){
+      const directFull = state.words.find(w => w.id === raw);
+      if(directFull){
+        resolvedId = directFull.id;
+      } else {
+        const norm = _kataToHira(_stripKanji(raw || ''));
+        if(norm){
+          const fullMatches = state.words.filter(w => _kataToHira(_stripKanji(w.jp || '')) === norm);
+          if(fullMatches.length === 1) resolvedId = fullMatches[0].id;
+        }
       }
     }
     /* Drop unresolved entries silently — never write stats for unknown ids */
