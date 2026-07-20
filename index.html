@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.27';
+const APP_VERSION = '8.28';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9404,15 +9404,23 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '',
     levelLine,
     '',
-    'Each reply MUST be a single JSON object with exactly these six keys and no others:',
+    'Each reply MUST be a single JSON object with exactly these seven keys and no others:',
     '{',
     '  "jp": "<your short kana-only question or reaction for this turn>",',
     '  "glossEn": "<brief English gloss of jp so the learner can peek>",',
+    '  "words": [{"jp": "<kana word>", "en": "<plain English meaning>"}],',
     '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
     '  "judged": {"usedWords": ["<wordId of each pool word the learner used>"], "score": <0|1|2>},',
     '  "sceneDone": <true|false>,',
     '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>", "why": "<OPTIONAL, recast-only, ≤25 English words: the because, naming the nuance direction (e.g. formality/tense/direction/state-vs-event) — never a verdict>"}',
     '}',
+    '',
+    'WORDS — the peek vocabulary breakdown:',
+    '- words lists EVERY content word in jp (nouns, verbs, adjectives, question words — skip bare particles like は/が/を/か) with its plain English meaning, in the order it appears. This powers a tap-to-peek word list; it is hidden by default, so include every content word even easy ones.',
+    '',
+    'ANSWER QUESTIONS (a real teacher answers):',
+    '- If the learner asks what a word or phrase means — e.g. 「Xって なに？」「Xは なんですか」「Xの いみは？」 or an English question like "what does X mean" — ANSWER it directly. jp = the meaning explained in the simplest kana you can (a synonym, a tiny example, or both; up to two short sentences allowed for this case only), glossEn = the direct English answer (e.g. \'ねこ means cat\'), and include the asked-about word in words. Then gently continue the conversation.',
+    '- Never ignore a question about language, never deflect back to the scene, and never treat the question itself as something to recast.',
     '',
     'FEEDBACK — respond the way a patient native friend does:',
     '- "confirm": the learner\'s words landed (score 2) and there is nothing to fix — use their own word/phrase back naturally inside jp. This is the majority move.',
@@ -9432,7 +9440,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     'Guidelines:',
     '- REACT THEN ASK: open every jp with a genuine, VARIED reaction fragment to what the learner just said (へえ！/ いいね / そうなんだ / ほんと？/ わあ). Never open two consecutive turns with the same word. Never re-ask a question the learner already answered.',
     '- Use 「、」 inside jp where a natural pause helps — spoken lines breathe better with commas.',
-    '- Keep jp to one short sentence (≤10 kana).',
+    '- Keep jp to one short sentence (≤10 kana). Exception: when answering a what-does-X-mean question (ANSWER QUESTIONS above), jp may be up to two short sentences.',
     '- suggested must contain exactly ' + _lvInfo.chips + ' short kana replies the learner could actually say next — prefer WORD_POOL words, but fitting the live conversation wins.',
     '- judged.usedWords lists word ids the learner demonstrably used; empty array if none.',
     '- judged.score: 2 = you UNDERSTOOD the learner — any comprehensible unaided speech, on ANY topic, pool word or not. 1 = partly understood, you want one gentle retry. 0 = chip tap, or you could not extract any meaning at all. Never give comprehensible speech a 0 just because it used no pool word or left the scene.',
@@ -10042,6 +10050,12 @@ async function convoTurn(userText, viaVoice){
      one of the two OR'd end paths (never the model's sceneDone alone). */
   const learnerFarewell = _isConvoFarewell(text);
 
+  /* v8.28 (field report 2026-07-20): the learner asking what a word means
+     (「Xって なに？」「Xの いみは？」 etc.) gets an ANSWER from the model — and the
+     English answer must be visible without hunting for the peek button, so
+     auto-open the gloss peek for a meaning question. Sticky like the toggle. */
+  if(/(って|とは|ことば|いみ|えいご)/.test(text) && /(なに|なん|どういう|いみ)/.test(text)) cv.peekGloss = true;
+
   /* Apply SRS score for the PREVIOUS AI judged object.
      On the first user turn cv.judged is null → null guard fires, no write. */
   convoApplyScore(cv.judged, cv.viaVoice);
@@ -10459,8 +10473,13 @@ function convoStopListen(){
   if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
   if(cv._restartTimer){ clearTimeout(cv._restartTimer); cv._restartTimer = null; }
   stopVoice(); cv.listening = false;
-  /* Preserve speech-then-stop submit: whatever was heard rides the turn */
-  const heard = (cv._best || '').trim(); cv._best = '';
+  /* Preserve speech-then-stop submit: whatever was heard rides the turn.
+     v8.28: join banked segments (recognizer restarts mid-utterance) + tail. */
+  const parts = (cv._heardParts || []).slice();
+  const tail = (cv._best || '').trim();
+  if(tail) parts.push(tail);
+  cv._heardParts = []; cv._best = '';
+  const heard = parts.join(' ').trim();
   if(heard){ convoTurn(heard, true); return; }      /* convoTurn renders */
   _orbSet('idle', null);
   render();
@@ -10493,7 +10512,7 @@ function convoToggleListen(auto){
   cv._listenUntil = Date.now() + CONVO_LISTEN_WINDOW_MS;
   cv._restarts = 0;
   const token = cv._listenToken = (cv._listenToken || 0) + 1;
-  cv.listening = true; cv.interim = ''; cv._best = ''; cv.error = null;
+  cv.listening = true; cv.interim = ''; cv._best = ''; cv._heardParts = []; cv.error = null;
   /* orb seam (3/5, sprint: orb): the synchronous cv.listening=true set above -> listening */
   _orbSet('listening', null);
   render();
@@ -10518,22 +10537,41 @@ function convoToggleListen(auto){
           cv._best = t;
           armSilenceTimer();                        /* speech happened — post-speech finalize governs now */
           const el = document.getElementById('convoInterim');
-          if(el) el.textContent = t;
+          if(el) el.textContent = ((cv._heardParts && cv._heardParts.length) ? cv._heardParts.join(' ') + ' ' : '') + t;
         }
       },
       (err) => {
         if(state.convo !== cv || cv._listenToken !== token) return;
         if(cv._ended) return; cv._ended = true;
         const heard = (cv._best || '').trim();
-        if(heard){                                  /* got speech: submit, window done */
-          if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
-          cv._listenUntil = 0; cv.listening = false; cv._best = '';
-          convoTurn(heard, true);
-          return;
-        }
         const code = err && err.error;
         const fatal = code === 'not-allowed' || code === 'service-not-allowed';
         const windowOpen = Date.now() < (cv._listenUntil || 0);
+        if(heard && !fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
+          /* v8.28 (field report 2026-07-20): Android SR gives up ~1–2s into a
+             mid-sentence think pause. Submitting here cut learners off before
+             they finished. Instead: bank the segment, silently re-arm, and let
+             the 6s post-speech finalize timer (still running from the last
+             result) own submission — convoStopListen joins the banked parts. */
+          cv._heardParts.push(heard); cv._best = '';
+          cv._restarts++;
+          try{ stopVoice(); }catch(_e){}
+          cv._restartTimer = setTimeout(() => {
+            cv._restartTimer = null;
+            arm();
+          }, CONVO_RESTART_GAP_MS);
+          return;
+        }
+        if(heard || (cv._heardParts && cv._heardParts.length)){
+          /* Window expired / cap hit / fatal with speech banked: submit everything */
+          if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
+          cv._listenUntil = 0; cv.listening = false;
+          const parts = (cv._heardParts || []).slice();
+          if(heard) parts.push(heard);
+          cv._heardParts = []; cv._best = '';
+          convoTurn(parts.join(' ').trim(), true);
+          return;
+        }
         if(!fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
           cv._restarts++;
           try{ stopVoice(); }catch(_e){}
@@ -11273,12 +11311,13 @@ function renderConvo(){
   const aiLine = cur && cur.jp
     ? `<div class="convo-turn them" style="margin-bottom:4px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${jpHtml}</div>
-        ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cur.glossEn)}</div>` : ''}
+        ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:12px;margin-top:4px;opacity:.8">${esc(cur.glossEn)}</div>` : ''}
+        ${cv.peekGloss && Array.isArray(cur.words) && cur.words.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${cur.words.filter(w => w && w.jp).map(w => `<span style="padding:2px 9px;border-radius:20px;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.28);font-size:11px;color:#c9b3ff;font-family:'Noto Sans JP'">${esc(w.jp)}<span style="color:#9a8fb8;margin-left:4px;font-size:10px;font-family:inherit">${esc(w.en || '')}</span></span>`).join('')}</div>` : ''}
        </div>
        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
          <button onclick="convoReplay()" title="Replay" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🔊</button>
          <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="Slower" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
-         <button onclick="convoTogglePeek()" style="font-size:11px;color:#a99fc7;border:none;background:none;cursor:pointer;font-family:inherit">${cv.peekGloss ? 'hide meaning' : 'show meaning'}</button>
+         <button onclick="convoTogglePeek()" title="${cv.peekGloss ? 'Hide English' : 'Show English'}" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:${cv.peekGloss ? 'rgba(157,92,255,.28)' : 'rgba(157,92,255,.1)'};color:#d6c2ff;font-size:13px;cursor:pointer;font-family:inherit">💬 <span style="font-size:11px">${cv.peekGloss ? 'EN on' : 'EN'}</span></button>
        </div>
        ${teachCard}
        ${recastSheet}
