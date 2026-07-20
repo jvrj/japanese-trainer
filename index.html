@@ -5330,7 +5330,7 @@ function _maybeWarnNoJaVoice(){
   if(_listVoicesByLang('ja').length) return;
   _jaVoiceWarned = true;
   const el = document.createElement('div');
-  el.textContent = "🗣️ No Japanese voice installed — audio may be missing or sound wrong. Add one in your phone's text-to-speech settings (e.g. Google Text-to-Speech → Japanese).";
+  el.textContent = "🗣️ No Japanese voice installed — audio may be missing or use an unexpected voice. Add one in your phone's text-to-speech settings (e.g. Google Text-to-Speech → Japanese).";
   el.style.cssText = 'position:fixed;bottom:80px;left:12px;right:12px;background:#b45309;color:#fff;padding:12px;border-radius:12px;font-size:13px;text-align:center;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 9000);
@@ -11452,7 +11452,7 @@ function renderConvo(){
      added `!_teachCardEligible`, the rest of this branch is unchanged). */
   const recastSheet = (!_teachCardEligible && _hasRecast && cv._recastPeek)
     ? `<div style="background:rgba(255,200,80,.07);border:1px solid rgba(255,200,80,.35);border-radius:14px;padding:12px 15px;margin-bottom:10px;font-size:13px;line-height:1.7">
-        ${cv._recastFirst ? `<div style="font-weight:700;color:#ffd98a;margin-bottom:7px">A natural way to say it — not a mistake!</div>` : ''}
+        ${cv._recastFirst ? `<div style="font-weight:700;color:#ffd98a;margin-bottom:7px">A natural way to say it!</div>` : ''}
         <div style="color:#c9bfd8"><span style="font-size:11px;color:#9a8fb8">You said:</span> <span style="font-family:'Noto Sans JP';font-weight:700">${esc(_fb.heard || '')}</span></div>
         <div style="color:#ffe1a8"><span style="font-size:11px;color:#cdae6e">More natural:</span> <span style="font-family:'Noto Sans JP';font-weight:800">${esc(_fb.better)}</span></div>
         ${_fb.note ? `<div class="muted" style="font-size:11px;margin-top:5px;opacity:.8">${esc(_fb.note)}</div>` : ''}
