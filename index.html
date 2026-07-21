@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.31';
+const APP_VERSION = '8.32';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9550,7 +9550,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     'FOLLOW THE LEARNER (most important rule):',
     '- If the learner says something on a different topic — anything appropriate — respond to WHAT THEY SAID. Never steer them back to the scene.',
     '- The learner may mix English words into their Japanese (e.g. 「きのう pizza を たべました」). Understand the intent, respond to it, and weave the correct simple Japanese for the English word into your jp or your suggested chips so they hear the real word.',
-    '- Prefer WORD_POOL words in your replies, but following the learner ALWAYS wins. When you need a word outside the pool, pick the simplest everyday kana word a beginner would know.',
+    '- Build YOUR OWN questions, reactions and topic choices from WORD_POOL words — that pool is what the learner can actually understand, so staying inside it is what makes the conversation feel possible. Following the learner ALWAYS wins over the pool; and when no pool word fits, pick the simplest everyday kana word a beginner would know (and gloss it in words).',
     '',
     levelLine,
     '',
@@ -9771,7 +9771,13 @@ function _convoFactAdd(cv, text){
   while(cv.facts.length > 10) cv.facts.shift();
 }
 function _convoSystemStr(cv){
-  const base = (cv && cv.preamble) || '';
+  let base = (cv && cv.preamble) || '';
+  /* v8.32: client-detected meaning question (convoTurn's _meaningQ, one turn
+     only) becomes an explicit directive with recency, instead of trusting the
+     model to honor one bullet buried mid-preamble. */
+  if(cv && cv._meaningQ){
+    base += '\nRIGHT NOW: the learner just asked what a word means. Your reply MUST answer that question first — give the word, its plain English meaning inside "en", and one tiny kana example using it. Do not move the conversation forward until you have answered.';
+  }
   const facts = (cv && cv.facts) || [];
   if(!facts.length) return base;
   /* Sandwich pattern (OQ-4 review finding #8): the hard output constraint is
@@ -10113,8 +10119,12 @@ function startConvo(sceneId, seedMessages){
     const available = SCENES.filter(s => s.minLevel <= info.lv);
     scene = (available.find(s => s.id === sceneId) || available[0] || SCENES[0]);
   }
-  /* (a) Seed ~8 due-first words via _buildSpamPick */
-  const pool = _buildSpamPick(getActiveWords(), 8);
+  /* (a) Seed due-first words via _buildSpamPick. v8.32 (audit): 8 was too few
+     for the pool to shape the model's vocabulary — the frontier is 80 words
+     (ADR-012) but the model only ever saw a sliver, so the vocab lock was
+     invisible in conversation. 24 keeps the prompt small but gives the model
+     a real palette to anchor in. */
+  const pool = _buildSpamPick(getActiveWords(), 24);
   /* S4 (ADR-013 §6, recap close) — session-open snapshot of "earned access"
      word ids, captured AFTER the pool build above (so any minViable backstop
      widening that build itself triggers is baked into the baseline rather
@@ -10213,8 +10223,16 @@ async function convoTurn(userText, viaVoice){
   /* v8.28 (field report 2026-07-20): the learner asking what a word means
      (「Xって なに？」「Xの いみは？」 etc.) gets an ANSWER from the model — and the
      English answer must be visible without hunting for the peek button, so
-     auto-open the gloss peek for a meaning question. Sticky like the toggle. */
-  if(/(って|とは|ことば|いみ|えいご)/.test(text) && /(なに|なん|どういう|いみ)/.test(text)) cv.peekGloss = true;
+     auto-open the gloss peek for a meaning question. Sticky like the toggle.
+     v8.32 (audit): ja-JP STT returns KANJI finals — 何/意味/言葉/英語 — which the
+     kana-only regex never matched, so a SPOKEN meaning question was invisible
+     to the client. Match both scripts, and set a one-turn _meaningQ flag that
+     _convoSystemStr turns into an explicit answer-first directive (prompt-only
+     compliance on Haiku was unreliable; this makes it deterministic-ish). */
+  const meaningQ = /(って|とは|ことば|言葉|いみ|意味|えいご|英語)/.test(text)
+                && /(なに|なん|何|どういう|いみ|意味)/.test(text);
+  cv._meaningQ = meaningQ;                 /* re-assigned every turn: one-turn flag */
+  if(meaningQ) cv.peekGloss = true;
 
   /* Apply SRS score for the PREVIOUS AI judged object.
      On the first user turn cv.judged is null → null guard fires, no write. */
@@ -10635,6 +10653,38 @@ function convoEnd(){
 }
 window.convoEnd = convoEnd;
 
+/* _convoExitIntercept — v8.32 (audit): the recap was only reachable by SAYING
+   a farewell (またね etc.); a field tester who just backs out of the screen
+   never saw it, ever. So leaving the convo screen mid-session (≥3 real turns)
+   wraps the session up ONCE — the recap card renders in place, and its own
+   Home button is the actual exit. Fires at most once per session
+   (cv._exitRecapShown); short sessions (<3 turns) leave freely. Called from
+   nav() — the single choke point both the back-FAB/history pops and the
+   bottom-nav taps funnel through. */
+function _convoExitIntercept(target, fromPop){
+  const cv = state.convo;
+  if(!cv || cv.done || cv.loading) return false;
+  if(state.screen !== 'convo' || target === 'convo') return false;
+  if(cv._exitRecapShown) return false;
+  const turns = (cv.spokenTurns || 0) + (cv.tappedTurns || 0);
+  if(turns < 3) return false;
+  cv._exitRecapShown = true;
+  /* Quietly drop any in-flight listening — the learner is leaving, not
+     speaking. Mirrors convoStopListen's cleanup WITHOUT the submit. */
+  cv._listenUntil = 0;
+  cv._listenToken = (cv._listenToken || 0) + 1;
+  if(cv._silenceTimer){ clearTimeout(cv._silenceTimer); cv._silenceTimer = null; }
+  if(cv._restartTimer){ clearTimeout(cv._restartTimer); cv._restartTimer = null; }
+  try{ stopVoice(); }catch(_e){}
+  cv.listening = false; cv._heardParts = []; cv._best = '';
+  try{ window.speechSynthesis && window.speechSynthesis.cancel(); }catch(_e){}
+  /* A history pop already moved the URL off #convo — push it back so the
+     recap card the learner is now looking at matches the address state. */
+  if(fromPop){ try{ history.pushState({screen:'convo'}, '', '#convo'); }catch(_e){} }
+  convoEnd();                                       /* builds recap + renders */
+  return true;
+}
+
 /* convoTapChip — scaffold chip tap: speaks the chip via TTS first so the learner hears their
    echoed choice, then routes to convoTurn with viaVoice=false (no SRS ease bump — spec invariant).
    Renamed from convoChipTap; backward-compat alias kept for any cached onclick references. */
@@ -10750,18 +10800,23 @@ function convoToggleListen(auto){
         const code = err && err.error;
         const fatal = code === 'not-allowed' || code === 'service-not-allowed';
         const windowOpen = Date.now() < (cv._listenUntil || 0);
-        if(heard && !fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
-          /* v8.28 (field report 2026-07-20): Android SR gives up ~1–2s into a
-             mid-sentence think pause. Submitting here cut learners off before
-             they finished. Instead: bank the segment, silently re-arm, and let
-             the 6s post-speech finalize timer (still running from the last
-             result) own submission — convoStopListen joins the banked parts. */
-          cv._heardParts.push(heard); cv._best = '';
+        if(!fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
+          /* v8.28 (field report 2026-07-20) + v8.32 fix: Android SR gives up
+             ~1–2s into ANY think pause — with fresh speech in cv._best OR with
+             segments already banked and nothing new heard. Both are the same
+             situation: the learner is mid-thought. Bank whatever landed and
+             silently re-arm; the 6s post-speech finalize timer (armed at the
+             last result, still running) owns submission — convoStopListen
+             joins the banked parts. v8.28 only re-armed when heard was
+             non-empty, so the SECOND give-up (empty heard, parts banked) fell
+             through to the submit branch below and cut learners off at ~3–4s;
+             the 6s promise never actually governed on-device. */
+          if(heard){ cv._heardParts.push(heard); cv._best = ''; }
           cv._restarts++;
           try{ stopVoice(); }catch(_e){}
           cv._restartTimer = setTimeout(() => {
             cv._restartTimer = null;
-            arm();
+            arm();                                  /* silent re-arm: the learner is thinking, not failing */
           }, CONVO_RESTART_GAP_MS);
           return;
         }
@@ -10773,15 +10828,6 @@ function convoToggleListen(auto){
           if(heard) parts.push(heard);
           cv._heardParts = []; cv._best = '';
           convoTurn(parts.join(' ').trim(), true);
-          return;
-        }
-        if(!fatal && windowOpen && cv._restarts < CONVO_RESTART_CAP && cv.listening){
-          cv._restarts++;
-          try{ stopVoice(); }catch(_e){}
-          cv._restartTimer = setTimeout(() => {
-            cv._restartTimer = null;
-            arm();                                  /* silent re-arm: the learner is thinking, not failing */
-          }, CONVO_RESTART_GAP_MS);
           return;
         }
         /* Window expired / cap hit / fatal error: quiet close — an error
@@ -11515,12 +11561,12 @@ function renderConvo(){
     ? `<div class="convo-turn them" style="margin-bottom:4px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${jpHtml}</div>
         ${cv.peekGloss && cur.glossEn ? `<div class="en-line" style="font-size:12px;margin-top:4px;opacity:.8">${esc(cur.glossEn)}</div>` : ''}
-        ${cv.peekGloss && Array.isArray(cur.words) && cur.words.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${cur.words.filter(w => w && w.jp).map(w => `<span style="padding:2px 9px;border-radius:20px;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.28);font-size:11px;color:#c9b3ff;font-family:'Noto Sans JP'">${esc(w.jp)}<span style="color:#9a8fb8;margin-left:4px;font-size:10px;font-family:inherit">${esc(w.en || '')}</span></span>`).join('')}</div>` : ''}
+        ${cv.peekGloss && Array.isArray(cur.words) && cur.words.length ? `<div style="margin-top:7px;padding:7px 9px;border-radius:12px;background:rgba(80,220,180,.06);border:1px solid rgba(80,220,180,.22)"><div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6fd4b4;margin-bottom:4px">word by word</div><div style="display:flex;flex-wrap:wrap;gap:4px">${cur.words.filter(w => w && w.jp).map(w => `<span style="padding:2px 9px;border-radius:20px;background:rgba(80,220,180,.1);border:1px solid rgba(80,220,180,.26);font-size:11px;color:#a8e8d2;font-family:'Noto Sans JP'">${esc(w.jp)}<span style="color:#7fc4ab;margin-left:4px;font-size:10px;font-family:inherit">${esc(w.en || '')}</span></span>`).join('')}</div></div>` : ''}
        </div>
        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
          <button onclick="convoReplay()" title="Replay" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🔊</button>
          <button onclick="speakJP('${jsEsc(cur.jp)}',0.7)" title="Slower" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:rgba(157,92,255,.1);color:#d6c2ff;font-size:14px;cursor:pointer;font-family:inherit">🐢</button>
-         <button onclick="convoTogglePeek()" title="${cv.peekGloss ? 'Hide English' : 'Show English'}" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:${cv.peekGloss ? 'rgba(157,92,255,.28)' : 'rgba(157,92,255,.1)'};color:#d6c2ff;font-size:13px;cursor:pointer;font-family:inherit">💬 <span style="font-size:11px">${cv.peekGloss ? 'EN on' : 'EN'}</span></button>
+         <button onclick="convoTogglePeek()" title="${cv.peekGloss ? 'Hide English' : 'Show English word-by-word'}" style="padding:7px 11px;border-radius:10px;border:1px solid rgba(157,92,255,.35);background:${cv.peekGloss ? 'rgba(157,92,255,.28)' : 'rgba(157,92,255,.1)'};color:#d6c2ff;font-size:13px;cursor:pointer;font-family:inherit">💬 <span style="font-size:11px">${cv.peekGloss ? 'English on' : 'English?'}</span></button>
        </div>
        ${teachCard}
        ${recastSheet}
@@ -20512,6 +20558,9 @@ function render(){
 function nav(screen, data, fromPop){
   /* history tracking: only push when not coming from popstate */
   clearNextTimer();
+  /* v8.32 — leaving a live conversation wraps it up once (recap in place)
+     instead of vanishing it; see _convoExitIntercept. */
+  if(typeof _convoExitIntercept === 'function' && _convoExitIntercept(screen, fromPop)) return;
   /* Stage A (CR-1/CR-2) — 'today' is now an alias for 'home': the old Today
      tab's guided path folded into the new conversation-first Home. Normalize
      ONCE here (the single nav() entry point) rather than patching every call
