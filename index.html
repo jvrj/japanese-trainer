@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.33';
+const APP_VERSION = '8.34';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9684,8 +9684,12 @@ async function _convoCall(messages, systemStr){
  * exhausting the script.
  */
 function _convoScript(scene, turnIdx){
-  const idx = (turnIdx || 0) % _CONVO_SCRIPT_TURNS.length;
-  const turn = _CONVO_SCRIPT_TURNS[idx];
+  /* v8.34 free-tier depth: per-scene banks — picking 「たべもの」 now gets a food
+     conversation, not the same generic five questions every topic shared.
+     Unknown ids ('free' included) fall back to the generic bank. */
+  const bank = _CONVO_SCRIPT_BANKS[scene] || _CONVO_SCRIPT_TURNS;
+  const idx = (turnIdx || 0) % bank.length;
+  const turn = bank[idx];
   /* Normalize candidate pool words exactly as STT output would need normalizing */
   const normalizedSuggested = (turn.suggested || []).map(s => _kataToHira(_stripKanji(s)));
   const judgedWords = normalizedSuggested
@@ -9713,6 +9717,133 @@ const _CONVO_SCRIPT_TURNS = [
   { jp:'どこにすんでいますか', glossEn:'Where do you live?', suggested:['とうきょうにすんでいます','おおさかです','ここにいます'], sceneDone:false },
   { jp:'またはなしましょう！', glossEn:'Let\'s talk again!', suggested:['ありがとうございます','またね','さようなら'], sceneDone:false },
 ];
+
+/* _convoScriptLen(scene) — cycle length for the scene's bank (the keyless
+   one-full-cycle end check must match whichever bank is actually playing). */
+function _convoScriptLen(scene){
+  return (_CONVO_SCRIPT_BANKS[scene] || _CONVO_SCRIPT_TURNS).length;
+}
+
+/* Per-scene scripted banks (v8.34) — the free tier's conversation content.
+   Each follows its scene's beats (SCENES[].beats): greeting → four beats →
+   warm close whose chips include またね (the farewell matcher ends it).
+   All kana, spaced for readability, N5-simple. sceneDone stays false
+   everywhere — ending is farewell or the one-cycle end card, never a script
+   entry. 'free' is deliberately absent (generic bank). */
+const _CONVO_SCRIPT_BANKS = {
+  intro: [
+    { jp:'こんにちは！ おなまえは なんですか', glossEn:'Hello! What is your name?', suggested:['わたしは イシンです','はじめまして','よろしく おねがいします'], sceneDone:false },
+    { jp:'どこに すんで いますか', glossEn:'Where do you live?', suggested:['オーストラリアです','とうきょうです','ここに すんで います'], sceneDone:false },
+    { jp:'すきな ものは なんですか', glossEn:'What do you like?', suggested:['おんがくが すきです','たべものが すきです','いぬが すきです'], sceneDone:false },
+    { jp:'きらいな ものは ありますか', glossEn:'Is there anything you dislike?', suggested:['なっとうが きらいです','あさが きらいです','ありません'], sceneDone:false },
+    { jp:'たんじょうびは いつですか', glossEn:'When is your birthday?', suggested:['なつです','ふゆです','ひみつです'], sceneDone:false },
+    { jp:'たのしかったです！ また はなしましょう', glossEn:'That was fun! Let\'s talk again', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  food: [
+    { jp:'こんにちは！ きょう なにを たべましたか', glossEn:'Hello! What did you eat today?', suggested:['ごはんを たべました','パンを たべました','まだです'], sceneDone:false },
+    { jp:'すきな たべものは なんですか', glossEn:'What food do you like?', suggested:['すしが すきです','ラーメンが すきです','おかしが すきです'], sceneDone:false },
+    { jp:'のみものは なにが すきですか', glossEn:'What do you like to drink?', suggested:['おちゃが すきです','コーヒーが すきです','みずを のみます'], sceneDone:false },
+    { jp:'きらいな たべものは ありますか', glossEn:'Any food you dislike?', suggested:['なっとうが きらいです','やさいが きらいです','ありません'], sceneDone:false },
+    { jp:'うちで りょうりを しますか', glossEn:'Do you cook at home?', suggested:['はい、します','いいえ、しません','ときどき します'], sceneDone:false },
+    { jp:'おいしい はなしでした！ またね', glossEn:'What a delicious chat! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  family: [
+    { jp:'こんにちは！ かぞくは なんにんですか', glossEn:'Hello! How many people are in your family?', suggested:['よにんです','さんにんです','ごにんです'], sceneDone:false },
+    { jp:'きょうだいは いますか', glossEn:'Do you have brothers or sisters?', suggested:['あにが います','いもうとが います','いません'], sceneDone:false },
+    { jp:'かぞくと なにを しますか', glossEn:'What do you do with your family?', suggested:['ごはんを たべます','テレビを みます','はなします'], sceneDone:false },
+    { jp:'かぞくは なにが すきですか', glossEn:'What does your family like?', suggested:['たべものが すきです','えいがが すきです','いぬが すきです'], sceneDone:false },
+    { jp:'かぞくは どこに いますか', glossEn:'Where is your family?', suggested:['ちかくに います','とおくに います','うちに います'], sceneDone:false },
+    { jp:'いい かぞくですね！ またね', glossEn:'What a nice family! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  weather: [
+    { jp:'こんにちは！ きょうの てんきは どうですか', glossEn:'Hello! How is the weather today?', suggested:['はれです','あめです','くもりです'], sceneDone:false },
+    { jp:'あついのと さむいの、どちらが すきですか', glossEn:'Hot or cold — which do you prefer?', suggested:['あついのが すきです','さむいのが すきです','どちらも すきです'], sceneDone:false },
+    { jp:'あめは すきですか', glossEn:'Do you like rain?', suggested:['はい、すきです','いいえ、きらいです','ときどき すきです'], sceneDone:false },
+    { jp:'あした なにを しますか', glossEn:'What will you do tomorrow?', suggested:['でかけます','うちに います','わかりません'], sceneDone:false },
+    { jp:'すきな きせつは ありますか', glossEn:'Do you have a favorite season?', suggested:['なつが すきです','ふゆが すきです','はるが すきです'], sceneDone:false },
+    { jp:'いい てんきの ひに また はなしましょう！', glossEn:'Let\'s talk again on a nice day!', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  pets: [
+    { jp:'こんにちは！ ペットが いますか', glossEn:'Hello! Do you have a pet?', suggested:['いぬが います','ねこが います','いません'], sceneDone:false },
+    { jp:'いぬと ねこ、どちらが すきですか', glossEn:'Dogs or cats — which do you like?', suggested:['いぬが すきです','ねこが すきです','どちらも すきです'], sceneDone:false },
+    { jp:'すきな どうぶつは なんですか', glossEn:'What is your favorite animal?', suggested:['いぬです','ねこです','とりです'], sceneDone:false },
+    { jp:'その どうぶつは なにを たべますか', glossEn:'What does that animal eat?', suggested:['にくを たべます','さかなを たべます','わかりません'], sceneDone:false },
+    { jp:'どうぶつと あそびますか', glossEn:'Do you play with animals?', suggested:['はい、あそびます','ときどき あそびます','いいえ'], sceneDone:false },
+    { jp:'どうぶつの はなし、たのしかった！ またね', glossEn:'Fun animal talk! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  feelings: [
+    { jp:'こんにちは！ きょうは げんきですか', glossEn:'Hello! How are you today?', suggested:['げんきです','つかれました','ねむいです'], sceneDone:false },
+    { jp:'そうですか。どうしてですか', glossEn:'I see. Why is that?', suggested:['しごとが おおいです','よく ねました','わかりません'], sceneDone:false },
+    { jp:'うれしい ときは いつですか', glossEn:'When do you feel happy?', suggested:['たべる ときです','あそぶ ときです','ねる ときです'], sceneDone:false },
+    { jp:'ねむい とき、なにを しますか', glossEn:'What do you do when you are sleepy?', suggested:['ねます','コーヒーを のみます','あるきます'], sceneDone:false },
+    { jp:'いまは どんな きもちですか', glossEn:'How do you feel right now?', suggested:['たのしいです','ふつうです','ねむいです'], sceneDone:false },
+    { jp:'きもちを はなすのは いいですね！ またね', glossEn:'It\'s good to talk about feelings! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  town: [
+    { jp:'こんにちは！ うちの ちかくに なにが ありますか', glossEn:'Hello! What is near your home?', suggested:['みせが あります','こうえんが あります','えきが あります'], sceneDone:false },
+    { jp:'よく どこに いきますか', glossEn:'Where do you often go?', suggested:['スーパーに いきます','こうえんに いきます','カフェに いきます'], sceneDone:false },
+    { jp:'どこに いきたいですか', glossEn:'Where do you want to go?', suggested:['うみに いきたいです','やまに いきたいです','にほんに いきたいです'], sceneDone:false },
+    { jp:'なにで いきますか', glossEn:'How do you get there?', suggested:['くるまで いきます','でんしゃで いきます','あるいて いきます'], sceneDone:false },
+    { jp:'あなたの まちは すきですか', glossEn:'Do you like your town?', suggested:['はい、すきです','しずかで いいです','にぎやかです'], sceneDone:false },
+    { jp:'まちの はなし、ありがとう！ またね', glossEn:'Thanks for the town talk! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  daily: [
+    { jp:'こんにちは！ あさ なにを しますか', glossEn:'Hello! What do you do in the morning?', suggested:['コーヒーを のみます','パンを たべます','シャワーを あびます'], sceneDone:false },
+    { jp:'しごとですか、がっこうですか', glossEn:'Work or school?', suggested:['しごとです','がっこうです','どちらも ちがいます'], sceneDone:false },
+    { jp:'よる なにを しますか', glossEn:'What do you do at night?', suggested:['テレビを みます','ほんを よみます','ゲームを します'], sceneDone:false },
+    { jp:'ばんごはんは なにを たべますか', glossEn:'What do you eat for dinner?', suggested:['ごはんと にくです','ラーメンです','いろいろです'], sceneDone:false },
+    { jp:'なんじに ねますか', glossEn:'What time do you go to sleep?', suggested:['じゅうじに ねます','じゅういちじに ねます','おそく ねます'], sceneDone:false },
+    { jp:'まいにちの はなし、いいですね！ またね', glossEn:'Nice daily-life talk! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  shopping: [
+    { jp:'こんにちは！ なにか かいたい ものは ありますか', glossEn:'Hello! Is there anything you want to buy?', suggested:['ふくを かいたいです','くつを かいたいです','ありません'], sceneDone:false },
+    { jp:'どこで かいものを しますか', glossEn:'Where do you shop?', suggested:['スーパーで します','まちで します','うちで します'], sceneDone:false },
+    { jp:'やすいのと たかいの、どちらを かいますか', glossEn:'Cheap or expensive — which do you buy?', suggested:['やすいのを かいます','たかいのを かいます','どちらもです'], sceneDone:false },
+    { jp:'たべものの かいものは すきですか', glossEn:'Do you like food shopping?', suggested:['はい、すきです','いいえ、きらいです','ときどきです'], sceneDone:false },
+    { jp:'きょう なにかを かいましたか', glossEn:'Did you buy anything today?', suggested:['はい、かいました','いいえ、かいませんでした','わすれました'], sceneDone:false },
+    { jp:'かいものの はなし、たのしかった！ またね', glossEn:'Fun shopping talk! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  weekend: [
+    { jp:'こんにちは！ しゅうまつに なにを しましたか', glossEn:'Hello! What did you do on the weekend?', suggested:['やすみました','でかけました','しごとを しました'], sceneDone:false },
+    { jp:'つぎの しゅうまつは なにを しますか', glossEn:'What will you do next weekend?', suggested:['あそびます','やすみます','わかりません'], sceneDone:false },
+    { jp:'うちに いるのと でかけるの、どちらが すきですか', glossEn:'Staying home or going out — which do you prefer?', suggested:['うちが すきです','でかけるのが すきです','どちらもです'], sceneDone:false },
+    { jp:'しゅうまつの いちばん いい ことは なんですか', glossEn:'What is the best part of a weekend?', suggested:['ゆっくり ねます','ともだちと あいます','おいしい ものを たべます'], sceneDone:false },
+    { jp:'しゅうまつは ながい ほうが いいですか', glossEn:'Should weekends be longer?', suggested:['はい！','もちろんです','みじかくて いいです'], sceneDone:false },
+    { jp:'いい しゅうまつを！ またね', glossEn:'Have a good weekend! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  music: [
+    { jp:'こんにちは！ おんがくは すきですか', glossEn:'Hello! Do you like music?', suggested:['はい、すきです','だいすきです','ときどき ききます'], sceneDone:false },
+    { jp:'どんな おんがくを ききますか', glossEn:'What kind of music do you listen to?', suggested:['ポップを ききます','ロックを ききます','いろいろ ききます'], sceneDone:false },
+    { jp:'いつ おんがくを ききますか', glossEn:'When do you listen to music?', suggested:['あさ ききます','よる ききます','でんしゃで ききます'], sceneDone:false },
+    { jp:'うたを うたいますか', glossEn:'Do you sing?', suggested:['はい、うたいます','カラオケで うたいます','いいえ、うたいません'], sceneDone:false },
+    { jp:'すきな うたは ありますか', glossEn:'Do you have a favorite song?', suggested:['あります','たくさん あります','ひみつです'], sceneDone:false },
+    { jp:'おんがくの はなし、たのしかった！ またね', glossEn:'Fun music talk! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  hobbies: [
+    { jp:'こんにちは！ しゅみは なんですか', glossEn:'Hello! What are your hobbies?', suggested:['ゲームです','スポーツです','りょうりです'], sceneDone:false },
+    { jp:'いつ それを しますか', glossEn:'When do you do it?', suggested:['しゅうまつに します','よる します','まいにち します'], sceneDone:false },
+    { jp:'だれと しますか', glossEn:'Who do you do it with?', suggested:['ひとりで します','ともだちと します','かぞくと します'], sceneDone:false },
+    { jp:'あたらしく なにを して みたいですか', glossEn:'What new thing do you want to try?', suggested:['りょこうを したいです','スポーツを したいです','わかりません'], sceneDone:false },
+    { jp:'その しゅみは たのしいですか', glossEn:'Is that hobby fun?', suggested:['はい、たのしいです','とても たのしいです','まあまあです'], sceneDone:false },
+    { jp:'しゅみの はなし、いいですね！ またね', glossEn:'Nice hobby talk! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+  travel: [
+    { jp:'こんにちは！ りょこうは すきですか', glossEn:'Hello! Do you like traveling?', suggested:['はい、すきです','だいすきです','あまり しません'], sceneDone:false },
+    { jp:'どこに いった ことが ありますか', glossEn:'Where have you been?', suggested:['にほんに いきました','うみに いきました','やまに いきました'], sceneDone:false },
+    { jp:'つぎは どこに いきたいですか', glossEn:'Where do you want to go next?', suggested:['にほんに いきたいです','うみに いきたいです','わかりません'], sceneDone:false },
+    { jp:'にほんで なにを みたいですか', glossEn:'What do you want to see in Japan?', suggested:['ふじさんを みたいです','とうきょうを みたいです','さくらを みたいです'], sceneDone:false },
+    { jp:'でんしゃと ひこうき、どちらが すきですか', glossEn:'Trains or planes — which do you like?', suggested:['でんしゃが すきです','ひこうきが すきです','くるまが すきです'], sceneDone:false },
+    { jp:'いつか りょこうの はなしを また しましょう！ またね', glossEn:'Let\'s talk travel again some day! See you', suggested:['ありがとう ございます','またね','さようなら'], sceneDone:false },
+  ],
+  work: [
+    { jp:'こんにちは！ しごとを して いますか', glossEn:'Hello! Do you work?', suggested:['はい、して います','がっこうに いきます','いまは やすんで います'], sceneDone:false },
+    { jp:'さいきん いそがしいですか', glossEn:'Have you been busy lately?', suggested:['はい、いそがしいです','いいえ、ひまです','ときどきです'], sceneDone:false },
+    { jp:'しごとの なにが すきですか', glossEn:'What do you like about your work?', suggested:['ひとが すきです','つくるのが すきです','やすみが すきです'], sceneDone:false },
+    { jp:'しごとの ひとは どうですか', glossEn:'How are the people there?', suggested:['いい ひとたちです','おもしろいです','まあまあです'], sceneDone:false },
+    { jp:'やすみの ひは なにを しますか', glossEn:'What do you do on days off?', suggested:['ねます','あそびます','なにも しません'], sceneDone:false },
+    { jp:'おしごと がんばって！ またね', glossEn:'Good luck with work! See you', suggested:['ありがとう ございます','またね','バイバイ'], sceneDone:false },
+  ],
+};
 
 /**
  * CONVO_FAREWELL_TOKENS / _isConvoFarewell(text) — Delve 6 T2 deterministic
@@ -10318,7 +10449,10 @@ async function convoTurn(userText, viaVoice){
      Never an endless fake conversation (the Praktika ad-vs-reality trap).
      Farewell taps above still end it earlier the normal way. Keyed sessions
      never reach this branch and never script-fallback mid-conversation (L11). */
-  if(!key && cv.turn >= _CONVO_SCRIPT_TURNS.length){
+  /* v8.34: per-scene cycle length + the opener no longer repeats (reply serves
+     cv.turn + 1 — the opener already played index 0), so the cycle ends when
+     every question has been asked exactly once. */
+  if(!key && (cv.turn + 1) >= _convoScriptLen(cv.sceneId)){
     cv.loading = false;
     if(learnerFarewell){ save(); convoEnd(); return; }  /* a goodbye still gets the normal recap */
     cv.scriptEnded = true;
@@ -10333,7 +10467,7 @@ async function convoTurn(userText, viaVoice){
     /* No-key fallback: _convoScript instead of _convoCall.
        F5 (§7.3): system string is composed per-turn — immutable preamble base
        + the neutralized cv.facts callback line (see _convoSystemStr). */
-    rawStr = key ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn);
+    rawStr = key ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn + 1);
   } catch(e){
     cv.loading = false;
     cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
