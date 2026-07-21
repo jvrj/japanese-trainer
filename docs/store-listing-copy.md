@@ -63,5 +63,8 @@ Preview video = the <90s onboarding → first spoken exchange, uncut (the honest
 - Jeon 2023 (32-study review) is the only research citation; link it on the
   landing page, paraphrase it in store copy.
 - No "fluent in N weeks" claims, ever.
-- Pricing copy (when live): one SKU, free tier = one real conversation per
-  day — described as "free daily conversation", not "trial".
+- Pricing copy (LOCKED 2026-07-21, /interactive): **$8.99/mo + ~$59.99/yr**.
+  **7-day free trial of live AI conversation for everyone — no card required.**
+  After the trial, live AI chat locks; **drills + scripted practice stay free
+  forever.** In-app offer converts near day 7. (Supersedes the earlier
+  "one free conversation per day" draft note.)
