@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.30';
+const APP_VERSION = '8.31';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2802,6 +2802,7 @@ const DEFAULT_SETTINGS = {
   hideStreak:false,           // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
   convoStyle:'friend',        // F2 (Delve 7 §3.5) — conversation style. Hard-shipped at 'friend' (full confirm/recast/clarify repertoire); the 3-position Settings dial is DEFERRED until a demand signal. 'just-talk' forces feedback none client-side.
   recastPeeked:false,         // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
+  newWordInduction:false,     // v8.31 — OPT-IN: walk new words through meet→hear→say before the fast drill. Default OFF so the quick say-word→next loop stays default (owner field report 2026-07-21: induction-in-the-main-loop felt slow).
   vocabLock:true,             // S3 (ADR-012) — rolling-frontier vocab hard lock, default ON. Escape hatch: "Vocab focus lock" row in Settings.
   unlockedExtra:[]            // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
 };
@@ -16070,9 +16071,12 @@ function buildGenerateVocabSpamLesson(opts){
      one-time meet->hear->say induction spliced immediately before their own
      recall step; already-introduced words are untouched (still just a single
      recall step, same position/fields as before). */
-  _buildInductionWarmCache(pool.filter(w => !vocabIsIntroduced(w)));
+  /* Induction is OPT-IN (Settings → "Walk me through new words", default OFF).
+     When off, the fast say-word→next loop is untouched — no beats, no cache warm. */
+  const _induct = !!state.settings.newWordInduction;
+  if(_induct) _buildInductionWarmCache(pool.filter(w => !vocabIsIntroduced(w)));
   const steps = pool.reduce((acc, w) => {
-    if(!vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
+    if(_induct && !vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
     acc.push({ type:'recall', word_id: w.id });
     return acc;
   }, []);
@@ -16137,9 +16141,10 @@ function startRandomDrill(opts){
        induction spliced immediately before their own recall step; already-
        introduced words keep their single unmodified recall step, same
        position/fields as before. */
-    _buildInductionWarmCache(picked.filter(w => !vocabIsIntroduced(w)));
+    const _induct = !!state.settings.newWordInduction;
+    if(_induct) _buildInductionWarmCache(picked.filter(w => !vocabIsIntroduced(w)));
     const randomSteps = picked.reduce((acc, w) => {
-      if(!vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
+      if(_induct && !vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
       acc.push({ type:'recall', word_id: w.id });
       return acc;
     }, []);
@@ -21957,6 +21962,8 @@ function renderSettings(){
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Vocab focus lock</div><div class="word-en">On: keeps drills to a rolling set of words you've already met plus the next ${FRONTIER_N} coming up, so the pool stays focused instead of the whole deck at once. New words join the set automatically as you use them — nothing is ever hidden for good. Off: every word is open right away.</div></div>
         <input type="checkbox" ${s.vocabLock!==false?'checked':''} onchange="toggleSetting('vocabLock')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Walk me through new words</div><div class="word-en">On: the first time a new word comes up in a hands-free drill, it walks you through it — meet the word, hear it in a few real sentences, then say it aloud — before the quick review. Best when you're meeting words for the first time. Off: new words go straight into the fast say-it drill.</div></div>
+        <input type="checkbox" ${s.newWordInduction?'checked':''} onchange="toggleSetting('newWordInduction')"></label>
     </div>
 
     <div class="card">
