@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.34';
+const APP_VERSION = '8.35';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2803,7 +2803,7 @@ const DEFAULT_SETTINGS = {
   convoStyle:'friend',        // F2 (Delve 7 §3.5) — conversation style. Hard-shipped at 'friend' (full confirm/recast/clarify repertoire); the 3-position Settings dial is DEFERRED until a demand signal. 'just-talk' forces feedback none client-side.
   recastPeeked:false,         // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
   newWordInduction:false,     // v8.31 — OPT-IN: walk new words through meet→hear→say before the fast drill. Default OFF so the quick say-word→next loop stays default (owner field report 2026-07-21: induction-in-the-main-loop felt slow).
-  vocabLock:true,             // S3 (ADR-012) — rolling-frontier vocab hard lock, default ON. Escape hatch: "Vocab focus lock" row in Settings.
+  vocabLock:false,            // S3 (ADR-012, amended v8.35) — rolling-frontier vocab lock is OPT-IN, default OFF (owner field verdict 2026-07-22: full deck in the practice area). "Vocab focus lock" row in Settings turns it on.
   unlockedExtra:[]            // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
 };
 
@@ -3591,8 +3591,15 @@ const MIN_VIABLE = 10;
    auditable backstop for existing saved-settings blobs from before v8.29. */
 function vocabLockMigrateV829(){
   const s = state.settings;
-  if(s.vocabLock === undefined) s.vocabLock = true;
+  if(s.vocabLock === undefined) s.vocabLock = false;
   if(!Array.isArray(s.unlockedExtra)) s.unlockedExtra = [];
+  /* v8.35 — owner field verdict 2026-07-22: the lock is OPT-IN, default OFF.
+     The v8.29 migration auto-set `true` on every existing install without the
+     learner ever choosing it, so this one-time, marker-guarded flip restores
+     the full deck. Turning the Settings toggle back ON afterwards sticks: the
+     marker persists with that save, so the flip never re-runs. */
+  if(s.vocabLock === true && s.vocabLockFlipV835 !== true) s.vocabLock = false;
+  s.vocabLockFlipV835 = true;
 }
 
 /* started(w) — true iff the word has at least one logged SRS attempt in
@@ -3687,9 +3694,10 @@ function getActiveWords(opts){
   const ignoreLock = !!(opts && opts.ignoreLock === true);
   const s = state.settings;
   const basePool = _vocabBasePool();
-  /* Absent flag is treated as ON ("absent flags mean locked-by-frontier
-     computed at read time" — ADR-012 §6) — only an explicit `false` opts out. */
-  if(ignoreLock || s.vocabLock === false) return basePool;
+  /* v8.35 — the lock is OPT-IN (owner field verdict 2026-07-22, inverts
+     ADR-012 §6's absent-means-ON rule): only an explicit `true` from the
+     Settings toggle filters; absent or `false` ⇒ the full base pool. */
+  if(ignoreLock || s.vocabLock !== true) return basePool;
 
   const {unlocked, manual} = _vocabUnlockedSet();
   let pool = basePool.filter(w => unlocked.has(w.id));
@@ -21986,7 +21994,7 @@ function colPickListHtml(id, search){
      lock status is then read from _vocabUnlockedSet() — the SAME Set-build
      getActiveWords()'s lock filter uses — so browse-display can never drift
      from actual drill-gating. */
-  const lockOn = state.settings.vocabLock !== false;
+  const lockOn = state.settings.vocabLock === true;
   const unlockedIds = lockOn ? _vocabUnlockedSet().unlocked : null;
   const all = _vocabBasePool();
   const matches = all.filter(w => {
@@ -22208,7 +22216,7 @@ function renderSettings(){
       <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Vocab focus lock</div><div class="word-en">On: keeps drills to a rolling set of words you've already met plus the next ${FRONTIER_N} coming up, so the pool stays focused instead of the whole deck at once. New words join the set automatically as you use them — nothing is ever hidden for good. Off: every word is open right away.</div></div>
-        <input type="checkbox" ${s.vocabLock!==false?'checked':''} onchange="toggleSetting('vocabLock')"></label>
+        <input type="checkbox" ${s.vocabLock===true?'checked':''} onchange="toggleSetting('vocabLock')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Walk me through new words</div><div class="word-en">On: the first time a new word comes up in a hands-free drill, it walks you through it — meet the word, hear it in a few real sentences, then say it aloud — before the quick review. Best when you're meeting words for the first time. Off: new words go straight into the fast say-it drill.</div></div>
         <input type="checkbox" ${s.newWordInduction?'checked':''} onchange="toggleSetting('newWordInduction')"></label>
     </div>

@@ -10,7 +10,7 @@ One row per architecture decision record in `docs/decisions/`. Pointer index, no
 | ADR-007 | Native wrapper choice (Capacitor; conditional on iOS WKWebView mic spike) | Accepted | 2026-06-29 |
 | ADR-008 | Conversation-first two-door IA (Home hero + Practice drawer; deletion veto cleared — all 4 modes go) | Accepted | 2026-07-17 |
 | ADR-009 | Judgment-free interaction spec (copy rules + latency budgets + double-miss containment) | Accepted | 2026-07-17 |
-| ADR-012 | Rolling-frontier vocab hard lock (FRONTIER_N=80; choke point in `getActiveWords`; supersedes ADR-003) | Accepted | 2026-07-19 |
+| ADR-012 | Rolling-frontier vocab hard lock (FRONTIER_N=80; choke point in `getActiveWords`; supersedes ADR-003) | Accepted, amended 2026-07-22: default OFF, lock is opt-in (owner field verdict, v8.35) | 2026-07-19 |
 | ADR-013 | Sensei teaching layer (teach card + spoken breath; amends Delve-7 invisibility; keyed gate shared with ADR-011) | Accepted | 2026-07-19 |
 
 ## Not yet promoted (still in `docs/decisions-pending/`)
