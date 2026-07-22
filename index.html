@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.35';
+const APP_VERSION = '8.36';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9909,13 +9909,108 @@ function _convoFactAdd(cv, text){
   cv.facts.push(fact);
   while(cv.facts.length > 10) cv.facts.shift();
 }
+/* _MEANING_KANJI_KANA — v8.36 (owner field report 2026-07-22: the teal card
+   never appeared on the phone). Pixel/Android ja-JP STT writes the asked-about
+   word in KANJI (「元気って何」), but every pack surface is kana, so the
+   deterministic lookup missed exactly the words a phone learner asks about.
+   Curated standard readings for the common conversational vocabulary; an
+   unmapped kanji surface still falls back to the model-directive path (the
+   spoken answer + auto-opened gloss), same as before. */
+const _MEANING_KANJI_KANA = {
+  /* people & family */
+  '人':'ひと','友達':'ともだち','家族':'かぞく','子供':'こども','大人':'おとな',
+  '男':'おとこ','女':'おんな','男の子':'おとこのこ','女の子':'おんなのこ',
+  '母':'はは','父':'ちち','お母さん':'おかあさん','お父さん':'おとうさん',
+  '兄':'あに','姉':'あね','弟':'おとうと','妹':'いもうと','兄弟':'きょうだい',
+  '両親':'りょうしん','息子':'むすこ','娘':'むすめ','赤ちゃん':'あかちゃん',
+  '先生':'せんせい','学生':'がくせい','医者':'いしゃ','名前':'なまえ',
+  /* animals & nature */
+  '猫':'ねこ','犬':'いぬ','鳥':'とり','魚':'さかな','花':'はな','木':'き',
+  '山':'やま','川':'かわ','海':'うみ','空':'そら','月':'つき','星':'ほし',
+  '雨':'あめ','雪':'ゆき','風':'かぜ','天気':'てんき','水':'みず',
+  '春':'はる','夏':'なつ','秋':'あき','冬':'ふゆ',
+  /* time */
+  '今日':'きょう','明日':'あした','昨日':'きのう','今':'いま','時間':'じかん',
+  '朝':'あさ','昼':'ひる','夜':'よる','今週':'こんしゅう','来週':'らいしゅう',
+  '先週':'せんしゅう','今月':'こんげつ','来月':'らいげつ','今年':'ことし',
+  '去年':'きょねん','来年':'らいねん','週末':'しゅうまつ','毎日':'まいにち',
+  '毎朝':'まいあさ','毎晩':'まいばん','誕生日':'たんじょうび','休み':'やすみ',
+  '月曜日':'げつようび','火曜日':'かようび','水曜日':'すいようび',
+  '木曜日':'もくようび','金曜日':'きんようび','土曜日':'どようび','日曜日':'にちようび',
+  /* food & drink */
+  '食べ物':'たべもの','飲み物':'のみもの','野菜':'やさい','果物':'くだもの',
+  '肉':'にく','卵':'たまご','牛乳':'ぎゅうにゅう','お茶':'おちゃ','お酒':'おさけ',
+  'ご飯':'ごはん','朝ご飯':'あさごはん','昼ご飯':'ひるごはん','晩ご飯':'ばんごはん',
+  '料理':'りょうり','お店':'おみせ','店':'みせ',
+  /* places & things */
+  '家':'いえ','学校':'がっこう','会社':'かいしゃ','病院':'びょういん',
+  '銀行':'ぎんこう','図書館':'としょかん','公園':'こうえん','駅':'えき',
+  '道':'みち','町':'まち','国':'くに','外国':'がいこく','世界':'せかい',
+  '場所':'ばしょ','部屋':'へや','台所':'だいどころ','お風呂':'おふろ',
+  '窓':'まど','机':'つくえ','椅子':'いす','電車':'でんしゃ','車':'くるま',
+  '自転車':'じてんしゃ','飛行機':'ひこうき','地下鉄':'ちかてつ',
+  '本':'ほん','手紙':'てがみ','写真':'しゃしん','絵':'え','紙':'かみ',
+  '服':'ふく','靴':'くつ','帽子':'ぼうし','眼鏡':'めがね','傘':'かさ',
+  '鞄':'かばん','財布':'さいふ','お金':'おかね','時計':'とけい','携帯':'けいたい',
+  '電話':'でんわ','電気':'でんき','地図':'ちず','切符':'きっぷ',
+  /* body */
+  '目':'め','耳':'みみ','口':'くち','手':'て','足':'あし','頭':'あたま',
+  '顔':'かお','体':'からだ','心':'こころ','声':'こえ',
+  /* activities & abstract */
+  '仕事':'しごと','勉強':'べんきょう','練習':'れんしゅう','買い物':'かいもの',
+  '旅行':'りょこう','音楽':'おんがく','映画':'えいが','歌':'うた',
+  '質問':'しつもん','答え':'こたえ','問題':'もんだい','意味':'いみ',
+  '言葉':'ことば','漢字':'かんじ','宿題':'しゅくだい','日本':'にほん',
+  '日本語':'にほんご','英語':'えいご','話':'はなし','物':'もの','事':'こと',
+  /* position */
+  '外':'そと','中':'なか','上':'うえ','下':'した','前':'まえ','後ろ':'うしろ',
+  '右':'みぎ','左':'ひだり','隣':'となり','近く':'ちかく',
+  /* verbs (dictionary form) */
+  '食べる':'たべる','飲む':'のむ','行く':'いく','来る':'くる','帰る':'かえる',
+  '見る':'みる','聞く':'きく','話す':'はなす','読む':'よむ','書く':'かく',
+  '買う':'かう','売る':'うる','会う':'あう','待つ':'まつ','立つ':'たつ',
+  '座る':'すわる','歩く':'あるく','走る':'はしる','泳ぐ':'およぐ',
+  '寝る':'ねる','起きる':'おきる','働く':'はたらく','休む':'やすむ',
+  '遊ぶ':'あそぶ','作る':'つくる','使う':'つかう','思う':'おもう',
+  '知る':'しる','分かる':'わかる','出る':'でる','入る':'はいる',
+  '開ける':'あける','閉める':'しめる','教える':'おしえる','習う':'ならう',
+  '覚える':'おぼえる','忘れる':'わすれる','始まる':'はじまる','終わる':'おわる',
+  '住む':'すむ','持つ':'もつ','取る':'とる','歌う':'うたう','踊る':'おどる',
+  /* adjectives */
+  '大きい':'おおきい','小さい':'ちいさい','新しい':'あたらしい','古い':'ふるい',
+  '高い':'たかい','安い':'やすい','低い':'ひくい','暑い':'あつい','寒い':'さむい',
+  '熱い':'あつい','冷たい':'つめたい','暖かい':'あたたかい','涼しい':'すずしい',
+  '面白い':'おもしろい','楽しい':'たのしい','嬉しい':'うれしい','悲しい':'かなしい',
+  '美味しい':'おいしい','難しい':'むずかしい','優しい':'やさしい','忙しい':'いそがしい',
+  '早い':'はやい','速い':'はやい','遅い':'おそい','近い':'ちかい','遠い':'とおい',
+  '強い':'つよい','弱い':'よわい','白い':'しろい','黒い':'くろい','赤い':'あかい',
+  '青い':'あおい','明るい':'あかるい','暗い':'くらい',
+  '静か':'しずか','綺麗':'きれい','有名':'ゆうめい','便利':'べんり',
+  '大丈夫':'だいじょうぶ','大好き':'だいすき','大切':'たいせつ','上手':'じょうず',
+  '下手':'へた','元気':'げんき','好き':'すき','嫌い':'きらい',
+  /* quantity & misc */
+  '一緒':'いっしょ','全部':'ぜんぶ','少し':'すこし','沢山':'たくさん','皆':'みんな'
+};
+const _MEANING_KANJI_KEYS = Object.keys(_MEANING_KANJI_KANA).sort((a, b) => b.length - a.length);
+function _meaningKanjiToKana(s){
+  if(!/[一-龯々]/.test(s)) return s;
+  if(_MEANING_KANJI_KANA[s]) return _MEANING_KANJI_KANA[s];
+  /* longest-key-first greedy replacement so mixed surfaces (お元気、食べ物の
+     みせ) resolve; any kanji left unmapped simply fails the pack match below,
+     exactly like today. */
+  let out = s;
+  for(const k of _MEANING_KANJI_KEYS){
+    if(out.includes(k)) out = out.split(k).join(_MEANING_KANJI_KANA[k]);
+  }
+  return out;
+}
 /* _convoMeaningLookup — v8.33: deterministic client-side answer to
    「Xって なに？」. Extracts the asked word from the transcript, looks it up in
    the session pool then the full packs, and returns {jp, romaji, en, note} or
    null. Suffix matching strips leading filler (えっと etc.); katakana is
-   normalized so STT script choice can't cause a miss. Kanji STT finals for the
-   WORD itself can't be looked up (kana packs) — those fall back to the
-   model-directive path. */
+   normalized so STT script choice can't cause a miss. v8.36: kanji STT finals
+   for the WORD are normalized through _MEANING_KANJI_KANA first — un-mapped
+   kanji still falls back to the model-directive path. */
 function _convoMeaningLookup(text){
   const t = (text || '').replace(/[？?！!。、\s]+$/g, '');
   let cand = null;
@@ -9926,6 +10021,7 @@ function _convoMeaningLookup(text){
   if(!cand) return null;
   cand = _kataToHira(cand.trim().replace(/[「」『』"'\s]/g, ''));
   if(!cand) return null;
+  cand = _meaningKanjiToKana(cand);   /* v8.36 — resolve kanji STT finals */
   const cv = state.convo;
   const dict = [];
   if(cv && Array.isArray(cv.pool)) dict.push.apply(dict, cv.pool);
@@ -10477,12 +10573,17 @@ async function convoTurn(userText, viaVoice){
        + the neutralized cv.facts callback line (see _convoSystemStr). */
     rawStr = key ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn + 1);
   } catch(e){
+    if(cv.done){ cv.loading = false; return; }  /* v8.36 — session ended mid-flight (exit recap) */
     cv.loading = false;
     cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
     /* orb seam (5/5, sprint: orb): error path -> idle */
     _orbSet('idle', null);
     render(); return;
   }
+  /* v8.36 — the learner may have backed out while this turn was in flight
+     (the exit intercept now ends the session during loading); a reply landing
+     into an ended session is dropped whole — never rendered, never spoken. */
+  if(cv.done){ cv.loading = false; return; }
   /* Stage D (v8.10) — dev-only latency readout; never rendered outside _isDevMode() */
   cv.lastLatencyMs = Math.round(((typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()) - _t0);
 
@@ -10854,7 +10955,12 @@ window.convoEnd = convoEnd;
    bottom-nav taps funnel through. */
 function _convoExitIntercept(target, fromPop){
   const cv = state.convo;
-  if(!cv || cv.done || cv.loading) return false;
+  /* v8.36 (owner field report 2026-07-22: back-out showed no recap) — the old
+     cv.loading bail meant backing out while the AI was thinking (a multi-second
+     window on every keyed turn) skipped the recap entirely. The intercept now
+     fires during loading too; the in-flight reply is dropped whole by
+     convoTurn's cv.done guard — never rendered, never spoken. */
+  if(!cv || cv.done) return false;
   if(state.screen !== 'convo' || target === 'convo') return false;
   if(cv._exitRecapShown) return false;
   const turns = (cv.spokenTurns || 0) + (cv.tappedTurns || 0);
@@ -10872,6 +10978,7 @@ function _convoExitIntercept(target, fromPop){
   /* A history pop already moved the URL off #convo — push it back so the
      recap card the learner is now looking at matches the address state. */
   if(fromPop){ try{ history.pushState({screen:'convo'}, '', '#convo'); }catch(_e){} }
+  cv.loading = false;   /* v8.36 — any in-flight turn is abandoned; see guard in convoTurn */
   convoEnd();                                       /* builds recap + renders */
   return true;
 }
@@ -20783,7 +20890,16 @@ function nav(screen, data, fromPop){
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
-    try{ history.pushState({screen, data}, '', '#'+screen); }catch(e){}
+    /* v8.36 (owner field report 2026-07-22) — consecutive same-screen entries
+       made the system back button a visible no-op: every startConvo (resume,
+       fresh-restart, topic switch) pushed another #convo, so a back press
+       popped convo→convo, the exit intercept saw target==='convo' and never
+       fired, and the recap looked broken. Re-entering the screen you are
+       already on REPLACES the top entry instead of stacking a duplicate. */
+    try{
+      if(history.state && history.state.screen === screen) history.replaceState({screen, data}, '', '#'+screen);
+      else history.pushState({screen, data}, '', '#'+screen);
+    }catch(e){}
   }
   render();
   updateBackFab();
