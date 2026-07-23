@@ -18,7 +18,10 @@ conversation-first · judgment-free" is unowned white space** — every rival is
 
 Most apps make you tap flashcards for months before you ever speak. Isshin
 starts with your voice: within 90 seconds of opening the app you'll have your
-first short spoken exchange — no signup, no score, no judgment.
+first short spoken exchange — one tap to sign in, then no card, no score, no
+judgment. *(Reworded 2026-07-24, Delve 9 G4.4 honest-surface audit: sign-in
+is now up front (D3), so "no signup" would be a false claim; the honest
+differentiators are no-card / no-score / no-judgment.)*
 
 - 🗣 **Real conversations, hands-free.** Talk with a warm AI partner who
   listens patiently, follows wherever you take the conversation, and shares
@@ -68,3 +71,11 @@ Preview video = the <90s onboarding → first spoken exchange, uncut (the honest
   After the trial, live AI chat locks; **drills + scripted practice stay free
   forever.** In-app offer converts near day 7. (Supersedes the earlier
   "one free conversation per day" draft note.)
+- Trial-clock honesty (Delve 9 D11, 2026-07-24): the 7-day clock **starts at
+  the first live conversation, not at signup** — store/ad copy may say
+  "7 free days of live talk — the clock starts when you do."
+- Offer-surface copy source of truth: `docs/delve-cycles/9-commercial-spine.md`
+  §5.3 (judgment-free register, banned-mechanics list). Store copy, landing
+  page, and ads must never use urgency/loss framing the in-app offer bans —
+  audited against gate G4.4 (honest surface: never show capability the
+  shipped app doesn't deliver).

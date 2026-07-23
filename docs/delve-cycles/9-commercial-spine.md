@@ -108,10 +108,20 @@ placement). It is one screen, two taps maximum, skippable.
    Japanese within the first minute*, which is the product's promise enacted,
    not described. Praktika's proven "<5-min to first confidence moment"
    (REPORT MEDIUM-1) is beaten, not copied: Isshin's is <60 seconds.
-4. **Goals-never-asked is also the A0 wedge.** Praktika's verified beginner
-   failure is "too advanced, speaks too quickly" (HIGH-1). A goal wizard
-   presumes the user can articulate a learning goal; an absolute beginner's
-   only goal is "say anything at all." OB-3A serves exactly that user.
+4. **Goals-never-asked is also the A0 wedge — but HIGH-1 cuts both ways
+   (amended at Synthesis R1, devils-advocate).** Praktika's verified beginner
+   failure is "too advanced, speaks too quickly" (HIGH-1) — and HIGH-1's
+   action line is explicit: do NOT copy speaking-first-from-cold for true
+   beginners; the kana + core-vocab on-ramp is the wedge and must be the
+   first thing a new user hits (REPORT.md:33, 37). OB-3A is *not*
+   speaking-first-from-cold in HIGH-1's sense — it is 3 canned, audio-led
+   turns with local TTS, no live AI, no reading required — but the kana
+   wedge still must be first-session content, not an afterthought.
+   **Amendment D1a:** for `path:'beginner'`, the S4 first-win card carries
+   TWO co-equal CTAs — **"Keep talking →"** (live) and **"Start with the
+   letters →"** (the existing kana on-ramp) — and the day-1 beginner Home
+   surfaces the kana ramp card above the fold beside the orb. The kana
+   module is never gated behind any speaking task.
 
 ### 3.3 The first 60 seconds, screen by screen
 
@@ -123,7 +133,7 @@ A brand-new install (post-Phase-2 build, sign-in live) shows, in order:
 | S1 | **Path pick** (existing OB-1) | "Brand new? / I know some" — two chips, skippable ("start from zero" default). | ≤2 | 15–25s |
 | S2 | **Mic ask** (existing OB-2) | Tap-triggered mic pre-prompt (never auto-fires, 21243); chips-only fallback if denied — the scripted exchange still works. | 1 | 25–30s |
 | S3 | **Scripted first conversation** (existing OB-3A / router OB-3B) | 3 canned turns, local TTS + STT-as-turn-trigger; typed name field; zero network, zero AI spend. | speak | 30–55s |
-| S4 | **First-win card** (existing OB-4) | No score, no signup (already signed in), one CTA: **"Keep talking →"** into the first *live* AI conversation — trial day 1 of 7 begins being *used* here (the clock started at signup per `profiles.trial_started_at`, but the felt moment is this tap). | 1 | 55–60s |
+| S4 | **First-win card** (existing OB-4) | No score, no signup (already signed in), one CTA: **"Keep talking →"** into the first *live* AI conversation — trial day 1 of 7 STARTS here: the clock is lazy, `trial_started_at` is set by this first live-talk call, not at signup (D11, Synthesis R1). Beginner path adds the co-equal **"Start with the letters →"** kana CTA (D1a). | 1 | 55–60s |
 
 Landing surface after S4 is **Home = talk** (the orb), per Delve 5. Not a
 menu, not a dashboard, not Settings.
@@ -135,7 +145,8 @@ between the first-win card and the talk loop.
 ### 3.4 Reversal condition
 
 Revisit toward a 2-tap skippable goal pick only if post-launch funnel data
-shows install→first-live-convo completion below ~50% AND user interviews
+shows install→first-live-convo completion below ~50% (placeholder —
+calibrate on the first cohort) AND user interviews
 attribute the drop to "didn't know what this app is for" — i.e. an
 orientation gap, not friction. A goal wizard added later must remain an
 additive filter over the single progress model (never a path that can reset).
@@ -179,22 +190,35 @@ rejected. Forcing rationale:
    owner's own device). Strict keeps "first authenticated launch with no
    `user_state` row → seed upload" as the *only* migration path for
    customers. The QA adversary should verify this claim, not the merge code.
-3. **Honest trial clock.** `trial_started_at` is set by the signup trigger
-   (0002_trial.sql). Strict means signup ≈ first-open, so "7 days from
-   signup" equals the felt "7 days from install" — no user discovers their
-   trial "started" days before they first tapped live talk. (Residual gap:
-   S3/S4 are free content, minutes not days — acceptable.)
-4. **The competitor's evidence.** Praktika gates behind signup and converts
-   at $2M/mo scale (REPORT HIGH-2) — with a *card-gated* trial, a strictly
-   harsher wall than Isshin's no-card Google tap.
+3. **Honest trial clock — superseded by lazy-start (Synthesis R1, D11).**
+   The signup-starts-the-clock model failed the doc's own G4 honesty bar:
+   drills are free forever, so a user could sign up, use only free surfaces,
+   and find their "7 free days of talk" gone without ever talking live.
+   **Amendment D11:** `trial_started_at` becomes lazy — NULL at signup, set
+   by the FIRST entitlement-gated live-talk call (migration 0003 + gate
+   change + entitlement.mjs null path; ADR-016). "7 free days of talk" is
+   then literally true under strict OR loose, so the clock no longer argues
+   for strict; points 1–2 and the instrumented reversal carry the decision.
+4. **The competitor's evidence — demoted to weak analogy (Synthesis R1,
+   devils-advocate).** Praktika gates behind signup at $2M/mo scale (REPORT
+   HIGH-2), but HIGH-2 is a pricing/revenue finding, not funnel evidence;
+   Praktika's wall sits behind a known brand and a $35.5M-subsidized paid
+   funnel (REPORT.md:57), while Isshin is a zero-brand PWA. This point is
+   supporting color only — points 1–2 and the instrumented reversal carry
+   the decision.
 5. **Cost acknowledged, mitigated, measured.** Strict costs installs at S0.
    Mitigations: S0 *is* the promise screen (auth is one tap on the same
    screen as the pitch, not a second wall); no card; magic-link fallback; ads
    land on the landing page (live: `landing/`) which pre-frames the promise
    so S0 is confirmation, not first contact. **Measurement is a v1 gate:**
    count S0-shown vs S0-completed from day one (§10: DO_THIS_NEXT patch).
-   If S0 completion < ~60% over the first meaningful ad cohort, the
+   If S0 completion < ~60% (placeholder — calibrate on the first cohort;
+   not a committed gate) over the first meaningful ad cohort, the
    devils-advocate's case reopens with data (reversal condition).
+   **Owner-confirmation flag (Synthesis R1):** strict-vs-loose is this
+   doc's *interpretation* of the owner's "sign in up front" lock, not the
+   lock itself — present both readings at signoff; strict stands unless the
+   owner says loose.
 
 ### 4.3 The auth screen (spec)
 
@@ -209,6 +233,11 @@ rejected. Forcing rationale:
   — the trial terms are stated **before** signup (trust gate G4, §6).
 - **No** password field, no "create account vs log in" split (OAuth+magic-link
   make them the same act), no skip button.
+- **Offline state (QA-1, Synthesis R1):** S0 itself always renders from the
+  SW cache; when `navigator.onLine === false` (the v8.27 honest-offline
+  pattern, index.html 9655–9660), both sign-in actions render disabled with
+  the line *"You're offline — sign-in needs internet. It'll light up when
+  you're back."*; an `online` event re-enables them. No spinner, no dead end.
 
 ### 4.4 Supabase OAuth flow (GitHub-Pages PWA, no custom domain)
 
@@ -216,7 +245,11 @@ Concrete flow for `https://jvrj.github.io/japanese-trainer/`:
 
 1. **Library:** vendor the `supabase-js` v2 UMD build into the repo (no-build
    single-file constraint; also lets `sw.js` cache it — the auth screen must
-   render offline even if sign-in itself needs network).
+   render offline even if sign-in itself needs network). **Pinned +
+   integrity-checked (SEC round, Synthesis R1):** vendor an EXACT version,
+   record its SHA-256 beside the file, and add a CSP `<meta>` tag to
+   `index.html` — so "no third-party scripts" becomes an enforced control,
+   not an observed absence.
 2. **Config:** Supabase Auth → Site URL = `https://jvrj.github.io/japanese-trainer/`;
    additional redirect URLs: same + `/index.html`. Google provider enabled with
    a Google-Cloud OAuth client (authorized origin `https://jvrj.github.io`).
@@ -227,21 +260,44 @@ Concrete flow for `https://jvrj.github.io/japanese-trainer/`:
    `https://<ref>.supabase.co/auth/v1/callback`, completes the **PKCE code
    exchange**, and redirects back to the app with a `code` param that
    `supabase-js` (`detectSessionInUrl`) exchanges for a session.
+   **Denied/cancelled consent (QA-3, Synthesis R1):** when the user backs
+   out of or denies the consent screen, the redirect returns with an
+   `error` query param and no `code`; the app detects that, cleans the URL,
+   and lands back on S0 with a quiet line — *"Sign-in was cancelled —
+   whenever you're ready."* No error modal, no auto-retry, no loop.
 4. **Session storage:** supabase-js default — `localStorage`
    (`sb-<ref>-auth-token`), auto refresh-token rotation. Accepted for v1: a
-   PWA has no httpOnly-cookie option without a proxy domain; XSS exposure is
-   bounded by the app having no third-party scripts. (Security adversary:
-   audit this acceptance + logout token revocation.)
+   PWA has no httpOnly-cookie option without a proxy domain. The original
+   claim "XSS exposure is bounded by the app having no third-party scripts"
+   was correctly downgraded by the security round from a control to an
+   observed absence — the CSP meta tag + pinned vendored lib (item 1) are
+   what make it enforced (Synthesis R1).
 5. **Signed-in state:** JWT attached as `Authorization: Bearer` to
    `/functions/v1/transcribe` + `/chat` (backend/README endpoints). On boot:
-   `supabase.auth.getSession()` → if session, proceed; if none → S0.
+   `supabase.auth.getSession()` runs FIRST and is orthogonal to
+   `onboard.done` (QA-2, Synthesis R1) — no session → S0 *always*, even for
+   existing installs the boot backfill (index.html 3343–3352) marked
+   `onboard.done=true`; those users see S0 once, then skip OB-1..4 straight
+   to Home. Session present → `onboard.done` decides OB-1..4 vs Home. The
+   two flags never substitute for each other, so a returning unauthenticated
+   user can never reach Home and hit an unhandled 401.
 6. **Logout:** Settings row → `supabase.auth.signOut()` (revokes refresh
    token server-side) → clear session → return to S0. **Local SRS state is
    NOT deleted** on logout (device cache per ADR-005 §2); a different-account
    sign-in on the same device is the one case where local state must NOT
-   seed-upload (guard: compare seeded `user_id` — flag for QA adversary).
+   seed-upload. **Guard DECIDED (QA-4, Synthesis R1):** localStorage records
+   `accountUserId` after the first authenticated seed/sync; a sign-in whose
+   uid differs does NOT seed-upload — the prior account's local state is
+   stashed under a per-uid namespace and the new account starts from its own
+   server state (empty if new); signing back in restores the stash. Zero
+   cross-account writes by construction.
 7. **Magic link:** `supabase.auth.signInWithOtp({ email, options:{
    emailRedirectTo: <app URL> } })` — same PKCE return path.
+   **Cross-device open (QA-5, Synthesis R1):** if the link is opened on a
+   different device the PKCE code-verifier is absent and the exchange fails;
+   that device shows *"That link was opened on a different device — request
+   a new one on the phone you'll use."*, and S0's email field offers resend.
+   Never a silent failure.
 8. **401 handling (ADR-004 contract):** silent `refreshSession()` once, then
    re-auth via S0 with a toast *"Please sign in again"* — never a dead end,
    never a loop.
@@ -292,6 +348,9 @@ dead end.**
 
 ### 5.2 Countdown presence (before day 7)
 
+- **Before the first live talk (lazy clock, D11):** the line reads
+  `7 free days of live talk — the clock starts when you do`. No countdown
+  runs until the trial has actually started.
 - **Days 1–5:** a quiet static line under the talk orb:
   `free talk · day N of 7` — small, muted, EN chrome. No timer, no color
   shift, no badge.
@@ -325,8 +384,13 @@ implies the user loses anything, owes anything, or failed at anything.
 Banned mechanics, explicitly: countdown timers · "expires soon" ·
 fake/limited discounts · streak-loss threats · "don't lose your progress" ·
 exit-intent re-modals · guilt copy ("serious learners…") · pre-checked
-upsells · dark cancel flows. This is a **testable copy gate**: any string on
-the offer surface containing loss/urgency framing fails review (G4, §6).
+upsells · dark cancel flows. This is a **testable copy gate** with a named
+mechanism (QA-7, Synthesis R1): all offer-surface strings live in one
+`OFFER_COPY` constant, and the existing in-console `_spineSelfTest()`
+(index.html 20540+) gains a banned-token scan over it (`expir`, `don't
+lose`, `limited`, `last chance`, `hurry`, `only today`, `serious
+learners`, countdown digit-patterns) — any hit fails the self-test; manual
+review remains the backstop for framing a token scan can't catch (G4, §6).
 
 Praktika's Trustpilot record shows subscription/support complaints ("trial
 auto-charge", "zero after sales service") as verified trust-killers (REPORT
@@ -344,7 +408,7 @@ On any relay response, the client branches per ADR-004 §5 + backend/README:
 | `402 … reason:'no_access'` | Same surface, `no_access` copy variant (§5.3). |
 | `401` | One silent `refreshSession()` retry → else S0 re-auth (§4.4.8). NOT a paywall. |
 | `429 {error:'daily_cap'\|'rate_limited', resets_at}` | Fair-use card: *"That's a lot of talk today — live talk returns <local-time>. Scripted practice is open."* NOT a paywall. |
-| `503 {error:'temporarily_unavailable'}` | Transient: *"The AI partner is busy — trying again…"* + auto-retry with backoff. **Never** the offer screen (ADR-004: 503 is NOT paywall). |
+| `503 {error:'temporarily_unavailable'}` | Transient: *"The AI partner is busy — trying again…"* + auto-retry **bounded** (QA-8, Synthesis R1): 2 retries (2s, 8s), then a manual *"Try again"* card with scripted practice one tap away — no indefinite churn. **Never** the offer screen (ADR-004: 503 is NOT paywall). |
 
 Subscribing from the offer screen (Stripe checkout on PWA now / RevenueCat
 IAP at store build per ADR-006) → webhook flips `entitlements.active` → next
@@ -353,7 +417,8 @@ entitlement (ADR-006 §4); it only renders the last gate answer.
 
 ### 5.5 Reversal condition
 
-If trial→paid conversion is materially below the ~2–5% freemium baseline AND
+If trial→paid conversion is materially below the ~2–5% freemium baseline
+(placeholder band — calibrate on the first cohort; not a committed gate) AND
 session data shows users hitting day 7 without ever starting a live convo,
 the fix is the *first-run* funnel (§3), not adding urgency mechanics to this
 screen. Urgency mechanics are not a reversal path — they contradict ADR-009
@@ -392,8 +457,11 @@ studied came back."* Praktika's failure is invisible continuity; Isshin
 currently has invisible continuity that *works* — invisible is still not a
 differentiator. **Needs-work item (small, for the build phase):** the recap
 names returning words (e.g. a "words that came back today" recap line — kana
-content, EN chrome frame), and a harness probe asserts a due word appears in
-AI output within N turns of a seeded session. Not a redesign; a surfacing.
+content, EN chrome frame), and a named probe asserts a due word appears in
+AI output within N turns of a seeded session — concretely a dev-console
+probe `_convoContinuityProbe()` alongside the existing `_spineSelfTest()`
+(console-run, needs a live key, so not CI; mechanism named per Delve-5
+QA-6 precedent — QA-6, Synthesis R1). Not a redesign; a surfacing.
 
 ### G3 — Non-destructive topic switching: **ADOPT — PASS today (verified)**
 
@@ -406,8 +474,11 @@ ephemeral transcript dies (which ADR-005 §4 already excludes from sync as
 Placement is non-locking (self-test 20540+: identical drill pools at any
 `placedStage`).
 **Gate form:** a permanent regression assertion — "switch topic mid-convo →
-0 lost graded items, XP monotonic" — added to the harness so this PASS can
-never silently regress. (Same shape as ADR-005's two-device acceptance gate.)
+0 lost graded items, XP monotonic" — added to the existing in-console
+`_spineSelfTest()` (index.html 20540+; no external harness exists in this
+repo, so the self-test IS the named mechanism — QA-6, Synthesis R1) so this
+PASS can never silently regress. (Same shape as ADR-005's two-device
+acceptance gate.)
 
 ### G4 — Trust-bug zero-tolerance list: **ADOPT — the v1 release gate**
 
@@ -497,6 +568,14 @@ soft-secret relay in, via one repurposed connection card.**
    used. It stays only in this phone's storage until you clear it."*) and
    stop reading it. Deleting stored user secrets silently is worse than
    leaving them; surfacing beats both.
+5. **Cutover preconditions (Synthesis R1, devils-advocate):** flip-on ships
+   only after the relay has **≥7 days of Phase-1 owner production use**, and
+   the BYO deletion lands as an **isolated commit** (nothing else rides it)
+   so a first-week relay failure is one clean `git revert` + SW update away.
+   A dual-path build flag was considered and REJECTED — in this no-build
+   single-file app a "flag" is just a live conditional, and the v8.23 lesson
+   is that a parallel path that never runs is exactly the masked-breakage
+   shape; the rollback story is the isolated revert, not a resident fallback.
 
 ### 7.4 Owner migration path (personal key → soft-secret relay)
 
@@ -550,11 +629,17 @@ requires per-secret rate limits).
   (b) unlock proxy/httpOnly session options, (c) look right in the Google
   consent screen ("continue to jvrj.github.io" is weak trust copy). Cheap;
   decide before ads run. Security adversary should weigh in.
-- **OQ-3 — Trial-abuse floor.** New-Google-account + cleared storage = new
-  7-day trial by construction. Explicitly the security adversary's charter
-  question (name the accepted abuse floor); this doc's working assumption:
-  accept it at v1 (no card = the cost of the honest funnel; per-user daily
-  cap bounds the burn).
+- **OQ-3 — Trial-abuse floor (RESTATED at Synthesis R1 — the security round
+  broke the original reasoning).** New-Google-account + cleared storage =
+  new 7-day trial by construction; that stays accepted at v1. But "per-user
+  daily cap bounds the burn" was WRONG about the aggregate: `GLOBAL_DAILY_USD`
+  is ONE ceiling shared by all callers (gate.ts:11, 58–63), so N minted
+  trial accounts can exhaust it and 503 paying subscribers. Mitigation
+  (ADR-017): a **tiered breaker** — trial-tier callers are shed at a soft
+  threshold (~80% of the ceiling), subscribers ride to the hard ceiling —
+  plus plus-address email normalization at signup. The accepted floor
+  becomes: abusers can burn the trial tier's slice of the ceiling, never a
+  subscriber's service.
 - **OQ-4 — Magic-link deliverability.** Supabase default email sender has
   weak deliverability for consumer Gmail; if magic-link is a real fallback
   (not decoration), custom SMTP may be needed. Verify during Phase-2 build.
@@ -606,3 +691,91 @@ numbering to be confirmed at synthesis against `docs/decisions-pending/`)
   against ADR-006 (product/pricing was previously unnumbered there) and the
   monthly-option-on-purpose rationale (REPORT HIGH-2: Praktika's annual-only
   is an exploitable seam). **Amends ADR-006.**
+
+---
+
+## Synthesis (Round 1 — Delve 9)
+
+> Consumes the adversary panel committed at `cebe24a` (devils-advocate WARN ·
+> security FAIL · qa WARN). Every finding is dispositioned below; every
+> citation was re-checked against source before adoption (all 20 verified).
+> Inline fixes are applied in the body above and tagged "Synthesis R1". ADRs
+> filed to `docs/decisions-pending/` (ADR-014..018); lighter decisions are
+> recorded as decision-notes at the end of this section.
+
+### Dispositions — devils-advocate (WARN)
+
+| # | Finding | Disposition | Rationale |
+|---|---------|-------------|-----------|
+| DA-1 | Strict up-front wall propped by misapplied citation (SERIOUS) | **accepted** | Citation misuse confirmed — HIGH-2 is pricing evidence, not funnel evidence. §4.2.4 demoted to weak analogy; §4.2.5 now flags strict-vs-loose as the doc's interpretation, for owner confirmation at signoff. Strict stays FINAL (the lock's natural reading + the one-account-population argument) with the instrumented reversal; an A/B ship is rejected as premature pre-PMF infra. |
+| DA-2 | Trial clock starts at signup — "7 free days of talk" not usage-honest (SERIOUS) | **accepted** | Wrong-by-construction, agreed. **D11 (new decision): lazy-start** — `trial_started_at` NULL at signup, set on the first entitlement-gated live-talk call (migration 0003 + gate + entitlement.mjs null path). §3.3 S4, §4.2.3, §5.2 amended. ADR-016. |
+| DA-3 | First-run flow contradicts the REPORT's kana-first wedge (SERIOUS) | **accepted** | HIGH-1's action line (REPORT.md:33, 37) verified. Distinction drawn: OB-3A is canned/audio-led, not speaking-first-from-cold — but the kana on-ramp must be first-session content. **D1a (new decision):** beginner path gets a co-equal "Start with the letters →" CTA at S4 + the kana ramp card above the fold on day-1 Home; kana is never gated behind a speaking task. §3.2.4 + §3.3 amended. ADR-014. |
+| DA-4 | BYO deletion is a big-bang cutover with no client-side rollback (QUESTIONABLE) | **accepted** | Substance accepted via §7.3.5: flip-on requires ≥7 days of Phase-1 owner production relay use, and the BYO deletion lands as an isolated revertable commit. The proposed dual-path build flag is rejected — a resident never-run path is the v8.23 masked-breakage shape. |
+| DA-5 | Precision funnel-UX designed pre-deploy/pre-PMF (QUESTIONABLE) | **accepted-deferred** | Design-on-paper is this delve's job and costs nothing to hold; the sequencing point is taken as a decision-note (below): relay → auth → minimal offer screen first; copy polish + instrumentation analysis land with the first real cohort. |
+| DA-6 | Invented thresholds presented as decided gates (NITPICK) | **accepted** | All three thresholds (~60% S0, ~50% first-live-convo, ~2–5% conversion) now labeled "placeholder — calibrate on first cohort" in §3.4, §4.2.5, §5.5, and carried as calibration placeholders (not committed gates) into ADR-014/016. |
+
+### Dispositions — security-reviewer (FAIL)
+
+| # | Finding | Disposition | Rationale |
+|---|---------|-------------|-----------|
+| SEC-1 | SECURITY DEFINER RPCs reachable via PostgREST — gate bypass, spend-DoS, get_access IDOR (FATAL) | **accepted** | Verified: no REVOKE/GRANT in either migration; Postgres grants EXECUTE to PUBLIC on new functions by default and Supabase exposes public-schema functions as anon-callable RPC. **Blocker for Phase-2 flip-on:** migration 0003 must `REVOKE EXECUTE` on `bump_request` / `bump_item` / `add_spend` / `get_access` / `handle_new_user` from `public, anon, authenticated` (service_role only). ADR-017. |
+| SEC-2 | Client-selectable `model` defeats the spend-ceiling estimate (SERIOUS) | **accepted** | Verified (chat/index.ts:7–14, :32). Fix: server-side model allow-list — a non-listed model → 400; `estUsd` prices by the allow-listed model actually used. ADR-017. |
+| SEC-3 | Trial-abuse floor ignores the shared global breaker it can starve (SERIOUS) | **accepted** | The OQ-3 "per-user cap bounds the burn" reasoning was wrong in aggregate; OQ-3 restated inline. Fix: tiered breaker (trial tier shed at a ~80% soft threshold, subscribers ride to the hard ceiling) + plus-address normalization. ADR-017. |
+| SEC-4 | SECURITY DEFINER functions lack `search_path` pinning (QUESTIONABLE) | **accepted** | Verified (0001:47, 58, 70; 0002:12, 26–27). `SET search_path = public` added to all five functions in migration 0003. Defense-in-depth; rides ADR-017. |
+| SEC-5 | Vendored supabase-js has no pin/SRI; "no third-party scripts" is an observed absence, not a control (QUESTIONABLE) | **accepted** | Verified: no CSP meta tag exists in index.html today. §4.4.1 + §4.4.4 amended: exact-version pin + recorded SHA-256 + CSP meta tag as the enforced control. ADR-017. |
+| SEC-6 | `system`/`messages` pass through with no shape validation (NITPICK) | **accepted-deferred** | Real but low-severity on an authenticated, capped, single-purpose relay. Phase-2 hardening item (rides ADR-017's build list, not its gate): length caps on `system` (~4KB) and per-message content (~8KB); reject non-string content. |
+
+### Dispositions — qa-tester (WARN)
+
+| # | Finding | Disposition | Rationale |
+|---|---------|-------------|-----------|
+| QA-1 | Airplane-mode dead end at S0 (SERIOUS) | **accepted** | Charter-named scenario, unspecified in R0. §4.3 now specs the S0 offline state reusing the v8.27 honest-offline pattern (disabled actions + honest copy + `online`-event re-enable). |
+| QA-2 | OB-0→S0 reuse collides with the onboarding boot backfill (SERIOUS) | **accepted** | Verified (index.html 3343–3352). §4.4.5 reconciled: the session gate runs first and is orthogonal to `onboard.done`; no session → S0 always; existing installs see S0 once, then skip OB-1..4. |
+| QA-3 | Denied/cancelled OAuth flow not covered (SERIOUS) | **accepted** | Charter-named. §4.4.3 now specs the error-param return branch: clean the URL, back to S0, quiet copy, no modal/loop. |
+| QA-4 | Multi-account-on-one-device guard unresolved inside a FINAL section (SERIOUS) | **accepted** | The deferral broke §1.3's own contract. Guard decided in §4.4.6: `accountUserId` recorded at first seed/sync; uid mismatch → no seed-upload, per-uid namespace stash, the new account starts from its own server state. ADR-015. |
+| QA-5 | Magic-link cross-device PKCE failure has no recovery (QUESTIONABLE) | **accepted** | §4.4.7 now specs detection of the failed exchange + "request a new one on the phone you'll use" copy + a resend affordance on S0. Deliverability itself remains OQ-4. |
+| QA-6 | "Harness" assertions but no harness exists — repeats Delve-5 QA-6 (QUESTIONABLE) | **accepted** | Verified (delve 5 doc:701 precedent). §6 G2/G3 now name concrete mechanisms: extend the existing in-console `_spineSelfTest()` (G3 topic-switch invariant) + a new dev-console `_convoContinuityProbe()` (G2; live-key, console-run — explicitly not CI). |
+| QA-7 | "Testable copy gate" has no named assertion mechanism (QUESTIONABLE) | **accepted** | §5.3 now names it: a single `OFFER_COPY` constant + a banned-token scan inside `_spineSelfTest()`; manual review stays as the framing backstop. |
+| QA-8 | 503 auto-retry has no bound (NITPICK) | **accepted** | §5.4 503 row bounded: 2 retries (2s/8s), then a manual "Try again" card with the scripted-practice escape. |
+
+### New decisions minted this round
+
+- **D11 — Lazy-start trial clock** (from DA-2): `trial_started_at` is set by
+  the first entitlement-gated live-talk call, not at signup. → ADR-016.
+- **D1a — A0 kana on-ramp placement** (from DA-3): co-equal kana CTA at S4
+  for `path:'beginner'` + kana ramp above the fold on day-1 beginner Home. → ADR-014.
+- **D12 — Relay hardening baseline** (from SEC-1..5): REVOKE-by-default RPCs,
+  model allow-list, tiered spend breaker, `search_path` pinning, pinned+CSP'd
+  vendored auth lib. Migration 0003 + the function changes are **blockers for
+  Phase-2 flip-on**. → ADR-017.
+
+### ADRs filed (docs/decisions-pending/ — pending owner review, NOT promoted)
+
+- **ADR-014** — First-run flow: sign-in-first scripted-conversation onboarding + A0 kana on-ramp (D1, D1a, D3).
+- **ADR-015** — Sign-in mechanics & provider staging: Google + magic-link at v1, Apple at the iOS build, PKCE flow, dead-end guards (D2, D4, QA-1..5).
+- **ADR-016** — Trial clock lazy-start & the day-7 client contract (D5–D8, D11).
+- **ADR-017** — Relay hardening baseline (D12; security round SEC-1..6).
+- **ADR-018** — BYO-key retirement at Phase-2 flip-on (D10 + DA-4 preconditions).
+
+### Decision-notes (deliberately NOT ADRs — promotable later if they start binding external work)
+
+- **Praktika-gap v1 ship gates stay doc-level (D9).**
+  **Decision:** the §6 adopt/reject table (G1–G4 + four rejections) is the record; the gates enforce via the named self-tests, not a numbered ADR.
+  **Why:** G4 largely restates ADR-005/ADR-009 gates; minting an ADR would duplicate them.
+  **Reversal cost:** trivial — promote §6 to an ADR verbatim if a later phase needs to cite it formally.
+- **Pricing amendment deferred (was ADR-P6).**
+  **Decision:** the owner-locked $8.99/mo + $59.99/yr stays recorded here and in `docs/store-listing-copy.md`; the formal ADR-006 amendment waits for the store build, when OQ-1 (IAP display/cut) resolves.
+  **Why:** an ADR filed now would need immediate re-amendment at OQ-1 resolution.
+  **Reversal cost:** none — the lock is owner-held either way.
+- **Copy-precision sequencing (DA-5).**
+  **Decision:** build order is relay → auth → *minimal* offer screen; §5.3 copy polish + S0 instrumentation analysis land with the first real cohort.
+  **Why:** the highest-leverage unknown (does anyone convert at all) needs a live relay, not polished copy.
+  **Reversal cost:** none — the specced copy is ready whenever the build reaches it.
+- **BYO dual-path build flag rejected (DA-4 remedy).**
+  **Decision:** rollback = isolated deletion commit + a ≥7-day Phase-1 soak, not a resident BYO fallback.
+  **Why:** the v8.23 lesson — a parallel never-run path is the masked-breakage shape.
+  **Reversal cost:** low — one revert restores BYO wholesale if the first live week fails.
+- **Thresholds are calibration placeholders (DA-6).**
+  **Decision:** ~60% / ~50% / ~2–5% are labeled placeholders in-body and in ADR-014/016.
+  **Why:** no derivation exists yet; first-cohort data calibrates them.
+  **Reversal cost:** none — placeholders are designed to be replaced.
