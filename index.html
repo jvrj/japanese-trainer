@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.36';
+const APP_VERSION = '8.37';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2785,6 +2785,7 @@ const DEFAULT_SETTINGS = {
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
   voiceListenSec:6,           // Voice Mode: how long to listen on each step before timing out
+  fastPace:false,             // v8.37 — speak drills: ON roughly halves the pre-mic beat + post-answer waits. Settings row + in-drill chip.
   /* v6.16 — Modules: themed progression with linear unlock. */
   modulesEnabled:false,       // v7.69 — topics-first: guided unlock path OFF by default; every topic is always open. Re-enableable in Settings.
   unlockedModules:[],         // module ids (e.g. 'm1','m2'). Backfilled from existing mastery on load.
@@ -18705,8 +18706,9 @@ function _drillFinalize(p, alts){
   render();
   /* Hands-free: read the nuance, then move on. Tapping anything cancels. */
   if(s.autoMode){
-    const wait = result.verdict === 'correct' ? 2600
-               : result.verdict === 'close' ? 4200 : 6000;
+    const fast = !!state.settings.fastPace;
+    const wait = result.verdict === 'correct' ? (fast ? 1300 : 2600)
+               : result.verdict === 'close' ? (fast ? 2100 : 4200) : (fast ? 3000 : 6000);
     s._advanceAt = Date.now() + wait;
     s._t = s._t || {};
     s._t.advance = setTimeout(() => { s._advanceAt = 0; drillNext(); }, wait);
@@ -18801,9 +18803,18 @@ function _drillArmAutoListen(){
   s._t = s._t || {};
   if(s._armedFor === p.id || s._t.arm) return;
   s._armedFor = p.id;
-  const readMs = p.kind === 'contrast' ? 2200 : 1500;
+  const fast = !!state.settings.fastPace;
+  const readMs = p.kind === 'contrast' ? (fast ? 1100 : 2200) : (fast ? 700 : 1500);
   s._t.arm = setTimeout(() => { s._t.arm = null; drillStartListening(); }, readMs);
 }
+
+/* Flip drill pacing without load() — load mid-drill would clobber session state. */
+function drillTogglePace(){
+  state.settings.fastPace = !state.settings.fastPace;
+  try{ save(); }catch(e){}
+  render();
+}
+window.drillTogglePace = drillTogglePace;
 
 function drillToggleAuto(){
   const s = state.drillSession;
@@ -18951,6 +18962,10 @@ function renderSpeakDrillSession(){
         <button onclick="drillToggleAuto()" title="Hands-free: mic opens itself and advances automatically"
           style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer;border:1px solid ${s.autoMode ? 'var(--blue)' : 'var(--border)'};background:${s.autoMode ? 'rgba(100,150,255,0.15)' : 'var(--card2)'};color:${s.autoMode ? 'var(--blue)' : 'var(--dim)'}">
           ${s.autoMode ? '🔁 hands-free' : '✋ manual'}
+        </button>
+        <button onclick="drillTogglePace()" title="Fast pace: shorter pauses before the mic opens and between cards"
+          style="font-size:11px;font-weight:600;padding:5px 10px;border-radius:999px;cursor:pointer;border:1px solid ${state.settings.fastPace ? '#e8b84a' : 'var(--border)'};background:${state.settings.fastPace ? 'rgba(232,184,74,0.15)' : 'var(--card2)'};color:${state.settings.fastPace ? '#e8b84a' : 'var(--dim)'}">
+          ${state.settings.fastPace ? '⚡ fast' : '🐢 relaxed'}
         </button>
         <span style="font-size:12px;color:var(--dim);min-width:42px;text-align:right">${esc(progress)}</span>
       </div>
@@ -22267,6 +22282,8 @@ function renderSettings(){
         <input type="text" value="${esc(s.userName||'')}" oninput="setUserName(this.value)" placeholder="your name" style="width:120px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:14px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">⚡ Fast pace (speak drills)</div><div class="word-en">On: hands-free speak drills open the mic sooner and move to the next card sooner after each answer. Off: relaxed pacing with more reading time (default). Also flippable from the chip inside any drill.</div></div>
+        <input type="checkbox" ${s.fastPace?'checked':''} onchange="toggleSetting('fastPace')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??8).toFixed(1)}s · pause after JP audio before next step</div></div>
