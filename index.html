@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.38';
+const APP_VERSION = '8.39';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2741,6 +2741,8 @@ const LS = {
   similarStats:'jp4_similar_stats',
   snapshots:'jp4_snapshots',       // v7.44 — weekly progress snapshots for the Progress screen
   openaiKey:'jp4_openai_key',      // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
+  anthropicKey:'jp4_anthropic_key',// v8.39 — same dedicated-slot armor for the Claude key (owner reported it vanishing between launches)
+  relaySecret:'jp4_relay_secret',  // v8.39 — same for the Isshin server secret
   convo:'jp4_convo',               // oshaberi — mid-session conversation state (scene, messages, pool, etc.)
   convoLog:'jp4_convo_log'         // Stage D (v8.10) — capped session-volume log; see state.convoLog
 };
@@ -3285,6 +3287,19 @@ function load(){
         localStorage.setItem(LS.openaiKey, state.settings.openaiKey);
       }
     } catch(e){ log('openai_key_restore_err', { err: String(e) }); }
+    /* v8.39 — the same restore-from-dedicated-slot for the Claude key and the
+       Isshin server secret. Root cause of "I have to reconnect every time":
+       a second open copy of the app (old tab/PWA window) that booted BEFORE the
+       secret was saved can flush its stale settings blob over the fresh one.
+       The dedicated slots are written only by the setters, so a stale tab can
+       never clobber them, and they win over the blob on load. */
+    try {
+      for(const k of ['anthropicKey', 'relaySecret']){
+        const dedicated = localStorage.getItem(LS[k]);
+        if(dedicated) state.settings[k] = dedicated;
+        else if(state.settings[k]) localStorage.setItem(LS[k], state.settings[k]);
+      }
+    } catch(e){ log('secret_restore_err', { err: String(e) }); }
     if([0.9, 0.85, 0.8].includes(state.settings.ttsRate)) state.settings.ttsRate = 0.75;
     // v5.9 — bump Build Mode pacing defaults forward for users still on v5.8 values.
     if(state.settings.buildThinkSec === 4) state.settings.buildThinkSec = 5;
@@ -22264,7 +22279,7 @@ function renderSettings(){
     <div class="settings-v2">
     <div class="card" style="border:1px solid rgba(167,139,250,.35)">
       <h3>🔌 Connect AI</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.<br><b>Have an Isshin server secret instead?</b> Skip this card — paste it under ⚙ Advanced → Isshin server below.'}</div>
       <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
         <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
         <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
@@ -22514,6 +22529,8 @@ window.setUserName = setUserName;
    this is its minimal early slice). Key lives only in this device's localStorage. */
 function setAnthropicKey(v){
   state.settings.anthropicKey = String(v || '').trim();
+  /* v8.39 — dedicated slot is the durable copy (see load()); empty clears it */
+  try{ state.settings.anthropicKey ? localStorage.setItem(LS.anthropicKey, state.settings.anthropicKey) : localStorage.removeItem(LS.anthropicKey); }catch(_e){}
   save();
   /* no re-render: avoid yanking focus from the field while pasting/typing */
 }
@@ -22523,6 +22540,8 @@ window.setAnthropicKey = setAnthropicKey;
    only, never rendered outside the password field, never logged. */
 function setRelaySecret(v){
   state.settings.relaySecret = String(v || '').trim();
+  /* v8.39 — dedicated slot is the durable copy (see load()); empty clears it */
+  try{ state.settings.relaySecret ? localStorage.setItem(LS.relaySecret, state.settings.relaySecret) : localStorage.removeItem(LS.relaySecret); }catch(_e){}
   save();
   /* no re-render: avoid yanking focus from the field while pasting/typing */
 }
