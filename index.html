@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.41';
+const APP_VERSION = '8.42';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9620,6 +9620,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '',
     'ANSWER QUESTIONS (a real teacher answers):',
     '- If the learner asks what a word or phrase means — e.g. 「Xって なに？」「Xは なんですか」「Xの いみは？」 or an English question like "what does X mean" — ANSWER it directly. jp = the meaning explained in the simplest kana you can (a synonym, a tiny example, or both; up to two short sentences allowed for this case only), glossEn = the direct English answer (e.g. \'ねこ means cat\'), and include the asked-about word in words. Then gently continue the conversation.',
+    '- The same rule covers ANY question about Japanese or about what YOU said — grammar (e.g. why が and not は), "how do I say X?", "what did you just say?", "I didn\'t understand" — asked in Japanese OR English. Put the full plain-English answer in glossEn (this case may run to ~40 words), keep jp one short kana-only line carrying the Japanese side, and never score or correct a question turn.',
     '- Never ignore a question about language, never deflect back to the scene, and never treat the question itself as something to recast.',
     '',
     'FEEDBACK — respond the way a patient native friend does:',
@@ -10098,7 +10099,16 @@ function _convoSystemStr(cv){
      (never learner text), so placing it after the sandwich is injection-safe;
      when the local lookup found the word, the model is handed the exact answer
      to confirm so its reply agrees with the on-screen answer card. */
-  if(cv && cv._meaningQ){
+  /* v8.42 — ask-turn directive (❓ Ask button / English question). App-authored,
+     placed at true prompt-end like the meaning directive. Takes precedence over
+     the plain meaning block below (an ask-turn that IS a meaning question folds
+     the local lookup's answer in here instead). */
+  if(cv && cv._askQ){
+    const amc = cv.meaningCard;
+    out += '\nRIGHT NOW: the learner pressed the ❓ Ask button (or wrote in English) and asked a QUESTION. It may arrive in English or in romaji — an ENGLISH speech recognizer heard it, so Japanese words can appear as romaji (e.g. "kaheikun desu ne"). Step out of the scene for this one turn and be the teacher: answer the question directly and clearly.'
+      + (amc ? ' They asked about 「' + amc.jp + '」 — it means "' + amc.en + '"; confirm that.' : '')
+      + ' If the question is about something YOU said in a recent turn, match any romaji to your own recent kana lines by sound, quote the exact kana line, and explain it. glossEn = the full plain-English answer (up to 60 words on this turn; end with a warm nudge back into the conversation). jp = ONE short kana-only line carrying the Japanese side — the word or a tiny example — never romaji, never English. judged MUST be {"usedWords": [], "score": 0} and feedback.type MUST be "none" with heard/heardEn = their question as you understood it — a question is never scored and never corrected. Still reply as the single raw JSON object.';
+  } else if(cv && cv._meaningQ){
     const mc = cv.meaningCard;
     out += mc
       ? '\nRIGHT NOW: the learner just asked what 「' + mc.jp + '」 means. It means "' + mc.en + '". Your reply MUST confirm that meaning first — say the word, put its plain English meaning inside "en", and give one tiny kana example using it — before anything else. Still reply as the single raw JSON object.'
@@ -10530,7 +10540,7 @@ function startConvo(sceneId, seedMessages){
 window.startConvo = startConvo;
 
 /* convoTurn — process one user reply */
-async function convoTurn(userText, viaVoice){
+async function convoTurn(userText, viaVoice, asked){
   const cv = state.convo;
   if(!cv || cv.loading || cv.done) return;
   const text = (userText || '').trim();
@@ -10561,6 +10571,19 @@ async function convoTurn(userText, viaVoice){
      true prompt-end in _convoSystemStr) makes the model agree with it. */
   cv.meaningCard = meaningQ ? _convoMeaningLookup(text) : null;   /* one-turn, like _meaningQ */
   if(meaningQ) cv.peekGloss = true;
+
+  /* v8.42 — ❓ Ask (active learning, field request 2026-07-30): an explicit
+     ask-turn (the ❓ button arms an ENGLISH recognizer, so the question arrives
+     in English/romaji — e.g. "what does kaheikun desu ne mean") or any English
+     question the learner got through by other means. One-turn flag like
+     _meaningQ; _convoSystemStr turns it into a step-out-and-teach directive.
+     An ask-turn is never scored, never a voice miss, never a callback fact —
+     asking is learning, not failing. */
+  const askQ = (asked === true)
+    || (/^[\x00-\x7F]+$/.test(text)
+        && /^(what|how|why|when|who|which|can|could|would|is|are|do|does|did|say|explain|please|sorry|huh|wait|repeat)\b/i.test(text));
+  cv._askQ = askQ;                         /* re-assigned every turn: one-turn flag */
+  if(askQ) cv.peekGloss = true;            /* the answer must be visible, not behind the peek */
 
   /* Apply SRS score for the PREVIOUS AI judged object.
      On the first user turn cv.judged is null → null guard fires, no write. */
@@ -10674,7 +10697,9 @@ async function convoTurn(userText, viaVoice){
      apologizes and the NEXT probe switches to chip-only input (cv.forceChips) —
      STT stays a pure turn-trigger throughout; nothing here writes SRS/mastery. */
   let _apology = null;
-  if(viaVoice){
+  /* v8.42 — an ask-turn is directed to score 0; it must never count as a voice
+     miss (that would apologize + force chips on a learner who just ASKED). */
+  if(viaVoice && !askQ){
     if(score === 0){
       cv.voiceMissStreak = (cv.voiceMissStreak || 0) + 1;
       if(cv.voiceMissStreak >= 2){
@@ -10701,7 +10726,7 @@ async function convoTurn(userText, viaVoice){
        advances on score-0 turns) keeps its session semantics untouched. */
     if(!fb || fb.type !== 'clarify') cv.mTurn = (cv.mTurn || 0) + 1;
     /* F5 (§7.3): landed VOICE utterances feed the callback ledger (neutralized) */
-    if(viaVoice) _convoFactAdd(cv, text);
+    if(viaVoice && !askQ) _convoFactAdd(cv, text);   /* v8.42: a question is not a callback fact */
     cv.messages.push({ role:'assistant', content: aiJP });
     _convoCapMessages(cv);
     cv.current = parsed;
@@ -10763,8 +10788,10 @@ async function convoTurn(userText, viaVoice){
     }
   }
 
-  /* Store judged for the next convoApplyScore call */
-  cv.judged = parsed.judged || null;
+  /* Store judged for the next convoApplyScore call.
+     v8.42: an ask-turn is NEVER judged — force null even if the model ignored
+     the score-0 directive, so a question can't write SRS either way. */
+  cv.judged = askQ ? null : (parsed.judged || null);
 
   /* F4 (Delve 7 §6.3, QA-5): module completion is CLIENT-OWNED and deterministic
      — it fires at mTurn >= target regardless of whether the model obeyed the
@@ -11073,6 +11100,13 @@ const CONVO_RESTART_CAP = 20;
 function convoStartListen(){ convoToggleListen(); }
 window.convoStartListen = convoStartListen;
 
+/* v8.42 — ❓ Ask: one-tap ask-anything (active learning, field request
+   2026-07-30). Arms the patient mic in ENGLISH for exactly one question turn;
+   the answer comes back as a normal turn with the full English explanation in
+   glossEn. Keyed sessions only (the scripted demo can't answer questions). */
+function convoAsk(){ convoToggleListen(false, true); }
+window.convoAsk = convoAsk;
+
 function convoStopListen(){
   const cv = state.convo; if(!cv) return;
   cv._listenUntil = 0;                              /* close the patient window */
@@ -11087,7 +11121,7 @@ function convoStopListen(){
   if(tail) parts.push(tail);
   cv._heardParts = []; cv._best = '';
   const heard = parts.join(' ').trim();
-  if(heard){ convoTurn(heard, true); return; }      /* convoTurn renders */
+  if(heard){ convoTurn(heard, true, cv._askListen === true); return; }      /* convoTurn renders */
   _orbSet('idle', null);
   render();
 }
@@ -11095,7 +11129,7 @@ window.convoStopListen = convoStopListen;
 
 /* convoToggleListen — arms the patient mic for the hands-free loop.
    Used as the _buildSpeakJP onDone callback and the 🎙 button. */
-function convoToggleListen(auto){
+function convoToggleListen(auto, ask){
   const cv = state.convo; if(!cv || cv.loading || cv.done) return;
   /* F4: the completion card owns the turn — no invisible auto-mic under it.
      Dismissing the card (もっと はなす) restores the normal hands-free loop. */
@@ -11119,6 +11153,11 @@ function convoToggleListen(auto){
   cv._listenUntil = Date.now() + CONVO_LISTEN_WINDOW_MS;
   cv._restarts = 0;
   const token = cv._listenToken = (cv._listenToken || 0) + 1;
+  /* v8.42 — ❓ Ask arms the SAME patient mic in ENGLISH (en-US): English SR
+     captures the question properly and renders Japanese words as romaji, which
+     the ask directive maps back to recent kana lines by sound. Reset on every
+     arm, so the hands-free ja-JP loop can never inherit a stale ask flag. */
+  cv._askListen = (ask === true);
   cv.listening = true; cv.interim = ''; cv._best = ''; cv._heardParts = []; cv.error = null;
   /* orb seam (3/5, sprint: orb): the synchronous cv.listening=true set above -> listening */
   _orbSet('listening', null);
@@ -11181,7 +11220,7 @@ function convoToggleListen(auto){
           const parts = (cv._heardParts || []).slice();
           if(heard) parts.push(heard);
           cv._heardParts = []; cv._best = '';
-          convoTurn(parts.join(' ').trim(), true);
+          convoTurn(parts.join(' ').trim(), true, cv._askListen === true);
           return;
         }
         /* Window expired / cap hit / fatal error: quiet close — an error
@@ -11191,7 +11230,7 @@ function convoToggleListen(auto){
         _orbSet('idle', null);
         render();
       },
-      'ja-JP'
+      cv._askListen ? 'en-US' : 'ja-JP'   /* v8.42 — ask-turns listen in English */
     );
   };
   arm();
@@ -11961,7 +12000,7 @@ function renderConvo(){
     ? `<div style="display:flex;align-items:center;gap:11px;background:rgba(255,93,158,.1);border:1px solid rgba(255,93,158,.38);border-radius:14px;padding:12px 14px;margin-bottom:12px">
         <span style="width:11px;height:11px;border-radius:50%;background:#ff5d9e;animation:micPulse 1.3s infinite;flex-shrink:0"></span>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">LISTENING · TAKE YOUR TIME</div>
+          <div style="font-weight:800;font-size:10px;letter-spacing:1.5px;color:#ffb3d0">${cv._askListen ? 'ASK ANYTHING — ENGLISH IS FINE' : 'LISTENING · TAKE YOUR TIME'}</div>
           <div id="convoInterim" style="font-family:'Noto Sans JP';font-weight:700;font-size:15px;color:#fff;margin-top:3px;min-height:19px">${esc(cv.interim||'…')}</div>
         </div>
         <button onclick="convoStopListen()" style="padding:9px 13px;border-radius:11px;border:none;background:#ff5d9e;color:#fff;font-weight:800;font-size:12px;font-family:inherit;cursor:pointer">Stop</button>
@@ -11977,6 +12016,12 @@ function renderConvo(){
      Stage D (v8.10) double-miss rule: cv.forceChips hides the mic for exactly one turn — chips only. */
   const micBtn = (!cv.loading && !cv.forceChips)
     ? `<button onclick="${cv.listening ? 'convoStopListen()' : 'convoToggleListen()'}" style="padding:15px 20px;border-radius:14px;border:none;${cv.listening ? 'background:#ff5d9e;box-shadow:0 8px 20px rgba(255,93,158,.4)' : 'background:rgba(157,92,255,.15);border:1px solid rgba(157,92,255,.4)'};color:#fff;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">${cv.listening ? '● Stop' : '🎙 Speak'}</button>` : '';
+
+  /* v8.42 — ❓ Ask button: ask ANY question, English welcome (active learning).
+     Hidden while listening/loading; keyed sessions only — the scripted keyless
+     demo has no model to answer. Teal = the app's teaching color. */
+  const askBtn = (!cv.loading && !cv.forceChips && !cv.listening && aiChatReady())
+    ? `<button onclick="convoAsk()" title="Ask a question about anything — English is fine" style="padding:15px 18px;border-radius:14px;border:1px solid rgba(80,220,180,.4);background:rgba(80,220,180,.12);color:#a8e8d2;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">❓ Ask</button>` : '';
 
   /* Dev-only latency readout (Stage D v8.10) — gated by _isDevMode(), never shown to normal end users */
   const devLatency = (typeof _isDevMode === 'function' && _isDevMode() && cv.lastLatencyMs != null)
@@ -12017,7 +12062,7 @@ function renderConvo(){
     ${moduleCard}
     ${moduleCard ? '' : listenBanner}
     ${moduleCard ? '' : `<div class="convo-list" style="flex-wrap:wrap;display:flex;margin-bottom:12px">${chipBtns}</div>
-    <div style="text-align:center">${micBtn}</div>`}
+    <div style="display:flex;gap:10px;justify-content:center">${micBtn}${askBtn}</div>`}
     ${devLatency}
   </div>`;
 }
