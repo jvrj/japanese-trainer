@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.40';
+const APP_VERSION = '8.41';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2805,6 +2805,7 @@ const DEFAULT_SETTINGS = {
   convoRecapNotes:true,       // Stage D (v8.10) — judgment-free copy sweep: show up to 3 content-derived "did-you-mean" notes on the おしゃべり recap. Default ON; toggle in Settings hides them (celebration-only recap when off).
   hideStreak:false,           // Stage D (v8.10) — hide the 「いっしょ の ひ」 (daily-practice streak) card from Home/Practice/Progress stat surfaces.
   convoStyle:'friend',        // F2 (Delve 7 §3.5) — conversation style. Hard-shipped at 'friend' (full confirm/recast/clarify repertoire); the 3-position Settings dial is DEFERRED until a demand signal. 'just-talk' forces feedback none client-side.
+  convoShowEn:true,           // v8.41 (owner call, 30 Jul) — English translations in conversation VISIBLE by default (new users don't find the peek); the 💬 toggle flips it and the choice persists across sessions.
   recastPeeked:false,         // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
   newWordInduction:false,     // v8.31 — OPT-IN: walk new words through meet→hear→say before the fast drill. Default OFF so the quick say-word→next loop stays default (owner field report 2026-07-21: induction-in-the-main-loop felt slow).
   vocabLock:false,            // S3 (ADR-012, amended v8.35) — rolling-frontier vocab lock is OPT-IN, default OFF (owner field verdict 2026-07-22: full deck in the practice area). "Vocab focus lock" row in Settings turns it on.
@@ -10491,7 +10492,7 @@ function startConvo(sceneId, seedMessages){
     error: null,
     listening: false,
     interim: '',
-    peekGloss: false,
+    peekGloss: state.settings.convoShowEn !== false,  /* v8.41 — session starts from the persistent preference (default ON) */
     lastUser: null,          /* v8.40 — {jp, en} echo of the learner's latest line; en = fb.heardEn once the reply lands; shown under the same 💬 peek */
     done: false,
     recap: null,
@@ -11237,10 +11238,14 @@ function convoResume(){
 }
 window.convoResume = convoResume;
 
-/* convoTogglePeek — show/hide English gloss under AI's kana line */
+/* convoTogglePeek — show/hide English gloss under AI's kana line.
+   v8.41 — the choice also persists as settings.convoShowEn, so the next
+   session opens the way the learner left it (default ON for new users). */
 function convoTogglePeek(){
   const cv = state.convo; if(!cv) return;
-  cv.peekGloss = !cv.peekGloss; render();
+  cv.peekGloss = !cv.peekGloss;
+  state.settings.convoShowEn = cv.peekGloss;
+  save(); render();
 }
 window.convoTogglePeek = convoTogglePeek;
 
