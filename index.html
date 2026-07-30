@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.42';
+const APP_VERSION = '8.43';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9570,8 +9570,9 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
         ? 'Keep sentences simple but introduce slightly more variety. Scaffold generously.'
         : _lvInfo.lv <= 3
           ? 'Moderate complexity: compound phrases welcome. Reduce scaffold — learner is gaining fluency.'
-          : 'High fluency tier: richer vocabulary, compound structures, nuanced follow-ups. Minimal scaffold.')
-    + ' Kana-only and WORD_POOL invariants remain absolute regardless of tier.';
+          : 'High fluency tier: richer vocabulary, nuanced follow-ups. Minimal scaffold.')
+    + ' Kana-only and WORD_POOL invariants remain absolute regardless of tier.'
+    + ' At EVERY tier, richness means better word choice — NEVER longer sentences; the one-short-sentence limit below is absolute.';
   /* Delve 6 T2 free-talk branch: strict closed-set check (=== 'free'), never a loose/
      truthy check. Any other sceneId — including undefined/unrecognised values — falls
      through to the unchanged SCENE line below (fail-closed to the existing, always-defined
@@ -9643,6 +9644,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '- REACT THEN ASK: open every jp with a genuine, VARIED reaction fragment to what the learner just said (へえ！/ いいね / そうなんだ / ほんと？/ わあ). Never open two consecutive turns with the same word. Never re-ask a question the learner already answered.',
     '- Use 「、」 inside jp where a natural pause helps — spoken lines breathe better with commas.',
     '- Keep jp to one short sentence (≤10 kana). Exception: when answering a what-does-X-mean question (ANSWER QUESTIONS above), jp may be up to two short sentences.',
+    '- GET SHORTER WHEN THEY STRUGGLE: if the learner\'s last turn scored 1, looked garbled, or was English/confusion, your next jp must be SHORTER than your previous one — re-ask one small chunk at a time. Never repeat a long line the learner did not follow, and never rephrase it into something longer.',
     '- suggested must contain exactly ' + _lvInfo.chips + ' short kana replies the learner could actually say next — prefer WORD_POOL words, but fitting the live conversation wins.',
     '- judged.usedWords lists the kana surface (or wordId) of EVERY word the learner demonstrably used this turn — not just WORD_POOL, any real word the learner clearly said counts; empty array if none.',
     '- judged.score: 2 = you UNDERSTOOD the learner — any comprehensible unaided speech, on ANY topic, pool word or not. 1 = partly understood, you want one gentle retry. 0 = chip tap, or you could not extract any meaning at all. Never give comprehensible speech a 0 just because it used no pool word or left the scene.',
@@ -9684,16 +9686,25 @@ function _convoApiWindow(msgs, cap){
 }
 
 /**
- * _convoCall(messages, systemStr)
+ * _convoCall(messages, systemStr, opts)
  * Multi-turn Anthropic API call. Duplicates _coachCall's fetch body deliberately
  * (spec: no in-place refactor of load-bearing _coachCall). Sends the conversation
  * framing via the top-level system field; the windowed turn history via messages[].
  * The raw text response must be parsed with _aiJsonExtract by the caller.
+ * opts (v8.43): { model, maxTokens } — ask-turns escalate to the smarter model
+ * (a question deserves a real teacher; the fast model owns in-scene turns).
  *
  * Security: the API key appears only in the x-api-key header — never in any
  * console call, error string, or DOM output.
  */
-async function _convoCall(messages, systemStr){
+/* v8.43 — ask-turns run on the smarter model (field report 2026-07-30: Haiku
+   answered a real "how do I learn sentence structure?" question with a shallow
+   deflection). Verified live through the relay before shipping. Ask-turns are
+   rare, so the extra cost/latency lands only where quality actually matters. */
+const CONVO_ASK_MODEL = 'claude-sonnet-5';
+const CONVO_ASK_MAX_TOKENS = 900;   /* room for the longer teaching answer */
+
+async function _convoCall(messages, systemStr, opts){
   if(!aiChatReady()) throw new Error('nokey');
   /* v8.27 offline pass — fail instantly with the honest no-internet copy
      instead of burning a doomed fetch (+ its 30s ceiling) when the device
@@ -9701,7 +9712,7 @@ async function _convoCall(messages, systemStr){
      negative); onLine === true guarantees nothing, so the fetch path below
      still owns the flaky-network case. */
   if(typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('offline');
-  const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
+  const model = (opts && opts.model) || state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
   /* F1 (v8.16): 30s hard timeout — a hung fetch on flaky mobile network left
      cv.loading true forever, which hid the mic and made every tap a no-op. */
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
@@ -9712,7 +9723,7 @@ async function _convoCall(messages, systemStr){
     res = await fetch(ep.url, {
       method:'POST',
       headers: ep.headers,
-      body: JSON.stringify({ model, max_tokens: 560, system: systemStr || '', messages: messages }),
+      body: JSON.stringify({ model, max_tokens: (opts && opts.maxTokens) || 560, system: systemStr || '', messages: messages }),
       signal: ctrl ? ctrl.signal : undefined
     });
   } finally {
@@ -10105,9 +10116,9 @@ function _convoSystemStr(cv){
      the local lookup's answer in here instead). */
   if(cv && cv._askQ){
     const amc = cv.meaningCard;
-    out += '\nRIGHT NOW: the learner pressed the ❓ Ask button (or wrote in English) and asked a QUESTION. It may arrive in English or in romaji — an ENGLISH speech recognizer heard it, so Japanese words can appear as romaji (e.g. "kaheikun desu ne"). Step out of the scene for this one turn and be the teacher: answer the question directly and clearly.'
+    out += '\nRIGHT NOW: the learner pressed the ❓ Ask button (or spoke/wrote in English) — they are talking to YOU the teacher, not in the scene. It may arrive in English or in romaji — an ENGLISH speech recognizer heard it, so Japanese words can appear as romaji (e.g. "kaheikun desu ne"). Step out of the scene for this one turn and be the best teacher they have ever had.'
       + (amc ? ' They asked about 「' + amc.jp + '」 — it means "' + amc.en + '"; confirm that.' : '')
-      + ' If the question is about something YOU said in a recent turn, match any romaji to your own recent kana lines by sound, quote the exact kana line, and explain it. glossEn = the full plain-English answer (up to 60 words on this turn; end with a warm nudge back into the conversation). jp = ONE short kana-only line carrying the Japanese side — the word or a tiny example — never romaji, never English. judged MUST be {"usedWords": [], "score": 0} and feedback.type MUST be "none" with heard/heardEn = their question as you understood it — a question is never scored and never corrected. Still reply as the single raw JSON object.';
+      + ' RULES FOR THIS TURN: (1) Answer the question they ACTUALLY asked, substantively — never a rephrased easier question, never a deflection, never "so you want to…" followed by a scene question. (2) If they ask HOW to learn or build something (e.g. long sentences), give a real, concrete method in plain English — e.g. show how one long line is just two or three small chunks they already know welded together, and walk one apart. (3) If the question is about something YOU said, match any romaji to your own recent kana lines by sound, quote the exact kana line, and break it down chunk by chunk. (4) If you genuinely cannot tell what they asked, say so honestly in glossEn and ask them to rephrase — never guess and answer something else. glossEn = the full plain-English answer (up to 120 words on this turn; end with a warm one-line nudge back into the conversation). jp = ONE short kana-only line carrying the Japanese side — the word or a tiny example — never romaji, never English. judged MUST be {"usedWords": [], "score": 0} and feedback.type MUST be "none" with heard/heardEn = their question as you understood it — a question is never scored and never corrected. Still reply as the single raw JSON object.';
   } else if(cv && cv._meaningQ){
     const mc = cv.meaningCard;
     out += mc
@@ -10579,9 +10590,14 @@ async function convoTurn(userText, viaVoice, asked){
      _meaningQ; _convoSystemStr turns it into a step-out-and-teach directive.
      An ask-turn is never scored, never a voice miss, never a callback fact —
      asking is learning, not failing. */
+  /* v8.43: broadened — an English STATEMENT is also a step-out-of-scene turn
+     ("i said i wanted to learn the structure…" got treated as scene speech in
+     the field and answered shallowly). Any all-ASCII line with ≥3 real English
+     words means the learner is talking TO the teacher, not in the scene. */
   const askQ = (asked === true)
     || (/^[\x00-\x7F]+$/.test(text)
-        && /^(what|how|why|when|who|which|can|could|would|is|are|do|does|did|say|explain|please|sorry|huh|wait|repeat)\b/i.test(text));
+        && (/^(what|how|why|when|who|which|can|could|would|is|are|do|does|did|say|explain|please|sorry|huh|wait|repeat)\b/i.test(text)
+            || (text.match(/[a-z]{2,}/gi) || []).length >= 3));
   cv._askQ = askQ;                         /* re-assigned every turn: one-turn flag */
   if(askQ) cv.peekGloss = true;            /* the answer must be visible, not behind the peek */
 
@@ -10642,7 +10658,10 @@ async function convoTurn(userText, viaVoice, asked){
     /* No-key fallback: _convoScript instead of _convoCall.
        F5 (§7.3): system string is composed per-turn — immutable preamble base
        + the neutralized cv.facts callback line (see _convoSystemStr). */
-    rawStr = keyed ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn + 1);
+    rawStr = keyed
+      ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv),
+          askQ ? { model: CONVO_ASK_MODEL, maxTokens: CONVO_ASK_MAX_TOKENS } : undefined)
+      : _convoScript(cv.sceneId, cv.turn + 1);
   } catch(e){
     if(cv.done){ cv.loading = false; return; }  /* v8.36 — session ended mid-flight (exit recap) */
     cv.loading = false;
@@ -11096,6 +11115,16 @@ window.convoChipTap = convoChipTap;
 const CONVO_LISTEN_WINDOW_MS = 90000;
 const CONVO_RESTART_GAP_MS = 250;
 const CONVO_RESTART_CAP = 20;
+/* v8.43 (field report 2026-07-30: "slow to respond once I've said something") —
+   the flat 6s post-speech wait was most of the perceived lag. Adaptive finalize:
+   when the heard line clearly SOUNDS finished (polite sentence enders the app
+   teaches — です/ます families, ください, ましょう), submit after 2s; otherwise
+   4.5s still protects mid-sentence think pauses. The 90s pre-speech composing
+   window is untouched. Enders are multi-char only — bare ね/よ/か also end words
+   (すいか…), and a premature cut mid-composition costs more than 2.5s saved. */
+const CONVO_FINALIZE_MS = 4500;
+const CONVO_FINALIZE_DONE_MS = 2000;
+const CONVO_DONE_ENDERS = /(です|ます|でした|ました|ません|ですか|ますか|ですね|ですよ|ますね|ますよ|でしょう|ましょう|ください)\s*$/;
 
 function convoStartListen(){ convoToggleListen(); }
 window.convoStartListen = convoStartListen;
@@ -11163,14 +11192,17 @@ function convoToggleListen(auto, ask){
   _orbSet('listening', null);
   render();
 
-  /* Finalize 6s after the LAST speech activity — armed only once speech
-     exists, so pre-speech thinking time is governed by the 90s window alone. */
+  /* Finalize after the LAST speech activity — armed only once speech exists,
+     so pre-speech thinking time is governed by the 90s window alone. v8.43:
+     adaptive delay — a line ending in a taught sentence-ender submits in 2s. */
   const armSilenceTimer = () => {
     if(cv._silenceTimer) clearTimeout(cv._silenceTimer);
+    const heardSoFar = (((cv._heardParts || []).join(' ')) + ' ' + (cv._best || '')).trim();
+    const soundsDone = CONVO_DONE_ENDERS.test(heardSoFar);
     cv._silenceTimer = setTimeout(() => {
       cv._silenceTimer = null;
       if(state.convo === cv && cv.listening && cv._listenToken === token) convoStopListen();
-    }, 6000);
+    }, soundsDone ? CONVO_FINALIZE_DONE_MS : CONVO_FINALIZE_MS);
   };
 
   const arm = () => {
