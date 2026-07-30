@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.37';
+const APP_VERSION = '8.38';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2764,6 +2764,7 @@ const DEFAULT_SETTINGS = {
   buildWholeDeck:true,        // v7.33 — Build Mode draws from the whole active deck, not just Vocab-Blitz-seen words. false = old gated behaviour.
   masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
+  relaySecret:'',             // v8.38 — Isshin server secret (ADR-004 Phase 1, owner-only). Set: AI calls route through the app's own relay; keys stay server-side. localStorage only.
   anthropicModel:'claude-haiku-4-5-20251001',
   openaiKey:'',               // v7.46 — OpenAI API key for Whisper STT (voice recognition). localStorage only.
   voiceSttEngine:'auto',      // v7.46 — 'auto' = Whisper when key+online, else Web Speech fallback; 'webspeech' = always browser STT
@@ -4673,18 +4674,37 @@ function focusGenParse(text){
             .map(o => ({ jp:o.jp.trim(), en:o.en.trim(), note:(o.note||'').trim() }));
 }
 
+/* ===================== ISSHIN SERVER RELAY (v8.38, ADR-004 Phase 1) =====================
+   Owner-only for now: with a relay secret saved (Settings → Advanced), every AI
+   call routes through the app's own server — the API keys live server-side. The
+   BYO-key paths stay intact until the Phase-2 flip-on (ADR-018).
+   Security: the secret appears only in the x-app-secret header — never in any
+   console call, error string, or DOM output (same rule as the API key). */
+const RELAY_BASE = 'https://hslibrbdovrzhaxhtevr.functions.supabase.co';
+function relaySecret(){ return (state.settings.relaySecret || '').trim(); }
+function relayOn(){ return !!relaySecret(); }
+/* "Is a real AI conversation possible on this device?" — relay OR a pasted key. */
+function aiChatReady(){ return relayOn() || !!(state.settings.anthropicKey || '').trim(); }
+/* One place decides where a chat-shaped AI call goes and with which headers.
+   The relay accepts the same body shape and returns the Anthropic response
+   shape unchanged, so call sites only swap url+headers. */
+function aiChatEndpoint(){
+  if(relayOn()) return { url: RELAY_BASE + '/chat',
+    headers: { 'content-type':'application/json', 'x-app-secret': relaySecret() } };
+  return { url: 'https://api.anthropic.com/v1/messages',
+    headers: { 'content-type':'application/json',
+               'x-api-key': (state.settings.anthropicKey || '').trim(),
+               'anthropic-version':'2023-06-01',
+               'anthropic-dangerous-direct-browser-access':'true' } };
+}
+
 async function focusGenCall(w, retryNote){
-  const key = (state.settings.anthropicKey || '').trim();
-  if(!key) throw new Error('AI sentence generation is unavailable on this device right now.');
+  if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
   const model = state.settings.focusGenModel || 'claude-haiku-4-5-20251001';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const ep = aiChatEndpoint();
+  const res = await fetch(ep.url, {
     method:'POST',
-    headers:{
-      'content-type':'application/json',
-      'x-api-key': key,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
+    headers: ep.headers,
     body: JSON.stringify({
       model,
       max_tokens: 1024,
@@ -4694,7 +4714,7 @@ async function focusGenCall(w, retryNote){
   if(!res.ok){
     let msg = 'API error ' + res.status;
     try { const j = await res.json(); if(j && j.error && j.error.message) msg = j.error.message; } catch(e){}
-    if(res.status === 401) msg = 'Key rejected (401). Check the key in Settings.';
+    if(res.status === 401) msg = relayOn() ? 'The server secret isn\'t right — check Settings → Advanced.' : 'Key rejected (401). Check the key in Settings.';
     throw new Error(msg);
   }
   const data = await res.json();
@@ -5047,7 +5067,7 @@ function renderFocus(){
       </div>`;
   }
 
-  const hasKey = !!(state.settings.anthropicKey || '').trim();
+  const hasKey = aiChatReady();
   const cards = words.map(w => {
     const romaji = w.romaji || kanaToRomaji(w.jp) || '';
     const sents = focusSentencesFor(w);
@@ -5638,7 +5658,7 @@ function whisperKey(){ return (state.settings.openaiKey || '').trim(); }
    and any diagnostic can show the truth. whisperAvailable() is the unchanged bool. */
 function whisperStatus(){
   if(state.settings.voiceSttEngine === 'webspeech') return {ok:false, reason:'set to browser engine (not Whisper)'};
-  if(!whisperKey()) return {ok:false, reason:'no key saved'};
+  if(!relayOn() && !whisperKey()) return {ok:false, reason:'no key saved'};
   if(typeof navigator !== 'undefined' && navigator.onLine === false) return {ok:false, reason:"this device is offline"};
   if(typeof MediaRecorder === 'undefined') return {ok:false, reason:"this browser can't record audio (no MediaRecorder)"};
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return {ok:false, reason:'no microphone-access API in this browser'};
@@ -5828,9 +5848,14 @@ async function _whisperTranscribe(blob, hint){
   if(hint) fd.append('prompt', hint);
   fd.append('response_format', 'json');
   fd.append('temperature', '0');
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+  /* v8.38 — relay mode sends the same multipart to the Isshin server, which
+     holds the OpenAI key; the relay reads only the file + prompt fields. */
+  const wep = relayOn()
+    ? { url: RELAY_BASE + '/transcribe', headers: { 'x-app-secret': relaySecret() } }
+    : { url: 'https://api.openai.com/v1/audio/transcriptions', headers: { 'Authorization': 'Bearer ' + whisperKey() } };
+  const res = await fetch(wep.url, {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + whisperKey() },
+    headers: wep.headers,
     body: fd
   });
   if(!res.ok){
@@ -9466,12 +9491,12 @@ function scToggleListen(){
 window.scToggleListen = scToggleListen;
 
 async function _coachCall(promptStr){
-  const key = (state.settings.anthropicKey || '').trim();
-  if(!key) throw new Error('nokey');
+  if(!aiChatReady()) throw new Error('nokey');
   const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const ep = aiChatEndpoint();
+  const res = await fetch(ep.url, {
     method:'POST',
-    headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    headers: ep.headers,
     body: JSON.stringify({ model, max_tokens: 800, messages:[{ role:'user', content: promptStr }] })
   });
   if(!res.ok) throw new Error('http ' + res.status);
@@ -9651,8 +9676,7 @@ function _convoApiWindow(msgs, cap){
  * console call, error string, or DOM output.
  */
 async function _convoCall(messages, systemStr){
-  const key = (state.settings.anthropicKey || '').trim();
-  if(!key) throw new Error('nokey');
+  if(!aiChatReady()) throw new Error('nokey');
   /* v8.27 offline pass — fail instantly with the honest no-internet copy
      instead of burning a doomed fetch (+ its 30s ceiling) when the device
      KNOWS it is offline. onLine === false is trustworthy (never a false
@@ -9666,9 +9690,10 @@ async function _convoCall(messages, systemStr){
   const timer = ctrl ? setTimeout(() => ctrl.abort(), 30000) : null;
   let res;
   try{
-    res = await fetch('https://api.anthropic.com/v1/messages', {
+    const ep = aiChatEndpoint();
+    res = await fetch(ep.url, {
       method:'POST',
-      headers:{ 'content-type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      headers: ep.headers,
       body: JSON.stringify({ model, max_tokens: 560, system: systemStr || '', messages: messages }),
       signal: ctrl ? ctrl.signal : undefined
     });
@@ -10321,7 +10346,7 @@ function _speakTeachLine(fb, onDone){
 async function _convoOpenProbe(){
   const cv = state.convo; if(!cv) return;
   cv.loading = true; cv.error = null; render();
-  const key = (state.settings.anthropicKey || '').trim();
+  const keyed = aiChatReady();
   /* Delve 6 T2 (もどる resume): if this session was seeded with a prior
      session's message window (see startConvo/convoResume), thread it into
      the opening API call so the AI's first reply actually continues that
@@ -10330,7 +10355,7 @@ async function _convoOpenProbe(){
   const seedWindow = (cv.messages && cv.messages.length) ? cv.messages.slice(-6) : [];
   let rawStr;
   try {
-    rawStr = key ? await _convoCall(_convoApiWindow(seedWindow), _convoSystemStr(cv)) : _convoScript(cv.sceneId, 0);
+    rawStr = keyed ? await _convoCall(_convoApiWindow(seedWindow), _convoSystemStr(cv)) : _convoScript(cv.sceneId, 0);
   } catch(e){
     cv.loading = false;
     cv.error = _convoErrMsg(e);   /* F3 (§5.2): honest, cause-specific kana copy */
@@ -10547,7 +10572,7 @@ async function convoTurn(userText, viaVoice){
   /* Window to last 6 messages before calling API (cap before invocation) */
   const windowed = cv.messages.slice(-6);
 
-  const key = (state.settings.anthropicKey || '').trim();
+  const keyed = aiChatReady();
 
   /* F3 (Delve 7 §5.1, AMENDS-D6): the keyless demo is HONEST — one full script
      cycle (the bank, once), then the script-end card with connect/drills CTAs.
@@ -10557,7 +10582,7 @@ async function convoTurn(userText, viaVoice){
   /* v8.34: per-scene cycle length + the opener no longer repeats (reply serves
      cv.turn + 1 — the opener already played index 0), so the cycle ends when
      every question has been asked exactly once. */
-  if(!key && (cv.turn + 1) >= _convoScriptLen(cv.sceneId)){
+  if(!keyed && (cv.turn + 1) >= _convoScriptLen(cv.sceneId)){
     cv.loading = false;
     if(learnerFarewell){ save(); convoEnd(); return; }  /* a goodbye still gets the normal recap */
     cv.scriptEnded = true;
@@ -10572,7 +10597,7 @@ async function convoTurn(userText, viaVoice){
     /* No-key fallback: _convoScript instead of _convoCall.
        F5 (§7.3): system string is composed per-turn — immutable preamble base
        + the neutralized cv.facts callback line (see _convoSystemStr). */
-    rawStr = key ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn + 1);
+    rawStr = keyed ? await _convoCall(_convoApiWindow(windowed), _convoSystemStr(cv)) : _convoScript(cv.sceneId, cv.turn + 1);
   } catch(e){
     if(cv.done){ cv.loading = false; return; }  /* v8.36 — session ended mid-flight (exit recap) */
     cv.loading = false;
@@ -11722,7 +11747,7 @@ function _orbSet(newState, meta){
    link). Renders on every keyless convo screen, so the disclosure exists
    BEFORE the first exchange, not only during. Static copy only. */
 function _convoScriptedBanner(){
-  if((state.settings.anthropicKey || '').trim()) return '';
+  if(aiChatReady()) return '';
   return `<div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.55">🎭 <b>Scripted practice</b> — replies follow a fixed script. <button onclick="nav('settings')" style="border:none;background:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-family:inherit;font-size:12px;padding:0;font-weight:700">Connect AI</button> for a real conversation.</div>`;
 }
 
@@ -12062,7 +12087,7 @@ async function scCheck(){
   if(state.settings.kanaTypeAssist !== false && typeof romajiToKana === 'function'){ input = romajiToKana(input); sc.input = input; }
   if(!input){ sc.error = 'Type a Japanese sentence first, then tap Check.'; render(); return; }
   if(sc.loading) return;
-  if(!(state.settings.anthropicKey || '').trim()){ sc.error = 'The coach needs an AI connection that isn\'t available on this device right now.'; render(); return; }
+  if(!aiChatReady()){ sc.error = 'The coach needs an AI connection that isn\'t available on this device right now.'; render(); return; }
   sc.loading = true; sc.error = null; sc.result = null; render();
   const free = sc.mode === 'free';
   const fromVoice = sc.voiceUsed;
@@ -16819,7 +16844,7 @@ If they used the wrong particle or form, model the correct version naturally —
 function _buildAiMode(){
   const s = state.settings || {};
   if(!s.buildAiQa) return false;
-  if(!(s.anthropicKey || '').trim()) return false;
+  if(!aiChatReady()) return false;
   if(!voiceSupported()) return false;
   if(typeof window.fetch !== 'function') return false;
   return true;
@@ -17076,8 +17101,7 @@ async function _buildAiQaSendToClaude(step, transcript){
   _buildSetPhase('aithink', 6000);
   const labelEl = document.querySelector('.build-phase-label');
   if(labelEl) labelEl.textContent = '🤖 Claude is replying…';
-  const key = (state.settings.anthropicKey || '').trim();
-  if(!key){
+  if(!aiChatReady()){
     step._aiMode = false;
     if(state.buildMode === b && !b._paused) buildAutoReveal();
     return;
@@ -17085,14 +17109,10 @@ async function _buildAiQaSendToClaude(step, transcript){
   const model = state.settings.anthropicModel || 'claude-haiku-4-5-20251001';
   const userMsg = `I asked them this question: "${step.question_jp}" (English: ${step.question_en}).\n\nThey replied (captured via speech-to-text, may be slightly garbled): "${transcript}"\n\nNow reply in exactly two lines: hiragana Japanese on line 1, short English gloss on line 2.`;
   try{
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const ep = aiChatEndpoint();
+    const res = await fetch(ep.url, {
       method:'POST',
-      headers:{
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json'
-      },
+      headers: ep.headers,
       body: JSON.stringify({
         model,
         max_tokens: 200,
@@ -22244,7 +22264,7 @@ function renderSettings(){
     <div class="settings-v2">
     <div class="card" style="border:1px solid rgba(167,139,250,.35)">
       <h3>🔌 Connect AI</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">${(s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.'}</div>
       <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
         <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
         <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
@@ -22359,8 +22379,8 @@ function renderSettings(){
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">
         In <b>Focus</b>, the default example sentences are templates and can read oddly. The <b>✨ Generate</b> button writes genuinely natural, nuance-rich sentences — kanji-free, then <b>cached on this device forever</b> (works offline after, never regenerates unasked).
       </div>
-      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${(s.anthropicKey||'').trim() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${(s.anthropicKey||'').trim() ? '#22c55e' : '#a78bfa'};line-height:1.5">
-        ${(s.anthropicKey||'').trim() ? '✅ Generation is live in Focus on this device.' : '⚠️ Generation is unavailable on this device right now — the templated example sentences below still work fine.'}
+      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${aiChatReady() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${aiChatReady() ? '#22c55e' : '#a78bfa'};line-height:1.5">
+        ${aiChatReady() ? '✅ Generation is live in Focus on this device.' : '⚠️ Generation is unavailable on this device right now — the templated example sentences below still work fine.'}
       </div>
       <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
       <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
@@ -22419,6 +22439,15 @@ function renderSettings(){
       <div class="card" style="margin-top:8px">
         <label class="word-row"><div class="word-main"><div class="word-jp">Module path (guided unlock)</div><div class="word-en">Off by default — every topic is always open. On: browse/reorder/unlock modules from Practice.</div></div>
           <input type="checkbox" ${s.modulesEnabled?'checked':''} onchange="toggleModulesEnabled()"></label>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <div class="word-jp" style="margin-bottom:4px">Isshin server (owner)</div>
+        <div class="word-en" style="margin-bottom:8px">${relayOn() ? '✅ On — AI runs through the app’s own server; the pasted keys above are ignored on this device.' : 'Paste the server secret to route AI through the Isshin server instead of personal keys.'}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="password" value="${esc(s.relaySecret||'')}" oninput="setRelaySecret(this.value)" placeholder="server secret" autocomplete="off" style="flex:1;min-width:0;padding:9px 11px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:13px">
+          <button class="btn" onclick="testRelay()" style="padding:9px 14px;font-size:13px">Test</button>
+        </div>
+        <div id="relayTestStatus" class="muted" style="font-size:12px;margin-top:6px"></div>
       </div>
     </details>
     </div>
@@ -22489,6 +22518,31 @@ function setAnthropicKey(v){
   /* no re-render: avoid yanking focus from the field while pasting/typing */
 }
 window.setAnthropicKey = setAnthropicKey;
+
+/* v8.38 — Isshin server secret (owner). Same rules as the key: localStorage
+   only, never rendered outside the password field, never logged. */
+function setRelaySecret(v){
+  state.settings.relaySecret = String(v || '').trim();
+  save();
+  /* no re-render: avoid yanking focus from the field while pasting/typing */
+}
+window.setRelaySecret = setRelaySecret;
+
+async function testRelay(){
+  const el = $('#relayTestStatus');
+  if(!relayOn()){ if(el) el.textContent = 'No server secret entered yet — paste it above first.'; return; }
+  if(el) el.textContent = 'testing…';
+  try{
+    const ep = aiChatEndpoint();
+    const res = await fetch(ep.url, { method:'POST', headers: ep.headers,
+      body: JSON.stringify({ max_tokens: 8, messages: [{ role:'user', content:'こんにちは' }] }) });
+    if(res.ok){ if(el) el.textContent = '✅ Connected — AI now runs through the Isshin server on this device.'; }
+    else if(res.status === 401){ if(el) el.textContent = '❌ The server secret isn\'t right — check it and paste again.'; }
+    else if(res.status === 503 || res.status === 429){ if(el) el.textContent = '⏳ The server is busy right now — try again in a moment.'; }
+    else { if(el) el.textContent = '❌ The server said no (' + res.status + ') — tell Claude.'; }
+  } catch(e){ if(el) el.textContent = '❌ No internet — check your connection and try again.'; }
+}
+window.testRelay = testRelay;
 
 async function testAnthropicKey(){
   const el = $('#keyTestStatus');
@@ -22763,7 +22817,7 @@ function scrollChatToBottom(){
 
 function openAskClaude(){
   const ctx = currentClaudeContext();
-  const hasKey = !!(state.settings.anthropicKey || '').trim();
+  const hasKey = aiChatReady();
   const msgs = (state.askClaude && state.askClaude.messages) || [];
   const m = $('#modalInner');
   m.innerHTML = `
@@ -22816,8 +22870,7 @@ async function sendAskClaude(){
   const inp = $('#askInput');
   const btn = $('#askSendBtn');
   const status = $('#chatStatus');
-  const key = (state.settings.anthropicKey || '').trim();
-  if(!key){ if(status) status.textContent = 'No API key set — open Settings first.'; return; }
+  if(!aiChatReady()){ if(status) status.textContent = 'No AI connection — open Settings first.'; return; }
   const text = (inp?.value || '').trim();
   if(!text) return;
   const ctx = currentClaudeContext();
@@ -22845,14 +22898,10 @@ async function sendAskClaude(){
       system: [{type:'text', text: ASK_CLAUDE_SYSTEM, cache_control:{type:'ephemeral'}}],
       messages: history
     };
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const ep = aiChatEndpoint();
+    const res = await fetch(ep.url, {
       method:'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-        'content-type': 'application/json'
-      },
+      headers: ep.headers,
       body: JSON.stringify(body)
     });
     if(!res.ok){
