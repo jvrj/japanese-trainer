@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.39';
+const APP_VERSION = '8.40';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -9611,7 +9611,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '  "suggested": ["<chip 1 in kana>", "<chip 2 in kana>", "<chip 3 in kana>"],',
     '  "judged": {"usedWords": ["<kana surface (or wordId) of EVERY known vocab word the learner used this turn — not just WORD_POOL, ANY real word counts>"], "score": <0|1|2>},',
     '  "sceneDone": <true|false>,',
-    '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>", "why": "<OPTIONAL, recast-only, ≤25 English words: the because, naming the nuance direction (e.g. formality/tense/direction/state-vs-event) — never a verdict>"}',
+    '  "feedback": {"type": "confirm"|"recast"|"clarify"|"none", "heard": "<the learner\'s phrase as you understood it, kana-only>", "heardEn": "<plain English of what the learner\'s words mean, as you understood them>", "better": "<the natural kana form — recast only, else null>", "note": "<8 English words max on the nuance, e.g. \'past tense: tabeta\'>", "why": "<OPTIONAL, recast-only, ≤25 English words: the because, naming the nuance direction (e.g. formality/tense/direction/state-vs-event) — never a verdict>"}',
     '}',
     '',
     'WORDS — the peek vocabulary breakdown:',
@@ -9625,6 +9625,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
     '- "confirm": the learner\'s words landed (score 2) and there is nothing to fix — use their own word/phrase back naturally inside jp. This is the majority move.',
     '- "recast": the learner was understood (score 2) AND there is ONE small form/word-choice nuance. Put the natural form INSIDE jp — better MUST appear verbatim inside jp, woven in as a genuine reply. Never quote it as a correction, never prefix with "actually".',
     '- "clarify": you only partly understood (score 1), or the words look garbled. jp IS your friendly question about what they meant — own the confusion, like 「ごめん、〜って いった?」. better is null.',
+    '- heard + heardEn are filled on EVERY turn the learner sent words (spoken or a tapped chip — heard = the chip text then). heardEn is the plain-English meaning of the learner\'s words; it powers a hidden tap-to-peek translation ("did I say what I meant?"), so include it even for simple lines. Empty string only when the learner sent nothing.',
     '- At most ONE move per turn. In doubt between recast and clarify, choose clarify. In doubt between clarify and none, choose none. Never invent a correction.',
     '- The learner\'s words arrive via speech recognition and may be mis-heard. Only offer recast when the utterance is a plausible thing a learner would say AND the fix is a real form/word-choice nuance. If it looks garbled, truncated, or semantically impossible, use clarify and ask. NEVER treat a possible transcription artifact as a learner mistake.',
     '- note is peek-only English describing the nuance (e.g. "past tense: tabeta"). Describe the nuance, never a verdict — words like wrong, incorrect, mistake, error, failed must not appear in it.',
@@ -10491,6 +10492,7 @@ function startConvo(sceneId, seedMessages){
     listening: false,
     interim: '',
     peekGloss: false,
+    lastUser: null,          /* v8.40 — {jp, en} echo of the learner's latest line; en = fb.heardEn once the reply lands; shown under the same 💬 peek */
     done: false,
     recap: null,
     spokenTurns: 0,          /* how many turns the learner replied by voice */
@@ -10582,6 +10584,10 @@ async function convoTurn(userText, viaVoice){
 
   /* Append user turn — text placed only as content field, never interpolated into system */
   cv.messages.push({ role:'user', content: userText });
+  /* v8.40 — echo bubble: keep the learner's line on screen ("you said"), with
+     the English translation (fb.heardEn, filled in below once the reply lands)
+     revealed by the same 💬 peek toggle as the partner's gloss. */
+  cv.lastUser = { jp: text, en: null };
   _convoCapMessages(cv);
 
   /* Window to last 6 messages before calling API (cap before invocation) */
@@ -10648,6 +10654,14 @@ async function convoTurn(userText, viaVoice){
   /* Map score → landed for the downshift ladder */
   const score = (parsed.judged && typeof parsed.judged.score === 'number') ? parsed.judged.score : 0;
   parsed.landed = score;
+
+  /* v8.40 — capture heardEn BEFORE normalization (which rebuilds the feedback
+     object and drops it). It's a translation of the learner's own words, not a
+     teaching comment, so no banned-word scrub — length cap only. */
+  if(cv.lastUser && parsed.feedback && typeof parsed.feedback === 'object'
+     && !Array.isArray(parsed.feedback) && parsed.feedback.heardEn){
+    cv.lastUser.en = String(parsed.feedback.heardEn).slice(0, 120);
+  }
 
   /* F2 (Delve 7 §3.3) — normalize the feedback move BEFORE the ladder reads it:
      score cross-check, echo guard vs the real transcript, 1-in-3 throttle. */
@@ -11910,6 +11924,18 @@ function renderConvo(){
         ${cv.meaningCard.note ? `<div class="muted" style="font-size:11px;margin-top:5px;opacity:.85">${esc(cv.meaningCard.note)}</div>` : ''}
       </div>` : '';
 
+  /* v8.40 — "you said" echo bubble: the learner's latest line stays on screen
+     (right-aligned), with its English meaning under the SAME 💬 peek toggle as
+     the partner's gloss — one switch reveals both directions of the exchange. */
+  const meLine = (cv.lastUser && cv.lastUser.jp)
+    ? `<div id="convoMeLine" style="margin:0 0 10px auto;max-width:86%;text-align:right">
+        <div style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6f6688;margin-bottom:2px">you said</div>
+        <div style="display:inline-block;text-align:left;background:rgba(157,92,255,.1);border:1px solid rgba(157,92,255,.28);border-radius:14px 14px 4px 14px;padding:8px 13px">
+          <div class="jp-line" style="font-family:'Noto Sans JP';font-size:15px;color:#e6ddf6">${esc(cv.lastUser.jp)}</div>
+          ${cv.peekGloss && cv.lastUser.en ? `<div class="en-line" style="font-size:11px;margin-top:3px;opacity:.75">${esc(cv.lastUser.en)}</div>` : ''}
+        </div>
+      </div>` : '';
+
   const aiLine = cur && cur.jp
     ? `<div class="convo-turn them" style="margin-bottom:4px">
         <div class="jp-line" style="font-family:'Noto Sans JP';font-size:18px">${jpHtml}</div>
@@ -11979,6 +12005,7 @@ function renderConvo(){
     </div>
     ${_convoScriptedBanner()}
     ${meaningAnswer}
+    ${meLine}
     ${aiLine}
     ${errBlock}
     ${loadingDots}
