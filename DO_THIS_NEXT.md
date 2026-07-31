@@ -1,6 +1,52 @@
 # Isshin → Product · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-07-24***
+*Last updated: **2026-07-31***
+
+---
+
+## 🎨 31 Jul — Delve 10 decided: your talk partners get FACES (awaiting your yes)
+
+Your avatar question ("like Praktika, but themed?") is fully designed: a still
+illustrated portrait for each of the 8 partners, framed by the orb's colored
+aura that shows listening / thinking / speaking. The mouth NEVER moves (moving
+mouths are exactly what makes Praktika's avatar feel broken), there's a one-tap
+off-switch back to today's look, and it would be on by default so you actually
+see it. Full design: `docs/delve-cycles/10-avatar-presence.md`.
+
+### 🟢 GATE 0 — one look from you before ANY building (~10 min)
+1. Generate 1–2 test portraits from the style prompt in that doc (§4.2) — any
+   image generator you like.
+2. Claude composes ONE mockup: the face in its aura frame on a real convo
+   screenshot.
+3. You look at it. "Feels like a friend" → build goes ahead. "Feels like a
+   sticker" → we keep the current look and lose nothing but the mockup.
+
+Two decision records await your yes/no in `docs/decisions-pending/`:
+**ADR-019** (the face + default on) and **ADR-020** (the art pipeline).
+Video-first bonus: the ad recording (positioning v1) doubles as the demo asset —
+its thumbnail becomes the "AI friend", face and name.
+
+---
+
+## 🚀 30 Jul — THE BACKEND IS LIVE (you did the accounts; Claude deployed it)
+
+The app now has its own server. Deployed today: database schema + 7-day-trial
+logic + the security lockdown, plus the two relay functions (chat + voice
+transcription). Verified live: a real Anthropic reply came back through it, and
+a wrong secret gets rejected. It runs in pre-launch mode (open door for anyone
+with the owner secret; the customer trial gate is coded but switched off).
+
+**v8.38 shipped with it:** the app can now route ALL its AI through that server
+instead of your personal keys.
+
+### 🟢 YOUR ONE NEXT STEP (~3 min, on your phone)
+1. Open the app → close + reopen twice → Settings should show **v8.38**.
+2. Settings → scroll to **⚙ Advanced** → **Isshin server (owner)**.
+3. Paste the **`app soft secret`** line's value from your `isshin-keys.txt`
+   (the 48-character one) → tap **Test** → expect "✅ Connected".
+4. Have one real conversation + one speak drill (tests chat AND voice through
+   the server). If it all feels normal, your personal keys are officially
+   retired from the call path on that phone — tell Claude how it went.
 
 ---
 
@@ -33,6 +79,17 @@
   and a security review caught + scheduled fixes for real holes in the backend before any
   customer touches it. 5 decision records await your yes/no in `docs/decisions-pending/`
   (ADR-014..018) — Claude will walk you through them in ~10 min when you're ready.
+
+## 🆕 25 Jul — v8.37: NEW "Fast pace" toggle for speak drills (you asked for it)
+
+You wanted practice to move faster. The slowness was hard-coded: a ~1.5s pause
+before the mic opens plus a 2.6–6s wait after every answer. Now there's a
+**⚡ Fast pace** switch that roughly halves both. Flip it either place:
+- **inside any drill** — the little `🐢 relaxed` / `⚡ fast` chip in the top bar
+- **Settings** — "⚡ Fast pace (speak drills)", right under Listen window
+
+Default stays relaxed; your choice sticks. (Build Mode & Vocab Blitz pacing
+already had their own sliders in Settings — this covers the speak-drill loop.)
 
 ## 🆕 22 Jul (later) — v8.36: your two field reports are FIXED
 
@@ -77,7 +134,13 @@ Your field report: mic patience ✅ fixed · 「〜って なに？」 ❌ still
 
 **Then tell Claude:** did the teal answer card appear? Did the recap show on back-out? Anything else still off.
 
-## 📋 STILL WAITING ON YOU (≈15–20 min at the computer, unblocks Phase 1 backend)
+## ✅ DONE 30 Jul — the accounts checklist below is COMPLETE (kept for reference)
+
+Supabase project created, both API keys made, everything landed in
+`isshin-keys.txt`, backend deployed the same day. Steps 4 (Apple) and 5
+(Google sign-in) below are still future items — nothing waits on them yet.
+
+## 📋 ~~STILL WAITING ON YOU~~ (≈15–20 min at the computer, unblocks Phase 1 backend)
 
 *(Note: the Anthropic key already pasted in the app's Settings is your PERSONAL one — it powers your open AI chat today. The keys below are SEPARATE ones just for the app's future server, so customer costs never touch your personal key.)*
 
@@ -134,7 +197,7 @@ When 1–3 are in your keys file, tell Claude: **"keys ready"** → the backend 
 - [x] **Feedback soul** — patient mic, feedback layer, honest modes, modules, anti-robotic (v8.16–v8.20)
 - [x] **Sensei layer S1+S2** — teach card + spoken breath (v8.26, 19 Jul) ← **testing NOW (you!)**
 - [ ] Sensei S3+S4 — vocab frontier lock (80) + recap close *(gated on your field report)*
-- [ ] Phase 1 — Backend live, YOUR phone switches to the app's own server first (your personal key comes off the phone; everyone else unchanged for now) *(half-built in `backend/`; needs your accounts above; staged plan decided 24 Jul, Delve 9)*
+- [x] **Phase 1 — Backend live (30 Jul)** — server deployed + verified; v8.38 routes the app through it. *Remaining: you paste the secret on your phone + field-test (the step above).*
 - [ ] Phase 1.5 — Sign-in + free-trial switch-on: customers sign in with Google, get 7 free days of live talk (clock starts at their FIRST conversation, not signup), and the paste-your-API-key cards disappear for good *(screens fully designed 24 Jul, Delve 9)*
 - [ ] Phase 2 — World-class polish *(first sweep shipped v8.25: style guide, store copy, 320px)*
 - [ ] Phase 3 — iPhone mic test in the native wrapper (gates the whole store plan)

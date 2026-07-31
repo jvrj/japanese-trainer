@@ -37,6 +37,11 @@ understands, corrects kindly → conversation keeps flowing. The
 "mistake handled kindly" moment is the ad (the format behind Praktika's viral
 influencer growth). Run 2–3 headline variants; let clicks pick the winner.
 
+With presence on (Delve 10 — contingent on its Gate 0 owner approval), the
+recording shows the partner's illustrated face center-stage — the thumbnail is
+the "AI friend", face and name, never a staged shot; generator licensing must be
+verified before any paid placement.
+
 ## Rules
 
 - Every claim above must stay TRUE of the shipped app (the ad-vs-reality gap is

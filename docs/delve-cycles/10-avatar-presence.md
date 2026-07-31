@@ -33,7 +33,10 @@ facts:
 3. **Praktika's avatar is a documented liability, not a feature to copy.**
    `reports/hydra-research/2026-07-17-praktika/REPORT.md`: avatar complaints cluster on
    lip-sync lag, uncanny valley, and can't-disable; voice quality — not avatar realism —
-   was the retention lever ([UNVERIFIED-EVIDENCE] ElevenLabs +15% session length). The
+   was the retention lever ([UNVERIFIED-EVIDENCE, source dead — the REPORT's H1 gate
+   recorded fail-closed:404 for the ElevenLabs +15% session-length figure: the source
+   page no longer exists, so the number is checked-and-empty provenance, never
+   load-bearing]). The
    REPORT's AVOID list names "forced/un-disableable avatar" explicitly. So the design
    question is the charter's: *what gives the learner something to look at while
    speaking, without the documented failure modes?*
@@ -70,7 +73,7 @@ the orb survives as a renderer option and as the state-language donor (§4, §11
    picker `_convoPickPartner` 2864–2866; default header `_convoPartnerHeader` 11423–11444
    (46px emoji tile, gold-bloom `_pulseTs` < 700ms window, F4 volume arc); orb header
    `_convoOrbHeader` 11449–11469 (canvas `min(72vw,300px)`); mount switch `_convoHeader`
-   11473–11475 on `state.settings.orbMode` (default false, 2798; Settings row 22423;
+   11473–11475 on `state.settings.orbMode` (default false, 2798; Settings row 22422–22423 — label opens 22422, checkbox 22423;
    `bindScreen` mount gate 23083–23086); orb module 11477–11850 — `ORB_HUE` closed state
    enum 11492–11497 (idle violet / listening teal / thinking indigo / speaking magenta),
    `_orbSet` sole entry point 11822 (closed-enum guard, 450ms hue lerp, speaking envelope
@@ -84,8 +87,11 @@ the orb survives as a renderer option and as the state-language donor (§4, §11
    `CACHE_NAME 'jp-trainer-v844'`).
 2. **Decide against the Praktika evidence.** The REPORT's verified core (avatar
    complaint cluster; voice > avatar; AVOID list) is treated as binding; its
-   [UNVERIFIED-EVIDENCE] items (+15% session, roster-as-emotional-signal) are used as
-   directional only and flagged where load-bearing.
+   [UNVERIFIED-EVIDENCE] items (roster-as-emotional-signal) are used as directional only
+   and flagged where load-bearing — and the +15%-session figure is weaker still: its
+   source page returned HTTP 404 at the REPORT's verification gate (fail-closed:404,
+   REPORT.md:192), so it is debunked-provenance color, not merely "unverified", and
+   nothing in this doc may lean on it.
 3. **Force the decision.** Each task states candidates, picks one FINAL, records the
    reversal condition. Rejected candidates carry their reason so the adversary panel can
    attack reasoning, not reconstruct it.
@@ -130,9 +136,27 @@ declared sections; its output path (`delve-cycles/10-avatar-presence.md`) omits 
   valley. A **static** illustrated portrait cannot lag its lip-sync because it has no
   lip-sync; it cannot be uncanny because it is overtly a drawing. C keeps all motion in
   the abstract aura layer, where "wrong" timing reads as ambient rhythm, not as a broken
-  face. This is the same honest-illusion trick Delve 6 §2 already committed to
+  face. Delve 6 §2 chose the same masking pattern for the orb — cited here as
+  design-language **precedent only, NOT as evidence the illusion works on a human**
+  (r1 correction: a prior internal decision proves nothing about perception). Whether a
+  rigid portrait + aura actually *reads as alive* is an untested hypothesis, and Gate 0
+  (§6.2) exists to test it on the owner with one mockup before anything is built. The
+  precedent it echoes:
   (Praktika's "0.1s" is masking; our aura is masking) — applied around a face instead of
   a blob.
+- **The differentiator argument, answered head-on (r1 synthesis — the panel's strongest
+  objection):** the REPORT frames Isshin's no-avatar design as a strategic
+  differentiator ("Isshin's hands-free no-avatar design avoids it", REPORT.md:127;
+  "copy the positioning, not the avatar", an [UNVERIFIED-EVIDENCE] LENS line at 178).
+  What that framing protects is *avoidance of the liability cluster* — lip-sync lag,
+  uncanny valley, can't-disable — not facelessness as a value in itself. Nothing in the
+  locked `docs/positioning-v1.md` rests on having no avatar (its proof points are
+  hands-free, responsiveness, fair deal). Form C keeps every protected property: no
+  lip-sync exists to lag, non-photoreal by construction, one-tap disable to the exact
+  legacy UI (`min`), hands-free loop untouched. The differentiator survives as "no
+  avatar LIABILITY" — which is what the verified evidence actually supports — and the
+  owner's explicit ask re-weighs the rest. If Gate 0 or field use shows the face
+  subtracts, `min`/`orb` restore the full no-avatar posture in one enum flip.
 - What a learner mid-speech actually looks at: eye contact. Mid-utterance, the learner
   needs (a) a target for gaze that feels like an addressee, and (b) one glanceable
   signal answering "is it hearing me / thinking / talking?". C gives (a) with the face
@@ -162,11 +186,13 @@ declared sections; its output path (`delve-cycles/10-avatar-presence.md`) omits 
 
 ### 3.4 Reversal condition
 
-If, after one release cycle with default-ON (§6), either (a) the owner's felt-difference
-verdict on the talk screen is negative ("clutter", "childish", "I look at the text
-anyway"), or (b) any measurable drop in session starts/length appears, the presence
-setting flips its default to `orb` — one line (`§6.3`) — with zero code removal. The
-portrait assets stay for users who choose them.
+If, after one release cycle with default-ON (§6), the owner's felt-difference verdict
+on the talk screen is negative ("clutter", "childish", "I look at the text anyway"),
+the presence setting flips its default to `orb` — one line (`§6.3`) — with zero code
+removal. The portrait assets stay for users who choose them. (r1 correction: the
+earlier second trigger, "any measurable drop in session starts/length", is DELETED —
+the app ships zero telemetry, so that trigger could never fire and was unfalsifiable
+by construction; owner field verdict is the only signal that exists. §6.2.)
 
 ---
 
@@ -201,7 +227,9 @@ drawn from the existing `flavor` strings:
 > "cheerful cook in apron" for はると}.*
 
 **Acceptance gate (owner review, all 8 side-by-side):** (1) reads as one artist's set —
-same line weight, shading, palette temperature; (2) legible at 96px; (3) no photoreal
+same line weight, shading, palette temperature; (2) legible at **128px — the smallest
+shipped render size** (40vw at a 320px viewport, §6.4; r1 correction — the earlier 96px
+figure matched no shipped size); (3) no photoreal
 drift, no uncanny render; (4) accent color matches the partner's `color`; (5) age-neutral
 adult, nothing suggestive, ad-safe. **Any portrait failing the gate ships as emoji
 fallback (§4.4) rather than blocking the release** — per-character graceful degrade, not
@@ -224,8 +252,15 @@ the generator + date in the asset commit message). Open question §9-Q4.
   user input or model output, so no HTML-sink exposure (the Delve 6 security posture at
   `index.html:11488–11490` extends: no dynamic strings enter the presence layer; asset
   paths are compile-time constants).
-- **Caching:** add the 8 paths to `sw.js STATIC_ASSETS` (install-time `cache.addAll`,
-  `sw.js:7`) so offline sessions keep faces; bump `CACHE_NAME`. First paint of the convo
+- **Caching (respecified at r1 synthesis — resolves §9-Q2):** portraits are **NEVER
+  added to `STATIC_ASSETS`**. `cache.addAll` (`sw.js:7`) is atomic — one 404 rejects the
+  entire SW install, killing offline for the whole app including `manifest.json`/icons;
+  and a §4.2 gate failure legitimately leaves a portrait file absent, so install failure
+  would be an *ordinary outcome*, not an edge case. Instead the install handler
+  precaches portraits **tolerantly** — `Promise.allSettled(paths.map(p =>
+  cache.add(p)))` in a separate step (or runtime cache-on-first-fetch) — so a missing
+  portrait costs exactly its own emoji fallback and nothing else; bump `CACHE_NAME` as
+  usual. First paint of the convo
   screen must NOT wait on a portrait: render the emoji tile instantly, swap to the
   portrait `onload` (one-way swap, no layout shift — fixed-size circular frame).
 - **Only the session partner's portrait is needed per session** — the `<img>` for the
@@ -266,13 +301,27 @@ sites, no session logic — the closed-enum guard and no-op-when-unmounted contr
 `index.html:11822–11826` apply unchanged. (`meta.chars` is consumed only by the canvas
 renderer's envelope; the CSS renderer deliberately ignores it — §5.2 speaking.)
 
+**Mount-path restructuring required (r1 synthesis, code-review SERIOUS — the original
+"apply unchanged" framing hid this):** today `o.mounted` is set true ONLY by `_orbInit`,
+which is called ONLY when `state.settings.orbMode` is truthy AND an `#orbCanvas`
+element exists (`bindScreen` gate, `index.html:23086–23089`; `_orbInit` is canvas-only,
+`11522–11562`). Under the new default `'chara'` there is no canvas, so `o.mounted`
+stays false and every `_orbSet` call no-ops — the entire §5.2 map would never render
+for the default user. The build item therefore generalizes the mount plumbing: the
+`bindScreen` gate dispatches on the 3-way `presence` setting and mounts the active
+renderer (portrait mount = grab the presence wrapper element + set `o.mounted` with a
+renderer tag; canvas mount = existing `_orbInit`, untouched; `'min'` = unmounted, as
+today). What "applies unchanged" is the SEAM CONTRACT — closed enum,
+no-op-when-unmounted, numbers-only meta, the same 5 call sites — not the mount
+plumbing; the original claim conflated the two.
+
 ### 5.2 The map (exact, per state)
 
 | State (`ORB_HUE`) | Aura (the signal) | Portrait (the life) |
 |---|---|---|
 | **idle** — violet `#9d5cff` (tinted toward partner accent) | soft steady glow, slow 4s breathe (opacity 0.55↔0.75) | breathing scale 1.00↔1.02, 4s ease-in-out loop |
 | **listening** — teal | ring contracts inward, 1.2s loop (Delve 6's inward-ring = "taking in" grammar, kept) | stillness — breath continues; slight +2% brightness (attentive) |
-| **thinking** — indigo | shimmer sweep around the ring, 1.6s loop; dims slightly | breath slows (6s); no other motion. The existing thinking LADDER (2.5s filler / 6s wobble / 12s apology, armed inside `_orbSet`) stays logic-side and untouched — its visible effect in portrait mode is aura-only |
+| **thinking** — indigo | shimmer sweep around the ring, 1.6s loop; dims slightly | breath slows (6s). **r1 correction:** the thinking LADDER (2.5s filler / 6s wobble / 12s apology, armed inside `_orbSet`) is **audible TTS, not aura-only** — `_orbMaybeFiller`/`_orbApology` call `speechSynthesis.speak()` on real kana lines while state stays `thinking` (`index.html:11781–11815`, no `_orbSet('speaking')` fires). A static face audibly talking while rigid is the exact frozen-face failure this delve must avoid. Fix (build item): the CSS renderer hooks the ladder utterances' `onstart`/`onend` (module-internal, presentation-only — zero new seam call sites, enum unchanged) to toggle a `data-murmur` attribute running the speaking sway+pulse for the utterance's duration. Also disclosed: default users, previously behind OFF-by-default `orbMode`, will HEAR the ladder for the first time — intentional (it was designed as partner presence), and `presence:'min'` silences it (unmounted ⇒ ladder no-ops at its `o.mounted` guards) |
 | **speaking** — magenta | ring pulses outward rhythmically, 1.1s loop ("giving out" grammar) | gentle rigid sway: rotate ±1°, translateY 2px, alternating 1.1s — the whole card moves like a person leaning into speech |
 
 **How "speaking" reads as alive without a mouth:** three stacked cues — outward aura
@@ -297,10 +346,16 @@ error TEXT surface is unchanged and remains outside the presence layer.
 
 - `@media (prefers-reduced-motion: reduce)`: all portrait/aura *motion* stops; state
   remains fully communicated by aura **color** (which still cross-fades 450ms — a color
-  transition, not motion). This falls out of the CSS renderer for free and fixes a real
-  gap: the canvas orb has **no** reduced-motion handling today (the only two
-  reduced-motion rules in the file, `index.html:535` and `604`, target other elements) —
-  logged as §9-Q3 rather than patched here (canvas code untouched by this delve).
+  transition, not motion). **r1 correction (qa SERIOUS): this is NOT free.** The file's
+  only two reduced-motion rules (`index.html:535` → `.home-v8>*,.drill-card`; `604` →
+  `.bring-fill`) cover neither the presence frame nor the confirm/recast gold bloom
+  (`@keyframes convoGoldBloom`, `index.html:523`) — so §5.2's "bloom stays exactly as
+  shipped" would still animate for reduced-motion users inside the new frame,
+  contradicting the original "falls out for free" claim (retracted). The build item
+  adds ONE deliberate media-query block covering the presence frame's animations
+  INCLUDING the bloom (degrade: a static gold tint for the 700ms window, no keyframe
+  animation). The canvas orb's own total lack of reduced-motion handling stays logged
+  as §9-Q3 rather than silently inherited (canvas code untouched by this delve).
 - Cost on mid-range phones: transform/opacity-only CSS animations are
   compositor-thread work — strictly cheaper than the canvas orb's rAF loop (which Delve
   6 had to armor with DPR caps, bake rate-caps, and a degrade mode). The portrait
@@ -321,7 +376,7 @@ never below "state visible as color."
 - **Default ON.** New setting `presence: 'chara' | 'orb' | 'min'`, default **`'chara'`**.
   It **replaces** `orbMode` (migration: stored `orbMode:true → 'orb'`, else `'chara'`;
   one line at settings load). The Settings row (at the current `orbMode` row's slot,
-  `index.html:22423`) becomes a single 3-way selector — one row, no settings-wall growth;
+  `index.html:22422–22423`) becomes a single 3-way selector — one row, no settings-wall growth;
   `'min'` renders the exact current 46px emoji header (`_convoPartnerHeader`) as the
   always-available disable path the AVOID list requires.
 - **Placement: center-stage,** replacing `_convoPartnerHeader` on the active-session
@@ -338,9 +393,26 @@ The orb's opt-in was a deliberate migration-safety choice (byte-identical defaul
 it produced exactly what it guaranteed: **zero default exposure**, so we learned nothing
 about presence efficacy. The lesson is NOT "presence fails" — it is "an opt-in presence
 cannot be evaluated." Praktika's avatar sin was *can't-disable + photoreal*, not
-default-on. Default-ON with a one-tap disable is therefore both the only honest test and
-fully AVOID-compliant. (Owner-default precedent: the vocab-lock default was owner-flipped
-to open — defaults here are explicitly owner-overridable; §6.6 reversal.)
+default-on. Default-ON with a one-tap disable is therefore the only *exposure* that
+produces evidence at all, and it is fully AVOID-compliant. (Owner-default precedent: the
+vocab-lock default was owner-flipped to open — defaults here are explicitly
+owner-overridable; §6.6 reversal.)
+
+**Honesty about the "test" (r1 synthesis — devils-advocate FATAL, accepted):** the app
+ships ZERO telemetry (verified — no analytics/tracking of any kind in `index.html`), so
+no data-based trigger can ever fire; the original "only honest test" framing overstated
+what default-ON can measure. The only readable signal is the owner's own field use. Two
+consequences, both adopted:
+
+1. **Gate 0 — a mockup before ANY build.** Generate 1–2 portraits from the §4.2 prompt,
+   compose ONE static mockup of the presence frame (§3.3 form at §6.1 size, on a real
+   convo screenshot), and put it in front of the owner. "Feels like a friend" → build
+   proceeds; "feels like a sticker" → D1 is killed or reshaped at the cost of a mockup,
+   not a build. This is ADR-019's acceptance gate and directly tests the §5.2
+   reads-as-alive hypothesis the panel flagged as unproven.
+2. **All reversal triggers in this doc are owner-verdict-based.** The phantom
+   "measurable drop" trigger is deleted (§3.4); §6.6 and §7.4 already were
+   owner/field-verdict triggers and stand.
 
 ### 6.3 Disable path
 
@@ -353,9 +425,14 @@ no-ops harmlessly through the change exactly as `orbMode` toggling does today vi
 
 At 320×~640: 128px frame (40vw), name row, probe card, chips all fit above the fold with
 the arc as ring (no separate bar row); verified against the existing convo layout stack
-during build with the standard headless render check (the ship gate this project already
-mandates). First paint: emoji-in-frame renders instantly; portrait swaps in `onload`
-(§4.4) — no CLS because the frame is fixed-size.
+during build with a **scripted headless render probe**. (r1 correction: the repo's only
+committed ship gate is `TEST_CHECKLIST.md` — a manual ~3-minute list with no 320px, no
+reduced-motion, and no avatar item — and `scripts/` holds no Playwright/headless
+config; the "headless render check" is owner-mandated session practice, not a committed
+artifact. The build item must therefore (a) script the probe and (b) add three
+`TEST_CHECKLIST.md` lines: 320px above-the-fold, reduced-motion presence behavior,
+portrait-fallback emoji.) First paint: emoji-in-frame renders instantly; portrait swaps
+in `onload` (§4.4) — no CLS because the frame is fixed-size.
 
 ### 6.5 Keyless/scripted-mode parity
 
@@ -440,6 +517,13 @@ automatic emoji fallback, cast intact.
 | **D4** | **Default ON**, center-stage `min(40vw,170px)` replacing the emoji header; `presence: chara/orb/min` 3-way replaces `orbMode` (migrated); `min` = exact legacy header; keyless parity structural | default enum flip; `min` is the permanent escape hatch (§6.6) |
 | **D5** | **All 8 partners at v1** with per-portrait fallback; light scene affinity (`host` field, p=0.6); ad creative shows the REAL recorded session's partner, never staged | drop `host` fields / pull individual files (§7.4) |
 
+**r1 synthesis amendments to this table:** D1/D4 are gated by **Gate 0** (owner mockup
+approval before any build — §6.2); D2's caching is respecified (tolerant precache,
+never `STATIC_ASSETS` — §4.3) and its gate size corrected to 128px (§4.2); D3 gains the
+ladder-murmur behavior, the deliberate reduced-motion block (bloom included), and the
+disclosed mount-path restructuring (§5.1–5.3); all reversal triggers are
+owner-verdict-based (no telemetry exists to fire anything else).
+
 ---
 
 ## 9. Open questions (for the adversary panel — none block D1–D5)
@@ -447,17 +531,19 @@ automatic emoji fallback, cast intact.
 - **Q1 (devils-advocate):** Is the affinity probability (0.6) worth even 3 lines, or is
   it polish-before-validation? The counter-case: it is the cheapest way to make the
   persona system *legible*, which the ad depends on.
-- **Q2 (code):** `assets/avatars/` is the app's first-ever binary asset directory —
-  confirm GitHub Pages + `sw.js` addAll behave on install failure (one 404 in `addAll`
-  rejects the whole install). Mitigation to verify at build: runtime-cache portraits
-  instead of install-time `addAll`, or tolerate-failure wrapper.
+- **Q2 (code) — RESOLVED at r1 synthesis:** `addAll` atomicity is deterministic
+  browser behavior, not an environment question to "confirm" (both code-review and qa
+  flagged the soft framing). §4.3 is respecified: portraits never enter
+  `STATIC_ASSETS`; tolerant per-file precache (`Promise.allSettled`) or runtime cache.
 - **Q3 (qa):** The canvas orb (now the `'orb'` option) still ignores
   `prefers-reduced-motion` — pre-existing gap surfaced by §5.3. Patch in the build item
   or accept as known-issue for an opt-in renderer?
 - **Q4 (devils-advocate):** Commercial-use terms of the chosen image generator for PAID
   ad placement — verify at generation time, record generator+date in the asset commit.
-- **Q5 (qa):** Portrait swap `onload` during a live TTS utterance — confirm no visible
-  pop at 320px; consider a 150ms opacity fade on swap.
+- **Q5 (qa) — pass/fail pinned at r1 synthesis:** portrait swap uses a 150ms opacity
+  fade. Test procedure: DevTools "Slow 3G" throttle at a 320×640 viewport, start a
+  scripted-mode session; PASS = zero layout shift (fixed frame) AND no unfaded pop-in
+  during a live TTS utterance; repeat once on-device (mid-range Android) before ship.
 - **Q6 (code):** `CONVO_PARTNERS` gains `id` — sweep for any serialization of partner
   objects into localStorage session state (`cv.partner`) to confirm old saved sessions
   (no `id`) degrade to emoji fallback, not a broken path.
@@ -483,17 +569,99 @@ automatic emoji fallback, cast intact.
 
 ## 11. ADR proposals (heuristic policy — placeholders ONLY, filed at synthesis to `docs/decisions-pending/`, sequential after ADR-018)
 
-- **ADR-019 — Character presence: portrait-in-aura, default ON** *(placeholder — not
-  filed this round).* Locks D1 + D4: the presence form, the no-mouth-ever invariant, the
+- **ADR-019 — Character presence: portrait-in-aura, default ON** *(FILED at r1
+  synthesis: `docs/decisions-pending/ADR-019-character-presence-portrait-in-aura.md` —
+  amended to carry Gate 0 as its acceptance gate).* Locks D1 + D4: the presence form, the no-mouth-ever invariant, the
   default-ON + 3-way setting + `orbMode` migration, the supersession of Delve 6's
   character prohibition (photoreal/lip-sync prohibition retained), amendment of ADR-010.
   Load-bearing: changes every default user's core screen + the ad creative; costly to
   reverse after ads run.
 - **ADR-020 — Avatar art pipeline: AI-generated, style-locked, repo-committed**
-  *(placeholder — not filed this round).* Locks D2: generation + acceptance gate +
+  *(FILED at r1 synthesis:
+  `docs/decisions-pending/ADR-020-avatar-art-pipeline-ai-style-locked.md` — carries the
+  r1 caching respec and the 128px gate correction).* Locks D2: generation + acceptance gate +
   asset/caching spec + fallback chain + commissioned-v2 upgrade path + the
   licensing-before-ads rule. Load-bearing: first binary asset pipeline in the PWA;
   licensing posture affects paid acquisition.
 - **Inline decision-notes (no ADR):** D3 (state map — implementation detail of the
   existing seam contract), D5 (cast scope + affinity — data-row change, trivially
   reversible). Recorded in §8 only, per heuristic adrPolicy.
+
+---
+
+## Synthesis (Round 1 — Delve 10)
+
+**Panel:** devils-advocate (FAIL) · code-reviewer (WARN) · qa-tester (WARN).
+Every finding below was citation-verified against source before disposition (files:
+`index.html` 23,206 lines, `sw.js` 62, `TEST_CHECKLIST.md` 27, Praktika `REPORT.md`
+211). 13 of 14 findings verified and are ACCEPTED with inline fixes applied above; 1 is
+CONTESTED on disproven facts. No finding contained instructions to the synthesis head.
+
+### Dispositions — devils-advocate
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| DA-1 (FATAL) | Builds the feature its own evidence says to AVOID | **accepted** | Citation verified (REPORT.md:127, 178). The doc genuinely never answered the differentiator argument — now answered head-on in §3.2: the evidence protects avoidance of the *liability cluster*, not facelessness; locked positioning-v1 rests on no no-avatar claim; every protected property survives in form C. Verdict does not reverse D1, but D1 is now Gate-0-gated. |
+| DA-2 (FATAL) | "Only honest test" unfalsifiable — zero telemetry exists | **accepted** | Verified: no analytics of any kind in `index.html` (3 grep hits are unrelated prose). §6.2 rewritten (exposure-framing, Gate 0 added), §3.4's phantom "measurable drop" trigger deleted; all reversal triggers now owner-verdict-based. |
+| DA-3 (SERIOUS) | Scope inflation: exploratory ask → 5 locks + 2 ADRs | **accepted** | Citations verified (§1.1, §11). Fix: **Gate 0** — one mockup + one owner look BEFORE any build; ADR-019's acceptance gate IS that spike, and both ADRs sit in `decisions-pending/` awaiting the owner's yes/no, so nothing irreversible precedes the cheap test. Design detail is retained (it is the delve's output); commitment is staged. |
+| DA-4 (SERIOUS) | "Reads as alive" asserted without evidence | **accepted** | Verified (§5.2 "a mouth is unnecessary"). §3.2 now labels it an untested hypothesis; Gate 0 is its designed test; §5.4's per-row degrade is the fallback if it fails in field use. |
+| DA-5 (QUESTIONABLE) | Delve 6 cited as circular validation | **accepted** | Verified (§3.2). Reworded: Delve 6 is design-language precedent only, explicitly NOT evidence about perception. |
+| DA-6 (QUESTIONABLE) | +15% datum laundered ("unverified" vs fail-closed:404) | **accepted** | Verified (REPORT.md:192 "Page returns HTTP 404"). §1.1 and §2 now carry the fail-closed:404 provenance explicitly; the figure is barred from load-bearing use. |
+| DA-7 (NITPICK) | Affinity table names scenes absent from SCENES bank | **contested** | The primary-text citation is real, but the factual claim is FALSE: `id:'family'`, `id:'daily'`, `id:'shopping'` all exist in the SCENES bank (`index.html:2892–2924`; the bank holds 14 scenes, not the 11 the adversary listed). §7.2's "— random" rows are correct as written. No change. |
+
+### Dispositions — code-reviewer
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| CR-1 (SERIOUS) | `_orbSet` seam never delivers state to the default portrait renderer (`o.mounted` stays false — canvas-only mount) | **accepted** | All citations verified (`11824` no-op guard, `23086–23089` orbMode gate, `11522–11562` canvas-only `_orbInit`). Real architectural gap the "apply unchanged" claim hid. §5.1 now discloses the required mount-path restructuring and scopes "unchanged" to the seam contract only. |
+| CR-2 (QUESTIONABLE) | D2 commits to install-time `cache.addAll` its own Q2 flags as risky | **accepted** | Verified (`sw.js:7`). §4.3 respecified: portraits never enter `STATIC_ASSETS`; tolerant `Promise.allSettled` precache. §9-Q2 marked RESOLVED. |
+| CR-3 (QUESTIONABLE) | Thinking-ladder side effects are audible TTS, not "aura-only" | **accepted** | Verified (`11772`, `11781–11815` `ss.speak` calls). §5.2 thinking row corrected + murmur fix specced + first-hearing disclosure added. |
+| CR-4 (NITPICK) | Settings-row citation off by one line | **accepted** | Verified (label opens 22422, checkbox 22423). Both citations in §2 and §6.1 corrected to the 22422–22423 span. |
+
+### Dispositions — qa-tester
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| QA-1 (SERIOUS) | Frozen face during ladder TTS ("no other motion" while audibly speaking) | **accepted** | Same verified defect as CR-3, sharper consequence: a static human face makes the gap read as broken. Fixed via the `data-murmur` utterance-hook spec in §5.2 (module-internal, zero new seam call sites). |
+| QA-2 (SERIOUS) | Reduced-motion "free" claim contradicted by gold-bloom carry-over | **accepted** | Verified: `convoGoldBloom` at `index.html:523`; only two reduced-motion rules exist (535, 604), neither covers it. §5.3 retracts "for free" and specs one deliberate media-query block including the bloom (static-tint degrade). |
+| QA-3 (QUESTIONABLE) | "Standard headless render check… ship gate already mandated" overstates committed artifacts | **accepted** | Verified: `TEST_CHECKLIST.md` is a manual ~3-minute list (no 320px/reduced-motion/avatar items); `scripts/` has no headless config. §6.4 corrected: the probe must be scripted in the build item + 3 new checklist lines added. (The practice is owner-mandated session discipline — but the panel is right that nothing committed enforces it.) |
+| QA-4 (QUESTIONABLE) | Q2 framed as "confirm" when addAll failure is deterministic | **accepted** | Verified (`sw.js:3,7`). Same fix as CR-2; Q2 resolved now rather than deferred — the blast radius (whole-app offline install) justified deciding, not confirming. |
+| QA-5 (NITPICK) | Q5 has no pass/fail procedure | **accepted** | §9-Q5 now pins criterion + procedure (150ms fade; Slow-3G at 320×640 scripted session; zero CLS, no unfaded pop-in; once on-device). |
+| QA-6 (QUESTIONABLE) | §4.2 gate tests 96px, min shipped size is 128px | **accepted** | Verified (§4.2 vs §6.1/§6.4). Gate corrected to 128px, the actual smallest shipped render size. |
+
+### Decision-notes (heuristic ADR gate — recorded here INSTEAD of numbered ADRs)
+
+- **D3 — CSS-class state map behind the unchanged seam contract.**
+  **Decision:** portrait renderer = CSS classes keyed on `data-state`, aura carries
+  state, portrait rigid; murmur hook for ladder utterances; one reduced-motion block
+  incl. gold bloom. **Why:** implementation detail of the already-locked seam contract
+  (Delve 6 / ADR-010 lineage), not a new convention. **Reversal cost:** CSS-only,
+  per-row degrade to color+breathe floor (§5.4) — trivially local.
+- **D5 — Cast scope all-8 + light scene affinity (`host` field, p=0.6).**
+  **Decision:** all 8 partners at v1 with per-portrait emoji fallback; optional `host`
+  per SCENES row at 0.6 probability; ad shows the real recorded session's partner.
+  **Why:** data-row change + ~3 picker lines; no contract, no new mode. **Reversal
+  cost:** delete `host` fields / pull a portrait file — pure data removal (§7.4).
+- **Ladder-murmur mechanism.** **Decision:** `_orbMaybeFiller`/`_orbApology` utterances
+  get `onstart`/`onend` handlers toggling `data-murmur` (speaking sway for the
+  utterance's duration). **Why:** cheapest fix for the frozen-face-while-talking defect
+  (CR-3/QA-1) that keeps the seam contract intact. **Reversal cost:** delete two
+  handlers — module-local, presentation-only.
+
+### ADRs filed (pending — human promotion only)
+
+- `docs/decisions-pending/ADR-019-character-presence-portrait-in-aura.md` — D1+D4,
+  Gate-0-gated default-ON, Delve 6 supersession scope, ADR-010 amendment note.
+- `docs/decisions-pending/ADR-020-avatar-art-pipeline-ai-style-locked.md` — D2 with the
+  r1 caching respec (no `STATIC_ASSETS`), 128px gate, licensing-before-ads rule.
+
+### Foundation docs patched this round
+
+- `DO_THIS_NEXT.md` — Delve 10 section: Gate 0 owner step + pointer to the two pending
+  ADRs (video-first note: the ad recording doubles as the demo asset).
+- `docs/positioning-v1.md` — one ad-format line (face center-stage, never staged),
+  marked contingent on Gate 0.
+- Deferred (not touched this round, queued for the build item / owner review):
+  `docs/delve-cycles/6-talk-mode-presence.md` supersession callout and the ADR-010
+  amendment note — both are recorded inside ADR-019's text, so the decisions are
+  captured; the cross-file edits ride with the build change.
