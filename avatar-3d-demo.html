@@ -13,9 +13,14 @@
   #avatar canvas { display:block; }
   #vignette { position:fixed; inset:0; pointer-events:none;
     background:radial-gradient(ellipse 90% 70% at 50% 38%, transparent 55%, rgba(11,14,20,.88) 100%); }
+  #styleBar { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:0; right:0; z-index:6;
+    display:flex; justify-content:center; gap:8px; flex-wrap:wrap; padding:0 10px; }
+  #styleBar button { border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:8px 14px;
+    font-size:13px; font-weight:600; background:rgba(255,255,255,.06); color:var(--dim); cursor:pointer; }
+  #styleBar button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
   #hud { position:fixed; left:0; right:0; bottom:0; padding:18px 20px calc(20px + env(safe-area-inset-bottom));
     display:flex; flex-direction:column; align-items:center; gap:12px; z-index:5; }
-  #state { font-size:13px; letter-spacing:.14em; color:var(--dim); text-transform:none;
+  #state { font-size:13px; letter-spacing:.14em; color:var(--dim);
     display:flex; align-items:center; gap:8px; }
   #state .dot { width:8px; height:8px; border-radius:50%; background:#4ade80; transition:background .3s; }
   #state.talking .dot { background:var(--accent); animation:pulse 0.9s ease-in-out infinite; }
@@ -24,19 +29,17 @@
     max-width:640px; text-wrap:balance; }
   #sub .en { display:block; font-size:.58em; color:var(--dim); margin-top:4px; }
   #controls { display:flex; gap:10px; }
-  button { border:0; border-radius:999px; padding:14px 30px; font-size:16px; font-weight:600;
+  #controls button { border:0; border-radius:999px; padding:14px 30px; font-size:16px; font-weight:600;
     background:var(--accent); color:#fff; cursor:pointer; }
-  button.ghost { background:rgba(255,255,255,.08); color:var(--ink); }
-  button:disabled { opacity:.4; }
+  #controls button.ghost { background:rgba(255,255,255,.08); color:var(--ink); }
+  #controls button:disabled { opacity:.4; }
   #boot { position:fixed; inset:0; display:flex; flex-direction:column; gap:14px; align-items:center;
-    justify-content:center; z-index:10; background:var(--bg); transition:opacity .5s; }
+    justify-content:center; z-index:10; background:rgba(11,14,20,.92); transition:opacity .5s; }
   #boot.gone { opacity:0; pointer-events:none; }
   #boot .ring { width:46px; height:46px; border-radius:50%; border:3px solid rgba(157,92,255,.2);
     border-top-color:var(--accent); animation:spin 0.9s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   #boot p { color:var(--dim); font-size:14px; }
-  #tag { position:fixed; top:calc(12px + env(safe-area-inset-top)); left:0; right:0; text-align:center;
-    font-size:12px; color:var(--dim); letter-spacing:.2em; z-index:5; }
 </style>
 <script type="importmap">
 { "imports": {
@@ -49,7 +52,7 @@
 <body>
 <div id="avatar"></div>
 <div id="vignette"></div>
-<div id="tag">ISSHIN · 3D PRESENCE DEMO</div>
+<div id="styleBar"></div>
 <div id="boot"><div class="ring"></div><p id="bootmsg">アバターをよみこみちゅう…</p></div>
 <div id="hud">
   <div id="state"><span class="dot"></span><span id="stateTxt">きいています</span></div>
@@ -63,7 +66,28 @@
 <script type="module">
 import { TalkingHead } from "talkinghead";
 
-/* ---------- demo lines (kana-only, per app rules; EN behind gloss) ---------- */
+/* ---------- 4 avatar styles, anime → realistic (engine's own sample rigs) ----------
+   Per-model retarget/baseline values are copied from TalkingHead's siteconfig.js
+   so each rig poses correctly. Models pinned to commit eed58d1. */
+const GLB = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@eed58d198076a7e1e825f804802921c4d3804d46/avatars/";
+
+const STYLES = {
+  A: { label:"A · Anime", cfg:{ url:GLB+"vroid.glb", body:"F", avatarMood:"happy",
+        baseline:{ headRotateX:-0.1, eyeBlinkLeft:0.05, eyeBlinkRight:0.05 } } },
+  B: { label:"B · Stylized", cfg:{ url:GLB+"brunette.glb", body:"F", avatarMood:"happy" } },
+  C: { label:"C · Semi-real", cfg:{ url:GLB+"avaturn.glb", body:"F", avatarMood:"happy",
+        retarget:{ Hips:{y:0.03}, Spine:{y:0.02}, Spine1:{y:0.02,z:0.01}, Spine2:{y:0.02,z:0.01},
+          Neck:{z:0.02,y:0.01}, Head:{z:0.02}, LeftShoulder:{rx:-0.5}, RightShoulder:{rx:-0.5},
+          scaleToHipsLevel:1.0 },
+        baseline:{ headRotateX:-0.05, eyeBlinkLeft:0.15, eyeBlinkRight:0.15 } } },
+  D: { label:"D · Realistic", cfg:{ url:GLB+"avatarsdk.glb", body:"M", avatarMood:"neutral",
+        retarget:{ Neck:{z:-0.01,rx:-0.15}, Neck1:{z:-0.01,rx:-0.15}, Neck2:{z:-0.01,rx:-0.15},
+          LeftShoulder:{rz:-0.3}, RightShoulder:{rz:0.3},
+          scaleToEyesLevel:1.0, origin:{y:-0.1} },
+        baseline:{ headRotateX:-0.04, eyeBlinkLeft:0.05, eyeBlinkRight:0.05 } } },
+};
+
+/* ---------- demo lines (kana-only; EN gloss under) ---------- */
 const LINES = [
   { jp:"こんにちは！ わたしは あおい です。", en:"Hi! I'm Aoi." },
   { jp:"きょうは なにを しましたか？", en:"What did you do today?" },
@@ -74,9 +98,6 @@ const LINES = [
 ];
 
 /* ---------- kana → Oculus viseme schedule (mora-timed) ---------- */
-/* Japanese is mora-timed: each kana ≈ one beat. We map every mora to an
-   optional consonant viseme + a vowel viseme, evenly spaced, then calibrate
-   ms-per-mora against the real measured TTS duration. */
 const VROWS = [
   ["あいうえお", null], ["かきくけこ","kk"], ["がぎぐげご","kk"],
   ["さしすせそ","SS"], ["ざじずぜぞ","SS"], ["たちつてと","DD"],
@@ -84,8 +105,6 @@ const VROWS = [
   ["ばびぶべぼ","PP"], ["ぱぴぷぺぽ","PP"], ["まみむめも","PP"],
   ["やゆよ",null], ["らりるれろ","RR"], ["わを",null],
 ];
-const VOWEL = { "あ":"aa","い":"I","う":"U","え":"E","お":"O",
-                "や":"aa","ゆ":"U","よ":"O","わ":"aa","を":"O" };
 const KMAP = {};
 for (const [row, cons] of VROWS) {
   const vseq = row.length === 3 ? ["aa","U","O"] : ["aa","I","U","E","O"];
@@ -93,7 +112,7 @@ for (const [row, cons] of VROWS) {
 }
 KMAP["し"].c = "CH"; KMAP["じ"].c = "CH"; KMAP["ち"].c = "CH";
 KMAP["つ"].c = "SS"; KMAP["ふ"].c = "FF"; KMAP["ぢ"].c = "CH";
-const SMALL = { "ゃ":"aa","ゅ":"U","ょ":"O","ぁ":"aa","ぃ":"I","ぅ":"U","ぇ":"E","ぉ":"O" };
+const SMALL = { "ゃ":"aa","ゅ":"U","ょ":"O" };
 const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
 
 function kanaToMorae(text) {
@@ -102,7 +121,7 @@ function kanaToMorae(text) {
     const ch = s[i], nx = s[i+1];
     if (KMAP[ch]) {
       let m = { c: KMAP[ch].c, v: KMAP[ch].v };
-      if (nx && SMALL[nx] !== undefined && "ゃゅょ".includes(nx)) { m.v = SMALL[nx]; if (!m.c) m.c = "CH"; i++; }
+      if (nx && SMALL[nx]) { m.v = SMALL[nx]; if (!m.c) m.c = "CH"; i++; }
       out.push(m);
     }
     else if (ch === "ん") out.push({ c: null, v: "nn" });
@@ -133,37 +152,53 @@ function buildVisemes(text) {
 }
 
 /* ---------- TalkingHead setup ---------- */
-/* Ready Player Me's model host is offline (2026) — use the TalkingHead repo's
-   prebaked RPM-style test avatar (ARKit + Oculus visemes included). */
-const AVATAR_URL = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/avatars/brunette.glb";
-
 const nodeAvatar = document.getElementById("avatar");
 const bootEl = document.getElementById("boot"), bootMsg = document.getElementById("bootmsg");
 const stateEl = document.getElementById("state"), stateTxt = document.getElementById("stateTxt");
 const subEl = document.getElementById("sub");
 const speakBtn = document.getElementById("speakBtn"), loopBtn = document.getElementById("loopBtn");
+const styleBar = document.getElementById("styleBar");
 
-let head = null;
-try {
-  head = new TalkingHead(nodeAvatar, {
-    ttsEndpoint: "/none/",          // unused — we feed speakAudio directly
-    lipsyncModules: [],
-    cameraView: "upper",
-    cameraRotateEnable: false,
-    avatarMood: "happy",
-    lightAmbientIntensity: 2.2,
-    lightDirectIntensity: 22,
-  });
-  await head.showAvatar(
-    { url: AVATAR_URL, body: "F", avatarMood: "happy" },
-    ev => { if (ev.lengthComputable) bootMsg.textContent =
-      "アバターをよみこみちゅう… " + Math.round(ev.loaded / ev.total * 100) + "%"; }
-  );
-  bootEl.classList.add("gone");
-} catch (e) {
-  bootMsg.textContent = "よみこみエラー: " + (e.message || e);
-  throw e;
+const head = new TalkingHead(nodeAvatar, {
+  ttsEndpoint: "/none/",          // unused — we feed speakAudio directly
+  lipsyncModules: [],
+  cameraView: "upper",
+  cameraRotateEnable: false,
+  lightAmbientIntensity: 2.2,
+  lightDirectIntensity: 22,
+});
+
+let speaking = false, loop = false, lineIdx = 0;
+let currentStyle = null, switching = false;
+async function setStyle(key) {
+  if (switching || key === currentStyle) return;
+  switching = true;
+  speechSynthesis.cancel(); loop = false; loopBtn.textContent = "ループ";
+  bootEl.classList.remove("gone");
+  bootMsg.textContent = "アバターをよみこみちゅう…";
+  try {
+    await head.showAvatar(STYLES[key].cfg, ev => {
+      if (ev.lengthComputable) bootMsg.textContent =
+        "アバターをよみこみちゅう… " + Math.round(ev.loaded / ev.total * 100) + "%";
+    });
+    currentStyle = key;
+    localStorage.setItem("d3_style", key);
+    for (const b of styleBar.children) b.classList.toggle("on", b.dataset.k === key);
+    bootEl.classList.add("gone");
+  } catch (e) {
+    bootMsg.textContent = "よみこみエラー: " + (e.message || e);
+  }
+  switching = false;
 }
+
+for (const [key, s] of Object.entries(STYLES)) {
+  const b = document.createElement("button");
+  b.textContent = s.label; b.dataset.k = key;
+  b.onclick = () => setStyle(key);
+  styleBar.appendChild(b);
+}
+
+await setStyle(localStorage.getItem("d3_style") || "B");
 
 /* ---------- speech: browser TTS audio + our viseme schedule ---------- */
 let voiceJa = null;
@@ -172,8 +207,6 @@ function pickVoice() {
   voiceJa = vs.find(v => /neural|natural|online/i.test(v.name)) || vs[0] || null;
 }
 pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
-
-let speaking = false, loop = false, lineIdx = 0;
 
 function speakLine(line) {
   return new Promise(resolve => {
@@ -186,9 +219,8 @@ function speakLine(line) {
       t0 = performance.now();
       stateEl.classList.add("talking"); stateTxt.textContent = "はなしています";
       subEl.innerHTML = line.jp + '<span class="en">' + line.en + "</span>";
-      // silent buffer carries our viseme timeline through TalkingHead
-      const ctx = head.audioCtx || new AudioContext();
-      const buf = ctx.createBuffer(1, Math.ceil((sched.total + 400) * ctx.sampleRate / 1000), ctx.sampleRate);
+      const buf = head.audioCtx.createBuffer(1,
+        Math.ceil((sched.total + 400) * head.audioCtx.sampleRate / 1000), head.audioCtx.sampleRate);
       head.speakAudio({ audio: buf, words: [line.jp], wtimes: [0], wdurations: [sched.total],
         visemes: sched.visemes, vtimes: sched.vtimes, vdurations: sched.vdurations });
     };
