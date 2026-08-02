@@ -51,11 +51,33 @@ liability cluster, and form C retains every protected property.
    shows the partner's face — never a staged shot; §4.2 licensing check must
    pass before any paid placement.
 
+## Amendment 2026-08-02 (owner-driven, Gate 0 outcome)
+
+Gate 0 ran as a LIVE animated demo (`avatar-demo.html`) rather than a static
+mockup, and the owner's approval attached to the animated form. Two clauses of
+Decision 1 are superseded by explicit owner direction:
+
+1. **"No mouth ever moves; the art never animates" is superseded.** The
+   approved presence is a 4-frame procedural loop per partner — `base / half /
+   talk / blink` — flapped at ~115ms while TTS is active plus an idle blink
+   loop. This is classic cartoon flap, NOT phoneme lip-sync; the **photoreal +
+   phoneme-lip-sync prohibition is retained permanently** (it is exactly the
+   Praktika complaint cluster the research flagged).
+2. **Style is no longer flat/cel.** Owner rejected the flat style as "stale and
+   boring" (2026-08-01), shortlisted 3 of 10 explored styles, and locked
+   **stylized 3D animated-movie render tuned toward Praktika-Skye realism**
+   (2026-08-02). あおい regenerated female + characterful in that style;
+   accepted on the live demo.
+
+Frame assets are procedurally derived from each portrait (PIL patches + cv2
+TELEA inpaint), so each partner ships 4 images, not 1 — asset-weight numbers in
+ADR-020 apply per frame set. Everything else (3-way `presence` setting,
+`_orbSet` seam contract, `'min'` escape hatch, ad tie-in) stands.
+
 ## Acceptance gate (numeric)
 
-- Gate 0: **1** composed mockup (≥1 portrait rendered at **128px** — the
-  smallest shipped size — inside the aura frame) receives an explicit owner YES
-  before any build commit.
+- Gate 0: **CLOSED 2026-08-02** — owner YES on the live animated demo
+  (supersedes the static-mockup form of the gate).
 - Post-ship: owner completes **≥5** field sessions within **14 days** on default
   `'chara'` and gives a positive/neutral felt-difference verdict.
 

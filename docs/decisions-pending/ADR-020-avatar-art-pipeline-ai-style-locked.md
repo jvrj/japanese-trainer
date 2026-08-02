@@ -48,6 +48,24 @@ acceptance gate) must never break the whole app's offline install.
    as the style brief; deliverables replace files at the same paths; no code
    change.
 
+## Amendment 2026-08-02 (Gate 0 outcome — generator, style, cast)
+
+1. **Generator locked by practice:** OpenAI **gpt-image-1** (Images API,
+   `quality: high`, 1024×1024), driven via API rather than owner-manual
+   generation. Commercial use of outputs permitted under OpenAI terms
+   (re-verify + record generator/date in the asset commit per Decision 5).
+   Operational note: 5 images/min rate limit.
+2. **"Age-neutral adults" is superseded.** That locked descriptor was the root
+   cause of the rejected stale/male-reading あおい. The cast is explicitly
+   gendered and characterful — balanced 4 women / 4 men — per the rewritten
+   `docs/avatar-portrait-prompts.md`.
+3. **Style lock is now stylized 3D** (Praktika-Skye-tuned animated-movie
+   render), not flat/cel. "No photoreal drift" gate item still applies.
+4. **Per-partner frame sets:** each accepted portrait gets procedurally built
+   `talk/half/blink` frames (PIL + cv2 TELEA). Asset spec applies per frame
+   (4 files per partner); regenerating a portrait invalidates its frame
+   coordinate map.
+
 ## Acceptance gate (numeric)
 
 - **≥5 of 8** portraits pass the per-portrait gate within **≤2** generation
