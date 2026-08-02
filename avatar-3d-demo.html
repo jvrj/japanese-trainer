@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Isshin — 3D presence demo</title>
+<style>
+  :root { --bg:#0b0e14; --ink:#e8e6f0; --dim:#8b87a0; --accent:#9d5cff; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+  #avatar { position:fixed; inset:0; }
+  #avatar canvas { display:block; }
+  #vignette { position:fixed; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse 90% 70% at 50% 38%, transparent 55%, rgba(11,14,20,.88) 100%); }
+  #hud { position:fixed; left:0; right:0; bottom:0; padding:18px 20px calc(20px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; align-items:center; gap:12px; z-index:5; }
+  #state { font-size:13px; letter-spacing:.14em; color:var(--dim); text-transform:none;
+    display:flex; align-items:center; gap:8px; }
+  #state .dot { width:8px; height:8px; border-radius:50%; background:#4ade80; transition:background .3s; }
+  #state.talking .dot { background:var(--accent); animation:pulse 0.9s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.35; } }
+  #sub { min-height:2.6em; font-size:clamp(19px, 5vw, 26px); line-height:1.4; text-align:center;
+    max-width:640px; text-wrap:balance; }
+  #sub .en { display:block; font-size:.58em; color:var(--dim); margin-top:4px; }
+  #controls { display:flex; gap:10px; }
+  button { border:0; border-radius:999px; padding:14px 30px; font-size:16px; font-weight:600;
+    background:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:rgba(255,255,255,.08); color:var(--ink); }
+  button:disabled { opacity:.4; }
+  #boot { position:fixed; inset:0; display:flex; flex-direction:column; gap:14px; align-items:center;
+    justify-content:center; z-index:10; background:var(--bg); transition:opacity .5s; }
+  #boot.gone { opacity:0; pointer-events:none; }
+  #boot .ring { width:46px; height:46px; border-radius:50%; border:3px solid rgba(157,92,255,.2);
+    border-top-color:var(--accent); animation:spin 0.9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #boot p { color:var(--dim); font-size:14px; }
+  #tag { position:fixed; top:calc(12px + env(safe-area-inset-top)); left:0; right:0; text-align:center;
+    font-size:12px; color:var(--dim); letter-spacing:.2em; z-index:5; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
+} }
+</script>
+</head>
+<body>
+<div id="avatar"></div>
+<div id="vignette"></div>
+<div id="tag">ISSHIN · 3D PRESENCE DEMO</div>
+<div id="boot"><div class="ring"></div><p id="bootmsg">アバターをよみこみちゅう…</p></div>
+<div id="hud">
+  <div id="state"><span class="dot"></span><span id="stateTxt">きいています</span></div>
+  <div id="sub"></div>
+  <div id="controls">
+    <button id="speakBtn">はなして</button>
+    <button id="loopBtn" class="ghost">ループ</button>
+  </div>
+</div>
+
+<script type="module">
+import { TalkingHead } from "talkinghead";
+
+/* ---------- demo lines (kana-only, per app rules; EN behind gloss) ---------- */
+const LINES = [
+  { jp:"こんにちは！ わたしは あおい です。", en:"Hi! I'm Aoi." },
+  { jp:"きょうは なにを しましたか？", en:"What did you do today?" },
+  { jp:"へえ、いいですね。もっと おしえて ください。", en:"Oh nice! Tell me more." },
+  { jp:"わたしは えを かくのが すきです。", en:"I love drawing." },
+  { jp:"いっしょに にほんごで はなしましょう！", en:"Let's talk in Japanese together!" },
+  { jp:"だいじょうぶ、ゆっくりで いいですよ。", en:"It's okay, take your time." },
+];
+
+/* ---------- kana → Oculus viseme schedule (mora-timed) ---------- */
+/* Japanese is mora-timed: each kana ≈ one beat. We map every mora to an
+   optional consonant viseme + a vowel viseme, evenly spaced, then calibrate
+   ms-per-mora against the real measured TTS duration. */
+const VROWS = [
+  ["あいうえお", null], ["かきくけこ","kk"], ["がぎぐげご","kk"],
+  ["さしすせそ","SS"], ["ざじずぜぞ","SS"], ["たちつてと","DD"],
+  ["だぢづでど","DD"], ["なにぬねの","nn"], ["はひふへほ",null],
+  ["ばびぶべぼ","PP"], ["ぱぴぷぺぽ","PP"], ["まみむめも","PP"],
+  ["やゆよ",null], ["らりるれろ","RR"], ["わを",null],
+];
+const VOWEL = { "あ":"aa","い":"I","う":"U","え":"E","お":"O",
+                "や":"aa","ゆ":"U","よ":"O","わ":"aa","を":"O" };
+const KMAP = {};
+for (const [row, cons] of VROWS) {
+  const vseq = row.length === 3 ? ["aa","U","O"] : ["aa","I","U","E","O"];
+  [...row].forEach((k, i) => { KMAP[k] = { c: cons, v: vseq[i] }; });
+}
+KMAP["し"].c = "CH"; KMAP["じ"].c = "CH"; KMAP["ち"].c = "CH";
+KMAP["つ"].c = "SS"; KMAP["ふ"].c = "FF"; KMAP["ぢ"].c = "CH";
+const SMALL = { "ゃ":"aa","ゅ":"U","ょ":"O","ぁ":"aa","ぃ":"I","ぅ":"U","ぇ":"E","ぉ":"O" };
+const toHira = s => s.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+
+function kanaToMorae(text) {
+  const s = toHira(text); const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i], nx = s[i+1];
+    if (KMAP[ch]) {
+      let m = { c: KMAP[ch].c, v: KMAP[ch].v };
+      if (nx && SMALL[nx] !== undefined && "ゃゅょ".includes(nx)) { m.v = SMALL[nx]; if (!m.c) m.c = "CH"; i++; }
+      out.push(m);
+    }
+    else if (ch === "ん") out.push({ c: null, v: "nn" });
+    else if (ch === "っ") out.push({ c: null, v: "sil" });
+    else if (ch === "ー" && out.length) out.push({ c: null, v: out[out.length-1].v });
+    else if ("、。！？!?,. ".includes(ch)) out.push({ c: null, v: "sil", pause: true });
+  }
+  return out;
+}
+
+let MORA_MS = parseFloat(localStorage.getItem("d3_moraMs")) || 145; // self-calibrating
+
+function buildVisemes(text) {
+  const morae = kanaToMorae(text);
+  const visemes = [], vtimes = [], vdurations = [];
+  let t = 0;
+  for (const m of morae) {
+    const dur = m.pause ? MORA_MS * 1.6 : MORA_MS;
+    if (m.c && m.v !== "sil") {
+      visemes.push(m.c); vtimes.push(t); vdurations.push(dur * 0.35);
+      visemes.push(m.v); vtimes.push(t + dur * 0.3); vdurations.push(dur * 0.7);
+    } else {
+      visemes.push(m.v); vtimes.push(t); vdurations.push(dur);
+    }
+    t += dur;
+  }
+  return { visemes, vtimes, vdurations, total: t, moraCount: morae.filter(m => !m.pause).length };
+}
+
+/* ---------- TalkingHead setup ---------- */
+const AVATAR_URL = "https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb"
+  + "?morphTargets=ARKit,Oculus%20Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown"
+  + "&textureSizeLimit=1024&textureFormat=png";
+
+const nodeAvatar = document.getElementById("avatar");
+const bootEl = document.getElementById("boot"), bootMsg = document.getElementById("bootmsg");
+const stateEl = document.getElementById("state"), stateTxt = document.getElementById("stateTxt");
+const subEl = document.getElementById("sub");
+const speakBtn = document.getElementById("speakBtn"), loopBtn = document.getElementById("loopBtn");
+
+let head = null;
+try {
+  head = new TalkingHead(nodeAvatar, {
+    ttsEndpoint: "/none/",          // unused — we feed speakAudio directly
+    lipsyncModules: [],
+    cameraView: "upper",
+    cameraRotateEnable: false,
+    avatarMood: "happy",
+    lightAmbientIntensity: 2.2,
+    lightDirectIntensity: 22,
+  });
+  await head.showAvatar(
+    { url: AVATAR_URL, body: "F", avatarMood: "happy" },
+    ev => { if (ev.lengthComputable) bootMsg.textContent =
+      "アバターをよみこみちゅう… " + Math.round(ev.loaded / ev.total * 100) + "%"; }
+  );
+  bootEl.classList.add("gone");
+} catch (e) {
+  bootMsg.textContent = "よみこみエラー: " + (e.message || e);
+  throw e;
+}
+
+/* ---------- speech: browser TTS audio + our viseme schedule ---------- */
+let voiceJa = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.startsWith("ja"));
+  voiceJa = vs.find(v => /neural|natural|online/i.test(v.name)) || vs[0] || null;
+}
+pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
+
+let speaking = false, loop = false, lineIdx = 0;
+
+function speakLine(line) {
+  return new Promise(resolve => {
+    const sched = buildVisemes(line.jp);
+    const u = new SpeechSynthesisUtterance(line.jp);
+    u.lang = "ja-JP"; if (voiceJa) u.voice = voiceJa;
+    u.rate = 1.0; u.pitch = 1.05;
+    let t0 = 0;
+    u.onstart = () => {
+      t0 = performance.now();
+      stateEl.classList.add("talking"); stateTxt.textContent = "はなしています";
+      subEl.innerHTML = line.jp + '<span class="en">' + line.en + "</span>";
+      // silent buffer carries our viseme timeline through TalkingHead
+      const ctx = head.audioCtx || new AudioContext();
+      const buf = ctx.createBuffer(1, Math.ceil((sched.total + 400) * ctx.sampleRate / 1000), ctx.sampleRate);
+      head.speakAudio({ audio: buf, words: [line.jp], wtimes: [0], wdurations: [sched.total],
+        visemes: sched.visemes, vtimes: sched.vtimes, vdurations: sched.vdurations });
+    };
+    u.onend = u.onerror = () => {
+      if (t0 && sched.moraCount > 6) {           // calibrate mora rate from reality
+        const measured = (performance.now() - t0) / (sched.total / MORA_MS);
+        if (measured > 60 && measured < 320) {
+          MORA_MS = MORA_MS * 0.5 + measured * 0.5;
+          localStorage.setItem("d3_moraMs", MORA_MS.toFixed(1));
+        }
+      }
+      stateEl.classList.remove("talking"); stateTxt.textContent = "きいています";
+      resolve();
+    };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  });
+}
+
+async function speakNext() {
+  if (speaking) return;
+  speaking = true; speakBtn.disabled = true;
+  do {
+    await speakLine(LINES[lineIdx]);
+    lineIdx = (lineIdx + 1) % LINES.length;
+    if (loop) await new Promise(r => setTimeout(r, 1200));
+  } while (loop);
+  speaking = false; speakBtn.disabled = false;
+}
+
+speakBtn.onclick = speakNext;
+loopBtn.onclick = () => {
+  loop = !loop;
+  loopBtn.textContent = loop ? "ループ ■" : "ループ";
+  if (loop && !speaking) speakNext();
+};
+</script>
+</body>
+</html>
