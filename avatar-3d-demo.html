@@ -133,9 +133,9 @@ function buildVisemes(text) {
 }
 
 /* ---------- TalkingHead setup ---------- */
-const AVATAR_URL = "https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb"
-  + "?morphTargets=ARKit,Oculus%20Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown"
-  + "&textureSizeLimit=1024&textureFormat=png";
+/* Ready Player Me's model host is offline (2026) — use the TalkingHead repo's
+   prebaked RPM-style test avatar (ARKit + Oculus visemes included). */
+const AVATAR_URL = "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/avatars/brunette.glb";
 
 const nodeAvatar = document.getElementById("avatar");
 const bootEl = document.getElementById("boot"), bootMsg = document.getElementById("bootmsg");
