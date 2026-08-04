@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.45';
+const APP_VERSION = '8.46';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -13371,6 +13371,430 @@ function renderFormsLadder(){
   </div>`;
 }
 
+/* ===================== SENTENCES (v8.46) =====================
+   Owner request (2026-08-04): put freshly-practiced words into real
+   sentences, Japaneasy-style — a PICTURE carries the meaning (never an
+   English prompt; English appears only after answering), and the learner
+   picks the word or counted form that fits the blank.
+     · Fill the gap — cloze frame + emoji cue; answer chips drawn from
+       recently-practiced words (state.stats lastSeen), padded with other
+       picturable words when the practiced pool is thin.
+     · Count it — quantity scene (🍊×5) → pick the correct counted form.
+       Counter families + sound changes; occasional 11–13 questions teach
+       the "after ten, just use the plain number" rule (いすが じゅうに あります).
+   Fresh-built (owner benched the old Sentence Coach — no code reuse) and
+   session-scored only: nothing here writes to SRS/state.stats. */
+
+/* jp → emoji cue. Lookup is by exact deck jp; unmapped words simply are not
+   eligible for Fill the gap. Ambiguous same-kana homonyms (はし, はな, あめ,
+   かみ, かわ) are deliberately absent — the picture could depict the wrong
+   twin. */
+const SENT_EMOJI = {
+  'みず':'💧','おちゃ':'🍵','コーヒー':'☕','ぎゅうにゅう':'🥛','ジュース':'🧃',
+  'パン':'🍞','ごはん':'🍚','たまご':'🥚','さかな':'🐟','にく':'🥩','りんご':'🍎',
+  'みかん':'🍊','バナナ':'🍌','やさい':'🥦','ケーキ':'🍰',
+  'おかし':'🍬','チョコレート':'🍫','アイスクリーム':'🍦','ピザ':'🍕','すし':'🍣',
+  'ラーメン':'🍜','カレー':'🍛','べんとう':'🍱','にんじん':'🥕','じゃがいも':'🥔',
+  'トマト':'🍅','いちご':'🍓','ぶどう':'🍇','スープ':'🍲','ビール':'🍺',
+  'ワイン':'🍷','おにぎり':'🍙',
+  'いぬ':'🐶','ねこ':'🐱','とり':'🐦','うま':'🐴','うし':'🐄','ぶた':'🐷',
+  'ぞう':'🐘','ねずみ':'🐭','うさぎ':'🐰','くま':'🐻','さる':'🐵','ひつじ':'🐑',
+  'にわとり':'🐔','かえる':'🐸','むし':'🐛','はち':'🐝','ちょう':'🦋',
+  'ペンギン':'🐧','パンダ':'🐼','ライオン':'🦁','とら':'🐯','へび':'🐍','かめ':'🐢',
+  'いえ':'🏠','がっこう':'🏫','びょういん':'🏥','ぎんこう':'🏦','えき':'🚉',
+  'ゆうびんきょく':'🏤','レストラン':'🍽️','こうえん':'🌳','としょかん':'📚',
+  'コンビニ':'🏪','ホテル':'🏨','くうこう':'✈️','うみ':'🌊',
+  'やま':'⛰️','おてら':'🛕','じんじゃ':'⛩️','おふろ':'🛁','トイレ':'🚽',
+  'プール':'🏊','えいがかん':'🎬','きっさてん':'☕',
+  'くるま':'🚗','じてんしゃ':'🚲','でんしゃ':'🚃','ひこうき':'✈️','ふね':'⛵',
+  'バス':'🚌','タクシー':'🚕','ちかてつ':'🚇','テレビ':'📺','パソコン':'💻',
+  'でんわ':'☎️','けいたい':'📱','スマホ':'📱','カメラ':'📷','とけい':'⌚',
+  'ほん':'📕','ざっし':'📖','しんぶん':'📰','てがみ':'✉️','えんぴつ':'✏️',
+  'ペン':'🖊️','かさ':'☂️','めがね':'👓','かばん':'🎒','ぼうし':'🧢','くつ':'👟',
+  'シャツ':'👕','ズボン':'👖','スカート':'👗','コート':'🧥','くつした':'🧦',
+  'かぎ':'🔑','おかね':'💰','さいふ':'👛','いす':'🪑','ベッド':'🛏️','ドア':'🚪',
+  'まど':'🪟','はさみ':'✂️','ちず':'🗺️','きっぷ':'🎫','チケット':'🎫',
+  'プレゼント':'🎁','ノート':'📓','じしょ':'📔','コップ':'🥛','おさら':'🍽️',
+  'ナイフ':'🔪','くすり':'💊','せっけん':'🧼',
+  'き':'🌳','つき':'🌙','ほし':'⭐','たいよう':'☀️','ゆき':'❄️','にじ':'🌈',
+  'サッカー':'⚽','やきゅう':'⚾','テニス':'🎾','バスケットボール':'🏀',
+  'ピアノ':'🎹','ギター':'🎸','えいが':'🎬','おんがく':'🎵','うた':'🎤',
+  'め':'👁️','みみ':'👂','て':'✋','あし':'🦵','くち':'👄',
+  'おとうさん':'👨','おかあさん':'👩','おじいさん':'👴','おばあさん':'👵',
+  'あかちゃん':'👶','こども':'🧒','ともだち':'👫','せんせい':'🧑‍🏫','いしゃ':'🧑‍⚕️'
+};
+
+/* Cloze frames. t:null = fits any noun; otherwise the word's theme must be
+   listed. Frames that would need edible/drinkable distinctions the theme
+   taxonomy can't make (たべます/のみます) are deliberately not here. */
+const GAP_FRAMES = [
+  { p:'これは {N} です',            en:'This is {N}',           t:null },
+  { p:'{N}が すき です',            en:'I like {N}',            t:null },
+  { p:'{N}を ください',             en:'{N}, please',           t:['food','objects','shopping','cooking'] },
+  { p:'{N}に いきます',             en:'I go to the {N}',       t:['places'] },
+  { p:'{N}は どこ ですか',          en:'Where is the {N}?',     t:['places','objects','home'] },
+  { p:'{N}を かいます',             en:'I buy {N}',             t:['shopping','food','objects','clothing'] },
+  { p:'{N}が います',               en:'There is a {N}',        t:['animals','family','people'] },
+  { p:'{N}が あります',             en:'There is a {N}',        t:['objects','home','food'] },
+  { p:'あたらしい {N}を かいました', en:'I bought a new {N}',    t:['objects','clothing','shopping'] },
+  { p:'{N}は たかい です',          en:'The {N} is expensive',  t:['objects','shopping','clothing','food'] }
+];
+
+/* Counted forms 1–10 per counter family — sound changes spelled out, never
+   generated. After 10 the つ series drops away entirely (bare numbers). */
+const COUNT_FORMS = {
+  tsu:  ['ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ','とお'],
+  mai:  ['いちまい','にまい','さんまい','よんまい','ごまい','ろくまい','ななまい','はちまい','きゅうまい','じゅうまい'],
+  hon:  ['いっぽん','にほん','さんぼん','よんほん','ごほん','ろっぽん','ななほん','はっぽん','きゅうほん','じゅっぽん'],
+  hiki: ['いっぴき','にひき','さんびき','よんひき','ごひき','ろっぴき','ななひき','はっぴき','きゅうひき','じゅっぴき'],
+  tou:  ['いっとう','にとう','さんとう','よんとう','ごとう','ろくとう','ななとう','はっとう','きゅうとう','じゅっとう'],
+  wa:   ['いちわ','にわ','さんわ','よんわ','ごわ','ろくわ','ななわ','はちわ','きゅうわ','じゅうわ'],
+  nin:  ['ひとり','ふたり','さんにん','よにん','ごにん','ろくにん','ななにん','はちにん','きゅうにん','じゅうにん'],
+  dai:  ['いちだい','にだい','さんだい','よんだい','ごだい','ろくだい','ななだい','はちだい','きゅうだい','じゅうだい'],
+  satsu:['いっさつ','にさつ','さんさつ','よんさつ','ごさつ','ろくさつ','ななさつ','はっさつ','きゅうさつ','じゅっさつ'],
+  hai:  ['いっぱい','にはい','さんばい','よんはい','ごはい','ろっぱい','ななはい','はっぱい','きゅうはい','じゅっぱい']
+};
+const COUNT_BASE = { tsu:'つ', mai:'まい', hon:'ほん', hiki:'ひき', tou:'とう', wa:'わ', nin:'にん', dai:'だい', satsu:'さつ', hai:'はい' };
+const COUNT_NUMS = ['いち','に','さん','よん','ご','ろく','なな','はち','きゅう','じゅう'];
+const COUNT_BARE = { 11:'じゅういち', 12:'じゅうに', 13:'じゅうさん' };
+const COUNT_NOTES = {
+  tsu:'ひとつ…とお is the all-purpose counter. After 10 it drops away — just say the plain number: いすが じゅうに あります.',
+  mai:'まい counts flat things — paper, plates, shirts, tickets, pizzas.',
+  hon:'ほん counts long thin things. Sound changes: いっぽん・さんぼん・ろっぽん・はっぽん・じゅっぽん.',
+  hiki:'ひき counts small animals. Sound changes: いっぴき・さんびき・ろっぴき・はっぴき・じゅっぴき.',
+  tou:'とう counts large animals — cows, horses, elephants. Small ones take ひき.',
+  wa:'わ counts birds — and rabbits, for old historical reasons.',
+  nin:'にん counts people. Irregular start: ひとり (1), ふたり (2), then さんにん, よにん…',
+  dai:'だい counts machines and vehicles — cars, bikes, TVs, computers.',
+  satsu:'さつ counts books, notebooks and magazines.',
+  hai:'はい counts cups and glasses. Sound changes: いっぱい・さんばい・ろっぱい・はっぱい・じゅっぱい.'
+};
+/* One canonical counter per item, chosen to be unambiguously right — items
+   where two counters are equally natural (りんご つ/こ aside, e.g. クッキー
+   まい/こ) are left out so a "wrong" chip is never actually defensible. */
+const COUNT_ITEMS = [
+  { e:'🍊', jp:'みかん',     en:'mandarin',  c:'tsu' },
+  { e:'🍎', jp:'りんご',     en:'apple',     c:'tsu' },
+  { e:'🥚', jp:'たまご',     en:'egg',       c:'tsu' },
+  { e:'🪑', jp:'いす',       en:'chair',     c:'tsu' },
+  { e:'🍰', jp:'ケーキ',     en:'cake',      c:'tsu' },
+  { e:'🎒', jp:'かばん',     en:'bag',       c:'tsu' },
+  { e:'🍙', jp:'おにぎり',   en:'rice ball', c:'tsu' },
+  { e:'👕', jp:'シャツ',     en:'shirt',     c:'mai' },
+  { e:'🎫', jp:'チケット',   en:'ticket',    c:'mai' },
+  { e:'🍽️', jp:'おさら',     en:'plate',     c:'mai' },
+  { e:'✏️', jp:'えんぴつ',   en:'pencil',    c:'hon' },
+  { e:'☂️', jp:'かさ',       en:'umbrella',  c:'hon' },
+  { e:'🍌', jp:'バナナ',     en:'banana',    c:'hon' },
+  { e:'🥕', jp:'にんじん',   en:'carrot',    c:'hon' },
+  { e:'🐱', jp:'ねこ',       en:'cat',       c:'hiki', anim:true },
+  { e:'🐶', jp:'いぬ',       en:'dog',       c:'hiki', anim:true },
+  { e:'🐟', jp:'さかな',     en:'fish',      c:'hiki', anim:true },
+  { e:'🐸', jp:'かえる',     en:'frog',      c:'hiki', anim:true },
+  { e:'🐄', jp:'うし',       en:'cow',       c:'tou',  anim:true },
+  { e:'🐴', jp:'うま',       en:'horse',     c:'tou',  anim:true },
+  { e:'🐘', jp:'ぞう',       en:'elephant',  c:'tou',  anim:true },
+  { e:'🐦', jp:'とり',       en:'bird',      c:'wa',   anim:true },
+  { e:'🐔', jp:'にわとり',   en:'chicken',   c:'wa',   anim:true },
+  { e:'🧒', jp:'こども',     en:'child',     c:'nin',  anim:true },
+  { e:'🧍', jp:'ひと',       en:'person',    c:'nin',  anim:true },
+  { e:'🚗', jp:'くるま',     en:'car',       c:'dai' },
+  { e:'🚲', jp:'じてんしゃ', en:'bicycle',   c:'dai' },
+  { e:'📺', jp:'テレビ',     en:'TV',        c:'dai' },
+  { e:'💻', jp:'パソコン',   en:'computer',  c:'dai' },
+  { e:'📕', jp:'ほん',       en:'book',      c:'satsu' },
+  { e:'📓', jp:'ノート',     en:'notebook',  c:'satsu' },
+  { e:'☕', jp:'コーヒー',   en:'coffee',    c:'hai' },
+  { e:'🍵', jp:'おちゃ',     en:'tea',       c:'hai' }
+];
+
+const SENT_ROUND = 15;
+
+/* ---- Fill the gap ---- */
+
+/* Eligible = nouns with an emoji cue. Practiced ones (any Blitz attempt)
+   come first, freshest lastSeen first — that IS the "words you just
+   practiced" pool; unpracticed mapped words only pad thin pools so a
+   brand-new user can still play. */
+function _gapPools(){
+  const mapped = getActiveWords().filter(w => w.pos === 'n' && SENT_EMOJI[w.jp] && !w.retired);
+  const seen = new Map();
+  mapped.forEach(w => { const k = w.jp + '|' + w.en; if(!seen.has(k)) seen.set(k, w); });
+  const uniq = [...seen.values()];
+  const practiced = uniq.filter(w => { const st = state.stats[w.id]; return st && st.attempts && st.attempts.length; })
+    .sort((a,b) => ((state.stats[b.id].lastSeen||0) - (state.stats[a.id].lastSeen||0)));
+  return { practiced, all: uniq };
+}
+
+/* Emoji whose glyphs are too alike to tell apart at answer time — a word
+   from the answer's group must never appear as a distractor (📔 cannot rule
+   out ノート vs じしょ; 🚃 vs 🚇 is a coin flip). */
+const _SENT_CONFUSE = [
+  ['📕','📖','📓','📔','📚'],
+  ['🚃','🚇','🚉'],
+  ['☎️','📱'],
+  ['☕','🍵'],
+  ['🏪','🏨','🏤','🏦']
+];
+function _sentConfuseGroup(emoji){
+  const g = _SENT_CONFUSE.find(grp => grp.includes(emoji));
+  return g || [emoji];
+}
+
+function _gapBuildQ(word, all){
+  const frames = GAP_FRAMES.filter(f => !f.t || f.t.includes(word.theme));
+  const frame = frames[Math.floor(Math.random() * frames.length)] || GAP_FRAMES[0];
+  /* Distractors: same theme first, then anything — but never a word whose
+     emoji (or a confusably-similar one) or meaning collides with the answer:
+     the picture must rule them out, not just the kana. */
+  const wordGrp = _sentConfuseGroup(SENT_EMOJI[word.jp]);
+  const ok = c => c.id !== word.id && c.jp !== word.jp && !wordGrp.includes(SENT_EMOJI[c.jp]) && c.en !== word.en;
+  const sameTheme = shuffleFY(all.filter(c => ok(c) && c.theme === word.theme));
+  const others = shuffleFY(all.filter(c => ok(c) && c.theme !== word.theme));
+  const distractors = [];
+  const used = new Set([word.jp]);
+  for(const c of [...sameTheme, ...others]){
+    if(distractors.length >= 3) break;
+    if(used.has(c.jp) || [...used].some(u => _sentConfuseGroup(SENT_EMOJI[u]).includes(SENT_EMOJI[c.jp]))) continue;
+    used.add(c.jp); distractors.push(c);
+  }
+  if(distractors.length < 3) return null;
+  const opts = shuffleFY([word, ...distractors]);
+  return {
+    emoji: SENT_EMOJI[word.jp],
+    pattern: frame.p,
+    word,
+    opts: opts.map(o => ({ jp:o.jp, en:o.en })),
+    correctIdx: opts.findIndex(o => o.id === word.id),
+    jpFull: frame.p.replace('{N}', word.jp),
+    enFull: frame.en.replace('{N}', word.en)
+  };
+}
+
+function startSentGap(){
+  const { practiced, all } = _gapPools();
+  if(all.length < 8){ showToast('Not enough picturable words yet — drill more vocab first', { tone:'warn' }); return; }
+  /* Round targets: freshest practiced words, topped up with unpracticed. */
+  const targets = [...practiced.slice(0, 40), ...shuffleFY(all.filter(w => !practiced.includes(w)))].slice(0, SENT_ROUND * 2);
+  const qs = [];
+  for(const w of shuffleFY(targets)){
+    if(qs.length >= SENT_ROUND) break;
+    const q = _gapBuildQ(w, all);
+    if(q) qs.push(q);
+  }
+  if(qs.length < 5){ showToast('Not enough picturable words yet — drill more vocab first', { tone:'warn' }); return; }
+  state.sentGap = { qs, i:0, correct:0, pick:null };
+  nav('sentGap');
+}
+window.startSentGap = startSentGap;
+
+function sentGapPick(idx){
+  const g = state.sentGap; if(!g || g.pick !== null) return;
+  const q = g.qs[g.i];
+  g.pick = idx;
+  if(idx === q.correctIdx) g.correct++;
+  try{ speakJP(q.jpFull); }catch(e){}
+  render();
+}
+window.sentGapPick = sentGapPick;
+function sentGapNext(){ const g = state.sentGap; if(!g) return; g.i++; g.pick = null; render(); }
+window.sentGapNext = sentGapNext;
+
+/* ---- Count it ---- */
+
+function _countBuildQ(){
+  const item = COUNT_ITEMS[Math.floor(Math.random() * COUNT_ITEMS.length)];
+  const verb = item.anim ? 'います' : 'あります';
+  let n, correct, bare = false;
+  if(item.c === 'tsu' && Math.random() < 0.2){
+    n = 11 + Math.floor(Math.random() * 3);
+    correct = COUNT_BARE[n];
+    bare = true;
+  } else {
+    n = 1 + Math.floor(Math.random() * 10);
+    correct = COUNT_FORMS[item.c][n - 1];
+  }
+  const opts = [correct];
+  const push = v => { if(v && !opts.includes(v)) opts.push(v); };
+  if(bare){
+    /* The classic mistakes after 10: bolting つ on anyway, a wrong counter
+       family at the same number, or a wrong number. */
+    push(COUNT_BARE[n] + 'つ');
+    push(COUNT_BARE[n] + 'まい');
+    push(COUNT_BARE[n === 13 ? 11 : n + 1]);
+  } else {
+    /* Naive no-sound-change form (さんひき for さんびき, いちつ for ひとつ) —
+       the trap that actually teaches. Skipped when the regular build IS the
+       correct form (e.g. にまい). */
+    const naive = COUNT_NUMS[n - 1] + COUNT_BASE[item.c];
+    if(naive !== correct) push(naive);
+    /* Wrong number, right counter. */
+    const m = n === 10 ? n - (1 + Math.floor(Math.random() * 2)) : n + 1;
+    push(COUNT_FORMS[item.c][m - 1]);
+    /* Right number, wrong counter family. つ is EXCLUDED as a distractor for
+       inanimate items — おさらが みっつ あります is defensible everyday Japanese,
+       and a chip must never be wrong-but-defensible. For animals/people つ is
+       genuinely wrong (ねこが みっつ ✗), so it stays in play there. */
+    const wrongFam = k => k !== item.c && (item.anim || k !== 'tsu');
+    const otherKeys = shuffleFY(Object.keys(COUNT_FORMS).filter(wrongFam));
+    for(const k of otherKeys){ if(opts.length >= 4) break; push(COUNT_FORMS[k][n - 1]); }
+    while(opts.length < 4){
+      const k = otherKeys[Math.floor(Math.random() * otherKeys.length)];
+      push(COUNT_FORMS[k][Math.floor(Math.random() * 10)]);
+    }
+  }
+  while(opts.length < 4){
+    push(COUNT_BARE[11 + opts.length] || COUNT_FORMS.mai[opts.length]);
+  }
+  const shuffled = shuffleFY(opts.slice(0, 4));
+  return {
+    item, n, bare,
+    opts: shuffled,
+    correctIdx: shuffled.indexOf(correct),
+    jpFull: `${item.jp}が ${correct} ${verb}`,
+    enFull: `${n} × ${item.en}`,
+    note: bare ? COUNT_NOTES.tsu : COUNT_NOTES[item.c]
+  };
+}
+
+function startSentCount(){
+  const qs = [];
+  let guard = 0;
+  while(qs.length < SENT_ROUND && guard++ < 200){
+    const q = _countBuildQ();
+    /* No back-to-back repeats of the same object. */
+    if(qs.length && qs[qs.length - 1].item.jp === q.item.jp) continue;
+    qs.push(q);
+  }
+  state.sentCount = { qs, i:0, correct:0, pick:null };
+  nav('sentCount');
+}
+window.startSentCount = startSentCount;
+
+function sentCountPick(idx){
+  const s = state.sentCount; if(!s || s.pick !== null) return;
+  const q = s.qs[s.i];
+  s.pick = idx;
+  if(idx === q.correctIdx) s.correct++;
+  try{ speakJP(q.jpFull); }catch(e){}
+  render();
+}
+window.sentCountPick = sentCountPick;
+function sentCountNext(){ const s = state.sentCount; if(!s) return; s.i++; s.pick = null; render(); }
+window.sentCountNext = sentCountNext;
+
+/* ---- shared drill chrome ---- */
+
+function _sentRoundDone(sess, restartFn){
+  const total = sess.qs.length;
+  const pct = total ? Math.round(sess.correct / total * 100) : 0;
+  return `<div style="padding:24px 2px">
+    <div style="background:linear-gradient(160deg,rgba(52,211,153,.16),rgba(157,92,255,.06));border:1px solid rgba(52,211,153,.32);border-radius:22px;padding:28px 18px;text-align:center">
+      <div style="font-size:46px;margin-bottom:6px">${pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪'}</div>
+      <div style="font-weight:800;font-size:20px">Round complete</div>
+      <div style="font-weight:800;font-size:34px;letter-spacing:-1px;margin-top:10px"><span style="background:linear-gradient(100deg,#9d5cff,#ff5d9e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">${sess.correct}/${total}</span></div>
+    </div>
+    <button onclick="${restartFn}()" style="width:100%;margin-top:14px;padding:15px;border:none;border-radius:15px;font-family:inherit;font-weight:800;font-size:14px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.35);cursor:pointer">New round →</button>
+    <button onclick="nav('sentences')" style="width:100%;margin-top:9px;padding:13px;border:1px solid rgba(255,255,255,.14);border-radius:14px;background:rgba(255,255,255,.06);color:#cdbfe8;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer">Done</button>
+  </div>`;
+}
+
+function _sentChip(label, idx, sess, pickFn){
+  const hasPick = sess.pick !== null;
+  const q = sess.qs[sess.i];
+  let style = 'border-radius:16px;padding:15px 8px;text-align:center;cursor:pointer;font-family:inherit;color:#f5f2ff;';
+  if(!hasPick) style += 'border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)';
+  else if(idx === q.correctIdx) style += 'border:2px solid #34d399;background:rgba(52,211,153,.1)';
+  else if(idx === sess.pick) style += 'border:2px solid #fb7185;background:rgba(251,113,133,.1)';
+  else style += 'border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);opacity:.55';
+  const onTap = hasPick ? `speakJP('${jsEsc(label)}')` : `${pickFn}(${idx})`;
+  return `<button onclick="${onTap}" style="${style}"><span style="font-family:'Noto Sans JP';font-weight:900;font-size:19px">${esc(label)}</span>${hasPick && idx === q.correctIdx ? ' <span style="font-size:12px;color:#9fe9cf">✓</span>' : ''}</button>`;
+}
+
+function _sentReveal(sess, q, nextFn, note){
+  if(sess.pick === null) return '';
+  const good = sess.pick === q.correctIdx;
+  return `<div style="animation:riseIn .3s ease-out;background:linear-gradient(160deg,rgba(157,92,255,.16),rgba(255,93,158,.06));border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:15px 16px;margin-top:14px">
+    <div style="font-weight:800;font-size:13px;color:${good ? '#9fe9cf' : '#fb7185'};margin-bottom:7px">${good ? '✓ Correct' : '✗ Not quite'}</div>
+    <div style="display:flex;align-items:center;gap:9px">
+      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:19px;line-height:1.5">${esc(q.jpFull)}</div>
+      <button onclick="speakJP('${jsEsc(q.jpFull)}')" style="flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:13px;cursor:pointer">🔊</button>
+    </div>
+    <div style="font-weight:600;font-size:12.5px;color:#a99fc7;margin-top:5px">${esc(q.enFull)}</div>
+    ${note ? `<div style="font-weight:500;font-size:12px;line-height:1.55;color:#cdbfe8;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)">${esc(note)}</div>` : ''}
+    <button onclick="${nextFn}()" style="width:100%;margin-top:13px;padding:13px;border:none;border-radius:14px;font-family:inherit;font-weight:800;font-size:13px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer">Next →</button>
+  </div>`;
+}
+
+function renderSentGap(){
+  const g = state.sentGap;
+  if(!g) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startSentGap()">Start</button></div>`;
+  if(g.i >= g.qs.length) return _sentRoundDone(g, 'startSentGap');
+  const q = g.qs[g.i];
+  const blank = '<span style="display:inline-block;min-width:64px;border-bottom:2px dashed #ff5d9e;vertical-align:baseline">&nbsp;</span>';
+  const sentence = esc(q.pattern).replace('{N}', g.pick === null ? blank : `<span style="color:#9fe9cf">${esc(q.word.jp)}</span>`);
+  return `<div style="padding:0 2px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">Fill the gap</div>
+      <div style="font-weight:700;font-size:11px;color:#8a80a8">${g.i + 1}/${g.qs.length} · ${g.correct} ✓</div>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:20px 16px;margin-bottom:14px;text-align:center">
+      <div style="font-size:64px;line-height:1.2">${q.emoji}</div>
+      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:21px;line-height:1.6;margin-top:12px">${sentence}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${q.opts.map((o, i) => _sentChip(o.jp, i, g, 'sentGapPick')).join('')}</div>
+    ${_sentReveal(g, q, 'sentGapNext', q.word.note || '')}
+  </div>`;
+}
+
+function renderSentCount(){
+  const s = state.sentCount;
+  if(!s) return `<div class="card"><div class="muted">No active session.</div><button class="btn btn-primary" style="margin-top:12px" onclick="startSentCount()">Start</button></div>`;
+  if(s.i >= s.qs.length) return _sentRoundDone(s, 'startSentCount');
+  const q = s.qs[s.i];
+  const emSize = q.n <= 4 ? 44 : q.n <= 8 ? 36 : 28;
+  const scene = `<div style="font-size:${emSize}px;line-height:1.35;letter-spacing:4px;max-width:300px;margin:0 auto">${q.item.e.repeat(q.n)}</div>`;
+  const blank = '<span style="display:inline-block;min-width:64px;border-bottom:2px dashed #ff5d9e;vertical-align:baseline">&nbsp;</span>';
+  const verb = q.item.anim ? 'います' : 'あります';
+  const sentence = `${esc(q.item.jp)}が ${s.pick === null ? blank : `<span style="color:#9fe9cf">${esc(q.opts[q.correctIdx])}</span>`} ${verb}`;
+  return `<div style="padding:0 2px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-weight:800;font-size:10px;letter-spacing:3px;color:#ff8fc0;text-transform:uppercase">Count it</div>
+      <div style="font-weight:700;font-size:11px;color:#8a80a8">${s.i + 1}/${s.qs.length} · ${s.correct} ✓</div>
+    </div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:20px 16px;margin-bottom:14px;text-align:center">
+      ${scene}
+      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:21px;line-height:1.6;margin-top:12px">${sentence}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${q.opts.map((o, i) => _sentChip(o, i, s, 'sentCountPick')).join('')}</div>
+    ${_sentReveal(s, q, 'sentCountNext', q.note)}
+  </div>`;
+}
+
+/* ---- hub ---- */
+function renderSentences(){
+  const row = (emoji, grad, title, meta, onclick) => `
+    <button class="h8-row" onclick="${onclick}">
+      <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:${grad};box-shadow:0 8px 22px rgba(123,63,242,.40);flex-shrink:0">${emoji}</div>
+      <div class="h8-row-body">
+        <div class="h8-row-title">${title}</div>
+        <div class="h8-row-meta">${meta}</div>
+      </div>
+      <div class="h8-row-arrow">›</div>
+    </button>`;
+  return `<div style="padding:0 2px 24px">
+    <div style="margin:6px 0 16px">
+      <div style="font-weight:800;font-size:22px;letter-spacing:-.5px">Sentences</div>
+      <div style="font-weight:600;font-size:12.5px;color:#a99fc7;margin-top:3px">Your words, inside real sentences — picture-led, no English prompts</div>
+    </div>
+    <div class="h8-list">
+      ${row('🧩', 'linear-gradient(150deg,#b97bff,#7b3ff2)', 'Fill the gap', 'Picture + sentence with a blank · your recent words', 'startSentGap()')}
+      ${row('🍊', 'linear-gradient(150deg,#ffb35c,#f2653f)', 'Count it', 'How many? Pick the right counter — まい・ほん・ひき…', 'startSentCount()')}
+      ${row('🔊', 'linear-gradient(150deg,#9d5cff,#7b3ff2)', 'Sentence Spam', 'Hands-free · hear and repeat full sentences', 'startBuildModeSentenceSpam()')}
+    </div>
+  </div>`;
+}
+
 function kanaBlitzCurrent(){
   if(!state.kanaBlitz || !state.kanaBlitz.active) return null;
   return state.kanaBlitz.pool[state.kanaBlitz.idx] || null;
@@ -21403,7 +21827,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -21646,6 +22070,14 @@ function renderHome(){
 
   const extras = `
     <div class="h8-list" style="margin-top:18px">
+      <button class="h8-row" onclick="nav('sentences')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ffb35c,#f2653f);box-shadow:0 8px 22px rgba(242,101,63,.40),0 0 24px rgba(255,179,92,.30);flex-shrink:0">🧩</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Sentences</div>
+          <div class="h8-row-meta">Fill the gap · Count it · picture-led</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
       <button class="h8-row" onclick="startFormsLadder()">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
         <div class="h8-row-body">
