@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.47';
+const APP_VERSION = '8.48';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -18948,6 +18948,7 @@ function buildNextStep(){
   const b = state.buildMode;
   _buildClearTimer();
   _buildInductionCompleteSay(b.steps[b.stepIdx]); // fire-once gate — no-op unless leaving a 'say' step
+  _buildCountHear(b, b.steps[b.stepIdx]);         // v8.48 — exposure counter for self-rating check-ins
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
@@ -18982,6 +18983,7 @@ function buildRestart(){
   b._writeAttempt = null;  /* v6.25 */
   b._similarPick = null;   /* v6.26 */
   b._lastVoice = null;
+  b._rateCands = null;     /* v8.48 — recompute check-in list after the rerun */
   if(b.lesson) b.lesson._completed = false;
   /* Reshuffle on "Run it again" for spammy modes — independent steps with no
      intro→callback dependencies. Keeps the same word set, fresh order, so the
@@ -21157,6 +21159,95 @@ function _buildRenderCallback(step){
   `;
 }
 
+/* ===================== SELF-RATING CHECK-IN (v8.48) =====================
+   Owner idea (2026-08-04): once a word has been heard ~10–20 times in the
+   hands-free loop, ask "how well do you know this?" at the end of the round
+   and let the answer steer the rotation. Rationale: STT is a turn-trigger,
+   never a grader (v8.03), so passive listening exposure produced NO honest
+   grading signal — the learner's own one-tap judgment is the only trustworthy
+   grade for a hear→recall loop, same principle as Anki's Again/Good/Easy.
+     · Exposure: st.hears increments each time a recall step for a real deck
+       word is advanced past in Build-Mode spam (word actually played).
+     · Eligible: ≥12 hears, and ≥12 MORE hears since the last rating — so
+       ratings recur as exposure accumulates, not every round.
+     · At most 6 words per check-in (rating 30 gets skipped out of boredom).
+     · Effect: 😬 shaky → SM-2 'again' (resurfaces soon, ease-drop stays
+       24h-guarded) · 🙂 getting there → recorded only (completion already
+       credited 'good') · 💪 know it → SM-2 'easy' (longer interval, +ease).
+       💪 deliberately never retires/masters a word by itself — self-ratings
+       drift optimistic; retirement still needs real recall evidence. */
+
+function _buildCountHear(b, step){
+  try{
+    if(!step || step.type !== 'recall' || !step.word_id) return;
+    const realIds = b?.lesson?._meta?.real_word_ids;
+    if(!realIds || !realIds.includes(step.word_id)) return;
+    const st = smStatFor(step.word_id);
+    st.hears = (st.hears || 0) + 1;
+  }catch(e){}
+}
+
+function _buildRateCandidates(l){
+  const realIds = (l?._meta?.real_word_ids) || [];
+  const out = [];
+  for(const wid of realIds){
+    const w = state.words.find(x => x.id === wid);
+    if(!w) continue;
+    const st = state.stats[wid];
+    if(!st || (st.hears || 0) < 12) continue;
+    const since = (st.hears || 0) - (st.ratedHears || 0);
+    if(st.ratedAt && since < 12) continue;
+    out.push({ w, since });
+  }
+  out.sort((a, b) => b.since - a.since);
+  return out.slice(0, 6).map(o => o.w);
+}
+
+function buildRateWord(wid, rating){
+  const b = state.buildMode; if(!b) return;
+  b._rated = b._rated || {};
+  if(b._rated[wid]) return;
+  const st = smStatFor(wid);
+  st.selfRating = rating;
+  st.ratedAt = now();
+  st.ratedHears = st.hears || 0;
+  if(rating === 'shaky') smGrade(st, 'again');
+  else if(rating === 'know') smGrade(st, 'easy');
+  b._rated[wid] = rating;
+  save();
+  render();
+}
+window.buildRateWord = buildRateWord;
+
+function _buildRatePanel(){
+  const b = state.buildMode;
+  const cands = b._rateCands || (b._rateCands = _buildRateCandidates(b.lesson));
+  if(!cands.length) return '';
+  b._rated = b._rated || {};
+  const rows = cands.map(w => {
+    const done = b._rated[w.id];
+    if(done){
+      const st = state.stats[w.id] || {};
+      const tail = done === 'shaky' ? 'coming back soon' : done === 'know' ? `back in ${smIntervalLabel(st.smInterval)}` : 'noted';
+      const face = done === 'shaky' ? '😬' : done === 'know' ? '💪' : '🙂';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.07);opacity:.65">
+        <div style="font-family:'Noto Sans JP';font-weight:800;font-size:16px;flex:1;text-align:left">${esc(w.jp)} <span style="font-weight:600;font-size:11.5px;color:#a99fc7">${esc(w.en)}</span></div>
+        <div style="font-size:12px;color:#9fe9cf">${face} ${tail}</div>
+      </div>`;
+    }
+    const btn = (r, face, tip) => `<button onclick="buildRateWord('${esc(w.id)}','${r}')" title="${tip}" style="width:44px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);font-size:19px;cursor:pointer">${face}</button>`;
+    return `<div style="display:flex;align-items:center;gap:7px;padding:9px 4px;border-bottom:1px solid rgba(255,255,255,.07)">
+      <div style="font-family:'Noto Sans JP';font-weight:800;font-size:16px;flex:1;text-align:left;min-width:0">${esc(w.jp)}<div style="font-weight:600;font-size:11.5px;color:#a99fc7">${esc(w.en)}</div></div>
+      ${btn('shaky', '😬', 'Shaky — bring it back soon')}${btn('ok', '🙂', 'Getting there')}${btn('know', '💪', 'Know it — space it out')}
+    </div>`;
+  }).join('');
+  return `<div style="text-align:left;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:14px 14px 6px;margin-bottom:14px">
+    <div style="font-weight:800;font-size:14px;margin-bottom:2px">How well do you know these?</div>
+    <div style="font-weight:600;font-size:11.5px;color:#a99fc7;line-height:1.5;margin-bottom:6px">Each has come up 12+ times in your sessions. One honest tap tunes when it comes back — 😬 sooner · 💪 later.</div>
+    ${rows}
+  </div>`;
+}
+
 function renderBuildModeComplete(){
   const l = state.buildMode.lesson;
   /* v6.22 — chain-queued placeholder. When buildOnComplete schedules the
@@ -21210,6 +21301,7 @@ function renderBuildModeComplete(){
           return summaryHead + srsTail;
         })()}
       </div>
+      ${_buildRatePanel()}
       ${chainSummary}
       ${chainBtn}
       ${keepGoingBtn}
