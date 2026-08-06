@@ -67,9 +67,11 @@ The freeze is fully explained; this is not speculative:
 3. `sentences` (via `progSentencesDrilled`, L21505) counts keys of
    `state.sentenceStats` + `state.phraseStats` — written only by Sentence Blitz
    (L14365) and Phrase Blitz (L14981), both buried legacy modes.
-4. The v8.46 Sentences drills the owner actually uses (`sentGapPick` L13601,
-   `sentCountPick` L13684) write **no store at all** — they mutate only the
-   in-memory round object (`g.correct++`) and speak the sentence.
+4. The Sentences drills the owner actually uses (`sentGapPick` L13601,
+   `sentCountPick` L13684, and — r1 correction, the code adversary caught the
+   omission — the v8.47 "Make a sentence" `sentBuildTap` L13783) write **no
+   store at all** — they mutate only the in-memory round object
+   (`g.correct++` / `b.correct++`) and speak the sentence.
 5. The core hands-free loop credits words **only** in `buildOnComplete`
    (L19021): one `smGrade(good|again)` + one `recordAttempt(mode:'lesson')` per
    word in `_meta.real_word_ids`, gated by `!l._completed`. An interrupted round
@@ -117,50 +119,71 @@ writes (fields: `correctCount`, `wrongCount`, `attempts[]`, `smInterval` — all
 already present):
 
 ```
-// Segment 1 — STUCK (the headline number N). This is exactly the existing
-// progWordsProducible() (L21481) over progStageCounts() (L21472):
+// Segment 1 — STUCK (the headline number N) — r1-amended: progIsSolid
+// (L21465) unchanged, PLUS a spacing floor (Synthesis, d-a 1):
 stuck(w)   = libraryWordStatus(w) ∈ {mature, mastered}
              OR ( libraryWordStatus(w) === 'learning'
-                  AND st.correctCount >= 3
-                  AND st.correctCount / (st.correctCount + st.wrongCount) >= 0.7 )
-                  // = progIsSolid(st), L21465, unchanged
+                  AND progIsSolid(st)                  // c≥3 at ≥70%, L21465
+                  AND distinctCorrectDays(st) >= 2 )   // correct attempts[] rows
+                                                       // on ≥2 local days (row.ts)
 N          = count of active words where stuck(w)
 
-// Segment 2 — WARMING (visual life, never part of the headline number):
+// Segment 2 — WARMING (visual life, never part of the headline number)
+// — r1-amended: null-guarded reads + 14-day recency (Synthesis, qa 1 / d-a 6):
 warming(w) = NOT stuck(w)
-             AND st.attempts.some(a => a.correct)     // ≥1 real correct row
+             AND ((st && st.attempts) || []).some(a =>
+                   a.correct && a.ts > now() - 14*DAY)
 W          = count of active words where warming(w)
 
-// Bar toward the next tier T = first tier in [25,75,150,300,500] with N < T:
+// Bar toward the next tier — r1-amended ladder (Synthesis, qa 4):
+// T = first tier in [25,75,150,300,500,750,1000,1400] with N < T;
+// if none (N ≥ 1400): terminal "maxed" state — solidFill = warmFill = 1,
+// sub-label "all milestones reached". The function is total: no NaN at
+// any boundary.
 solidFill  = min(1, N / T)
-warmFill   = min(1, (N + W) / T)      // rendered translucent beyond solidFill
+warmFill   = min(1, (N + W) / T)      // rendered translucent beyond solidFill;
+                                      // the bar's end-cap is reserved for solid
+                                      // fill — translucent renders short of it
 headline   = "N words that stick"  ·  sub-label "next milestone: T"
 ```
 
 - The headline **number** is only ever N — warming is visual, sub-labelled
-  ("+W warming up"), and cannot be mistaken for achievement. This is the honesty
-  line the devils-advocate should probe: N requires 3 correct grades at ≥70%
-  accuracy (`progIsSolid` unchanged), which passive idling cannot reach faster
-  than the SRS write path allows, and which the 😬 self-rating (`smGrade 'again'`
-  → `wrongCount++`, L21257→L3862) actively pushes back down through the
-  accuracy ratio.
-- No new tuning constants: tiers, solidity thresholds, and status boundaries are
-  all pre-existing (`PROG_LADDERS`, `progIsSolid`, `libraryWordStatus`).
+  ("+W warming up"), and cannot be mistaken for achievement. The honesty line,
+  r1-hardened: N requires 3 correct grades at ≥70% accuracy (`progIsSolid`
+  unchanged) **and correct attempts spanning ≥2 distinct days** — three autoplay
+  passes in one sitting can no longer cross "stick"; spaced recall exposure is
+  the strongest retention evidence observable under the locked STT-never-grades
+  posture. The 😬 self-rating (`smGrade 'again'` → `wrongCount++`, L21257→L3862)
+  still pushes shaky words back down through the accuracy ratio.
+- Every read is null-guarded (r1, qa 1): a legacy imported record with missing
+  `attempts[]` (raw-merged by `handleImport`, L23921) yields `warming = false`,
+  never a throw — and the headline card builder is wrapped defensively because
+  `render()` (L22153) has no error boundary of its own.
+- Near-zero new tuning constants (r1-corrected): solidity thresholds and status
+  boundaries are pre-existing (`progIsSolid`, `libraryWordStatus`); the additions
+  are the three extension tiers `750/1000/1400` on `PROG_LADDERS.producible`,
+  the 2-distinct-days spacing floor, and the 14-day warming window.
 
 ### 3.2 Fed 100% by the core loop — movement proof for a real usage profile
 
 Under the defaults that actually ship — full ~1702-word deck (v8.35), due-first
 picker `_buildSpamPick` (L17462: seen words sorted by `smNext` ascending, then
-fresh words shuffled in), 24-word vocabSpam rounds (L17579) — with the §5
-credit-at-recall-step decision in place:
+fresh words shuffled in), **30-word** vocabSpam rounds (r1-corrected:
+`buildGenerateVocabSpamLesson` defaults `want = 30`, L17524, called with no
+opts from `startBuildModeVocabSpam` L17582; the UI copy confirms "30 steps",
+L22938 — the earlier "24 (L17579)" cite pointed at the `_meta` object literal
+and was wrong) — with the §5 credit-at-recall-step decision in place:
 
-- **Session 1 (day 1):** 24 words each get one credited recall pass →
-  `correctCount 0→1` → W jumps 0→24. Bar shows warm fill ≈ 24/25 on tier 1.
-  *Visible movement: first session, first minute of finishing.*
-- **Sessions 2–3 (same evening or day 2):** `_buildSpamPick` re-serves the same
+- **Session 1 (day 1):** 30 words each get one credited recall pass →
+  `correctCount 0→1` → W jumps 0→30. Warm fill saturates tier 1 (30 > 25),
+  rendered translucent and short of the end-cap; the headline reads
+  `0 words that stick · +30 warming up`. *Visible movement: first session,
+  first minute of finishing — and visibly NOT completion: the number is 0.*
+- **Sessions 2–3 (day 2 onward):** `_buildSpamPick` re-serves the same
   words (their `smNext` is the soonest — learning steps are minutes-scale,
-  L3880–3888) → each pass adds a correct → words cross `correctCount >= 3` →
-  N starts climbing; each crossing converts translucent fill to solid fill.
+  L3880–3888) → each pass adds a correct → words cross `progIsSolid`, and the
+  r1 spacing floor lets them cross "stick" from **day 2** — nothing sticks in a
+  single sitting, by design; each crossing converts translucent fill to solid.
 - **Steady state (owner-like profile, 1–2 rounds/day):** every completed round
   moves W (new words drilled in) and/or N (words crossing solid) and/or converts
   warm→solid fill. There is no session shape under the due-first picker that
@@ -177,10 +200,24 @@ credit-at-recall-step decision in place:
 Accuracy caveat, stated plainly for the adversaries: in hands-free autoplay the
 default per-word grade is 'good' unless the user taps "Missed it" (L19044-based
 `_missed` semantics preserved per-step in §5) — so N is "words that stick" under
-exposure + self-honesty, not machine-verified recall. That is the v8.03 locked
-posture (STT never grades); the honest counterweights are the Missed-it tap and
-the v8.48 self-rating channel, both of which write `again` and drag the accuracy
-ratio below 0.7 for genuinely shaky words, un-sticking them.
+spaced exposure + self-honesty, not machine-verified recall. That is the v8.03
+locked posture (STT never grades); the honest counterweights are the Missed-it
+tap and the v8.48 self-rating channel, both of which write `again`.
+
+**Un-sticking mechanics, stated precisely (r1-corrected, qa 2/3):**
+
+- A **learning-path** solid word un-sticks when `again` writes drag the accuracy
+  ratio below 0.7 (`progIsSolid`) — the ratio governs this population only.
+- A **mature** word (status gated purely on `smInterval >= BLITZ_MATURE_MIN`,
+  L4182 — never on accuracy) un-sticks via `smGrade('again')`'s interval reset
+  (L3868) dropping it below the mature bar back to 'learning', where the ratio
+  and spacing floor then govern. Tests must exercise **both** paths — asserting
+  only the ratio would pass even if the interval-reset path broke.
+- **Manually-★mastered words** (`s.masteredWords`, checked before any stats at
+  L4177) count into N by explicit user declaration and are immune to every
+  automatic counterweight — by design, not by leak: the ★ toggle is the same
+  self-honesty channel as the 😬 rating, and only the user's own un-toggle
+  removes it. Test fixtures must model this population separately.
 
 ## 4. Home surface — FINAL: retire the spine, lead with "Words that stick"
 
@@ -193,7 +230,7 @@ ratio below 0.7 for genuinely shaky words, un-sticking them.
 | Five kana stages (`SPINE_STAGES` L21692, rows L22118) | **Buried** — removed from Home and from the detail sheet. | Their AND-gates (`_spineRequirement`) sit on the two never-fed tracks; every stage ≥2 is unreachable from the core loop. Rebranding them onto producible tiers would duplicate the milestone ladder card that already exists (L22075). |
 | Bottleneck bar (`_spineStagePct` fill, L22141) | **Replaced** by the §3 two-segment bar. | The freeze itself. |
 | Detail sheet (expand → `renderProgress()`, L22148) | **Retargeted** — kept, one tap away, with §6 sheet edits. | The sheet's cards (deck stand, milestones, consistency, charts) are honest and already read `state.stats`. |
-| `_spineModel()` + `_spineSelfTest()` (L21755/L21834) | **Dormant** — no longer called by Home; code and self-test left in place this ship. | Cheap reversibility; deleting is a follow-up cleanup, not a v1 gate. Advisory-only posture (ADR-003 non-locking) meant nothing else consumes it — verified: render-side consumers are `_spineHeaderHtml`/`renderProgress` only. |
+| `_spineModel()` + `_spineSelfTest()` (L21755/L21834) | **Dormant** — no longer called by Home; code and self-test left in place this ship. | Cheap reversibility; deleting is a follow-up cleanup, not a v1 gate. Advisory-only posture (ADR-003 non-locking) meant nothing else consumes it — verified (r1-corrected): the only callers are `_spineHeaderHtml` (L22113) and the console-only `_spineSelfTest`; `renderProgress` never calls `_spineModel()` — it reads `progConversationalCore()`/`progLadderValues()` directly, so a cleanup pass may delete the spine trio without touching the sheet. |
 | `placedStage` (router seed, L21769) | **Kept in state, unused by the new header.** | It's an onboarding record; destroying it forecloses future placement features for zero benefit. |
 
 ### Screen-by-screen (collapsed / expanded / brand-new)
@@ -247,11 +284,16 @@ words whose lesson shapes have no recall step.
    STT-not-a-grader is preserved: `missed` comes only from the explicit tap,
    never from transcript matching.
 2. **`buildOnComplete` (L19021) — becomes the fallback.** Its per-word loop
-   (L19046–19058) skips any `wid ∈ b._credited`. Net effect: vocabSpam /
-   randomDrill / onboardMicro (all recall-step-shaped) are fully credited at
-   steps; structured lesson modes without per-word recall steps keep today's
-   completion credit unchanged. The `!l._completed` guard, sequence push, chain
-   advance, and form-recent bookkeeping stay where they are.
+   (L19046–19058) skips any `wid ∈ b._credited` **and adds each `wid` it grades
+   to `b._credited` as it goes** (r1, qa finding: the raw loop is a plain
+   `for-of` with no internal dedup, and `real_word_ids` is not guaranteed
+   duplicate-free across every lesson generator — the set guard in both paths
+   makes a repeated id credit exactly once wherever it's first reached). Net
+   effect: vocabSpam / randomDrill / onboardMicro (all recall-step-shaped) are
+   fully credited at steps; structured lesson modes without per-word recall
+   steps keep today's completion credit unchanged. The `!l._completed` guard,
+   sequence push, chain advance, and form-recent bookkeeping stay where they
+   are.
 3. **`b._credited` lifecycle.** Initialized in `buildMakeSession` (L17223,
    beside `_missed`); **cleared in `buildRestart` (L18999)** beside
    `_rateCands`/`_completed` — "Run it again" is deliberately a fresh crediting
@@ -260,7 +302,7 @@ words whose lesson shapes have no recall step.
    cannot double-fire (set membership), which is the exactly-once property qa
    should attack.
 4. **Interrupted rounds now earn what was actually done.** A user who drills 15
-   of 24 steps and takes a phone call has 15 credited words; today they have
+   of 30 steps and takes a phone call has 15 credited words; today they have
    zero. Resuming (`resume chip`, L22375) continues crediting the remainder;
    abandoning loses nothing already credited.
 5. **Self-rating (v8.48) — unchanged, and verified non-colliding.**
@@ -280,9 +322,21 @@ words whose lesson shapes have no recall step.
    - `sentCountPick` (L13684): counter questions are built from `COUNT_ITEMS`,
      not deck words — there is no word to credit. **No credit in v1** (the drill
      is its own value); revisit only if counters ever join the deck.
-   - Neither drill writes `state.sentenceStats`/`phraseStats` — that track is
-     retired from display (§6), and feeding a retired track would recreate the
-     smell this delve exists to remove.
+   - `sentBuildTap` ("Make a sentence", v8.47, L13783) — **r1 addition; the
+     code adversary caught this drill omitted from the decision** (Home's
+     Sentences row lists all three, L22421). Same policy as sentGap:
+     **attempts-only, gap-derived questions only.** One wrinkle verified in
+     code: `_bldFromGap(word, all)` receives the target deck word but does
+     **not** return it (the q object is `{scene, tokens, extras, jpFull,
+     enFull, note}`, L13730–13735) — so the implementation adds `wordId:
+     word.id` to that return, then on answer lock-in (the `b.done` branch in
+     `sentBuildTap`) writes `recordAttempt(q.wordId, b.wasRight, 'sentBuild')`.
+     `_bldFromCount` questions carry no deck word and write nothing, matching
+     Count-it. Never `smGrade` — chip assembly is recognition-shaped, same
+     rationale as sentGap.
+   - None of the three drills writes `state.sentenceStats`/`phraseStats` — that
+     track is retired from display (§6), and feeding a retired track would
+     recreate the smell this delve exists to remove.
 
 ### 5.2 Double-credit audit (the matrix qa/code should verify)
 
@@ -294,6 +348,8 @@ words whose lesson shapes have no recall step.
 | Restart ("Run it again") | fresh session credit | intentional; `_credited` cleared with `_completed` |
 | Self-rating tap | smGrade again/easy | `b._rated`, once/session/word; separate channel by design |
 | sentGap chip | recordAttempt only | single call site; never smGrade |
+| sentBuild lock-in (r1) | recordAttempt only, gap-derived qs | `q.wordId` present only on `_bldFromGap` questions; single call site; never smGrade |
+| Duplicate id in `real_word_ids` (r1) | credited once | `b._credited` set updated by BOTH the step seam and the fallback loop |
 | Micro-drill | step credit (recall steps exist, L22628) | same `_credited` path; chains already skipped (L19090) |
 
 Gameability, acknowledged for the devils-advocate: idling autoplay still
@@ -307,7 +363,7 @@ not surveillance — per the locked v8.03 posture.
 
 | Track | Disposition | Detail |
 |---|---|---|
-| **Verbs-in-all-forms** | **Keep-in-sheet.** | Conjugation card (L22067) stays in the detail sheet — honest data, still earnable via the Home "Verb forms" row (L22425). Removed from every headline/gate (which die with the spine, §4). Its milestone ladder row stays in the sheet's ladder card. |
+| **Verbs-in-all-forms** | **Keep-in-sheet.** | Conjugation card (L22067) stays in the detail sheet — honest data, still earnable via the Home "Verb forms" row (L22425). Removed from every headline/gate (which die with the spine, §4). Its milestone ladder row stays in the sheet's ladder card. **Verification note (r1, qa):** this row is *expected-frozen* for drill-only users (fed only by buried modes) — probes must assert it renders (non-NaN) but must NOT read its stasis as the 0%-freeze recurring, nor require it to move. |
 | **Sentences-drilled** | **Remove from display.** | The count (`progSentencesDrilled`) reads stores only buried modes feed (§2.1.3) — keeping it visible anywhere reproduces a frozen number inside the sheet. Its ladder row (L21631) is removed. `state.sentenceStats`/`phraseStats` data is untouched. |
 | **Conversational Core %** | **Remove from display.** | It is the failed composite over benched/never-fed tracks. Remove the sheet headline card (L21988), the Practice meta line (L22930), and the `PROG_WEIGHTS` usage. `progConversationalCore()` remains callable (snapshots reference its parts) but renders nowhere. |
 | **Streak ladder row** (L21632) | **Keep** in the sheet ladder. | Now genuinely fed by the core loop (§5.1.1). |
@@ -326,8 +382,17 @@ There is deliberately **no data migration**:
   resets; `hears`, `ratedHears`, streak history, snapshots all carry forward.
 - **Export/import (version:6, L23906) is untouched** — no schema field is added
   to the backup envelope by this design (`_credited` is session-transient on
-  `state.buildMode`, never exported). An imported backup renders the new
-  headline the same way the live profile does.
+  `state.buildMode`, never exported). **Imported-backup rendering, demonstrated
+  rather than asserted (r1, qa):** `handleImport` (L23913–23921) raw-merges
+  external `stats` records with no shape repair, and `progBackfillAttempts`
+  (L21563) skips `c=0/w=0` records — so a legacy record can legally have no
+  `attempts[]`. Tolerance therefore lives on the READ side: with the §3.1
+  guards, such a record computes `stuck=false` (no `libraryWordStatus` above
+  'new'/'learning' without attempts, and `distinctCorrectDays=0`) and
+  `warming=false` — it renders as not-yet-warm, never throws. Because
+  `render()` (L22153) has no error boundary, the headline card builder is
+  additionally wrapped so one malformed record can never blank Home. A
+  legacy-backup fixture joins the §10 verification set.
 - **No version-flag gate needed** (contrast `_attemptsBackfilledV745`, L21563,
   which stays as-is): there is no backfill, because the formula reads fields
   every historical write path already populated.
@@ -339,19 +404,20 @@ backfill would fabricate attempt rows from non-word-keyed data — rejected.
 
 | Surface | Verdict | Rationale (within the judgment-free register) |
 |---|---|---|
-| **Streak** | **SHIP in v1** — with the §5 fix that the core loop actually feeds it (today it cannot, §2.1.6). | Exists (`state.streak`, L3352), hideable stays (`hideStreak`, L3166/L23550). The silent 2/week auto-freeze (L6425–6431) already absorbs missed days without shaming. Register rules locked: flame + count only ("days together" copy, L22062); no "don't lose it!" push, no broken-streak funeral screen. Streaks are the best-evidenced retention mechanic in drill apps; the guilt variant is what Delve 9 bans, not the counter itself. |
+| **Streak** | **SHIP in v1** — with the §5 fix that the core loop actually feeds it (today it cannot, §2.1.6). | Exists (`state.streak`, L3352), hideable stays (`hideStreak`, L3166/L23550). The silent 2/week auto-freeze (L6425–6431) already absorbs missed days without shaming. Register rules locked: flame + count only ("days together" copy, L22062); no "don't lose it!" push, no broken-streak funeral screen. Streaks are the best-evidenced retention mechanic in drill apps; the guilt variant is what Delve 9 bans, not the counter itself. **r1 amendment (devils-advocate — lighting a consecutive-day counter on the main loop IS a register decision, owned here, not a neutral bug fix):** the Consistency card leads with lifetime **"days practiced"** (monotonic — a break never subtracts it), with the current-run flame secondary; a post-freeze reset (`state.streak.current = 1`, L6430) changes the small number silently — no reset moment, no copy acknowledging the break. Both figures hidden together by `hideStreak`. |
 | **Daily goal (ring/target)** | **DEFER.** | Requires new state (target, day rollover, settings row) and duplicates what streak + a moving bar already communicate ("I showed up; it moved"). Revisit post-v1 with real usage data on session length. Rejecting it as the *headline* (§3) is final; deferring it as a *secondary* surface is revisitable. |
 | **Session count** | **REJECT as a surface.** | Pure effort/vanity metric. The sheet's "reviews this wk" (L22064) already covers volume for the curious; promoting counts rewards idling, the exact gaming vector §5.2 flags. |
 | **Per-round "words kept" recap** | **SHIP in v1.** | The completion screen (`renderBuildModeComplete`, L21294) gains one line above the self-rating panel, computed from this round's `b._credited` + the N delta: e.g. `14 words drilled · 2 newly stuck · +5 warming`. Counts only up; reinforces the headline metric at the moment of finish; zero new state. The v8.48 panel then reads as "and how well do you know these?" — recap and honest-grade channel compose instead of competing. |
 
 ## 8. Decisions reached
 
-1. **Headline metric = words-that-stick ladder (option A):** N =
-   `progWordsProducible()` unchanged, tiers `[25,75,150,300,500]`, two-segment
-   bar (solid = stuck, translucent = warming = ≥1 correct attempt, not yet
-   stuck). *Why:* the only candidate 100% fed by the core loop with zero new
-   tuning constants; the composite is the incumbent failure; the ring measures
-   effort.
+1. **Headline metric = words-that-stick ladder (option A):** N = producible
+   (r1: plus a ≥2-distinct-correct-days spacing floor for learning-path words),
+   tiers `[25,75,150,300,500,750,1000,1400]` + maxed state, two-segment bar
+   (solid = stuck, translucent = warming = ≥1 correct attempt in the last 14
+   days, not yet stuck). *Why:* the only candidate 100% fed by the core loop
+   with near-zero new tuning constants; the composite is the incumbent failure;
+   the ring measures effort.
 2. **Warming segment is visual-only, never the number.** *Why:* first-session
    life (including the 3-word micro-drill user) without inflating the headline.
 3. **Spine retired:** header replaced, five kana stages buried, conversation
@@ -381,13 +447,14 @@ backfill would fabricate attempt rows from non-word-keyed data — rejected.
 
 ## 9. Open questions still open
 
-1. **Warming recency:** should warming require a correct attempt in the last
-   ~14 days, or is lifetime-any-correct fine? (Lifetime is simpler; a years-old
-   abandoned profile would show a large stale warm segment. Cosmetic — panel
-   input welcome, default = lifetime for v1.)
-2. **Tier ladder beyond 500:** deck is ~1702; post-500 the bar needs either new
-   tiers (750/1000/1400) or a "maxed" state. Not a v1 blocker (owner is
-   pre-500); flagging so the next freeze isn't at 500.
+1. ~~Warming recency~~ **CLOSED (r1 synthesis):** warming requires a correct
+   attempt within the last 14 days — a stale profile shows a shrinking warm
+   segment, never fake momentum. (Panel: d-a said decide now; adopted.)
+2. ~~Tier ladder beyond 500~~ **CLOSED (r1 synthesis):** tiers extend to
+   `[…,750,1000,1400]` plus a terminal "maxed" state — the T-selection is now
+   total, no NaN at any boundary. qa was right that this was a
+   formula-correctness bug mislabeled as cosmetic, and exactly the charter's
+   "freeze cannot recur at any later boundary" clause.
 3. **Dormant spine code:** delete `_spineModel`/`_spineSelfTest`/`SPINE_STAGES`
    now or next cleanup ship? (Bytes vs reversibility — code adversary to weigh.)
 4. **Final copy strings** for the collapsed card, recap line, and warming
@@ -406,12 +473,19 @@ backfill would fabricate attempt rows from non-word-keyed data — rejected.
 
 - **DO_THIS_NEXT.md** (repo root, the single dated front-door): replace any step
   referencing the spine/"path to a real conversation"/Conversational Core % with
-  the words-that-stick surface; add the build steps in dependency order —
-  (1) credit-at-step seam + streak feed, (2) headline card + two-segment bar,
-  (3) sheet edits + display removals, (4) recap line, (5) sentGap
-  `recordAttempt` — each with its verification step (headless Playwright render
-  check per the standing ship rule, plus a fresh-profile and an owner-profile
-  bar-liveness probe).
+  the words-that-stick surface; add the build steps in **r1-amended dependency
+  order** (devils-advocate: don't bundle an SRS-write change into a display-bug
+  fix) — **(1) headline card + two-segment bar + sheet edits/display removals
+  (display-only: this alone unfreezes the owner's bar, zero SRS writes)**,
+  (2) credit-at-step seam + streak feed (ADR-022's own ship, isolated blast
+  radius), (3) recap line, (4) sentGap + sentBuild `recordAttempt`. **Executable
+  acceptance criteria per step (r1, qa):** four named state fixtures —
+  brand-new, post-onboarding 3-word, owner-like mid-progress, legacy imported
+  backup — each with expected N/W/bar values asserted; the §5.2 matrix rows as
+  concrete pre/post `state.stats` assertions (e.g. interrupt at 15/30 → exactly
+  15 credited, resume → the remaining 15, restart → fresh set, back-then-forward
+  → no double write); the verbs ladder row asserted present-but-expected-frozen;
+  all under the standing headless Playwright render check.
 
 ## 11. ADR proposals
 
@@ -436,3 +510,143 @@ with sequential numbering; NOT filed here.)*
 reverse — each changes what paying users are told their progress is, or changes
 SRS write semantics. Retention verdicts (§7) ride inside ADR-P1/P2 as
 decision-notes rather than a fourth ADR.)*
+
+---
+
+## Synthesis (Round 1 — Delve 11)
+
+**Panel verdicts:** devils-advocate WARN · code-reviewer WARN · qa-tester FAIL.
+Every citation in all 17 findings was re-verified against source before
+adoption (line + token checks on `index.html` and this doc); all verified.
+All 17 findings are dispositioned below — none contested, none dropped. The
+accepted fixes are applied inline in §§2–10 above, marked "r1". ADR
+placeholders P1/P2/P3 are filed as **ADR-021 / ADR-022 / ADR-023** in
+`docs/decisions-pending/` (sequential after ADR-020, the highest across
+pending + promoted).
+
+### Dispositions — devils-advocate (WARN)
+
+1. **"Words that stick" is an exposure counter wearing a learning label
+   (SERIOUS) — ACCEPTED (partial).** Citation verified (L19053 default
+   `smGrade(st,'good')`; `progIsSolid` = c≥3 at ≥70%). Fix chosen (a third
+   option within the STT-never-grades lock): a **spacing floor** — a
+   learning-path word only "sticks" with correct attempts on ≥2 distinct days
+   (§3.1). Three autoplay passes in one sitting can no longer cross; spaced
+   recall exposure is real retention evidence the mechanism CAN observe. The
+   label stays: with spacing + the Missed-it/😬/★ self-honesty channels the
+   claim is now defensible. The "floor(exposures/3)" arithmetic was slightly
+   overstated (due-first interleaving) but the substance stood.
+2. **§5 credit rewrite is bundled scope (SERIOUS) — ACCEPTED.** Citation
+   verified (§6 "unfreezes by arithmetic alone"). Ship order re-cut in §10:
+   display swap ships first and alone (unfreezes the owner's bar, zero SRS
+   writes); the credit seam lands separately under ADR-022 with its own
+   acceptance matrix. The §5 design itself stands — interrupted-rounds credit
+   is a real defect — it just no longer rides the display fix.
+3. **Progress redefined to vocab breadth, not conversational competence
+   (SERIOUS) — ACCEPTED-DEFERRED.** Citation verified (§4 table "Buried" row).
+   The surface change stands (a feedable proxy beats a frozen composite), but
+   the finding's own condition is adopted verbatim into ADR-021: the metric is
+   explicitly an **interim proxy**, with a hard reopen trigger requiring a
+   production/conversation signal to be designed before conversation
+   un-benches. Word-count is never permanently defined as "progress".
+4. **First-session bar near-full from idling (QUESTIONABLE) — ACCEPTED
+   (partial).** Mechanism confirmed — and worse than cited: with the corrected
+   30-word rounds (code-2) warm fill *saturates* tier 1 on day 1. Amendments:
+   warming windowed to 14 days, translucent fill renders short of the bar's
+   end-cap (a full bar only ever means N ≥ T), and the headline number stays 0
+   — which is the honesty line. Warming keeps the 1-correct threshold because
+   the charter requires the 3-word micro-drill user (1 pass each) to see life;
+   requiring 2 sessions would blank that mandated first-minute signal.
+5. **Streak lighting reintroduces loss-aversion (QUESTIONABLE) — ACCEPTED
+   (partial).** Citation verified (L6430 `state.streak.current = 1`). Streak
+   still SHIPS (best-evidenced retention mechanic; hideable; 2/week freezes),
+   but the finding's framing is adopted: this is a register decision, owned in
+   §7 — the Consistency card now leads with monotonic lifetime "days practiced"
+   (a break never subtracts it), flame secondary, and a post-freeze reset is
+   silent with no acknowledging copy. Decision-note N3.
+6. **Stale lifetime warming (NITPICK) — ACCEPTED.** Citation verified (§9 Q1).
+   Decided now, not deferred: 14-day recency window; Open-Q1 closed.
+
+### Dispositions — code-reviewer (WARN)
+
+1. **"Make a sentence" omitted from the credit decision (SERIOUS) —
+   ACCEPTED.** Citations verified (L22421 three-drill row; `startSentBuild`
+   L13763 / `_bldFromGap` L13707; `sentBuildTap` L13783 writes only
+   `b.correct++`). §2.1.4, §5.1.6, and the §5.2 matrix now cover sentBuild:
+   attempts-only on gap-derived questions, nothing on counter questions. One
+   correction to the finding's mechanics, verified in code: `_bldFromGap` does
+   NOT return the word on the q object — the implementation must add
+   `wordId` to the return (§5.1.6).
+2. **"24-word rounds" is wrong; default is 30 (SERIOUS) — ACCEPTED.**
+   Citations verified (L17524 `want = 30`; L17582 no-opts call; L22938 "30
+   steps"; L17579 is indeed the `_meta` literal). §3.2 and §5.1.4 recomputed;
+   the corrected arithmetic (warm fill saturating tier 1) fed the d-a-4 visual
+   cap decision. The charter's movement-proof requirement is now met with true
+   inputs.
+3. **`_spineModel()` consumer claim imprecise (NITPICK) — ACCEPTED.** Verified
+   (call sites: L22113 in `_spineHeaderHtml` + console-only self-test;
+   `renderProgress` L21970–22110 never calls it). §4 table corrected — a
+   cleanup pass may delete the spine trio without touching the sheet.
+
+### Dispositions — qa-tester (FAIL)
+
+1. **Unguarded warming formula + no Home error boundary on imported data
+   (FATAL) — ACCEPTED.** Citations verified (`render()` L22153–22160 has no
+   try/catch; `handleImport` L23921 raw-merges stats; `progBackfillAttempts`
+   L21573 skips c=0/w=0 records). §3.1 formula now null-guards every read; the
+   headline card builder is wrapped; §6 demonstrates the imported-record path;
+   a legacy-backup fixture is mandatory in §10. `handleImport` itself stays
+   untouched — read-side tolerance preserves the migration=none decision.
+2. **Manually-mastered words immune to un-sticking (SERIOUS) — ACCEPTED (as a
+   documentation + test-design fix, not a mechanism change).** Citations
+   verified (L4177 masteredWords checked before stats; `progStageCounts` counts
+   mastered without `progIsSolid`). §3.2 now states the immunity explicitly and
+   defends it: the ★ toggle is the same user-declaration channel as the 😬
+   rating — user-declared knowledge counting as knowledge IS the app's honesty
+   model. Test fixtures must model this population separately.
+3. **Mature un-stick mechanism misattributed (SERIOUS) — ACCEPTED.** Citations
+   verified (L4182 interval-only mature gate; L3868 `again` interval reset).
+   §3.2 rewritten: ratio governs learning-path words; interval reset governs
+   mature words; tests must exercise both paths.
+4. **Tier overflow at N≥500 → NaN (SERIOUS) — ACCEPTED.** Formula gap
+   confirmed (no tier satisfies N<T at N≥500). Closed NOW, not deferred:
+   tiers extend `+[750,1000,1400]` with a terminal maxed state; T-selection is
+   total. qa's charter framing was right — this was formula correctness, and
+   precisely the "no freeze recurrence at any boundary" clause. Open-Q2 closed.
+5. **Imported-backup profile asserted, not demonstrated (QUESTIONABLE) —
+   ACCEPTED.** §6 now traces the legacy-record path through the guarded
+   formula, and the fixture is mandatory in §10.
+6. **No executable acceptance criteria (QUESTIONABLE) — ACCEPTED.** §10 now
+   names four fixtures with expected N/W/bar values and converts the §5.2
+   matrix into concrete pre/post `state.stats` assertions (interrupt 15/30 →
+   exactly 15, resume → remaining 15, restart → fresh, back-forward → none).
+7. **Duplicate `real_word_ids` in the fallback loop (QUESTIONABLE) —
+   ACCEPTED.** Loop verified dedup-free (L19046–19058 plain for-of). §5.1.2
+   now specifies the fallback loop adds each graded `wid` to `b._credited`,
+   and the matrix gains a duplicate-id row.
+8. **Verbs row lacks an expected-frozen verification note (NITPICK) —
+   ACCEPTED.** §6 row annotated: probes assert it renders, must not read
+   stasis as regression nor require movement.
+
+### Decision-notes (adrPolicy=heuristic — local, cheap-to-reverse; no ADR minted)
+
+- **N1 — Warming recency window = 14 days.** *Why:* kills stale-momentum bars
+  on abandoned profiles; one constant, read-side only. *Reversal cost:* trivial
+  — change or drop one windowing condition; no data touched.
+- **N2 — Translucent warm fill never reaches the bar's end-cap.** *Why:* a
+  100%-full bar must only ever mean a milestone reached (N ≥ T). *Reversal
+  cost:* CSS/presentation-level, one render function.
+- **N3 — Consistency card leads with lifetime "days practiced"; current streak
+  flame secondary; both under `hideStreak`.** *Why:* a monotonic count-up
+  number a break never subtracts keeps the judgment-free register while the
+  streak still ships. *Reversal cost:* reorder two lines in one card.
+- **N4 — Ship display swap before the credit seam (two separate steps).**
+  *Why:* the owner's complaint is fixed by arithmetic alone; SRS-write changes
+  carry their own blast radius. *Reversal cost:* pure sequencing; nothing to
+  undo.
+
+### Definition-of-done movement
+
+Primary doc amended (this section + inline r1 fixes) · ADR-021/022/023 filed to
+`docs/decisions-pending/` · DO_THIS_NEXT.md patched with the unfreeze plan in
+r1 ship order. Remaining for round close: user signoff on the three ADRs.
