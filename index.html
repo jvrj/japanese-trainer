@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.48';
+const APP_VERSION = '8.49';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4796,6 +4796,12 @@ const FOCUS_WORD_SENTENCES = {
   ],
 
   /* --- prepared dishes --- */
+  /* --- animals --- */
+  'neko': [
+    ['ねこ が すき です。',                        'I like cats.',                                     'が marks the liked thing — すき takes が, not を.'],
+    ['ねこ は どこ ですか。',                      'Where is the cat?',                                'どこ = where. は marks the topic you are asking about.'],
+    ['ちいさい ねこ が います。',                  'There is a small cat.',                            'います = exists (living things — vs あります for objects).'],
+  ],
   'sushi': [
     ['おすし を たべに いきましょう。',            "Let's go eat sushi.",                              'たべ に いく.'],
     ['おすし は しょうゆ を つけて たべます。',     'Sushi is eaten dipped in soy sauce.',              'つける → つけて (te-form). て chains "dip-then-eat".'],
@@ -18470,8 +18476,17 @@ function buildAutoplayStep(step){
     return;
   }
 
+  /* v8.49 — step-identity pin for TTS continuations. The _ttsFireGuard
+     watchdog fires onend callbacks even after speechSynthesis.cancel(), so a
+     skip/advance mid-utterance could resurrect a stale step's think/listen/
+     linger timer on top of the landed step's own. Every continuation below
+     bails if the session has moved past the step it was armed for. */
+  const _armedIdx = b.stepIdx;
+  const _stillArmed = () => state.buildMode === b && !b._paused && b.stepIdx === _armedIdx;
+
   const onEnDone = () => {
     if(!auto) return;
+    if(!_stillArmed()) return;
     if(_buildVoiceShouldListen(step)){
       _buildVoiceListenStep(step);
       return;
@@ -18548,7 +18563,7 @@ function buildAutoplayStep(step){
     const w = buildWordById(step.word_id);
     if(w){
       _buildSpeakJPThenEN(w.jp, w.en, () => {
-        if(!auto) return;
+        if(!auto || !_stillArmed()) return;
         _buildScheduleLinger();
       });
     }
@@ -18567,8 +18582,14 @@ function buildAutoplayStep(step){
        _buildScheduleLinger() — never blocks, never hangs. */
     const w = buildWordById(step.word_id);
     const sentences = w ? _buildInductionSentences(w).slice(0, 3) : [];
+    /* v8.49 — _stillArmed guard. This raw setTimeout chain is invisible to
+       _buildClearTimer, so "I know this / skip" (buildInductionSkip) used to
+       leave it running: it kept speaking hear-beat sentences over the recall
+       step and its final _buildScheduleLinger() clobbered the landed step's
+       own timer (in voice mode, the STT hard-timeout), advancing mid-listen.
+       The step-identity pin kills every orphan the moment the session moves on. */
     const playHearAt = (idx) => {
-      if(state.buildMode !== b || b._paused) return;
+      if(!_stillArmed()) return;
       if(idx >= sentences.length){ if(auto) _buildScheduleLinger(); return; }
       const jp = sentences[idx].jp || '';
       speakJP(jp);
@@ -19062,8 +19083,11 @@ function buildOnComplete(){
       }
     }catch(e){ log('build_form_recent_err', {err:String(e)}); }
     /* v6.13 — advance Daily Chain. Step 1 (simple) -> 2 (complex) -> 3 (hard) -> done.
-       v6.14 — Social lessons sit on a separate axis, never advance chain. */
-    if(l._meta.mode !== 'social'){
+       v6.14 — Social lessons sit on a separate axis, never advance chain.
+       v8.49 — the onboarding micro-drill never touches chains either: a stale
+       jp4_build_chain surviving a data reset would otherwise consume a step
+       (or fire the "Daily Chain complete" toast over the first-win card). */
+    if(l._meta.mode !== 'social' && l._meta.mode !== 'onboardMicro'){
       const chain = buildChainGet();
       if(chain && chain.step != null){
         chain.step++;
@@ -20308,7 +20332,7 @@ function renderBuildModeStart(){
           || '—';
         const cbWordsList = ((e.words || []).filter(w => w.role === 'callback').map(w => renderRecentWord(w, false)).join(', '));
         return `<div style="border-left:3px solid var(--accent);padding:6px 10px;margin:6px 0;background:rgba(255,255,255,0.02);border-radius:4px">
-          <div style="font-size:12px"><span class="muted">${esc(dateLabel)} · ${esc(e.mode || 'simple')}</span></div>
+          <div style="font-size:12px"><span class="muted">${esc(dateLabel)} · ${esc(e.mode === 'onboardMicro' ? 'first words' : (e.mode || 'simple'))}</span></div>
           <div style="font-size:13px;margin-top:2px"><span class="muted" style="font-size:11px">new:</span> ${newWordsList}</div>
           ${cbWordsList ? `<div style="font-size:12px;margin-top:1px;color:var(--muted)"><span style="font-size:11px">callbacks:</span> ${cbWordsList}</div>` : ''}
         </div>`;
@@ -20467,7 +20491,7 @@ function renderBuildModeStep(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
-          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — listens, and switches to typing after 2 misses in a row">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
+          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — speak the answer and it advances (never graded)">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
@@ -20496,6 +20520,10 @@ function renderBuildModeStep(){
          inside the lesson, not just from Vocab Blitz. */
       const wid = _buildCurrentStepWordId();
       if(!wid || !b.revealed) return '';
+      /* v8.49 — hidden during the onboarding micro-drill: "reset SRS",
+         "Focus", and "Master" are meaningless jargon on a stranger's first
+         three cards, and mis-taps there write real scheduling state. */
+      if(b.lesson?._meta?.mode === 'onboardMicro') return '';
       const missed = b._missed && b._missed.has(wid);
       return `<div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;${missed ? 'color:var(--red);border-color:var(--red)' : 'color:var(--muted)'}" onclick="buildToggleMissed()">${missed ? '✗ marked missed (will reset SRS)' : '✗ Missed it (optional)'}</button>
@@ -20856,6 +20884,21 @@ function _buildInductionSentences(w){
       }
     }
   }catch(e){}
+  /* v8.49 — curated Focus bank next: keyless, and 3 real sentences with
+     nuance notes beat the single static ex (or the canned frame) every time.
+     Matters most for the onboarding micro-drill, where a cold profile has no
+     generated cache — the first HEAR card a stranger ever sees should be
+     real Japanese, not filler. */
+  try{
+    const romaji = ((w.r || w.romaji || '') + '').toLowerCase().trim();
+    const bank = romaji ? FOCUS_WORD_SENTENCES[romaji] : null;
+    if(bank && bank.length){
+      const mapped = bank.slice(0, 3)
+        .map(s => ({ jp: (s && s[0]) || '', en: (s && s[1]) || '', note: (s && s[2]) || '' }))
+        .filter(s => s.jp);
+      if(mapped.length) return mapped;
+    }
+  }catch(e){}
   try{
     let ex = w.ex, exEn = w.exEn;
     if(ex === undefined && Array.isArray(state.words)){
@@ -20866,7 +20909,7 @@ function _buildInductionSentences(w){
   }catch(e){}
   /* Canned last-resort frame — hiragana/katakana only, no kanji, always available. */
   const jp = ((w && w.jp) || '') + ' を つかって みましょう。';
-  return [{ jp, en: (w && w.en) || '', note: '' }];
+  return [{ jp, en: `Let's try using "${(w && w.en) || ''}".`, note: '' }];
 }
 
 /* Shared, judgment-free SKIP control for all three induction beats: "I know this /
@@ -21250,6 +21293,25 @@ function _buildRatePanel(){
 
 function renderBuildModeComplete(){
   const l = state.buildMode.lesson;
+  /* v8.49 — onboarding micro-drill first-win card. One celebratory beat with
+     the actual words learned, then hand off to the real app. None of the
+     usual complete-screen chrome (rate panel, chains, restart) — a brand-new
+     profile has nothing for any of it to act on. */
+  if(l?._meta?.mode === 'onboardMicro'){
+    const rows = (l.new_words || []).map(w => `
+      <div style="display:flex;justify-content:center;align-items:baseline;gap:10px;font-size:17px;margin:5px 0">
+        <span style="font-family:'Noto Sans JP';font-weight:700">${esc(w.jp)}</span>
+        <span class="muted" style="font-size:13.5px">${esc(w.en)}</span>
+      </div>`).join('');
+    return `
+      <div class="card" style="text-align:center;padding:34px 20px">
+        <div style="font-size:56px;margin-bottom:10px">🎉</div>
+        <h2 style="margin:0 0 8px 0">Your first words are in!</h2>
+        <div style="margin:14px 0 8px">${rows}</div>
+        <div class="muted" style="font-size:13.5px;margin:14px 0 22px;line-height:1.55">That's the whole loop — hear it, say it, keep what sticks. These three are in your rotation now; full rounds drill 30 words at a time, hands-free.</div>
+        <button class="btn btn-primary" style="width:100%" onclick="buildExit()">Start learning →</button>
+      </div>`;
+  }
   /* v6.22 — chain-queued placeholder. When buildOnComplete schedules the
      next chained lesson there's a 1.5s gap before it fires; show a brief
      "next lesson loading" view so the user doesn't tap into a button race. */
@@ -21356,6 +21418,9 @@ function renderTopbar(){
      back-arrow, which would let a tap exit the scripted flow mid-pass. */
   if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard') return '';
   let title = SCREEN_TITLES[state.screen];
+  /* v8.49 — the onboarding micro-drill is a stranger's first screen; "Build
+     Mode" is internal jargon there. */
+  if(state.screen === 'buildMode' && state.buildMode?.lesson?._meta?.mode === 'onboardMicro') title = 'First words';
   if(state.screen === 'formDrill'){
     const f = FORMS.find(x => x.id === state._navData);
     title = f ? `Form drill · ${f.name}` : 'Form drill';
@@ -22112,6 +22177,11 @@ function nav(screen, data, fromPop){
      genuinely first-run profiles. Placed after the today->home alias so
      both entry points funnel through one normalization site. */
   if(screen === 'home' && !state.settings.onboard.done) screen = 'onboard';
+  /* v8.49 — mirror guard: once onboarded, 'onboard' is never a valid screen
+     again. Without this, the system back button from the micro-drill pops the
+     replaceState('#onboard') history entry and re-runs the whole first-run
+     pass (fresh _obEnsure) on an already-onboarded profile. */
+  if(screen === 'onboard' && state.settings.onboard.done) screen = 'home';
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -22314,22 +22384,36 @@ function renderHome(){
     </button>`;
   })() : '';
 
+  /* v8.49 — hero leads with the CORE product (the hands-free hear→say drill
+     loop) instead of the benched AI conversation. This closes the onboarding
+     funnel: a cold user is pitched drills, wins at drills, and lands on a
+     Home whose top card is that same drill — not a keyed Talk mode they
+     can't use. Talk stays one tap away as the first row below the ladder. */
   const heroCard = `
     <div class="h8-hero">
-      <div class="h8-hero-deco emoji">💬</div>
-      <div class="h8-hero-eyebrow">TALK</div>
-      <div class="h8-hero-title">${esc(_convoInfo.en || _convoInfo.name)}${_convoInfo.name ? ` <span style="font-family:'Noto Sans JP';font-size:13px;font-weight:600;opacity:.75">· ${esc(_convoInfo.name)}</span>` : ''}</div>
-      <div class="h8-hero-meta">Talk it out — AI-led, multi-turn, zero judgment</div>
-      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:12px"><div style="height:100%;width:${_convoXpPct}%;background:linear-gradient(90deg,#9d5cff,#ff5d9e);border-radius:3px"></div></div>
-      <div style="font-size:11px;color:rgba(255,255,255,.72);margin-top:4px">${_convoInfo.atMax ? 'MAX' : (_convoInfo.xp + ' / ' + _convoInfo.xpToNext + ' XP')}</div>
-      <button class="h8-hero-cta" style="margin-top:12px" onclick="nav('convo')">💬 Start talking</button>
+      <div class="h8-hero-deco emoji">🎧</div>
+      <div class="h8-hero-eyebrow">DRILL</div>
+      <div class="h8-hero-title">Today's words</div>
+      <div class="h8-hero-meta">Hands-free — hear it, say it, keep what sticks</div>
+      <button class="h8-hero-cta" style="margin-top:14px" onclick="startBuildModeVocabSpam()">🎧 Start drilling</button>
     </div>`;
+
+  const talkRow = `
+      <button class="h8-row" onclick="nav('convo')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff5d9e,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,93,158,.30);flex-shrink:0">💬</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Talk</div>
+          <div class="h8-row-meta">Conversation practice — ${esc(_convoInfo.en || _convoInfo.name)}${_convoInfo.atMax ? ' · MAX' : ` · ${_convoXpPct}%`}</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>`;
 
   const dp = _dailyPathModel();
   const ladder = _pathLadderHtml(dp);
 
   const extras = `
     <div class="h8-list" style="margin-top:18px">
+      ${talkRow}
       <button class="h8-row" onclick="nav('sentences')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ffb35c,#f2653f);box-shadow:0 8px 22px rgba(242,101,63,.40),0 0 24px rgba(255,179,92,.30);flex-shrink:0">🧩</div>
         <div class="h8-row-body">
@@ -22368,33 +22452,37 @@ function renderHome(){
 }
 
 /* =========================================================================
-   ONBOARDING — Stage B (v8.08): OB-0..OB-4 first-run scripted exchange.
+   ONBOARDING — v8.49 rebuild (was Stage B v8.08's Misaki scripted exchange).
+   The taste is now the PRODUCT: a 3-word micro-drill through the real Build-
+   Mode engine (meet->hear->say induction beats + a recall step per word),
+   ending on a first-win completion card inside Build Mode itself.
 
-   Flow: OB-0 (promise) -> OB-1 (one-question path pick) -> OB-2 (meet the
-   partner + mic pre-prompt, runs exactly once per pass on BOTH paths) ->
-   OB-3A (beginner: scripted 3-turn exchange, local TTS + STT-as-turn-
-   trigger, canned lines, typed name field) OR OB-3B (router: skippable
-   <=3-question chip flow) -> OB-4 (first-win card, no score/signup) -> Home.
+   Flow: OB-0 (promise: learn-by-ear pitch) -> OB-1 (path pick) -> OB-2 (mic
+   pre-prompt, once per pass; grant flips buildVoiceMode ON so the drill is
+   genuinely hands-free) -> [router path only: OB-3B skippable <=3-question
+   chip flow] -> startOnboardMicroDrill() -> Build Mode -> first-win card
+   (renderBuildModeComplete's 'onboardMicro' branch) -> Home.
+
+   onboard.done is marked BEFORE the drill launches, so bailing out of the
+   drill lands on normal Home — never back in a half-run onboarding.
 
    Durable record: state.settings.onboard.{done,path,placedStage} (additive,
    backfilled at boot for existing users — see load()).
    Transient pass state: state.onboard (in-memory only, see _obEnsure()).
 
    Invariants: kana-only new JP copy; STT is a turn-trigger/optional echo
-   ONLY — never scored, never written to state.stats/SRS; never touches
-   buildMode's voice-loop code paths.
+   ONLY — never scored (the say beat + recall voice-listen already obey
+   this inside Build Mode); micro-drill is fully keyless (HEAR beat falls
+   back to static ex / canned kana frame — see _buildInductionSentences).
    ========================================================================= */
 
-/* Canned script — identical copy is reused by BOTH the spoken (STT) branch
-   and the chips-only fallback branch, per the OB-2 fallback requirement.
-   kind:'name' -> typed field only, NEVER populated via STT.
-   kind:'chip' -> spoken turn-trigger in voice mode, tap-to-advance chip in
-   chips-only mode; `chip` is the exact label shown on the fallback button. */
-const OB_SCRIPT_BEGINNER = [
-  { jp:'はじめまして！わたしは みさきです。', en:"Nice to meet you! I'm Misaki.", kind:'intro' },
-  { jp:'おなまえを おしえて ください。', en:'Please tell me your name.', kind:'name' },
-  { jp:'にほんごの べんきょう、たのしみですか？', en:'Are you excited to learn Japanese?', kind:'chip', chip:'はい、たのしみです！' },
-  { jp:'じゃあ、いっしょに がんばりましょう！', en:"Then let's do our best together!", kind:'chip', chip:'がんばります！' }
+/* The 3 starter words — resolved from the live deck by jp+en at launch (deck
+   ids are index-derived, never hardcode them). Concrete, phonetically
+   distinct, and likely half-familiar already (the cheap first win). */
+const OB_STARTER_WORDS = [
+  { jp:'みず', en:'water' },
+  { jp:'ねこ', en:'cat' },
+  { jp:'すし', en:'sushi' }
 ];
 
 /* Router — skippable, <=3 chip questions. Each answer's `stage` feeds the
@@ -22402,11 +22490,11 @@ const OB_SCRIPT_BEGINNER = [
    per ADR-003 — it never gates or restricts content). */
 const OB_ROUTER_QUESTIONS = [
   { jp:'にほんごは はじめて ですか？', en:'Is Japanese completely new to you?',
-    opts:[ {label:'はい、はじめてです', stage:1}, {label:'すこし わかります', stage:2}, {label:'けっこう わかります', stage:3} ] },
+    opts:[ {label:'はい、はじめてです', en:'yes, brand new', stage:1}, {label:'すこし わかります', en:'I know a bit', stage:2}, {label:'けっこう わかります', en:'a fair amount', stage:3} ] },
   { jp:'ひらがなは よめますか？', en:'Can you read hiragana?',
-    opts:[ {label:'よめません', stage:1}, {label:'すこし よめます', stage:2}, {label:'よめます', stage:3} ] },
+    opts:[ {label:'よめません', en:'not yet', stage:1}, {label:'すこし よめます', en:'a little', stage:2}, {label:'よめます', en:'yes', stage:3} ] },
   { jp:'はなす れんしゅうを した ことが ありますか？', en:'Have you practiced speaking before?',
-    opts:[ {label:'ありません', stage:1}, {label:'すこし あります', stage:2}, {label:'よく します', stage:3} ] }
+    opts:[ {label:'ありません', en:'never', stage:1}, {label:'すこし あります', en:'a little', stage:2}, {label:'よく します', en:'often', stage:3} ] }
 ];
 
 /* Transient pass state — created on first entry to the onboarding screen,
@@ -22420,11 +22508,8 @@ function _obEnsure(){
       path:null,            // 'beginner' | 'router'
       micAsked:false,        // OB-2 gate — pre-prompt resolves exactly once per pass
       micGranted:null,       // true | false | null
-      turnIdx:0,             // OB-3A canned-line index
-      name:'',               // typed name (OB-3A) — never STT-populated
       routerIdx:0,           // OB-3B question index
       stageVotes:[],         // OB-3B collected `stage` picks -> placedStage
-      listening:false,
       _t0:now()               // timing-marker base for console evidence
     };
     _obLog('ob_start', {});
@@ -22446,19 +22531,19 @@ function obGoto(step){
     if(ob.micAsked){
       /* Gate: OB-2 only ever resolves once per pass. Back-navigation or a
          re-render must not re-show (or re-ask) it — skip straight through
-         to the exchange the current path leads to. */
-      step = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
+         to wherever the current path leads. */
+      step = ob.path === 'router' ? 'ob3b' : 'drill';
     } else if(!voiceSupported()){
       /* Fallback (b): STT API absent — skip the mic ask SCREEN entirely
          (never rendered, no permission prompt of any kind is ever
-         attempted), landing straight in the chips-only exchange with the
-         identical script/copy the voice branch would have used. */
+         attempted); the micro-drill runs in tap/auto-advance mode. */
       ob.micGranted = false;
       ob.micAsked = true;
       _obLog('mic_skipped_unsupported', {});
-      step = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
+      step = ob.path === 'router' ? 'ob3b' : 'drill';
     }
   }
+  if(step === 'drill'){ startOnboardMicroDrill(); return; }
   ob.step = step;
   _obLog('step_' + step, {path:ob.path});
   render();
@@ -22485,22 +22570,89 @@ async function obMicAllow(){
   ob._micPending = false;
   ob.micGranted = !!granted;
   ob.micAsked = true;
+  /* Grant flips the app-wide voice mode ON so the micro-drill (and every
+     drill after it) listens for the spoken answer — the mic ask IS the
+     voice-mode opt-in, not a separate Settings hunt later. Persisted by
+     startOnboardMicroDrill's save(). */
+  if(ob.micGranted && voiceSupported()) state.settings.buildVoiceMode = true;
   _obLog('mic_result', {granted:ob.micGranted});
-  const target = ob.path === 'beginner' ? 'ob3a' : 'ob3b';
-  ob.step = target;
-  _obLog('step_' + target, {path:ob.path, mode: ob.micGranted ? 'voice' : 'chips'});
-  render();
+  if(ob.path === 'router'){ obGoto('ob3b'); return; }
+  startOnboardMicroDrill();
 }
 window.obMicAllow = obMicAllow;
+
+/* Explicit "not now" — never forces the browser permission prompt on someone
+   who doesn't want it; drills run in tap/auto-advance mode instead. */
+function obMicDecline(){
+  const ob = _obEnsure();
+  ob.micGranted = false;
+  ob.micAsked = true;
+  _obLog('mic_declined', {});
+  if(ob.path === 'router'){ obGoto('ob3b'); return; }
+  startOnboardMicroDrill();
+}
+window.obMicDecline = obMicDecline;
+
+/* Launch the 3-word micro-drill through the REAL Build-Mode engine: per word
+   the one-time meet->hear->say induction beats (forced here regardless of the
+   "Walk me through new words" Settings opt-in — this IS the walkthrough) then
+   its normal recall step. Completion credits SM-2 exactly like any lesson, so
+   the learner's first 3 words genuinely enter rotation. No induction cache
+   warm — a cold profile has no API key, and _buildInductionSentences already
+   falls back to static ex / a canned kana frame without it. */
+function startOnboardMicroDrill(){
+  const ob = state.onboard || {};
+  /* Mark onboarded BEFORE launching — bailing out of the drill must land on
+     normal Home, never back in a half-run onboarding pass. */
+  state.settings.onboard.done = true;
+  state.settings.onboard.path = ob.path || null;
+  state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : null;
+  _obLog('micro_drill_start', {path:ob.path, placedStage:state.settings.onboard.placedStage, voice: state.settings.buildVoiceMode === true});
+  state.onboard = null;
+  const deck = state.words || [];
+  const suspendedSet = new Set(state.settings.suspendedWords || []);
+  const picks = OB_STARTER_WORDS
+    .map(t => deck.find(w => w.jp === t.jp && w.en === t.en && !suspendedSet.has(w.id)))
+    .filter(Boolean);
+  /* Deck drifted and a starter word vanished? Top up from the active deck. */
+  if(picks.length < OB_STARTER_WORDS.length){
+    const seen = new Set(picks.map(w => w.id));
+    for(const w of getActiveWords()){
+      if(picks.length >= OB_STARTER_WORDS.length) break;
+      if(!seen.has(w.id) && w.pos === 'n' && _isVocabDrillSurface(w)){ picks.push(w); seen.add(w.id); }
+    }
+  }
+  if(picks.length < 1){ save(); nav('home'); return; }
+  const steps = picks.reduce((acc, w) => {
+    acc.push(..._buildInductionStepsFor(w));
+    acc.push({ type:'recall', word_id: w.id });
+    return acc;
+  }, []);
+  const lesson = {
+    id: 'Gob_' + Date.now().toString(36),
+    title: 'Your first words',
+    duration_mins: 2,
+    new_words: picks.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
+    carryover_words: [],
+    cycles: [{ id:'ob', name:'First words', steps }],
+    _meta: { mode:'onboardMicro', real_word_ids: picks.map(w => w.id) }
+  };
+  state.buildMode = buildMakeSession(lesson);
+  state.buildMode._origin = 'home';
+  save();
+  _buildWakeLockSync();
+  nav('buildMode');
+}
+window.startOnboardMicroDrill = startOnboardMicroDrill;
 
 function _obRenderOb0(){
   _obEnsure();
   return `
     <div class="ob-screen">
-      <div class="ob-emoji">💬</div>
-      <div class="ob-title">It's okay to make mistakes</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">まちがえても だいじょうぶ</div>
-      <div class="ob-body">Isshin is a real, zero-judgment conversation partner — not a quiz. We'll ease you in with one short spoken exchange, no score, no signup.</div>
+      <div class="ob-emoji">🎧</div>
+      <div class="ob-title">Learn Japanese by ear</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">みみで おぼえましょう</div>
+      <div class="ob-body">Isshin drills words into you hands-free — you hear a word, say it back, and the app keeps what sticks. No typing, no judgment, no signup. Your first 3 words take a couple of minutes.</div>
       <button class="ob-cta" onclick="obGoto('ob1')">Start →</button>
     </div>`;
 }
@@ -22514,7 +22666,7 @@ function _obRenderOb1(){
       <button class="ob-path-card" onclick="obSelectPath('beginner')">
         <div class="ob-path-em">🔰</div>
         <div class="ob-path-t">Beginner — はじめて</div>
-        <div class="ob-path-s">Total beginner — meet your partner &amp; try one spoken exchange</div>
+        <div class="ob-path-s">Start from zero — your first 3 words are minutes away</div>
       </button>
       <button class="ob-path-card" onclick="obSelectPath('router')">
         <div class="ob-path-em">⚡</div>
@@ -22527,104 +22679,28 @@ function _obRenderOb2(){
   const ob = _obEnsure();
   /* Fallback (b) — STT-API-absent — is handled upstream in obGoto(), which
      never routes here at all when !voiceSupported(); it jumps straight to
-     the chips exchange. This defensive branch only guards against a caller
+     the micro-drill. This defensive branch only guards against a caller
      landing on 'ob2' some other way (e.g. a future direct render() call). */
   if(!voiceSupported()){
     ob.micGranted = false;
     ob.micAsked = true;
     return `
       <div class="ob-screen">
-        <div class="ob-emoji">🙋</div>
-        <div class="ob-title">Meet Misaki</div>
-        <div class="ob-sub" style="font-family:'Noto Sans JP'">みさきに あいましょう</div>
-        <div class="ob-body">Your browser doesn't support voice input here, so we'll do this with taps instead of your mic.</div>
-        <button class="ob-cta" onclick="obGoto('${ob.path==='beginner'?'ob3a':'ob3b'}')">Continue →</button>
+        <div class="ob-emoji">🎙️</div>
+        <div class="ob-title">Almost there</div>
+        <div class="ob-sub" style="font-family:'Noto Sans JP'">もうすこし です</div>
+        <div class="ob-body">Voice input isn't supported in this browser, so drills will advance with taps and timers instead.</div>
+        <button class="ob-cta" onclick="obGoto('${ob.path==='router'?'ob3b':'drill'}')">Continue →</button>
       </div>`;
   }
   return `
     <div class="ob-screen">
-      <div class="ob-emoji">🙋</div>
-      <div class="ob-title">Meet Misaki</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">みさきに あいましょう</div>
-      <div class="ob-body">We're about to talk a little. Is it okay to use your microphone? If not, chips work just as well.</div>
+      <div class="ob-emoji">🎙️</div>
+      <div class="ob-title">Drills are hands-free</div>
+      <div class="ob-sub" style="font-family:'Noto Sans JP'">こえに だして いいましょう</div>
+      <div class="ob-body">You'll hear each word, then say it back out loud. Okay to use your microphone? Saying it is how it sticks — but everything also works without.</div>
       <button class="ob-cta" onclick="obMicAllow()">🎤 Use my mic</button>
-    </div>`;
-}
-
-/* OB-3A — beginner scripted exchange. Renders one canned turn at a time from
-   OB_SCRIPT_BEGINNER. Voice mode (mic granted) shows a tap-to-listen mic
-   button; chips-only mode (denied OR unsupported) shows the SAME jp/en
-   script text with a tap-to-advance chip — identical copy either way. */
-function _obTurnAdvance(heard){
-  const ob = state.onboard;
-  if(!ob) return;
-  ob.listening = false;
-  if(heard) _obLog('turn_heard', {turnIdx:ob.turnIdx, heard:String(heard).slice(0,80)});
-  ob.turnIdx++;
-  if(ob.turnIdx >= OB_SCRIPT_BEGINNER.length){ obGoto('ob4'); return; }
-  render();
-}
-window._obTurnAdvance = _obTurnAdvance;
-function obNameSubmit(){
-  const ob = state.onboard;
-  if(!ob) return;
-  const el = document.getElementById('obNameInput');
-  const typed = el ? String(el.value || '').trim().slice(0, 24) : '';
-  ob.name = typed; /* typed field ONLY — never populated from STT, per spec */
-  if(typed) state.settings.userName = typed; /* reuse existing convo field, esc()'d on every later render */
-  _obLog('name_submitted', {len:typed.length});
-  _obTurnAdvance(null);
-}
-window.obNameSubmit = obNameSubmit;
-/* Tap-to-listen mic turn-trigger. Mirrors the app-wide "STT is a
-   turn-trigger + optional echo, never a grader" convention (see
-   _buildVoiceListenStep) but is a fully separate, self-contained
-   implementation — it never touches buildMode state or SRS stats. */
-function obListenTurn(){
-  const ob = state.onboard;
-  if(!ob || ob.listening) return;
-  ob.listening = true;
-  render();
-  const finish = (heard) => { if(state.onboard === ob) _obTurnAdvance(heard); };
-  try{
-    startVoice(
-      (alts) => finish((alts && alts[0] && alts[0].transcript) || ''),
-      () => { if(ob.listening) finish(null); },
-      'ja-JP'
-    );
-  }catch(e){ finish(null); return; }
-  setTimeout(() => { if(ob.listening){ try{ stopVoice(); }catch(e){} finish(null); } }, (state.settings.voiceListenSec || 6) * 1000);
-}
-window.obListenTurn = obListenTurn;
-function _obRenderOb3a(){
-  const ob = _obEnsure();
-  const voiceMode = ob.micGranted === true && voiceSupported();
-  const turn = OB_SCRIPT_BEGINNER[ob.turnIdx] || OB_SCRIPT_BEGINNER[OB_SCRIPT_BEGINNER.length - 1];
-  if(turn && ob._spokenTurnIdx !== ob.turnIdx){
-    speakJP(turn.jp);
-    ob._spokenTurnIdx = ob.turnIdx;
-    if(ob.turnIdx === 0) _obLog('spoken_exchange_reached', {mode: voiceMode ? 'voice' : 'chips'});
-  }
-  let control;
-  if(turn.kind === 'name'){
-    control = `
-      <input id="obNameInput" class="ob-input" type="text" maxlength="24" placeholder="Name" value="${esc(ob.name)}" autocomplete="off">
-      <button class="ob-cta" onclick="obNameSubmit()">Next →</button>`;
-  } else if(voiceMode && turn.kind === 'chip'){
-    control = ob.listening
-      ? `<div class="ob-listening">🎤 Listening…</div>`
-      : `<button class="ob-cta ob-mic" onclick="obListenTurn()">🎤 Speak</button>`;
-  } else {
-    control = `<button class="ob-cta" onclick="_obTurnAdvance(null)">${esc(turn.chip || 'Continue →')}</button>`;
-  }
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">💬</div>
-      <div class="ob-jp">${esc(turn.jp)}</div>
-      <div class="ob-sub">${esc(turn.en)}</div>
-      <div class="ob-turn-meta">${ob.turnIdx + 1} / ${OB_SCRIPT_BEGINNER.length}${voiceMode ? '' : ' · chips mode'}</div>
-      ${control}
-      <button class="ob-skip" onclick="obGoto('ob4')">Skip</button>
+      <button class="ob-skip" onclick="obMicDecline()">Not now — I'll speak without the mic</button>
     </div>`;
 }
 
@@ -22646,15 +22722,15 @@ function obRouterFinish(){
   const votes = ob.stageVotes.length ? ob.stageVotes : [1];
   ob.placedStage = Math.round(votes.reduce((a,b)=>a+b,0) / votes.length);
   _obLog('router_done', {placedStage:ob.placedStage, answered:votes.length});
-  obGoto('ob4');
+  startOnboardMicroDrill();
 }
 window.obRouterFinish = obRouterFinish;
 function _obRenderOb3b(){
   const ob = _obEnsure();
-  if(ob.routerIdx === 0) _obLog('spoken_exchange_reached', {mode:'router'});
+  if(ob.routerIdx === 0 && !ob._routerLogged){ ob._routerLogged = true; _obLog('router_reached', {}); }
   const q = OB_ROUTER_QUESTIONS[ob.routerIdx];
   if(!q){ obRouterFinish(); return ''; }
-  const opts = q.opts.map(o => `<button class="ob-chip" onclick="obRouterAnswer(${o.stage})">${esc(o.label)}</button>`).join('');
+  const opts = q.opts.map(o => `<button class="ob-chip" onclick="obRouterAnswer(${o.stage})">${esc(o.label)}${o.en ? `<span style="display:block;font-size:11px;opacity:.65;font-weight:600;margin-top:2px">${esc(o.en)}</span>` : ''}</button>`).join('');
   return `
     <div class="ob-screen">
       <div class="ob-emoji">❓</div>
@@ -22666,38 +22742,14 @@ function _obRenderOb3b(){
     </div>`;
 }
 
-/* OB-4 — first-win card. Celebration only: no numeric score/accuracy/%,
-   no signup/login prompt. Marks the durable record done and hands off to
-   Home (which now routes normally since onboard.done is true). */
-function obFinish(){
-  const ob = state.onboard || {};
-  state.settings.onboard.done = true;
-  state.settings.onboard.path = ob.path || null;
-  state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : null;
-  save();
-  _obLog('finish', {path:ob.path, placedStage:state.settings.onboard.placedStage});
-  state.onboard = null;
-  nav('home');
-}
-window.obFinish = obFinish;
-function _obRenderOb4(){
-  const ob = state.onboard || {};
-  const name = ob.name ? esc(ob.name) : esc(state.settings.userName || '');
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">🎉</div>
-      <div class="ob-title">First step done!</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">${name ? name + '、' : ''}よく できました！</div>
-      <div class="ob-body">No score, no pressure — just conversation practice, whenever you're ready.</div>
-      <button class="ob-cta" onclick="obFinish()">Go home →</button>
-    </div>`;
-}
-
+/* The first-win card lives in Build Mode now — renderBuildModeComplete's
+   'onboardMicro' branch — so completion celebrates the actual drilled words
+   and hands off to Home via the normal buildExit() path. */
 function renderOnboard(){
   const ob = _obEnsure();
   const body = ({
     ob0:_obRenderOb0, ob1:_obRenderOb1, ob2:_obRenderOb2,
-    ob3a:_obRenderOb3a, ob3b:_obRenderOb3b, ob4:_obRenderOb4
+    ob3b:_obRenderOb3b
   }[ob.step] || _obRenderOb0)();
   return `<div class="ob-wrap">${body}</div>`;
 }
