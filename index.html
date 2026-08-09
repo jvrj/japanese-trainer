@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.49';
+const APP_VERSION = '8.50';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17458,8 +17458,13 @@ window.startBuildModeFormMix = startBuildModeFormMix;
 /* v7.82 — Build Mode 2.0 word picker. Composes a spam session from the words
    you've been learning: all seen words ordered due-first (so reviews surface and
    the set rotates over time), topped up with fresh words, then shuffled for a
-   lively order. Falls back to padding from the pool so a tiny deck never strands. */
-function _buildSpamPick(arr, n){
+   lively order. Falls back to padding from the pool so a tiny deck never strands.
+   v8.50 — opts.freshMix: reserve ~1/3 of the slots for UNSEEN words so
+   re-drilling a section always advances into new material (~20 review + ~10 new
+   at n=30) instead of re-serving the same seen set forever. Unseen pool empty
+   => pure review; seen pool thin => the fresh share grows to fill. Off by
+   default so the convo word-seed (which wants only learned words) is untouched. */
+function _buildSpamPick(arr, n, opts){
   if(n <= 0 || !arr.length) return [];
   const seen = [], unseen = [];
   for(const w of arr){
@@ -17471,7 +17476,8 @@ function _buildSpamPick(arr, n){
     ensureSm(sa); ensureSm(sb);
     return (sa.smNext || 0) - (sb.smNext || 0);
   });
-  const learnTake = seen.slice(0, n);
+  const freshReserve = (opts && opts.freshMix) ? Math.min(unseen.length, Math.ceil(n / 3)) : 0;
+  const learnTake = seen.slice(0, n - freshReserve);
   const need = n - learnTake.length;
   const fresh = need > 0 ? shuffleFY(unseen.slice()).slice(0, need) : [];
   let chosen = [...learnTake, ...fresh];
@@ -17554,7 +17560,7 @@ function buildGenerateVocabSpamLesson(opts){
      pure random shuffle. Prioritize seen/SRS-due words (due-first) so the
      session reflects your real study and rotates as reviews come due, then top
      up with new words. Fixes "build mode doesn't change / isn't my words." */
-  const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length));
+  const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length), {freshMix:true});
   const sec = activeVocabSection();
   /* v8.xx — induction-inject-gate: brand-new (!vocabIsIntroduced) words get a
      one-time meet->hear->say induction spliced immediately before their own
