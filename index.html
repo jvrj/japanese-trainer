@@ -17219,8 +17219,13 @@ function buildMakeSession(lesson, chainIdx){
      v6.22 — _chainIdx: which lesson in an autopilot chain this is (1-based).
      Initial sessions start at 1; auto-chained sessions increment from there
      up to BUILD_AUTO_CHAIN_CAP. Lets the header show "Lesson 2 of 4 ⛓"
-     and the complete screen know whether we're at the chain end. */
-  return { lesson, steps, stepIdx: 0, revealed: false, done: false, _missed: new Set(), _chainIdx: chainIdx || 1 };
+     and the complete screen know whether we're at the chain end.
+     ADR-022 — _credited: Set of real deck word IDs already given SM-2 credit
+     THIS session, so a word is graded at most once whether it's credited at
+     its recall step (_buildCreditStep) or by the buildOnComplete fallback.
+     Session-transient like _missed — never persisted to save()'s payload or
+     the export JSON. */
+  return { lesson, steps, stepIdx: 0, revealed: false, done: false, _missed: new Set(), _credited: new Set(), _chainIdx: chainIdx || 1 };
 }
 
 function startBuildMode(){
@@ -18998,6 +19003,7 @@ function buildNextStep(){
   _buildClearTimer();
   _buildInductionCompleteSay(b.steps[b.stepIdx]); // fire-once gate — no-op unless leaving a 'say' step
   _buildCountHear(b, b.steps[b.stepIdx]);         // v8.48 — exposure counter for self-rating check-ins
+  _buildCreditStep(b, b.steps[b.stepIdx]);        // ADR-022 — SM-2 credit at the recall step, exactly-once/session
   b.revealed = false;
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
@@ -19055,6 +19061,7 @@ function buildRestart(){
   b._similarPick = null;   /* v6.26 */
   b._lastVoice = null;
   b._rateCands = null;     /* v8.48 — recompute check-in list after the rerun */
+  b._credited = new Set(); /* ADR-022 — "Run it again" is deliberately a fresh crediting session */
   if(b.lesson) b.lesson._completed = false;
   /* Reshuffle on "Run it again" for spammy modes — independent steps with no
      intro→callback dependencies. Keeps the same word set, fresh order, so the
@@ -19092,11 +19099,27 @@ function buildOnComplete(){
     try{
       const realIds = l._meta.real_word_ids || [];
       const missed = state.buildMode?._missed || new Set();
+      /* ADR-022 — FALLBACK only: words already SM-2-credited at their recall
+         step (_buildCreditStep, seam shared via b._credited) are skipped here
+         so a word is never graded twice. This loop still exists for lesson
+         shapes with no recall step (e.g. pure 'say'/'build' cycles), and for
+         a real_word_ids duplicate that slipped past a recall step — the
+         for-of below has no dedup of its own, so it must both check AND
+         update the same b._credited set as it goes. */
+      if(state.buildMode && !state.buildMode._credited) state.buildMode._credited = new Set();
+      const credited = state.buildMode?._credited;
       let missedCount = 0;
       for(const wid of realIds){
         if(!wid) continue;
+        const wasMissed = missed.has(wid);
+        if(credited && credited.has(wid)){
+          /* already SM-2-credited (and streak-fed) at its recall step — still
+             counted toward the "marked missed" toast below, just not re-graded. */
+          if(wasMissed) missedCount++;
+          continue;
+        }
         const st = smStatFor(wid);
-        if(missed.has(wid)){
+        if(wasMissed){
           smGrade(st, 'again');
           missedCount++;
         } else {
@@ -19104,7 +19127,9 @@ function buildOnComplete(){
         }
         /* v7.45 — also push a per-attempt row so the Progress screen
            backward-history reconstruction credits the lesson. */
-        recordAttempt(wid, !missed.has(wid), 'lesson');
+        recordAttempt(wid, !wasMissed, 'lesson');
+        updateStreak(!wasMissed);  // ADR-022 — same streak feed as the recall-step seam
+        if(credited) credited.add(wid);
       }
       if(realIds.length) save();
       if(missedCount > 0){
@@ -21284,6 +21309,31 @@ function _buildCountHear(b, step){
     const st = smStatFor(step.word_id);
     st.hears = (st.hears || 0) + 1;
   }catch(e){}
+}
+
+/* ADR-022 — per-word SM-2 credit at the recall step, exactly-once per session
+   per word_id. Mirrors _buildCountHear's guard shape above (same call site
+   in buildNextStep, added beside it): only a 'recall' step naming a real deck
+   word_id credits anything. missed comes ONLY from the explicit "Missed it"
+   tap (b._missed) — STT is never a grader, so no transcript/timer heuristic
+   is read here. b._credited (Set, session-transient — never persisted or
+   exported) makes the grade exactly-once; buildOnComplete's per-word loop is
+   a fallback for lesson shapes with no recall step and shares this same set
+   so a word graded here is never re-graded there. */
+function _buildCreditStep(b, step){
+  try{
+    if(!step || step.type !== 'recall' || !step.word_id) return;
+    const realIds = b?.lesson?._meta?.real_word_ids;
+    if(!realIds || !realIds.includes(step.word_id)) return;
+    if(!b._credited) b._credited = new Set();
+    if(b._credited.has(step.word_id)) return;  /* exactly-once per session per word */
+    const missed = !!(b._missed && b._missed.has(step.word_id));
+    smGrade(smStatFor(step.word_id), missed ? 'again' : 'good');
+    recordAttempt(step.word_id, !missed, 'drill', {voice: state.settings.buildVoiceMode});
+    updateStreak(!missed);  // §2.1 item 6 — the core loop's first working streak feed
+    b._credited.add(step.word_id);
+    save();
+  }catch(e){ log('build_credit_step_err', {err:String(e)}); }
 }
 
 function _buildRateCandidates(l){
