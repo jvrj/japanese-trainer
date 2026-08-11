@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.52';
+const APP_VERSION = '8.53';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17562,6 +17562,9 @@ function buildGenerateVocabSpamLesson(opts){
      up with new words. Fixes "build mode doesn't change / isn't my words." */
   const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length), {freshMix:true});
   const sec = activeVocabSection();
+  /* v8.53 — scope-honest label: widening levels 2-3 drop the theme filter, so
+     the session must not keep claiming the category name over deck-wide words */
+  const scopeName = widenedAt >= 2 ? `${sec.name} → whole deck` : sec.name;
   /* v8.xx — induction-inject-gate: brand-new (!vocabIsIntroduced) words get a
      one-time meet->hear->say induction spliced immediately before their own
      recall step; already-introduced words are untouched (still just a single
@@ -17584,11 +17587,11 @@ function buildGenerateVocabSpamLesson(opts){
   }, []);
   return {
     id: 'Gv_' + Date.now().toString(36),
-    title: `Vocab Spam — ${sec.name}`,
+    title: `Vocab Spam — ${scopeName}`,
     duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
     new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji })),
     carryover_words: [],
-    cycles: [{ id:'spam', name:`Vocab · ${sec.name}`, steps }],
+    cycles: [{ id:'spam', name:`Vocab · ${scopeName}`, steps }],
     _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id),
              freshCount, reviewCount: pool.length - freshCount }
   };
@@ -18530,7 +18533,9 @@ function buildAutoplayStep(step){
     const w = buildWordById(step.word_id);
     if(w){
       _buildSpeakJPThenEN(w.jp, w.en, () => {
-        if(!auto) return;
+        /* v8.53 — same stale-onend pin as 'meet' below: a late TTS continuation
+           must not clobber the landed step's timer after a skip/advance */
+        if(!auto || !_stillArmed()) return;
         _buildScheduleLinger();
       });
     }
