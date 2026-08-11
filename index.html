@@ -13602,7 +13602,13 @@ function sentGapPick(idx){
   const g = state.sentGap; if(!g || g.pick !== null) return;
   const q = g.qs[g.i];
   g.pick = idx;
-  if(idx === q.correctIdx) g.correct++;
+  const wasRight = idx === q.correctIdx;
+  if(wasRight) g.correct++;
+  /* Attempts-only credit (Delve 11 §5.1.6): a 4-chip recognition tap is
+     weaker evidence than recall, so this feeds attempts[] (warming segment,
+     weekly charts, accuracy history) but NEVER smGrade — SRS intervals stay
+     untouched on this path. */
+  recordAttempt(q.word.id, wasRight, 'sentGap');
   try{ speakJP(q.jpFull); }catch(e){}
   render();
 }
@@ -13731,7 +13737,8 @@ function _bldFromGap(word, all){
     tokens, extras,
     jpFull: frame.p.replace('{N}', word.jp),
     enFull: frame.en.replace('{N}', word.en),
-    note: word.note || ''
+    note: word.note || '',
+    wordId: word.id
   };
 }
 
@@ -13790,6 +13797,10 @@ function sentBuildTap(ti){
     b.done = true;
     b.wasRight = b.placed.map(i => q.tray[i]).join(' ') === q.jpFull;
     if(b.wasRight) b.correct++;
+    /* Attempts-only credit (Delve 11 §5.1.6), gap-derived questions only —
+       _bldFromCount questions carry no wordId and write nothing. Never
+       smGrade: recognition/assembly is not recall. */
+    if(q.wordId) recordAttempt(q.wordId, b.wasRight, 'sentBuild');
     try{ speakJP(q.jpFull); }catch(e){}
   }
   render();
