@@ -1,43 +1,35 @@
 # Isshin → Product · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-08-06***
+*Last updated: **2026-08-11***
 
 ---
 
-## 📊 6 Aug — Delve 11 decided: the frozen 0% progress bar gets FIXED (awaiting your yes)
+## ✅ 11 Aug — Delve 11 SHIPPED (v8.54 live): the 0% bar is fixed
 
-Your question ("it still shows 0% progress — what is with that?") is fully
-designed and root-caused in the code: the Home bar averages three tracks, and
-two of them can ONLY be fed by old buried modes you never use — so it reads 0%
-forever no matter how much you drill. The fix, checked by a three-way
-adversary audit:
+You approved ADR-021/022/023 and the whole design is built, gated, and
+deployed (commits df688c6→c9fa359, forge 4/4 sprints passed):
 
-- Home leads with ONE honest number — **"Words that stick"**: words you've
-  gotten right 3+ times **across at least 2 different days**, with a bar
-  toward the next milestone (25 → 75 → 150 → …). Your existing phone data
-  already puts this above zero — the bar unfreezes the moment it ships, no
-  reset, nothing lost.
-- A second translucent segment shows words "warming up" (drilled in the last
-  2 weeks, not stuck yet), so the bar moves your very first session.
-- Interrupted rounds finally count what you did (today, a phone call at step
-  15 of 30 = zero credit).
-- The drill loop finally lights the streak flame (today it never does —
-  verified in code), and the consistency card leads with lifetime "days
-  practiced" — a number a break can never subtract.
-- The old "Your path to a real conversation" header retires (it belongs to
-  the benched conversation product).
+- Home now leads with **"Words that stick"** — a two-segment milestone bar
+  (solid = stuck, translucent = warming up). It unfreezes from your existing
+  phone data the moment the app updates; nothing was reset.
+- **Interrupted rounds keep their credit** — each word is credited the moment
+  you pass its card, and the 🔥 streak finally lights from ordinary drilling.
+- The completion screen shows a recap ("14 words drilled · 2 newly stuck").
+- Sentence drills (Fill-the-gap / Make-a-sentence) now feed the warming
+  segment (attempts-only — they never inflate the headline number).
+- The old "Your path to a real conversation" header is retired (no data
+  deleted). Same ship also carried v8.50–8.53: category drills serve
+  ~20 review + ~10 new, "Run it again" builds a fresh batch, and the app
+  was audited (hydra-review; all verified findings fixed or shipped here).
 
-Build order (deliberate): **bar first** — pure display, instant unfreeze, zero
-risk to your learning data — **then** the credit fix as its own step, then the
-end-of-round recap line + sentence-drill credit. Full design:
-`docs/delve-cycles/11-drill-progress.md`.
-
-### 🟢 YOUR STEP (~10 min when ready)
-Three decision records await your yes/no in `docs/decisions-pending/`:
-**ADR-021** (what the number means), **ADR-022** (when a word earns credit),
-**ADR-023** (retiring the old header — nothing deleted, nothing reset).
-Say "walk me through the Delve 11 ADRs" and Claude will do it as short
-plain-language choices.
+### 🟢 YOUR STEP (~5 min on the phone)
+1. Close and reopen the app twice → Settings shows **8.54**.
+2. Home should show a LIVE "Words that stick" bar (not 0%).
+3. Do a category drill: banner "30 words — N review · M new", ✦ NEW WORD
+   pills, recap line at the end — and quit one drill mid-round on purpose:
+   the words you passed should still count (check the bar/streak after).
+4. Report anything that feels off; otherwise say "next" → pricing/packaging
+   (Stripe vs Play Billing) toward the ads test.
 
 ---
 
