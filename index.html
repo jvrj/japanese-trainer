@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.50';
+const APP_VERSION = '8.51';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17570,9 +17570,16 @@ function buildGenerateVocabSpamLesson(opts){
      When off, the fast say-word→next loop is untouched — no beats, no cache warm. */
   const _induct = !!state.settings.newWordInduction;
   if(_induct) _buildInductionWarmCache(pool.filter(w => !vocabIsIntroduced(w)));
+  /* v8.51 — freshMix visibility: tag never-drilled words at build time (once
+     answered they gain attempts, so the tag must be baked into the step) so the
+     recall card can badge them and the start toast can report the mix. */
+  let freshCount = 0;
   const steps = pool.reduce((acc, w) => {
     if(_induct && !vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
-    acc.push({ type:'recall', word_id: w.id });
+    const st = state.stats[w.id];
+    const isFresh = !(st && st.attempts && st.attempts.length);
+    if(isFresh) freshCount++;
+    acc.push(isFresh ? { type:'recall', word_id: w.id, fresh:true } : { type:'recall', word_id: w.id });
     return acc;
   }, []);
   return {
@@ -17582,7 +17589,8 @@ function buildGenerateVocabSpamLesson(opts){
     new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji })),
     carryover_words: [],
     cycles: [{ id:'spam', name:`Vocab · ${sec.name}`, steps }],
-    _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id) }
+    _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id),
+             freshCount, reviewCount: pool.length - freshCount }
   };
 }
 function startBuildModeVocabSpam(){
@@ -17592,6 +17600,14 @@ function startBuildModeVocabSpam(){
     state.buildMode._origin = 'home';
     _buildWakeLockSync();
     nav('buildMode');
+    /* v8.51 — surface the freshMix so batch progression is visible, not silent */
+    const m = lesson._meta || {};
+    if(typeof m.freshCount === 'number'){
+      const total = (m.real_word_ids || []).length;
+      showToast(m.freshCount > 0
+        ? `${total} words — ${m.reviewCount} review · ${m.freshCount} new`
+        : `${total} words — all review (section fully explored ✓)`, {tone:'info', duration:3500});
+    }
   } catch(e){ showToast("Can't start Vocab Spam — " + e.message, {tone:'warn', duration:5000}); }
 }
 window.startBuildModeVocabSpam = startBuildModeVocabSpam;
@@ -21079,8 +21095,13 @@ function buildVoiceShowAlts(){
 function _buildRenderRecall(step){
   const b = state.buildMode;
   const w = buildWordById(step.word_id); if(!w) return '';
+  /* v8.51 — freshMix visibility: badge words that were never drilled before this session */
+  const freshPill = step.fresh
+    ? `<div style="text-align:center;margin-bottom:6px"><span style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);border:1px solid currentColor;border-radius:999px;padding:2px 9px">✦ NEW WORD</span></div>`
+    : '';
   if(b.revealed){
     return `
+      ${freshPill}
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct answer:</div>
       <div class="build-big-jp">${esc(w.jp)}</div>
       <div class="build-romaji">${esc(w.r)}</div>
@@ -21090,6 +21111,7 @@ function _buildRenderRecall(step){
     `;
   }
   return `
+    ${freshPill}
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">How do you say this? (out loud)</div>
     <div class="build-big-en">${esc(w.en)}</div>
     <div class="build-placeholder">say it, then tap Reveal</div>
