@@ -1,6 +1,6 @@
 # ADR-021 — Headline progress metric: words-that-stick milestone ladder (interim proxy, spacing-floored)
 
-- **Status:** Proposed (pending owner signoff)
+- **Status:** Accepted (owner signoff 2026-08-11)
 - **Date:** 2026-08-06
 - **Source:** Delve 11 — `docs/delve-cycles/11-drill-progress.md` §3 (as amended
   by the Round-1 synthesis: spacing floor, 14-day warming window, tier

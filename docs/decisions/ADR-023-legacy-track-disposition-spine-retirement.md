@@ -1,6 +1,6 @@
 # ADR-023 — Legacy-track disposition + spine retirement (migration = none)
 
-- **Status:** Proposed (pending owner signoff)
+- **Status:** Accepted (owner signoff 2026-08-11)
 - **Date:** 2026-08-06
 - **Source:** Delve 11 — `docs/delve-cycles/11-drill-progress.md` §4 + §6 (as
   amended by the Round-1 synthesis: corrected `_spineModel` consumer map,

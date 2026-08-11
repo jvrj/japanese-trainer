@@ -1,6 +1,6 @@
 # ADR-022 — Credit at recall-step pass: exactly-once per-word session credit
 
-- **Status:** Proposed (pending owner signoff)
+- **Status:** Accepted (owner signoff 2026-08-11)
 - **Date:** 2026-08-06
 - **Source:** Delve 11 — `docs/delve-cycles/11-drill-progress.md` §5 (as amended
   by the Round-1 synthesis: sentBuild included, duplicate-id guard specified,

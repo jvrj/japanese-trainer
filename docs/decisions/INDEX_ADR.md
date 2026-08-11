@@ -12,6 +12,9 @@ One row per architecture decision record in `docs/decisions/`. Pointer index, no
 | ADR-009 | Judgment-free interaction spec (copy rules + latency budgets + double-miss containment) | Accepted | 2026-07-17 |
 | ADR-012 | Rolling-frontier vocab hard lock (FRONTIER_N=80; choke point in `getActiveWords`; supersedes ADR-003) | Accepted, amended 2026-07-22: default OFF, lock is opt-in (owner field verdict, v8.35) | 2026-07-19 |
 | ADR-013 | Sensei teaching layer (teach card + spoken breath; amends Delve-7 invisibility; keyed gate shared with ADR-011) | Accepted | 2026-07-19 |
+| ADR-021 | Headline progress metric: words-that-stick milestone ladder (interim proxy; reopen on conversation un-bench) | Accepted | 2026-08-11 |
+| ADR-022 | Credit at recall-step pass (exactly-once per session; completion = fallback; core loop feeds streak) | Accepted | 2026-08-11 |
+| ADR-023 | Legacy-track disposition + spine retirement (dormant code, no data deleted, migration = none) | Accepted | 2026-08-11 |
 
 ## Not yet promoted (still in `docs/decisions-pending/`)
 These describe already-shipped features and are de-facto accepted by implementation, but were never formally promoted. Promote on request.
