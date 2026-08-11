@@ -21397,6 +21397,31 @@ function _buildRatePanel(){
   </div>`;
 }
 
+/* ADR-023 §7 — per-round recap line. Read-only over this round's
+   b._credited (Set of word IDs already given SM-2 credit this session via
+   _buildCreditStep) composed with the same wtsStuck/wtsWarming predicates
+   that back the Home "words that stick" headline — no delta/snapshot state
+   is introduced, just a local tally scoped to this render call. Counts only
+   upward, judgment-free register: no loss/urgency framing. Degrades to all
+   zeros (never NaN/throw) when _credited is empty or absent, e.g. lesson
+   shapes with no recall step or a legacy-imported profile mid-load. */
+function _buildRoundRecap(){
+  let drilled = 0, stuck = 0, warming = 0;
+  try{
+    const credited = state.buildMode && state.buildMode._credited;
+    if(credited && credited.size){
+      drilled = credited.size;
+      for(const wid of credited){
+        const w = state.words.find(x => x && x.id === wid);
+        if(!w) continue;
+        if(wtsStuck(w)) stuck++;
+        else if(wtsWarming(w)) warming++;
+      }
+    }
+  }catch(e){ drilled = 0; stuck = 0; warming = 0; }
+  return `<div style="font-size:12.5px;font-weight:700;color:#9fe9cf;margin-bottom:12px">${drilled} word${drilled === 1 ? '' : 's'} drilled · ${stuck} newly stuck · +${warming} warming</div>`;
+}
+
 function renderBuildModeComplete(){
   const l = state.buildMode.lesson;
   /* v8.49 — onboarding micro-drill first-win card. One celebratory beat with
@@ -21469,6 +21494,7 @@ function renderBuildModeComplete(){
           return summaryHead + srsTail;
         })()}
       </div>
+      ${_buildRoundRecap()}
       ${_buildRatePanel()}
       ${chainSummary}
       ${chainBtn}
