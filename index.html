@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.51';
+const APP_VERSION = '8.52';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17666,7 +17666,8 @@ function startRandomDrill(opts){
       new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
       carryover_words: [],
       cycles: [{id:'random', name:'Random · full deck', steps: randomSteps}],
-      _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id)}
+      _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id),
+              idsSeeded: !!(opts && Array.isArray(opts.ids) && opts.ids.length > 0)}
     };
     state.buildMode = buildMakeSession(lesson);
     state.buildMode._origin = (opts && opts._origin) || 'home';
@@ -19021,6 +19022,28 @@ window.buildPrevStep = buildPrevStep;
 function buildRestart(){
   const b = state.buildMode;
   _buildClearTimer();
+  /* v8.52 — "Run it again" on a GENERATED spam session builds a FRESH session
+     (next freshMix batch / new random pull) instead of replaying the same word
+     set. Replay made v8.50's batch progression invisible: the rerun loop most
+     users actually use served the identical 30 forever. ids-seeded Random
+     Drills ("drill the ones you missed") still replay their exact list, and
+     structured Build-chain lessons keep their order via the fallback below.
+     If a starter fails it toasts and leaves state.buildMode unchanged — then
+     we fall through to the classic reshuffle replay so the button never dies. */
+  const REGEN_ON_RESTART = {
+    vocabSpam:     () => startBuildModeVocabSpam(),
+    randomDrill:   () => startRandomDrill({_origin: b._origin}),
+    phraseSpam:    () => startBuildModePhraseSpam(b.lesson?._meta?.cat),
+    sentenceSpam:  () => startBuildModeSentenceSpam(),
+    variationSpam: () => startBuildModeVariationSpam(),
+    similarSpam:   () => startBuildModeSimilarSpam()
+  };
+  const mode = b.lesson?._meta?.mode;
+  const regen = (mode === 'randomDrill' && b.lesson?._meta?.idsSeeded) ? null : REGEN_ON_RESTART[mode];
+  if(regen){
+    regen();
+    if(state.buildMode !== b){ state.buildMode._origin = b._origin; return; }
+  }
   b._paused = false;
   b.stepIdx = 0; b.revealed = false; b.done = false;
   b._writeAttempt = null;  /* v6.25 */
