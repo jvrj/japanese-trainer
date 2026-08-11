@@ -21680,9 +21680,14 @@ function progConversationalCore(){
   return { pct, producible, verbsAllForms: vf.solid, sentences, vf };
 }
 
-/* Milestone ladders toward conversation. */
+/* Milestone ladders toward conversation. v8.54 (Delve 11) — producible
+   extended [25,75,150,300,500,750,1000,1400] so T-selection (below) is a
+   TOTAL function with a terminal maxed state past the last tier; the
+   'sentences' ladder stays defined (progSentencesDrilled/state untouched)
+   but is filtered out of every rendered ladder list (§6 — its source
+   stores are fed only by buried legacy modes). */
 const PROG_LADDERS = [
-  { key:'producible', emoji:'🗣️', label:'Words you can produce', tiers:[25,75,150,300,500] },
+  { key:'producible', emoji:'🗣️', label:'Words you can produce', tiers:[25,75,150,300,500,750,1000,1400] },
   { key:'verbsAllForms', emoji:'🔀', label:'Verbs in all forms',   tiers:[5,15,30,50] },
   { key:'sentences', emoji:'📝', label:'Sentences drilled',         tiers:[20,50,100,200] },
   { key:'streak', emoji:'🔥', label:'Day streak',                   tiers:[3,7,14,30] }
@@ -21700,6 +21705,91 @@ function progLadderValues(){
 function bar(pct, color){
   pct = Math.max(0, Math.min(100, Math.round(pct)));
   return `<div style="height:8px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden"><div style="height:100%;width:${pct}%;background:${color||'var(--blue)'};border-radius:999px"></div></div>`;
+}
+
+/* =========================================================================
+   WORDS THAT STICK — Delve 11 "Progress that moves" (v8.54), §3.1.
+   Display-only: reads state.stats/libraryWordStatus/progIsSolid (all
+   pre-existing, all already fed by the core drill loop every round) and
+   writes NOTHING. No stage/percentage/SPINE_STAGES substitute — this is
+   the single Home headline number.
+
+   stuck(w)   = libraryWordStatus(w) in {mature, mastered}
+                OR ( status === 'learning'
+                     AND progIsSolid(state.stats[w.id])         // c>=3 at >=70%
+                     AND correct attempts[] span >=2 distinct local days )
+   warming(w) = NOT stuck(w) AND has a correct attempt within the last 14
+                days — visual-only life, never folded into the headline N.
+
+   Every attempts[]/stats read below is null-guarded so a legacy-imported
+   record with missing attempts[] degrades to "not stuck, not warming"
+   instead of throwing (§3.1 / §10 legacy-import fixture).
+   ========================================================================= */
+const WTS_WARM_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+function _wtsCorrectDayCount(st){
+  const attempts = (st && st.attempts) || [];
+  const days = new Set();
+  for(const a of attempts){
+    if(a && a.correct && a.ts) days.add(new Date(a.ts).toDateString());
+  }
+  return days.size;
+}
+
+function wtsStuck(w){
+  if(!w) return false;
+  const status = libraryWordStatus(w);
+  if(status === 'mature' || status === 'mastered') return true;
+  if(status !== 'learning') return false;
+  const st = (state.stats && state.stats[w.id]) || null;
+  if(!progIsSolid(st)) return false;
+  return _wtsCorrectDayCount(st) >= 2;
+}
+
+function wtsWarming(w){
+  if(!w || wtsStuck(w)) return false;
+  const st = (state.stats && state.stats[w.id]) || null;
+  const attempts = (st && st.attempts) || [];
+  const cutoff = now() - WTS_WARM_WINDOW_MS;
+  return attempts.some(a => a && a.correct && a.ts && a.ts > cutoff);
+}
+
+function wordsThatStick(){
+  let N = 0, W = 0;
+  for(const w of getActiveWords()){
+    if(wtsStuck(w)) N++;
+    else if(wtsWarming(w)) W++;
+  }
+  return { N, W };
+}
+
+/* T-selection: T = first producible tier > N; if none (N >= last tier, i.e.
+   >= 1400) the terminal MAXED state applies. This is a TOTAL function —
+   every branch resolves to finite solidFill/warmFill, no NaN/undefined at
+   any boundary (N=0, N between tiers, N === a tier exactly, N >= 1400). */
+function wtsTierInfo(N, W){
+  const tiers = (PROG_LADDERS.find(l => l.key === 'producible') || {}).tiers || [];
+  const T = tiers.find(t => t > N);
+  if(T === undefined){
+    return { T:null, solidFill:1, warmFill:1, maxed:true };
+  }
+  return { T, solidFill: Math.min(1, N / T), warmFill: Math.min(1, (N + W) / T), maxed:false };
+}
+
+/* Two-segment bar: solid (stuck) under translucent (stuck+warming). Both
+   segments are scaled into a track that reserves a short end-cap gap
+   whenever N < T (the non-maxed branch, which by construction of T-
+   selection is always true when not maxed) — so a bar that visually
+   reaches the cap can only mean the terminal maxed state (N >= T is
+   otherwise unreachable by construction; "all milestones reached"). */
+function wtsBarHtml(info){
+  const cap = info.maxed ? 100 : 96;
+  const solidPct = Math.max(0, Math.min(cap, (info.solidFill || 0) * cap));
+  const warmPct = Math.max(solidPct, Math.min(cap, (info.warmFill || 0) * cap));
+  return `<div style="position:relative;height:10px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden">
+    <div class="wts-bar-warm" style="position:absolute;top:0;left:0;bottom:0;width:${warmPct}%;background:rgba(157,92,255,0.35);border-radius:999px"></div>
+    <div class="wts-bar-solid" style="position:absolute;top:0;left:0;bottom:0;width:${solidPct}%;background:var(--blue,#3b82f6);border-radius:999px"></div>
+  </div>`;
 }
 
 /* =========================================================================
@@ -22024,32 +22114,18 @@ function _convoWeeklyCardHtml(){
 }
 
 function renderProgress(){
+  /* v8.54 (Delve 11, §6) — the old 💬 Conversational core % headline card
+     (and its producible/verbsAllForms/sentences sub-bars) is REMOVED from
+     this sheet: it was the failed weighted composite over two tracks the
+     core loop never fed. progConversationalCore() stays callable (still
+     used below for vf, and by progSnapshotData for snapshots) — it just
+     renders nowhere. The new Home headline ("Words that stick") replaces
+     it as the single number; this sheet keeps only the honest cards. */
   const core = progConversationalCore();
   const c = progStageCounts();
   const series = reconstructWeekly();
   const vals = progLadderValues();
   const longest = (state.streak && state.streak.longest) || 0;
-
-  /* headline */
-  const subBars = [
-    ['🗣️ Words you can produce', core.producible, PROG_TARGETS.producible, 'var(--blue)'],
-    ['🔀 Verbs in all forms',     core.verbsAllForms, PROG_TARGETS.verbsAllForms, '#a78bfa'],
-    ['📝 Sentences drilled',      core.sentences, PROG_TARGETS.sentences, '#22c55e']
-  ].map(([lab,v,t,col]) => `
-    <div style="margin-top:10px">
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${lab}</span><span class="muted">${v} / ${t}</span></div>
-      ${bar(100*v/t, col)}
-    </div>`).join('');
-
-  const headline = `
-    <div class="card">
-      <div style="display:flex;align-items:baseline;justify-content:space-between">
-        <h2 style="margin:0">💬 Conversational core</h2>
-        <span style="font-size:28px;font-weight:800;color:var(--blue)">${core.pct}%</span>
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:4px">Your readiness to hold a basic conversation. "Producible" = words you've got right consistently (solid), plus SRS-mature & mastered.</div>
-      ${subBars}
-    </div>`;
 
   /* since you started (reconstructed) */
   let sinceCard = '';
@@ -22126,9 +22202,12 @@ function renderProgress(){
       ${vf.weakest ? `<div class="muted" style="font-size:12px;margin-top:6px">Weakest form right now: <b>${PROG_FORM_NAME[vf.weakest]}</b> — worth a Form Drill pass.</div>` : `<div class="muted" style="font-size:12px;margin-top:6px">Drill verb forms to start tracking this.</div>`}
     </div>`;
 
-  /* milestone ladder with next-target + projection */
+  /* milestone ladder with next-target + projection. v8.54 (§6) — the
+     sentences-drilled row is filtered out of the RENDERED ladder list
+     (its source stores are fed only by buried legacy modes); PROG_LADDERS
+     itself keeps the 'sentences' entry so state/back-compat is untouched. */
   const avgNew = series.length ? (series.slice(-4).reduce((s,w)=>s+w.newWords,0) / Math.min(4, series.length)) : 0;
-  const ladderCards = PROG_LADDERS.map(L => {
+  const ladderCards = PROG_LADDERS.filter(L => L.key !== 'sentences').map(L => {
     const v = vals[L.key];
     const done = L.tiers.filter(t => v >= t);
     const next = L.tiers.find(t => v < t);
@@ -22152,58 +22231,62 @@ function renderProgress(){
 
   const forwardNote = `<div class="card" style="background:rgba(167,139,250,0.08)"><div class="muted" style="font-size:12px;line-height:1.5">📸 A weekly snapshot is now being saved. Your mature / producible curve was reconstructed from practice history above and becomes <b>exact</b> from this week forward — check back in 2-4 weeks to watch it move.</div></div>`;
 
-  return headline + sinceCard + chartCard + convoWeekCard + statusCard + ladderCard + forwardNote;
+  return sinceCard + chartCard + convoWeekCard + statusCard + ladderCard + forwardNote;
 }
 
-/* Home's collapsed spine header + expandable detail sheet (Stage C, §7.1
- * "Progress surface"). Collapsed: stage name headline + single bar only —
- * the Conversational Core % lives ONLY inside the sheet (renderProgress()'s
- * own headline card), never duplicated up here. Expand/collapse reuses the
- * existing .collapsible/.collapsible-head/.collapsible-body CSS + toggle
- * convention already used by Phrases' "Browse phrases" (12080) — plain
- * classList.toggle, no extra render-state plumbing needed.
- * All dynamic text below is either a hardcoded kana literal (SPINE_STAGES)
- * or a number run through esc()/template-safe interpolation — no raw
- * localStorage-derived string is ever concatenated as markup. */
+/* Home's headline card + expandable detail sheet — v8.54 (Delve 11 §4).
+ * REPLACES the old advisory-spine collapsed header (conversation-framed H1
+ * + five kana stages + bottleneck-min bar): that surface computed
+ * min(producible, verbsAllForms, sentences) against two tracks the core
+ * drill loop never fed, so every stage >= 2 froze at 0% forever. This
+ * headline is fed 100% by the core loop (§3.1 stuck/warming, both read
+ * only state.stats) — no percentages, no stage names, no conversation
+ * framing, judgment-free (the bar only ever fills).
+ *
+ * _spineModel()/_spineSelfTest()/SPINE_STAGES are left in place but are no
+ * longer called from here (dormant, not deleted — cleanup is a follow-up,
+ * not a v1 gate); state.settings.onboard.placedStage is untouched.
+ *
+ * Every dynamic value below is either a plain number (N/W/T, computed only
+ * from state.stats) or a hardcoded copy string — no imported/backup-
+ * sourced text is ever interpolated into this markup, so there is nothing
+ * here that needs esc()/escaping. The whole builder is wrapped in a
+ * try/catch: render() has no error boundary of its own, so a malformed
+ * imported record must never be able to blank the rest of Home. */
 function _spineHeaderHtml(){
-  const m = _spineModel();
-  const summitBadge = m.summit === null ? ''
-    : m.summit
-      ? `<span style="font-size:10px;font-weight:800;color:#22c55e">🏔️ summit reached</span>`
-      : `<span class="muted" style="font-size:10px">summit: ${esc(m.convoName)} (tier ${m.convoLv})</span>`;
-  const stageRows = m.stages.map((s, i) => {
-    const isDone = i === 0 ? m.stageIdx > 0 : i <= m.achievedStage;
-    const isCurrent = !isDone && i === m.stageIdx;
-    const mark = isDone ? '✓' : isCurrent ? '●' : '○';
-    const col = isDone ? '#22c55e' : isCurrent ? '#9d5cff' : 'var(--muted)';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;${isCurrent ? 'font-weight:800' : ''}">
-      <span style="color:${col};width:14px;text-align:center">${mark}</span>
-      <span>${esc(s.name)}</span>
-      <span class="muted" style="font-size:11px">${esc(s.en)}</span>
-    </div>`;
-  }).join('');
+  try {
+    const { N, W } = wordsThatStick();
+    const info = wtsTierInfo(N, W);
+    const headlineText = info.maxed
+      ? `${N} words that stick`
+      : `${N} words that stick · next milestone: ${info.T}`;
+    const subLabel = info.maxed ? 'all milestones reached' : `+${W} warming up`;
 
-  return `
-    <div class="collapsible" id="spineDetail">
-      <div class="collapsible-head" onclick="document.getElementById('spineDetail').classList.toggle('open')" style="flex-direction:column;align-items:stretch;gap:6px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div class="h8-section" style="margin:0;padding:0">Your path to a real conversation</div>
-          <span class="collapsible-arrow">›</span>
+    return `
+      <div class="collapsible" id="stickDetail">
+        <div class="collapsible-head" onclick="document.getElementById('stickDetail').classList.toggle('open')" style="flex-direction:column;align-items:stretch;gap:6px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div class="h8-section" style="margin:0;padding:0">Words that stick</div>
+            <span class="collapsible-arrow">›</span>
+          </div>
+          <div style="font-weight:800;font-size:16px">${headlineText}</div>
+          ${wtsBarHtml(info)}
+          <div class="muted" style="font-size:12px">${subLabel}</div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline">
-          <div style="font-weight:800;font-size:16px">${esc(m.stageName)} <span class="muted" style="font-size:12px;font-weight:600">· ${esc(m.stageEn)}</span></div>
-          ${summitBadge}
+        <div class="collapsible-body">
+          ${renderProgress()}
         </div>
-        ${bar(m.pctToNext, '#9d5cff')}
-      </div>
-      <div class="collapsible-body">
-        <div class="card" style="padding:12px 14px;margin-top:8px">
-          <h3 style="margin-top:0;font-size:13px">🧭 The five stages</h3>
-          ${stageRows}
+      </div>`;
+  } catch(e){
+    /* Defensive fallback (§3.1): a thrown error here must never blank the
+       rest of Home. Renders a minimal, still-honest, non-throwing card. */
+    return `
+      <div class="collapsible" id="stickDetail">
+        <div class="collapsible-head" style="flex-direction:column;align-items:stretch;gap:6px">
+          <div class="h8-section" style="margin:0;padding:0">Words that stick</div>
         </div>
-        ${renderProgress()}
-      </div>
-    </div>`;
+      </div>`;
+  }
 }
 
 function render(){
@@ -22983,7 +23066,7 @@ function renderPractice(){
       click:`nav('collections')` },
     /* Progress — milestones + reconstructed history toward holding a conversation. */
     { emoji:'📈', title:'Progress',
-      meta: `Conversational core ${progConversationalCore().pct}% · milestones, trends & where you started`,
+      meta: `Milestones, trends & where you started`,
       click:`nav('progress')` },
     /* Mastered review — only show if not already the active hero and has content */
     !isMasteredMode && masteredReady > 0
