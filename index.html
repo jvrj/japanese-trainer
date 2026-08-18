@@ -677,7 +677,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.56';
+const APP_VERSION = '8.57';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3107,6 +3107,36 @@ const LS = {
   convoLog:'jp4_convo_log'         // Stage D (v8.10) — capped session-volume log; see state.convoLog
 };
 
+/* v8.57 — Storage hardening. The owner's phone kept resetting ALL progress on
+   every open while desktop stayed fine. Root cause class: load() and save()
+   were each ONE giant try/catch over ~17 keys, so a single corrupt key (Android
+   Chrome localStorage corruption is a known real-world failure) or one failed
+   write (quota) silently took EVERYTHING down with it — and the only error
+   record went to state.logs, which itself only persists via save(). These
+   helpers give every key its own parse/write, a tiny always-written health
+   stamp, and a boot report the Storage Health card can show the owner. */
+const LS_SAVE_HEALTH = 'jp4_save_health';
+const _bootReport = { corruptKeys: [], restoredFromBackup: 0, wipedExternally: false };
+function lsGet(key, fallback){
+  let raw = null;
+  try{ raw = localStorage.getItem(key); }
+  catch(e){
+    if(!_bootReport.corruptKeys.includes(key)) _bootReport.corruptKeys.push(key);
+    return fallback;
+  }
+  if(raw === null || raw === undefined || raw === '') return fallback;
+  try{ return JSON.parse(raw); }
+  catch(e){
+    if(!_bootReport.corruptKeys.includes(key)) _bootReport.corruptKeys.push(key);
+    /* stash the broken value for forensics before anything overwrites it */
+    try{ localStorage.setItem(key + '__corrupt', raw.slice(0, 5000)); }catch(_){}
+    return fallback;
+  }
+}
+/* shape guards — valid JSON of the WRONG shape must not poison state either */
+function _lsArr(v){ return Array.isArray(v) ? v : []; }
+function _lsObj(v){ return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
+
 const DEFAULT_SETTINGS = {
   activeThemes:[],            // empty = all
   activePOS:[],               // empty = all
@@ -3636,32 +3666,74 @@ function _stateAdoptRicher(){
   }catch(e){}
 }
 
+/* v8.57 — when a stats write dies (quota), shed the biggest non-essential
+   ballast so the learning progress can land, then retry once. */
+function _saveEmergencyTrim(){
+  try{ localStorage.removeItem('jp4_build_sequence'); }catch(_){}
+  try{ localStorage.removeItem(LS.logs); }catch(_){}
+  state.logs = state.logs.slice(-100);
+  if(state.askClaude && state.askClaude.messages) state.askClaude.messages = state.askClaude.messages.slice(-40);
+  state.snapshots = (state.snapshots || []).slice(-12);
+}
+
 function save(){
   _stateAdoptRicher();
+  const errs = [];
+  /* v8.57 — per-key writes, stats FIRST. Previously one try/catch over all 17
+     keys meant an early failure (words wrote before stats) silently blocked the
+     learning progress every single save. */
+  let statsOk = false;
+  try{ localStorage.setItem(LS.stats, JSON.stringify(state.stats)); statsOk = true; }
+  catch(e){
+    errs.push('stats:' + String(e).slice(0, 120));
+    _saveEmergencyTrim();
+    try{ localStorage.setItem(LS.stats, JSON.stringify(state.stats)); statsOk = true; errs.push('stats:recovered-after-trim'); }
+    catch(e2){ errs.push('stats-retry:' + String(e2).slice(0, 120)); }
+  }
+  try{ localStorage.setItem(LS.streak, JSON.stringify(state.streak)); }catch(e){ errs.push('streak'); }
+  const rest = [
+    [LS.words, () => state.words.filter(w=>w.source==='user')],
+    [LS.settings, () => state.settings],
+    [LS.notes, () => state.notes],
+    [LS.logs, () => state.logs.slice(-500)],
+    /* askClaude messages were saved UNCAPPED — a quiet quota-eater; cap at 60 */
+    [LS.askClaude, () => ({...(state.askClaude || {messages:[]}), messages: ((state.askClaude && state.askClaude.messages) || []).slice(-60)})],
+    [LS.formStats, () => state.formStats || {}],
+    [LS.kanaStats, () => state.kanaStats || {}],
+    [LS.sentenceStats, () => state.sentenceStats || {}],
+    [LS.phraseStats, () => state.phraseStats || {}],
+    [LS.particleStats, () => state.particleStats || {}],
+    [LS.variationStats, () => state.variationStats || {}],
+    [LS.similarStats, () => state.similarStats || {}],
+    [LS.snapshots, () => state.snapshots || []],
+    [LS.convo, () => state.convo],
+    [LS.convoLog, () => (state.convoLog || []).slice(-60)]
+  ];
+  for(const [k, v] of rest){
+    try{ localStorage.setItem(k, JSON.stringify(v())); }catch(e){ errs.push(k.replace('jp4_','')); }
+  }
+  /* Tiny health stamp, written on success AND failure — small enough to survive
+     quota pressure, so the Storage Health card always has a last-save record. */
   try{
-    localStorage.setItem(LS.words, JSON.stringify(state.words.filter(w=>w.source==='user')));
-    localStorage.setItem(LS.stats, JSON.stringify(state.stats));
-    localStorage.setItem(LS.settings, JSON.stringify(state.settings));
-    localStorage.setItem(LS.notes, JSON.stringify(state.notes));
-    localStorage.setItem(LS.logs, JSON.stringify(state.logs.slice(-500)));
-    localStorage.setItem(LS.streak, JSON.stringify(state.streak));
-    localStorage.setItem(LS.askClaude, JSON.stringify(state.askClaude || {messages:[]}));
-    localStorage.setItem(LS.formStats, JSON.stringify(state.formStats || {}));
-    localStorage.setItem(LS.kanaStats, JSON.stringify(state.kanaStats || {}));
-    localStorage.setItem(LS.sentenceStats, JSON.stringify(state.sentenceStats || {}));
-    localStorage.setItem(LS.phraseStats, JSON.stringify(state.phraseStats || {}));
-    localStorage.setItem(LS.particleStats, JSON.stringify(state.particleStats || {}));
-    localStorage.setItem(LS.variationStats, JSON.stringify(state.variationStats || {}));
-    localStorage.setItem(LS.similarStats, JSON.stringify(state.similarStats || {}));
-    localStorage.setItem(LS.snapshots, JSON.stringify(state.snapshots || []));
-    localStorage.setItem(LS.convo, JSON.stringify(state.convo));
-    localStorage.setItem(LS.convoLog, JSON.stringify((state.convoLog || []).slice(-60)));
-  }catch(e){ log('save_err',{err:String(e)}); }
+    localStorage.setItem(LS_SAVE_HEALTH, JSON.stringify({
+      ok: errs.length === 0, statsOk, errs: errs.slice(0, 5),
+      ts: Date.now(), statsCount: Object.keys(state.stats).length, v: APP_VERSION
+    }));
+  }catch(_){}
+  if(errs.length) log('save_err', { errs });
+  idbBackupMaybe();
 }
 
 function load(){
+  /* v8.57 — per-key isolation. Previously ONE try/catch wrapped the whole
+     load: a single corrupt early key (jp4_settings parsed FIRST) or a crash
+     anywhere in the migration chain aborted everything after it, so
+     state.stats stayed {} and every word showed NEW on every open — exactly
+     the owner's phone symptom. Now each key parses independently and the
+     settings/migration chain is quarantined so it can never block the
+     learning progress from loading. */
+  state.settings = {...DEFAULT_SETTINGS, ..._lsObj(lsGet(LS.settings, {}))};
   try{
-    state.settings = {...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(LS.settings)||'{}'))};
     vocabLockMigrateV829();
     /* v7.48 — restore OpenAI key from its dedicated LS entry. Takes
        precedence over the settings-blob copy because the dedicated entry
@@ -3746,7 +3818,14 @@ function load(){
       state.settings.modulesEnabled = false;
       state.settings._topicsFirstV1 = true;
     }
-    state.stats = JSON.parse(localStorage.getItem(LS.stats)||'{}');
+  }catch(e){ log('settings_migrate_err',{err:String(e)}); }
+  state.stats = _lsObj(lsGet(LS.stats, {}));
+  /* v8.57 — external-wipe detector: stats came up empty but the last-save
+     stamp says we HAD progress ⇒ the phone/browser cleared storage, not the
+     app. Shown on the Storage Health card; idbRestoreMaybe() then recovers. */
+  const _sh = lsGet(LS_SAVE_HEALTH, null);
+  if(_sh && _sh.statsCount > 0 && Object.keys(state.stats).length === 0) _bootReport.wipedExternally = true;
+  try{
     /* Stage B (v8.08) — onboarding boot-time backfill. Additive: onboard is
        already guaranteed present via the DEFAULT_SETTINGS merge above. Runs
        on EVERY load (not gated behind a first-install flag) so it keeps
@@ -3758,25 +3837,28 @@ function load(){
     if(!state.settings.onboard.done && (Object.keys(state.stats).length > 0 || (state.settings.convoXp || 0) > 0)){
       state.settings.onboard.done = true;
     }
-    state.notes = JSON.parse(localStorage.getItem(LS.notes)||'[]');
-    state.logs = JSON.parse(localStorage.getItem(LS.logs)||'[]');
-    state.streak = {...state.streak, ...(JSON.parse(localStorage.getItem(LS.streak)||'{}'))};
-    state.askClaude = JSON.parse(localStorage.getItem(LS.askClaude)||'{"messages":[]}');
-    state.formStats = JSON.parse(localStorage.getItem(LS.formStats)||'{}');
-    state.kanaStats = JSON.parse(localStorage.getItem(LS.kanaStats)||'{}');
-    state.sentenceStats = JSON.parse(localStorage.getItem(LS.sentenceStats)||'{}');
-    state.phraseStats = JSON.parse(localStorage.getItem(LS.phraseStats)||'{}');
-    state.particleStats = JSON.parse(localStorage.getItem(LS.particleStats)||'{}');
-    state.variationStats = JSON.parse(localStorage.getItem(LS.variationStats)||'{}');
-    state.similarStats = JSON.parse(localStorage.getItem(LS.similarStats)||'{}');
-    state.snapshots = JSON.parse(localStorage.getItem(LS.snapshots)||'[]');
-    state.convo = JSON.parse(localStorage.getItem(LS.convo)||'null');
-    /* Stage D (v8.10) — additive; capped defensively on read too (not just on write) */
-    state.convoLog = JSON.parse(localStorage.getItem(LS.convoLog)||'[]').slice(-60);
-    /* Mark restored mid-session convos as frozen — requires explicit 「つづける」 tap to resume
-       (spec: no auto-TTS/auto-mic on cold load; hands-free only starts on explicit Continue tap) */
-    if(state.convo && !state.convo.done && state.convo.current){ state.convo._frozen = true; }
-    const userWords = JSON.parse(localStorage.getItem(LS.words)||'[]');
+  }catch(e){ log('onboard_backfill_err',{err:String(e)}); }
+  state.notes = _lsArr(lsGet(LS.notes, []));
+  state.logs = _lsArr(lsGet(LS.logs, []));
+  state.streak = {...state.streak, ..._lsObj(lsGet(LS.streak, {}))};
+  state.askClaude = _lsObj(lsGet(LS.askClaude, {messages:[]}));
+  if(!Array.isArray(state.askClaude.messages)) state.askClaude.messages = [];
+  state.formStats = _lsObj(lsGet(LS.formStats, {}));
+  state.kanaStats = _lsObj(lsGet(LS.kanaStats, {}));
+  state.sentenceStats = _lsObj(lsGet(LS.sentenceStats, {}));
+  state.phraseStats = _lsObj(lsGet(LS.phraseStats, {}));
+  state.particleStats = _lsObj(lsGet(LS.particleStats, {}));
+  state.variationStats = _lsObj(lsGet(LS.variationStats, {}));
+  state.similarStats = _lsObj(lsGet(LS.similarStats, {}));
+  state.snapshots = _lsArr(lsGet(LS.snapshots, []));
+  state.convo = lsGet(LS.convo, null);
+  /* Stage D (v8.10) — additive; capped defensively on read too (not just on write) */
+  state.convoLog = _lsArr(lsGet(LS.convoLog, [])).slice(-60);
+  /* Mark restored mid-session convos as frozen — requires explicit 「つづける」 tap to resume
+     (spec: no auto-TTS/auto-mic on cold load; hands-free only starts on explicit Continue tap) */
+  if(state.convo && !state.convo.done && state.convo.current){ state.convo._frozen = true; }
+  try{
+    const userWords = _lsArr(lsGet(LS.words, []));
     const pack = state.settings.n5PackEnabled ? N5_PACK : [];
     /* v8.45 — `retired:true` entries are tombstones: they hold their array slot so
        positional ids (n5_<i>) never shift under existing user stats, but are
@@ -3789,12 +3871,137 @@ function load(){
        don't lose progress when modules ship. */
     if(typeof modulesUnlockBackfill === 'function') modulesUnlockBackfill();
     if(typeof melCollectionsSeed === 'function') melCollectionsSeed();
-  }catch(e){ log('load_err',{err:String(e)}); }
+  }catch(e){ log('load_words_err',{err:String(e)}); }
+  if(_bootReport.corruptKeys.length) log('load_corrupt_keys', { keys: _bootReport.corruptKeys.slice() });
 }
 
 function log(evt, data){
   state.logs.push({ts:now(), evt, data:data||{}});
 }
+
+/* =========================================================================
+   v8.57 — IndexedDB BACKUP MIRROR
+   localStorage and IndexedDB are separate storage engines; Android Chrome
+   can corrupt/evict one while the other survives. After every save the SRS
+   progress (stats + streak) is mirrored into IDB; on boot, if localStorage
+   came up empty but the mirror holds real progress, it restores itself.
+   ========================================================================= */
+const IDB_NAME = 'jp4_backup', IDB_STORE = 'kv';
+function _idbOpen(){
+  return new Promise((res, rej) => {
+    try{
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => { try{ req.result.createObjectStore(IDB_STORE); }catch(_){} };
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+      req.onblocked = () => rej(new Error('idb blocked'));
+    }catch(e){ rej(e); }
+  });
+}
+function _idbPut(k, v){
+  return _idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(v, k);
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+function _idbGet(k){
+  return _idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const rq = tx.objectStore(IDB_STORE).get(k);
+    rq.onsuccess = () => { db.close(); res(rq.result); };
+    rq.onerror = () => { db.close(); rej(rq.error); };
+  }));
+}
+let _idbLastBackup = 0;
+function idbBackupMaybe(){
+  try{
+    if(!('indexedDB' in window)) return;
+    /* never mirror an EMPTY stats over a good backup — an app copy that
+       failed to load progress must not poison the safety net */
+    if(Object.keys(state.stats).length === 0) return;
+    const t = Date.now();
+    if(t - _idbLastBackup < 15000) return;   /* throttle: at most every 15s */
+    _idbLastBackup = t;
+    _idbPut('stats', state.stats)
+      .then(() => _idbPut('streak', state.streak))
+      .then(() => _idbPut('meta', { ts: t, statsCount: Object.keys(state.stats).length, v: APP_VERSION }))
+      .then(() => { state._idbBackupMeta = { ts: t, statsCount: Object.keys(state.stats).length, v: APP_VERSION }; })
+      .catch(()=>{});
+  }catch(e){}
+}
+function idbRestoreMaybe(){
+  try{
+    if(!('indexedDB' in window)) return;
+    /* always probe the mirror's meta so the Storage Health card can show it */
+    _idbGet('meta').then(m => { if(m && !state._idbBackupMeta) state._idbBackupMeta = m; }).catch(()=>{});
+    if(Object.keys(state.stats).length > 0) return;   /* localStorage is fine */
+    _idbGet('stats').then(backup => {
+      if(!backup || typeof backup !== 'object' || !Object.keys(backup).length) return;
+      state.stats = backup;
+      return _idbGet('streak').then(sk => {
+        if(sk && sk.lastDate && (!state.streak.lastDate || sk.lastDate > state.streak.lastDate)){
+          state.streak = {...state.streak, ...sk};
+        }
+      }).catch(()=>{}).then(() => {
+        _bootReport.restoredFromBackup = Object.keys(state.stats).length;
+        log('idb_restored', { words: _bootReport.restoredFromBackup });
+        save();
+        try{ render(); }catch(_){}
+        try{ showToast('Restored ' + _bootReport.restoredFromBackup + ' words from backup 🎉'); }catch(_){}
+      });
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+/* v8.57 — Storage Health report (Settings → Data). The owner's phone is the
+   only place the failure happens, so this card IS the remote debugger: one
+   screenshot tells us persist-grant, saved vs in-memory word counts, backup
+   state, last-save result, corrupt keys, and quota usage. */
+function _storageHealthText(){
+  const lines = [];
+  lines.push('Isshin v' + APP_VERSION);
+  lines.push('Protected storage: ' + (state._storagePersistent === true ? 'YES' : state._storagePersistent === false ? 'NO (browser may clear data!)' : 'unknown'));
+  lines.push('Words tracked (in app now): ' + Object.keys(state.stats).length);
+  let diskCount = 'UNREADABLE';
+  try{
+    const raw = localStorage.getItem(LS.stats);
+    diskCount = raw ? Object.keys(JSON.parse(raw)).length : 0;
+  }catch(e){}
+  lines.push('Words tracked (saved on phone): ' + diskCount);
+  const m = state._idbBackupMeta;
+  lines.push('Backup copy: ' + (m ? (m.statsCount + ' words, ' + new Date(m.ts).toLocaleString()) : 'none yet'));
+  const h = lsGet(LS_SAVE_HEALTH, null);
+  if(h){
+    lines.push('Last save: ' + (h.ok ? 'OK' : 'PROBLEM') + ' at ' + new Date(h.ts).toLocaleString() + ' (' + h.statsCount + ' words, v' + (h.v || '?') + ')');
+    if(h.errs && h.errs.length) lines.push('  save errors: ' + h.errs.join(' | '));
+  } else lines.push('Last save: no record yet');
+  if(_bootReport.corruptKeys.length) lines.push('Corrupt data found at startup: ' + _bootReport.corruptKeys.join(', '));
+  if(_bootReport.wipedExternally) lines.push('⚠ Saved progress was WIPED by the phone/browser (not by the app) before this launch.');
+  if(_bootReport.restoredFromBackup) lines.push('Restored from backup this session: ' + _bootReport.restoredFromBackup + ' words');
+  let total = 0; const sizes = [];
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      const v = localStorage.getItem(k) || '';
+      total += k.length + v.length;
+      sizes.push([k, v.length]);
+    }
+    sizes.sort((a,b)=>b[1]-a[1]);
+    lines.push('Storage used: ' + Math.round(total/1024) + ' KB' + (total > 4.2*1024*1024 ? ' ⚠ NEARLY FULL' : ''));
+    sizes.slice(0,5).forEach(([k,n])=> lines.push('  ' + k + ': ' + Math.round(n/1024) + ' KB'));
+  }catch(e){ lines.push('Storage sizes: unreadable (' + String(e).slice(0,60) + ')'); }
+  return lines.join('\n');
+}
+function copyStorageHealth(){
+  try{
+    navigator.clipboard.writeText(_storageHealthText())
+      .then(()=>{ try{ showToast('Report copied — paste it to Claude.'); }catch(_){} })
+      .catch(()=>{});
+  }catch(e){}
+}
+window.copyStorageHealth = copyStorageHealth;
 
 /* =========================================================================
    MASTERY LADDER
@@ -16567,7 +16774,7 @@ function buildMultiSlotFill(tmpl, deck, excludeWordIds, preferredWordIds){
 }
 function buildGenWordId(w){ return 'w_' + (w.romaji || w.r || '').replace(/\s+/g, '_'); }
 function buildGetSequence(){ try{ return JSON.parse(localStorage.getItem(BUILD_LS_SEQUENCE) || '[]'); }catch(e){ return []; } }
-function buildPushSequence(e){ const s = buildGetSequence(); s.push(e); try{ localStorage.setItem(BUILD_LS_SEQUENCE, JSON.stringify(s)); }catch(_){} }
+function buildPushSequence(e){ const s = buildGetSequence(); s.push(e); try{ localStorage.setItem(BUILD_LS_SEQUENCE, JSON.stringify(s.slice(-300))); }catch(_){} } /* v8.57 — capped; grew unbounded and ate localStorage quota */
 function buildClearSequence(){ try{ localStorage.removeItem(BUILD_LS_SEQUENCE); }catch(_){} }
 window.buildClearSequence = buildClearSequence;
 
@@ -23940,6 +24147,13 @@ function renderSettings(){
     </div>
 
     <div class="card">
+      <h3>Storage Health</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">If your progress ever looks reset, screenshot this box or tap Copy and send it.</div>
+      <pre style="font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.18);padding:10px;border-radius:10px;margin:0 0 10px">${esc(_storageHealthText())}</pre>
+      <button class="btn btn-secondary" style="width:100%" onclick="copyStorageHealth()">📋 Copy report</button>
+    </div>
+
+    <div class="card">
       <h3>Update</h3>
       <div class="muted" style="font-size:12px;margin-bottom:8px">If the app feels stale (still on an old version after a deploy), the service worker is caching old files. This unregisters the worker, clears every cache, and forces a hard reload — your saved data is untouched.</div>
       <button class="btn btn-primary" style="width:100%" onclick="forceUpdate()">🔄 Force update from server</button>
@@ -24490,6 +24704,10 @@ function bindScreen(){
 /* ---------- INIT ---------- */
 function init(){
   load();
+  /* v8.57 — if localStorage lost the progress, restore from the IDB mirror
+     (async; re-renders + toasts if it recovers anything). Also probes the
+     mirror's meta for the Storage Health card. */
+  idbRestoreMaybe();
   /* v7.49 — Request persistent storage so the browser doesn't auto-evict
      our localStorage (where the OpenAI key and all SRS data live) under
      storage pressure or after periods of non-use. On Android Chrome PWAs
