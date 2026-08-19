@@ -273,6 +273,7 @@ body[data-screen="home"] .notes-fab,body[data-screen="home"] .ask-fab{display:no
 .build-chip{display:inline-block;font-size:10px;padding:3px 8px;border-radius:4px;letter-spacing:.5px;text-transform:uppercase;font-weight:700}
 .build-chip-introduce{background:#1e3a5f;color:#93c5fd}
 .build-chip-recall{background:#3f2a10;color:#fbbf24}
+.build-chip-recall_rev{background:#0f2d3f;color:#7dd3fc}
 .build-chip-build{background:#0f3d1f;color:#86efac}
 .build-chip-substitute{background:#3b1c3d;color:#e9a7ed}
 .build-chip-callback{background:#4a1010;color:#fca5a5}
@@ -677,7 +678,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.57';
+const APP_VERSION = '8.58';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3178,6 +3179,7 @@ const DEFAULT_SETTINGS = {
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
   voiceListenSec:6,           // Voice Mode: how long to listen on each step before timing out
+  buildListenSteps:true,      // v8.58 — two-direction drill: newer (new/learning) words run JP→speak-EN listening steps; apprentice+ words keep EN→speak-JP production. Off = every card is EN→JP like before.
   fastPace:false,             // v8.37 — speak drills: ON roughly halves the pre-mic beat + post-answer waits. Settings row + in-drill chip.
   /* v6.16 — Modules: themed progression with linear unlock. */
   modulesEnabled:false,       // v7.69 — topics-first: guided unlock path OFF by default; every topic is always open. Re-enableable in Settings.
@@ -17834,7 +17836,8 @@ function buildGenerateVocabSpamLesson(opts){
     const st = state.stats[w.id];
     const isFresh = !(st && st.attempts && st.attempts.length);
     if(isFresh) freshCount++;
-    acc.push(isFresh ? { type:'recall', word_id: w.id, fresh:true } : { type:'recall', word_id: w.id });
+    const stype = _buildStepTypeFor(w.id);   /* v8.58 — recall | recall_rev by mastery */
+    acc.push(isFresh ? { type:stype, word_id: w.id, fresh:true } : { type:stype, word_id: w.id });
     return acc;
   }, []);
   return {
@@ -17847,6 +17850,20 @@ function buildGenerateVocabSpamLesson(opts){
     _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id),
              freshCount, reviewCount: pool.length - freshCount }
   };
+}
+/* v8.58 — two-direction drill. Newer words (mastery new/learning, which
+   includes every fresh word) run the LISTENING direction: the Japanese is the
+   prompt and the learner says the English — recognition precedes production,
+   and listening is the half of conversation the EN→JP loop never trained.
+   Words at apprentice+ flip to the classic production direction (EN prompt →
+   speak JP). Settings → "Listening steps" (default ON) disables the whole
+   thing, restoring pure EN→JP. */
+function _buildStepTypeFor(wordId){
+  if(state.settings.buildListenSteps === false) return 'recall';
+  try{
+    const m = getMasteryForWord(wordId);
+    return (m === 'new' || m === 'learning') ? 'recall_rev' : 'recall';
+  }catch(e){ return 'recall'; }
 }
 function startBuildModeVocabSpam(){
   try {
@@ -17911,7 +17928,7 @@ function startRandomDrill(opts){
     if(_induct) _buildInductionWarmCache(picked.filter(w => !vocabIsIntroduced(w)));
     const randomSteps = picked.reduce((acc, w) => {
       if(_induct && !vocabIsIntroduced(w)) acc.push(..._buildInductionStepsFor(w));
-      acc.push({ type:'recall', word_id: w.id });
+      acc.push({ type:_buildStepTypeFor(w.id), word_id: w.id });   /* v8.58 — direction by mastery */
       return acc;
     }, []);
     const lesson = {
@@ -18248,6 +18265,10 @@ function _buildVoiceTargetForStep(step){
   if(step.type === 'recall'){
     const w = buildWordById(step.word_id); return w ? w.jp : null;
   }
+  if(step.type === 'recall_rev'){
+    /* v8.58 — listening step: the user answers in ENGLISH */
+    const w = buildWordById(step.word_id); return w ? w.en : null;
+  }
   if(step.type === 'callback'){
     if(step.word_id){ const w = buildWordById(step.word_id); return w ? w.jp : null; }
     if(step.sentence_jp) return step.sentence_jp;
@@ -18283,15 +18304,20 @@ function _buildVoiceShouldListen(step){
 /* v7.46 — Voice-listen dispatcher. Routes to Whisper when configured and
    online; otherwise to the original Web Speech path below. Both share the
    same (target, onVerdict) contract so callers don't care which engine ran. */
-function _buildVoiceListen(target, onVerdict){
-  if(whisperAvailable()){
-    _whisperVoiceListen(target, onVerdict);
-    return;
+function _buildVoiceListen(target, onVerdict, lang){
+  /* v8.58 — English listen (recall_rev) always uses Web Speech: the Whisper
+     path is hardwired language:'ja' + a kana-only hallucination gate that
+     would discard an English utterance outright. */
+  if(!lang || lang.slice(0,2) === 'ja'){
+    if(whisperAvailable()){
+      _whisperVoiceListen(target, onVerdict);
+      return;
+    }
   }
-  _buildVoiceListenWebSpeech(target, onVerdict);
+  _buildVoiceListenWebSpeech(target, onVerdict, lang);
 }
 
-function _buildVoiceListenWebSpeech(target, onVerdict){
+function _buildVoiceListenWebSpeech(target, onVerdict, lang){
   const b = state.buildMode;
   if(!b){ onVerdict && onVerdict({verdict:'nostt', engine:'webspeech'}); return; }
   const listenSec = Math.max(3, Math.min(15, state.settings.voiceListenSec || 7));
@@ -18303,6 +18329,7 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
   const WARMUP_MS = 450;
   let alts = [];
   b._sttActive = true;
+  const isEn = !!(lang && lang.slice(0,2) === 'en');   /* v8.58 — recall_rev listens in English */
   startVoice(
     (results) => { alts = results || []; },
     (err) => {
@@ -18312,6 +18339,16 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
         log('voice_step_nostt', {type: target ? 'has_target' : 'no_target', err: err && err.error});
         _sttDebug('webspeech', 'no speech heard', err && err.error ? ('error: ' + err.error) : 'browser recognizer returned nothing');
         onVerdict({verdict:'nostt', engine:'webspeech'});
+        return;
+      }
+      if(isEn){
+        /* English echo path — no JA scoring (it normalizes kana). Just hand
+           back the top-confidence transcript for the neutral "heard" echo;
+           voice is a turn-trigger, never a grader, so no verdict math needed. */
+        const top = alts.slice().sort((a,c)=>(c.conf||0)-(a.conf||0))[0];
+        const heardTxt = (top && top.transcript) || '';
+        _sttDebug('webspeech', 'heard "' + (heardTxt || '?') + '"', 'english listen');
+        onVerdict({verdict:'heard', heard: heardTxt, heardDisplay: heardTxt, alts, engine:'webspeech'});
         return;
       }
       const targets = Array.isArray(target) ? target : [target];
@@ -18326,7 +18363,8 @@ function _buildVoiceListenWebSpeech(target, onVerdict){
       log('voice_step_score', {verdict:best.verdict, dist:best.dist, heard:best.heard});
       _sttDebug('webspeech', 'heard "' + (best.heard || '?') + '"', 'verdict=' + best.verdict);
       onVerdict(best);
-    }
+    },
+    lang || 'ja-JP'   /* v8.58 — per-step recognizer language */
   );
   /* Defer the user-facing listen cue by WARMUP_MS so STT is hot before the
      user starts speaking. Keeps a short-lived warmup marker on b so we can
@@ -18410,7 +18448,7 @@ function _buildVoiceListenStep(step){
       engine: res.engine || 'webspeech',
     };
     buildAutoReveal();
-  });
+  }, step.type === 'recall_rev' ? 'en-US' : null);   /* v8.58 — listen in English on listening steps */
 }
 function _buildAiQaActive(step){
   if(!step || step.type !== 'qa') return false;
@@ -18650,8 +18688,13 @@ function _buildSetPhase(phase, durMs){
        distinct line during the Whisper API round-trip so the user
        isn't staring at "listening" while we're actually transcribing. */
     const wp = state.buildMode && state.buildMode._whisperPhase;
+    /* v8.58 — listening steps (recall_rev) prompt in JP and listen for ENGLISH;
+       they always run Web Speech, so the Whisper labels don't apply to them. */
+    const _curStep = b.steps && b.steps[b.stepIdx];
+    const _isRev = !!(_curStep && _curStep.type === 'recall_rev');
     let listenLabel = '🎤 listening — speak Japanese';
-    if(wp === 'recording')      listenLabel = '🎤 Whisper recording — speak now';
+    if(_isRev)                  listenLabel = '🎤 listening — say it in English';
+    else if(wp === 'recording')      listenLabel = '🎤 Whisper recording — speak now';
     else if(wp === 'transcribing') listenLabel = '⏳ Whisper transcribing…';
     else if(whisperAvailable()) listenLabel = '🎤 listening (Whisper) — speak Japanese';
     label.textContent = phase === 'prompt' ? '🔊 listen…'
@@ -18732,7 +18775,7 @@ function _buildPaceFactor(step){
 function _buildStepIsSingleWord(step){
   if(!step) return false;
   /* recall/callback with word_id is by definition a single-word answer */
-  if((step.type === 'recall' || step.type === 'callback') && step.word_id) return true;
+  if((step.type === 'recall' || step.type === 'recall_rev' || step.type === 'callback') && step.word_id) return true;
   /* short phrase steps count as single-word for pacing */
   if(step.type === 'phrase' && step.jp && step.jp.length <= 6) return true;
   return false;
@@ -18794,6 +18837,10 @@ function buildAutoplayStep(step){
   } else if(step.type === 'recall'){
     const w = buildWordById(step.word_id);
     if(w) _buildSpeakEN(w.en, false, onEnDone);
+  } else if(step.type === 'recall_rev'){
+    /* v8.58 — listening direction: the PROMPT is the Japanese itself */
+    const w = buildWordById(step.word_id);
+    if(w) _buildSpeakJP(w.jp, onEnDone);
   } else if(step.type === 'callback'){
     if(step.word_id){
       const w = buildWordById(step.word_id);
@@ -19072,7 +19119,7 @@ function buildReplayAudio(){
   if(b.revealed){
     if(step.type === 'introduce'){
       const w = buildWordById(step.word_id); if(w) _buildSpeakJPThenEN(w.jp, w.en);
-    } else if(step.type === 'recall'){
+    } else if(step.type === 'recall' || step.type === 'recall_rev'){
       const w = buildWordById(step.word_id); if(w) speakJP(w.jp);
     } else if(step.type === 'callback'){
       if(step.word_id){ const w = buildWordById(step.word_id); if(w) speakJP(w.jp); }
@@ -19100,6 +19147,12 @@ function _buildPlayJPForStep(step, onDone){
     const w = buildWordById(step.word_id); if(w) _buildSpeakJPThenEN(w.jp, w.en, onDone); else if(onDone) onDone();
   } else if(step.type === 'recall'){
     const w = buildWordById(step.word_id); if(w) _buildSpeakJP(w.jp, onDone); else if(onDone) onDone();
+  } else if(step.type === 'recall_rev'){
+    /* v8.58 — reveal = the English meaning, then the JP once more so the
+       sound re-anchors right after the meaning lands */
+    const w = buildWordById(step.word_id);
+    if(w) _buildSpeakEN(w.en, false, () => _buildSpeakJP(w.jp, onDone));
+    else if(onDone) onDone();
   } else if(step.type === 'callback'){
     if(step.word_id){ const w = buildWordById(step.word_id); if(w) _buildSpeakJP(w.jp, onDone); else if(onDone) onDone(); }
     else if(step.sentence_jp){ _buildSpeakJP(step.sentence_jp, onDone); }
@@ -20761,6 +20814,7 @@ function renderBuildModeStep(){
   switch(step.type){
     case 'introduce':  body = _buildRenderIntroduce(step); break;
     case 'recall':     body = _buildRenderRecall(step); break;
+    case 'recall_rev': body = _buildRenderRecallRev(step); break;
     case 'build':      body = _buildRenderBuild(step); break;
     case 'substitute': body = _buildRenderSubstitute(step); break;
     case 'callback':   body = _buildRenderCallback(step); break;
@@ -20881,6 +20935,7 @@ function _buildChipClass(step){
   return step.type;
 }
 function _buildChipLabel(step){
+  if(step.type === 'recall_rev') return '👂 listen';
   if(step.type === 'variation') return 'ways';
   if(step.type === 'qa') return step._aiMode ? '🤖 ai chat' : 'q&a';
   if(step.type === 'similar') return 'discriminate';
@@ -21434,6 +21489,34 @@ function _buildRenderRecall(step){
   `;
 }
 
+/* v8.58 — the LISTENING card (recall_rev): Japanese is the prompt, the learner
+   says the ENGLISH meaning. Mirror image of _buildRenderRecall above. */
+function _buildRenderRecallRev(step){
+  const b = state.buildMode;
+  const w = buildWordById(step.word_id); if(!w) return '';
+  const freshPill = step.fresh
+    ? `<div style="text-align:center;margin-bottom:6px"><span style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);border:1px solid currentColor;border-radius:999px;padding:2px 9px">✦ NEW WORD</span></div>`
+    : '';
+  if(b.revealed){
+    return `
+      ${freshPill}
+      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">It means:</div>
+      <div class="build-big-en" style="font-size:26px;color:var(--text);font-weight:600">${esc(w.en)}</div>
+      <div class="build-big-jp" style="font-size:28px;padding:8px 0">${esc(w.jp)}</div>
+      <div class="build-romaji">${esc(w.r)}</div>
+      ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
+      ${_buildRenderHeard()}
+    `;
+  }
+  return `
+    ${freshPill}
+    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">What does this mean? (say it in English)</div>
+    <div class="build-big-jp">${esc(w.jp)}</div>
+    <div class="build-romaji">${esc(w.r)}</div>
+    <div class="build-placeholder">say the English, then tap Reveal</div>
+  `;
+}
+
 /* v6.25 — Write Mode UI helpers. The input + submit + last-attempt feedback
    block, shared across build/substitute/callback renderers. Auto-focuses
    when the autoplayStep fires (see #buildWriteInput focus shortly after). */
@@ -21566,7 +21649,7 @@ function _buildRenderCallback(step){
 
 function _buildCountHear(b, step){
   try{
-    if(!step || step.type !== 'recall' || !step.word_id) return;
+    if(!step || (step.type !== 'recall' && step.type !== 'recall_rev') || !step.word_id) return;
     const realIds = b?.lesson?._meta?.real_word_ids;
     if(!realIds || !realIds.includes(step.word_id)) return;
     const st = smStatFor(step.word_id);
@@ -21585,14 +21668,17 @@ function _buildCountHear(b, step){
    so a word graded here is never re-graded there. */
 function _buildCreditStep(b, step){
   try{
-    if(!step || step.type !== 'recall' || !step.word_id) return;
+    /* v8.58 — recall_rev credits identically: same SM-2 grade, same attempt
+       record (tagged rev:true for analytics). Direction is a presentation
+       choice; the scheduler sees one word, one rep. */
+    if(!step || (step.type !== 'recall' && step.type !== 'recall_rev') || !step.word_id) return;
     const realIds = b?.lesson?._meta?.real_word_ids;
     if(!realIds || !realIds.includes(step.word_id)) return;
     if(!b._credited) b._credited = new Set();
     if(b._credited.has(step.word_id)) return;  /* exactly-once per session per word */
     const missed = !!(b._missed && b._missed.has(step.word_id));
     smGrade(smStatFor(step.word_id), missed ? 'again' : 'good');
-    recordAttempt(step.word_id, !missed, 'drill', {voice: state.settings.buildVoiceMode});
+    recordAttempt(step.word_id, !missed, 'drill', {voice: state.settings.buildVoiceMode, rev: step.type === 'recall_rev'});
     updateStreak(!missed);  // §2.1 item 6 — the core loop's first working streak feed
     b._credited.add(step.word_id);
     save();
@@ -24032,6 +24118,8 @@ function renderSettings(){
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">⚡ Fast pace (speak drills)</div><div class="word-en">On: hands-free speak drills open the mic sooner and move to the next card sooner after each answer. Off: relaxed pacing with more reading time (default). Also flippable from the chip inside any drill.</div></div>
         <input type="checkbox" ${s.fastPace?'checked':''} onchange="toggleSetting('fastPace')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">👂 Listening steps</div><div class="word-en">Newer words play the Japanese and you say the English — trains understanding, the other half of conversation. Words you know well still test English → Japanese. Off: every card is English → Japanese.</div></div>
+        <input type="checkbox" ${s.buildListenSteps!==false?'checked':''} onchange="toggleSetting('buildListenSteps')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Think time</div><div class="word-en">${(s.buildThinkSec||5).toFixed(1)}s · pause after EN prompt before JP reveals</div></div>
         <input type="range" min="2" max="12" step="0.5" value="${s.buildThinkSec||5}" oninput="setBuildThinkSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Linger time</div><div class="word-en">${(s.buildLingerSec??8).toFixed(1)}s · pause after JP audio before next step</div></div>
