@@ -678,7 +678,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.58';
+const APP_VERSION = '8.59';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19046,6 +19046,41 @@ async function buildToggleVoiceMode(){
 }
 window.buildToggleVoiceMode = buildToggleVoiceMode;
 
+/* v8.59 — in-drill direction toggle. The Settings toggle existed but only took
+   effect on the NEXT session; the owner wants to flip ENG/JP from the card
+   screen itself. Flipping remaps every not-yet-answered recall-family step in
+   the running session (current card included if it hasn't revealed yet) via
+   _buildStepTypeFor, so the change is felt on the very next prompt. Steps that
+   already played, and non-recall step types, are left alone. */
+function buildToggleListenSteps(){
+  state.settings.buildListenSteps = (state.settings.buildListenSteps === false);
+  save();
+  const on = state.settings.buildListenSteps !== false;
+  log('listen_steps_toggle', {on, from: 'drill'});
+  const b = state.buildMode;
+  if(b && b.steps){
+    const from = b.revealed ? b.stepIdx + 1 : b.stepIdx;
+    for(let i = from; i < b.steps.length; i++){
+      const s = b.steps[i];
+      if(s && (s.type === 'recall' || s.type === 'recall_rev') && s.word_id){
+        s.type = _buildStepTypeFor(s.word_id);
+      }
+    }
+    if(!b.revealed && !b._paused){
+      /* The current card may have changed direction under an in-flight
+         autoplay chain — kill it and let render re-arm cleanly. */
+      _buildClearTimer();
+      try{ window.speechSynthesis?.cancel(); }catch(e){}
+      b._autoArmKey = null;
+    }
+  }
+  render();
+  showToast(on
+    ? '👂 Newer words now play in Japanese — you say the English'
+    : '🗣 All cards now English → you speak the Japanese', {tone:'info', duration:2800});
+}
+window.buildToggleListenSteps = buildToggleListenSteps;
+
 /* Ask the browser for mic permission upfront. If we don't pre-flight, the
    first listen attempt inside a drill triggers the permission prompt mid-card
    and the user (driving) can't see/tap "Allow" in time. Calling getUserMedia
@@ -20876,6 +20911,7 @@ function renderBuildModeStep(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildListenSteps !== false ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleListenSteps()" title="Flip drill direction — 👂 EN: newer words play in Japanese and you say the English · 🗣 JP: every card shows English and you speak the Japanese">${state.settings.buildListenSteps !== false ? '👂 EN' : '🗣 JP'}</button>
           ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — speak the answer and it advances (never graded)">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
