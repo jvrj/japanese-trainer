@@ -654,7 +654,7 @@ body:has(.home-v8) .header{display:none}
 <div class="app" id="app">
   <div class="header">
     <h1>一心</h1>
-    <div class="sub" id="appVersionLabel">v6.4</div>
+    <div class="sub" id="appVersionLabel"></div>
   </div>
   <main id="main"></main>
 </div>
@@ -678,7 +678,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.59';
+const APP_VERSION = '8.60';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -21923,7 +21923,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', kanaBlitz:'Kana Blitz', buildMode:'Build Mode', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -21942,15 +21942,11 @@ function renderTopbar(){
     const f = FORMS.find(x => x.id === state._navData);
     title = f ? `Form drill · ${f.name}` : 'Form drill';
   }
-  /* v7.48 — persistent version + STT engine indicator. Lets the user
-     verify what they're running without digging into Settings. Green
-     dot = Whisper active; amber = Web Speech fallback. */
-  const whisperOn = whisperAvailable();
-  const sttBadge = `<div class="topbar-engine" title="${whisperOn ? 'Whisper STT active (OpenAI)' : 'Web Speech fallback (browser)'}" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:${whisperOn ? 'rgba(22,163,74,0.10)' : 'rgba(124,58,237,0.07)'};color:${whisperOn ? '#16a34a' : 'var(--faint)'};white-space:nowrap;margin-left:6px">${whisperOn ? '🎤 Whisper' : '📢 Web'}</div>`;
+  /* v8.60 market tidy — the STT engine badge (🎤 Whisper / 📢 Web) is gone
+     from the topbar; engine status lives in Settings → Advanced. */
   return `<div class="topbar" style="display:flex;align-items:center;gap:6px">
     <button class="topbar-back" onclick="goBack()" title="Back">←</button>
     <div class="topbar-title" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div>
-    ${sttBadge}
   </div>`;
 }
 
@@ -22756,6 +22752,10 @@ function render(){
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
+  /* v8.60 market tidy — the 🤖 Ask-Claude FAB only exists for devices that
+     actually have AI connected (owner key/server). A paying customer without
+     one never sees a robot button that opens a dead chat. */
+  try{ const af = document.getElementById('askFab'); if(af) af.style.display = aiChatReady() ? '' : 'none'; }catch(e){}
   bindScreen();
 }
 function nav(screen, data, fromPop){
@@ -22967,8 +22967,6 @@ function _pathLadderHtml(dp){
 function renderHome(){
   const bm = state.buildMode;
   const hasResume = !!(bm && bm.lesson && !bm.done);
-  const _convoInfo = convoLevelInfo();
-  const _convoXpPct = _convoInfo.atMax ? 100 : Math.min(100, Math.round((_convoInfo.xp * 100) / (_convoInfo.xpToNext || 1)));
 
   const spineHeader = _spineHeaderHtml();
 
@@ -22998,22 +22996,13 @@ function renderHome(){
       <button class="h8-hero-cta" style="margin-top:14px" onclick="startBuildModeVocabSpam()">🎧 Start drilling</button>
     </div>`;
 
-  const talkRow = `
-      <button class="h8-row" onclick="nav('convo')">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ff5d9e,#9d5cff);box-shadow:0 8px 22px rgba(157,92,255,.40),0 0 24px rgba(255,93,158,.30);flex-shrink:0">💬</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Talk</div>
-          <div class="h8-row-meta">Conversation practice — ${esc(_convoInfo.en || _convoInfo.name)}${_convoInfo.atMax ? ' · MAX' : ` · ${_convoXpPct}%`}</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>`;
-
-  const dp = _dailyPathModel();
-  const ladder = _pathLadderHtml(dp);
-
+  /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
+     GONE from Home (owner: "i dont need a pathway like that — SIMPLE,
+     attractive and neat"). Talk/AI conversation is benched until a subscriber
+     base exists; the ladder routed strangers into keyed AI modes and the
+     retired Sentence Coach. _pathLadderHtml/pathGo stay in the file unused. */
   const extras = `
     <div class="h8-list" style="margin-top:18px">
-      ${talkRow}
       <button class="h8-row" onclick="nav('sentences')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ffb35c,#f2653f);box-shadow:0 8px 22px rgba(242,101,63,.40),0 0 24px rgba(255,179,92,.30);flex-shrink:0">🧩</div>
         <div class="h8-row-body">
@@ -23046,7 +23035,6 @@ function renderHome(){
       ${spineHeader}
       ${resumeChip}
       ${heroCard}
-      ${ladder}
       ${extras}
     </div>`;
 }
@@ -23706,19 +23694,9 @@ function renderPractice(){
   const scopeRow = `<div class="h8-section" style="margin:4px 4px 11px">Choose a topic <span style="font-weight:600;opacity:.6;text-transform:none;letter-spacing:0">· tap ▶ to go hands-free</span></div><div class="scope-row">${vocabChips}${colChips}</div>${textbookBlock}`;
 
   /* ===== Ship 6 — Practice renders the Topics screen (Stage A: renamed from Home) ===== */
-  const _dpm = _dailyPathModel();
-  const _dots = _dpm.steps.map(s => `<i class="${s._done ? 'done' : ''}"></i>`).join('');
-  const pathStrip = `
-    <div class="path-strip" onclick="nav('home')">
-      <div style="font-size:20px">🧭</div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <div style="font-weight:800;font-size:13px;color:var(--text)">Today’s path <span style="font-weight:600;color:var(--faint)">· ${_dpm.doneCount}/${_dpm.total}</span></div>
-          <div style="font-weight:800;font-size:12px;color:#c9b3ff">${_dpm.allDone ? 'Review →' : 'Resume →'}</div>
-        </div>
-        <div class="path-dots">${_dots}</div>
-      </div>
-    </div>`;
+  /* v8.60 market tidy — the Today's-path strip is gone along with the Home
+     ladder it linked to (owner: no pathway). */
+  const pathStrip = '';
   const searchBox = `<div class="topic-search"><span style="font-size:15px">🔍</span><input type="text" placeholder="Search topics…" oninput="filterTopics(this.value)"></div>`;
   /* Continuing card — the active scope, open-and-go */
   const _sec = activeVocabSection();
@@ -24110,11 +24088,16 @@ function renderSettings(){
      default-off, reachable only via the collapsed Advanced disclosure. */
   const groupHeader = (label) => `<div class="h8-section" style="margin:16px 4px 8px">${esc(label)}</div>`;
 
-  return `
-    <div class="settings-v2">
-    <div class="card" style="border:1px solid rgba(167,139,250,.35)">
+  /* v8.60 market tidy — every AI/dev-facing card (Connect AI, conversation
+     settings, AI Focus sentences, Storage Health, Update, About, server
+     secret, module path) now lives ONLY under the collapsed ⚙ Advanced
+     disclosure. A paying customer sees: Drills, Speech voices, Study filters,
+     Preferences, Add a word, Removed words, Data. Nothing is deleted —
+     existing keys/toggles keep working, they're just out of the front room. */
+  const connectAiCard = `
+    <div class="card" style="margin-top:8px;border:1px solid rgba(167,139,250,.35)">
       <h3>🔌 Connect AI</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.<br><b>Have an Isshin server secret instead?</b> Skip this card — paste it under ⚙ Advanced → Isshin server below.'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.<br><b>Have an Isshin server secret instead?</b> Skip this card — paste it under Isshin server below.'}</div>
       <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
         <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
         <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
@@ -24128,28 +24111,35 @@ function renderSettings(){
         <button class="btn" onclick="testAnthropicKey()" style="padding:9px 14px;font-size:13px">Test connection</button>
         <span id="keyTestStatus" class="muted" style="font-size:12px"></span>
       </div>
-    </div>
-    ${groupHeader('Voice')}
-    <div class="card">
-      <h3>Build Mode pacing</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:8px">Paul Noble-style hands-off cadence: prompt plays, you say it aloud, JP reveals automatically, next step incoming. Pause anytime mid-lesson.</div>
-      <div class="muted" style="font-size:12px;margin-bottom:8px"><b>v6.5:</b> think + linger auto-shrink for words you've mastered (apprentice → 0.7×, guru/master/burned → 0.5×). New-word introduce steps stay at full pace.</div>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually like before.</div></div>
-        <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Write mode</div><div class="word-en">v6.25 · type the JP for build/substitute/callback steps. Hiragana or romaji both fine. Speech is muted on prompt; auto-advance still applies on correct.</div></div>
-        <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🎙️ Voice mode (works on every drill)</div><div class="word-en">${voiceSupported() ? 'Universal switch — when on, Build Mode and Vocab Blitz both listen for your spoken answer and submit it for you. Close matches count as correct. After 2 STT misses on a card, it falls back to typing so you\'re never stranded. Designed for driving.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
-        <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
+    </div>`;
+
+  const convoSettingsCard = `
+    <div class="card" style="margin-top:8px">
+      <h3>💬 Conversation (benched)</h3>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 Talk hands-free mic</div><div class="word-en">On: mic auto-opens after each AI reply in conversation mode — speak your answer hands-free. Off: tap the mic button to speak instead.</div></div>
         <input type="checkbox" ${s.convoHandsFree!==false?'checked':''} onchange="toggleSetting('convoHandsFree')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">💬 Recap notes</div><div class="word-en">On: the conversation wrap-up shows up to 3 "words worth another listen" notes + a one-tap practice button. Off: recap is celebration-only, no notes.</div></div>
         <input type="checkbox" ${s.convoRecapNotes!==false?'checked':''} onchange="toggleSetting('convoRecapNotes')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🔮 Talk orb (beta)</div><div class="word-en">On: replaces the character avatar in conversation mode with an animated presence orb that mirrors listening / thinking / speaking. Off: classic avatar header (default).</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔮 Talk orb (beta)</div><div class="word-en">On: replaces the character avatar in conversation mode with an animated presence orb. Off: classic avatar header (default).</div></div>
         <input type="checkbox" ${s.orbMode?'checked':''} onchange="toggleSetting('orbMode')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">🔥 "Days together" streak</div><div class="word-en">Off: hide the daily-practice streak from Home / Practice / Progress. It still counts quietly in the background either way.</div></div>
-        <input type="checkbox" ${s.hideStreak?'':'checked'} onchange="toggleSetting('hideStreak')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">💬 Your name in conversation</div><div class="word-en">The character in conversation mode addresses you by this and expects it when you introduce yourself. Leave blank to be asked in-chat.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">💬 Your name in conversation</div><div class="word-en">The character in conversation mode addresses you by this. Leave blank to be asked in-chat.</div></div>
         <input type="text" value="${esc(s.userName||'')}" oninput="setUserName(this.value)" placeholder="your name" style="width:120px;padding:8px 10px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:14px"></label>
+    </div>`;
+
+  return `
+    <div class="settings-v2">
+    ${groupHeader('Voice')}
+    <div class="card">
+      <h3>Drills</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Hands-off cadence: the prompt plays, you say it aloud, the answer reveals automatically, next word incoming. Pause anytime mid-lesson.</div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Auto-advance</div><div class="word-en">Off: tap Reveal / Next manually.</div></div>
+        <input type="checkbox" ${s.buildAutoAdvance!==false?'checked':''} onchange="toggleSetting('buildAutoAdvance')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Write mode</div><div class="word-en">Type the Japanese instead of speaking it. Hiragana or romaji both fine.</div></div>
+        <input type="checkbox" ${s.buildWriteMode?'checked':''} onchange="toggleSetting('buildWriteMode')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🎙️ Voice mode</div><div class="word-en">${voiceSupported() ? 'When on, drills listen for your spoken answer and move on for you — fully hands-free. Designed for earbuds and driving.' : 'Speech recognition not supported in this browser — toggle has no effect.'}</div></div>
+        <input type="checkbox" ${s.buildVoiceMode?'checked':''} onchange="toggleSetting('buildVoiceMode')"></label>
+      <label class="word-row"><div class="word-main"><div class="word-jp">🔥 Streak</div><div class="word-en">Off: hide the daily-practice streak. It still counts quietly in the background either way.</div></div>
+        <input type="checkbox" ${s.hideStreak?'':'checked'} onchange="toggleSetting('hideStreak')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Listen window</div><div class="word-en">${(s.voiceListenSec||7).toFixed(0)}s · how long Voice mode waits for you to speak before moving on</div></div>
         <input type="range" min="3" max="15" step="1" value="${s.voiceListenSec||7}" oninput="setVoiceListenSec(this.value)" style="width:160px"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">⚡ Fast pace (speak drills)</div><div class="word-en">On: hands-free speak drills open the mic sooner and move to the next card sooner after each answer. Off: relaxed pacing with more reading time (default). Also flippable from the chip inside any drill.</div></div>
@@ -24189,9 +24179,6 @@ function renderSettings(){
         <button class="btn btn-ghost" onclick="testJpVoice()">🔊 Test JP</button>
         <button class="btn btn-ghost" onclick="testEnVoice()">🔊 Test EN</button>
       </div>
-      <div class="muted" style="font-size:11px;margin-top:10px">${whisperAvailable() ? '🎤 Whisper transcription active for this device.' : '📢 Using the browser\'s built-in speech recognizer.'}</div>
-      <label class="word-row" style="margin-top:8px"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'}</div></div>
-        <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
     </div>
 
     ${groupHeader('Learning')}
@@ -24216,7 +24203,7 @@ function renderSettings(){
       <h3>Preferences</h3>
       <label class="word-row"><div class="word-main"><div class="word-jp">N5 pack enabled</div><div class="word-en">${N5_PACK.filter(w=>!w.retired).length} words</div></div>
         <input type="checkbox" ${s.n5PackEnabled?'checked':''} onchange="toggleSetting('n5PackEnabled')"></label>
-      <label class="word-row"><div class="word-main"><div class="word-jp">Advanced pack (N4/N3)</div><div class="word-en">${ADV_PACK.length} step-up words — vague, troublesome, give up, reconsider… all hiragana/katakana, with nuance notes. Great fresh material for Focus.</div></div>
+      <label class="word-row"><div class="word-main"><div class="word-jp">Advanced pack (N4/N3)</div><div class="word-en">${ADV_PACK.length} step-up words — vague, troublesome, give up, reconsider… all hiragana/katakana, with nuance notes.</div></div>
         <input type="checkbox" ${s.advPackEnabled!==false?'checked':''} onchange="toggleSetting('advPackEnabled')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Include katakana vocab</div><div class="word-en">Off: hiragana-only pool. On: loanwords (コーヒー etc.) included. ${state.words.filter(w=>hasKatakana(w.jp)).length} katakana-containing words.</div></div>
         <input type="checkbox" ${s.includeKatakana?'checked':''} onchange="toggleSetting('includeKatakana')"></label>
@@ -24224,18 +24211,6 @@ function renderSettings(){
         <input type="checkbox" ${s.vocabLock===true?'checked':''} onchange="toggleSetting('vocabLock')"></label>
       <label class="word-row"><div class="word-main"><div class="word-jp">Walk me through new words</div><div class="word-en">On: the first time a new word comes up in a hands-free drill, it walks you through it — meet the word, hear it in a few real sentences, then say it aloud — before the quick review. Best when you're meeting words for the first time. Off: new words go straight into the fast say-it drill.</div></div>
         <input type="checkbox" ${s.newWordInduction?'checked':''} onchange="toggleSetting('newWordInduction')"></label>
-    </div>
-
-    <div class="card">
-      <h3>✨ AI Focus sentences</h3>
-      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">
-        In <b>Focus</b>, the default example sentences are templates and can read oddly. The <b>✨ Generate</b> button writes genuinely natural, nuance-rich sentences — kanji-free, then <b>cached on this device forever</b> (works offline after, never regenerates unasked).
-      </div>
-      <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${aiChatReady() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${aiChatReady() ? '#22c55e' : '#a78bfa'};line-height:1.5">
-        ${aiChatReady() ? '✅ Generation is live in Focus on this device.' : '⚠️ Generation is unavailable on this device right now — the templated example sentences below still work fine.'}
-      </div>
-      <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
-      <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
     </div>
 
     <div class="card">
@@ -24271,33 +24246,42 @@ function renderSettings(){
     </div>
 
     <div class="card">
-      <h3>Storage Health</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:8px">If your progress ever looks reset, screenshot this box or tap Copy and send it.</div>
-      <pre style="font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.18);padding:10px;border-radius:10px;margin:0 0 10px">${esc(_storageHealthText())}</pre>
-      <button class="btn btn-secondary" style="width:100%" onclick="copyStorageHealth()">📋 Copy report</button>
-    </div>
-
-    <div class="card">
-      <h3>Update</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:8px">If the app feels stale (still on an old version after a deploy), the service worker is caching old files. This unregisters the worker, clears every cache, and forces a hard reload — your saved data is untouched.</div>
-      <button class="btn btn-primary" style="width:100%" onclick="forceUpdate()">🔄 Force update from server</button>
-    </div>
-
-    <div class="card">
       <h3>About</h3>
       <div class="muted">
         Isshin · v${APP_VERSION}<br>
-        ${state.words.length} total words in deck · ${Object.keys(state.stats).length} studied<br>
-        ${state.logs.length} events logged<br>
-        Built for Julius. Designed around active recall + voice output + teacher-verified content.
+        ${state.words.length} words in the deck · ${Object.keys(state.stats).length} studied<br>
+        Learn Japanese by ear — hands-free drills built on active recall.
       </div>
     </div>
 
     <details style="margin:16px 4px 4px">
       <summary class="muted" style="font-size:12px;cursor:pointer">⚙ Advanced</summary>
+      ${connectAiCard}
+      ${convoSettingsCard}
+      <div class="card" style="margin-top:8px">
+        <h3>✨ AI Focus sentences</h3>
+        <div class="muted" style="font-size:12px;padding:8px 10px;border-radius:6px;background:${aiChatReady() ? 'rgba(34,197,94,0.10)' : 'rgba(167,139,250,0.10)'};border-left:3px solid ${aiChatReady() ? '#22c55e' : '#a78bfa'};line-height:1.5">
+          ${aiChatReady() ? '✅ Generation is live on this device.' : '⚠️ Generation is unavailable on this device — templated example sentences still work fine.'}
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:10px">${Object.keys(s.focusGenCache||{}).length} word${Object.keys(s.focusGenCache||{}).length===1?'':'s'} have cached AI sentences.</div>
+        <button class="btn btn-ghost" style="margin-top:8px;font-size:13px" onclick="focusGenClearCache()">Clear cached AI sentences</button>
+      </div>
       <div class="card" style="margin-top:8px">
         <label class="word-row"><div class="word-main"><div class="word-jp">Module path (guided unlock)</div><div class="word-en">Off by default — every topic is always open. On: browse/reorder/unlock modules from Practice.</div></div>
           <input type="checkbox" ${s.modulesEnabled?'checked':''} onchange="toggleModulesEnabled()"></label>
+        <label class="word-row"><div class="word-main"><div class="word-jp">Voice input shown</div><div class="word-en">${voiceSupported()?'Supported':'NOT supported in this browser'} · ${whisperAvailable() ? 'Whisper transcription active' : 'browser speech recognizer'}</div></div>
+          <input type="checkbox" ${s.voiceOn?'checked':''} onchange="toggleSetting('voiceOn')"></label>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <h3>Storage Health</h3>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">If your progress ever looks reset, screenshot this box or tap Copy and send it.</div>
+        <pre style="font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.18);padding:10px;border-radius:10px;margin:0 0 10px">${esc(_storageHealthText())}</pre>
+        <button class="btn btn-secondary" style="width:100%" onclick="copyStorageHealth()">📋 Copy report</button>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <h3>Update</h3>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">If the app feels stale after an update, this clears every cache and reloads the newest version — your saved data is untouched.</div>
+        <button class="btn btn-primary" style="width:100%" onclick="forceUpdate()">🔄 Force update from server</button>
       </div>
       <div class="card" style="margin-top:8px">
         <div class="word-jp" style="margin-bottom:4px">Isshin server (owner)</div>
