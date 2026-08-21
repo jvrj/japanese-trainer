@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Isshin — Learn Japanese by ear</title>
-<meta name="description" content="Hands-free Japanese drills. Hear the word, say it back, keep what sticks — while you drive, walk, cook, or just sit with your earbuds in. Free 7-day trial at launch.">
+<meta name="description" content="Hands-free Japanese drills — the app talks, you talk back. Learn while you drive, walk, or do the dishes. No download, free right now in early access.">
 <meta property="og:title" content="Isshin — Learn Japanese by ear">
 <meta property="og:description" content="Hands-free Japanese drills. Hear it, say it, keep what sticks — no screen-staring required.">
 <meta property="og:image" content="https://jvrj.github.io/japanese-trainer/icon-512.png">
@@ -28,20 +28,23 @@
   a{color:var(--pink)}
 
   /* hero */
-  .hero{position:relative;padding:70px 0 55px;text-align:center;background:
+  .hero{position:relative;padding:64px 0 55px;text-align:center;background:
     radial-gradient(ellipse 90% 60% at 50% -10%, rgba(157,92,255,.28), transparent 65%),
     radial-gradient(ellipse 60% 45% at 85% 15%, rgba(255,93,158,.14), transparent 70%)}
-  .kana-eyebrow{font-size:14px;letter-spacing:.5em;color:var(--muted);margin-bottom:14px}
+  .kana-eyebrow{font-size:13.5px;letter-spacing:.14em;color:var(--muted);margin-bottom:14px}
+  .kana-eyebrow .jp{letter-spacing:.4em}
   h1{font-size:clamp(34px,7vw,52px);font-weight:900;line-height:1.15;letter-spacing:-.5px}
   h1 .grad{background:linear-gradient(100deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{font-size:clamp(16px,3.5vw,19px);color:var(--muted);max-width:560px;margin:18px auto 0}
+  .tagline{font-size:clamp(15px,3.4vw,18px);font-weight:800;color:var(--gold);margin-top:10px;letter-spacing:.2px}
+  .sub{font-size:clamp(16px,3.5vw,19px);color:var(--muted);max-width:560px;margin:16px auto 0}
   .sub b{color:var(--txt)}
-  .cta{display:inline-block;margin-top:30px;padding:17px 38px;border-radius:16px;background:linear-gradient(100deg,var(--purple),var(--pink));color:#fff;font-weight:900;font-size:17px;text-decoration:none;box-shadow:0 10px 30px rgba(157,92,255,.35)}
+  .cta{display:inline-block;margin-top:28px;padding:17px 38px;border-radius:16px;background:linear-gradient(100deg,var(--purple),var(--pink));color:#fff;font-weight:900;font-size:17px;text-decoration:none;box-shadow:0 10px 30px rgba(157,92,255,.35)}
   .cta:active{transform:scale(.98)}
   .cta-note{font-size:12.5px;color:var(--muted);margin-top:12px}
+  .cta-mini{display:inline-block;margin-top:22px;padding:13px 28px;border-radius:14px;background:linear-gradient(100deg,var(--purple),var(--pink));color:#fff;font-weight:800;font-size:15px;text-decoration:none;box-shadow:0 8px 22px rgba(157,92,255,.3)}
 
   /* demo drill strip */
-  .demo{margin:48px auto 0;max-width:420px;text-align:left}
+  .demo{margin:44px auto 0;max-width:420px;text-align:left}
   .bubble{border-radius:16px;padding:12px 16px;margin-bottom:10px;font-size:15px;max-width:85%}
   .them{background:rgba(157,92,255,.13);border:1px solid var(--line)}
   .them .en{font-size:12px;color:var(--muted);margin-top:3px}
@@ -51,18 +54,34 @@
   .dot{width:9px;height:9px;border-radius:50%;background:var(--pink);animation:pulse 1.3s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+  /* live one-word demo */
+  .live-demo{margin:26px auto 0;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 20px;text-align:center}
+  .live-demo h3{font-size:15px;font-weight:800;margin-bottom:4px}
+  .live-demo p{font-size:12.5px;color:var(--muted)}
+  .ld-btn{margin-top:12px;padding:12px 26px;border-radius:12px;border:none;cursor:pointer;background:linear-gradient(100deg,var(--purple),var(--pink));color:#fff;font-weight:800;font-size:15px;font-family:inherit}
+  .ld-btn:active{transform:scale(.97)}
+  .ld-stage{min-height:64px;display:flex;flex-direction:column;justify-content:center;align-items:center;margin-top:12px}
+  .ld-word{font-size:30px;font-weight:800}
+  .ld-romaji{font-size:13px;color:var(--muted)}
+  .ld-meaning{font-size:17px;font-weight:800;color:var(--teal);margin-top:4px}
+  .ld-think{font-size:13px;color:var(--muted);letter-spacing:.3em}
+
   /* sections */
-  section{padding:58px 0}
+  section{padding:56px 0}
   h2{font-size:clamp(24px,5vw,32px);font-weight:900;line-height:1.25;margin-bottom:10px}
-  .lede{color:var(--muted);max-width:560px;margin-bottom:34px}
+  .lede{color:var(--muted);max-width:560px;margin-bottom:30px}
   .feat{display:flex;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px}
   .feat .ico{font-size:26px;flex-shrink:0}
   .feat h3{font-size:16.5px;font-weight:800;margin-bottom:4px}
   .feat p{font-size:14.5px;color:var(--muted)}
   .feat p b{color:var(--txt)}
+  .bodycopy{font-size:16px;color:var(--muted);max-width:600px}
+  .bodycopy b{color:var(--txt)}
+  .bodycopy a{color:var(--pink)}
+  .ctarow{text-align:center}
 
   /* research */
-  .research{background:rgba(95,220,180,.06);border:1px solid rgba(95,220,180,.25);border-radius:18px;padding:22px;font-size:14.5px;color:var(--muted)}
+  .research{background:rgba(95,220,180,.06);border:1px solid rgba(95,220,180,.25);border-radius:18px;padding:22px;font-size:14.5px;color:var(--muted);margin-top:26px}
   .research b{color:var(--teal)}
 
   /* pricing */
@@ -72,7 +91,7 @@
   .price-big span{font-size:16px;color:var(--muted);font-weight:600}
   .price-alt{font-size:14.5px;color:var(--muted);margin-top:4px}
   .price-alt b{color:var(--txt)}
-  .price-list{list-style:none;margin:20px auto 0;max-width:380px;text-align:left;font-size:14.5px}
+  .price-list{list-style:none;margin:20px auto 0;max-width:400px;text-align:left;font-size:14.5px}
   .price-list li{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
   .price-list li:last-child{border:none}
   .price-list .tick{color:var(--teal);margin-right:9px}
@@ -90,80 +109,84 @@
 
 <div class="hero">
   <div class="wrap">
-    <div class="kana-eyebrow jp">いっしん</div>
+    <div class="kana-eyebrow"><span class="jp">いっしん</span> · hands-free Japanese — no app to install</div>
     <h1>Learn Japanese<br><span class="grad">by ear.</span></h1>
-    <p class="sub"><b>Isshin drills you out loud — no screen-staring required.</b> Put your earbuds in and it says a word; you say it back; it keeps score of what sticks and brings words back right before you'd forget them. Learn while you drive, walk, cook, or do the dishes.</p>
-    <a class="cta" href="https://jvrj.github.io/japanese-trainer/">Try it free →</a>
-    <div class="cta-note">Runs in your browser · nothing to install · no card needed</div>
+    <div class="tagline">Hear it, say it, keep what sticks.</div>
+    <p class="sub">You're already in the car, on the walk, at the sink. <b>Isshin talks, you talk back</b> — earbuds in, phone in your pocket, eyes on the road. The time you already spend commuting becomes the time you spend learning Japanese.</p>
+    <a class="cta" href="https://jvrj.github.io/japanese-trainer/">Start free — no signup</a>
+    <div class="cta-note">No download — open it and start talking, right in your browser · free right now in early access</div>
 
     <div class="demo" aria-hidden="true">
       <div class="bubble them">🔊 &ldquo;water&rdquo;</div>
-      <div class="bubble me"><span class="jp">みず！</span><div class="en">you, out loud — hands in the sink</div></div>
-      <div class="bubble them">🔊 <span class="jp">「コーヒー」</span><div class="en">new word — just listen and say what it means</div></div>
+      <div class="bubble me"><span class="jp">みず！</span><div class="en">you, out loud — eyes on the road</div></div>
+      <div class="bubble them">🔊 <span class="jp">「コーヒー」</span><div class="en">a new one — just listen and say what it means</div></div>
       <div class="bubble me">&ldquo;coffee!&rdquo;</div>
-      <div class="mic-line"><span class="dot"></span> hands-free · next word coming up…</div>
+      <div class="mic-line"><span class="dot"></span> hands-free · keeps going on its own — no glance needed</div>
+    </div>
+
+    <div class="live-demo">
+      <h3>Try one word — no signup</h3>
+      <p>Tap play, think for a beat, say it out loud. That's the whole drill.</p>
+      <div class="ld-stage" id="ldStage"><button class="ld-btn" id="ldBtn" type="button">▶ Play a word</button></div>
     </div>
   </div>
 </div>
 
 <section>
   <div class="wrap">
-    <h2>Made for the time you already have</h2>
-    <p class="lede">Flashcard apps need your eyes and your thumbs. Isshin only needs your ears and your voice — so your commute, your walk, and your chores become study time.</p>
+    <h2>Your commute was already free. Use it.</h2>
+    <p class="lede">You don't need a spare hour for Japanese. You need the 20 minutes you already spend driving, walking the dog, or doing the dishes — and a way to study that doesn't ask for your eyes or your hands.</p>
 
     <div class="feat"><div class="ico">🎧</div><div>
-      <h3>Truly hands-free</h3>
-      <p>The drill runs itself: it speaks, <b>waits while you think</b>, reveals the answer, and moves on. Phone in your pocket, hands on the wheel or in the dishwater. Prefer tapping or typing? Both work too.</p>
+      <h3>Nothing to look at</h3>
+      <p>Isshin speaks the word, gives you a <b>real pause to think</b>, then says the answer and moves on. No screen to glance at, no card to swipe — the whole drill happens through sound.</p>
     </div></div>
 
     <div class="feat"><div class="ico">🗣</div><div>
-      <h3>You answer out loud</h3>
-      <p>Saying the word yourself — not recognising it on a card — is what moves it into long-term memory. Every step in Isshin is <b>active recall</b>: hear the cue, produce the answer, then hear the real thing.</p>
+      <h3>You do the talking</h3>
+      <p>Say the word out loud when it's your turn. That's the whole mechanic — not tapping &ldquo;I knew it,&rdquo; not picking from four options: <b>actually producing the word yourself</b>, the way you would talking to a person.</p>
     </div></div>
 
-    <div class="feat"><div class="ico">👂</div><div>
-      <h3>Listening first, speaking second</h3>
-      <p>Brand-new words arrive as <b>listening steps</b> — Isshin says the Japanese, you say what it means. Once a word settles in, it flips: you hear English and <b>produce the Japanese</b>. One tap flips the whole drill's direction whenever you like.</p>
+    <div class="feat"><div class="ico">🔁</div><div>
+      <h3>Picks up where you left off</h3>
+      <p>Park the car mid-drill and it just pauses. Get back to it tomorrow and it continues — <b>no re-explaining, no catching up</b>, no friction between one commute and the next.</p>
     </div></div>
 
-    <div class="feat"><div class="ico">🧠</div><div>
-      <h3>Spaced repetition that trusts you</h3>
-      <p>A proven scheduler brings each word back <b>just before you'd forget it</b>. And instead of a robot grading your accent, Isshin simply asks you how it went — 😬 🙂 💪 — and schedules accordingly. No red X's, no grades, ever.</p>
-    </div></div>
-
-    <div class="feat"><div class="ico">🎌</div><div>
-      <h3>Japanese only, from zero</h3>
-      <p>Not 40 languages wide — one language deep. A curated <b>~1,700-word core deck</b>, everything in kana with audio (the app teaches you kana too), plus sentence drills, verb forms, and counting.</p>
-    </div></div>
-
-    <div class="feat"><div class="ico">🔒</div><div>
-      <h3>Private by design</h3>
-      <p>Your words and progress live on your phone, and <b>nothing you say is ever recorded or kept</b> — speech is handled by your phone's own voice services. No ad trackers, no data selling. The core listening drill even keeps working offline.</p>
-    </div></div>
+    <div class="ctarow"><a class="cta-mini" href="https://jvrj.github.io/japanese-trainer/">Start free — no signup</a></div>
   </div>
 </section>
 
 <section style="padding-top:0">
   <div class="wrap">
+    <h2>Nothing waiting for you when you get back</h2>
+    <p class="bodycopy">Most apps punish you for having a life. Miss a few days and you come back to hundreds of overdue reviews — a wall of red cards. As one learning writer <a href="https://evakeiffenheim.substack.com/p/why-spaced-repetition-might-be-more" rel="noopener">put it</a>: <i>&ldquo;You return to find hundreds of overdue reviews. The app feels like a debt, not a tool. You close it and don't come back.&rdquo;</i> Isshin doesn't keep a queue. <b>No due-count, no red badges, no backlog to dread.</b> Spaced repetition still runs — invisibly. Come back whenever you come back; it just continues.</p>
+    <div class="ctarow"><a class="cta-mini" href="https://jvrj.github.io/japanese-trainer/">Start free — no signup</a></div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <h2>Why saying it works better than seeing it</h2>
+    <p class="bodycopy">Every rep follows the same shape: hear the cue, pause, <b>say the answer yourself</b>, then hear the real thing. That pause where you have to reach for the word — not just recognise it — is what makes it stick. Underneath, a scheduler quietly resurfaces each word <b>right before you'd forget it</b>, so the words from Monday's drive show up again exactly when Wednesday's drive needs them.</p>
     <div class="research">
-      <b>Why out loud, why spaced?</b> The two most robust findings in memory research: actively retrieving an answer beats re-reading it (<a href="https://doi.org/10.1111/j.1467-9280.2006.01693.x" rel="noopener">Roediger &amp; Karpicke, 2006</a>), and spacing reviews out beats cramming (<a href="https://doi.org/10.1037/0033-2909.132.3.354" rel="noopener">Cepeda et&nbsp;al., 2006</a>). Isshin is those two findings, pointed at Japanese, with your eyes closed.
+      <b>The research behind it:</b> two of the best-replicated findings in memory science — retrieving an answer from memory beats re-reading it (<a href="https://doi.org/10.1111/j.1467-9280.2006.01693.x" rel="noopener">Roediger &amp; Karpicke, 2006</a>), and spreading reviews out beats cramming (<a href="https://doi.org/10.1037/0033-2909.132.3.354" rel="noopener">Cepeda et&nbsp;al., 2006</a>). That's the entire mechanism — pointed at your commute.
     </div>
   </div>
 </section>
 
-<section>
+<section style="padding-top:0">
   <div class="wrap">
     <h2>Simple, honest pricing</h2>
-    <p class="lede">While Isshin is in early access, everything is free to try.</p>
+    <p class="lede">Free to try right now, while Isshin is in early access.</p>
     <div class="price-card">
       <div class="price-now">Early access — free right now</div>
       <div class="price-big">$8.99<span> / month at launch</span></div>
       <div class="price-alt">or <b>$59.99 / year</b> — about $5 a month</div>
       <ul class="price-list">
         <li><span class="tick">✓</span><b>7-day free trial</b> at launch — cancel anytime</li>
-        <li><span class="tick">✓</span>Full deck, all drills, kana, sentences &amp; verb forms</li>
-        <li><span class="tick">✓</span>Your progress stays yours, on your device</li>
-        <li><span class="tick">✓</span>No ads, no trackers — you're the customer, not the product</li>
+        <li><span class="tick">✓</span>For reference: Pimsleur, the audio incumbent, runs about $20 a month for repeat-after-me lessons. Isshin is $8.99 — and asks you to actually recall the word.</li>
+        <li><span class="tick">✓</span>Full ~1,700-word deck, kana taught from zero, sentence &amp; verb drills included</li>
+        <li><span class="tick">✓</span>Your progress stays on your phone</li>
       </ul>
     </div>
   </div>
@@ -172,16 +195,18 @@
 <section style="padding-top:0">
   <div class="wrap">
     <h2>Questions</h2>
-    <details><summary>I can't read Japanese at all. Can I start?</summary>
-      <p>Yes — Isshin starts from zero. Everything is written in kana (the phonetic script) with audio on every word, and the app teaches you kana itself. No kanji is thrown at you.</p></details>
-    <details><summary>Do I really not need to look at the screen?</summary>
-      <p>For the core drill, no. It speaks the cue, leaves you a thinking gap, then speaks the answer and moves on by itself. Glance at the screen whenever you want the spelling or a hint — but the loop never requires it.</p></details>
-    <details><summary>Is my voice recorded or stored?</summary>
-      <p>No — nothing you say is ever recorded or kept. Speech recognition happens through your phone's built-in voice service, and answering by voice is optional anyway (you can tap or type instead). Details in our <a href="privacy.html">privacy policy</a>.</p></details>
+    <details><summary>Can I really do this without looking at my phone?</summary>
+      <p>Yes, for the core drill. It speaks, pauses, reveals the answer, and continues on its own. Glance down for spelling or a hint whenever you like — the loop never requires it.</p></details>
+    <details><summary>Is my voice recorded or stored anywhere?</summary>
+      <p>No — nothing you say is ever recorded or kept. Speech is handled by your phone's own voice services, and answering by voice is optional anyway: tapping or typing works exactly the same. Details in our <a href="privacy.html">privacy policy</a>.</p></details>
+    <details><summary>What if I miss a few days — or a few weeks?</summary>
+      <p>Nothing bad. There's no queue to catch up on and no pile of red cards waiting. A streak exists, if you switch it on. Nothing else is watching. You open the app, it picks up, you continue.</p></details>
     <details><summary>What phones does it work on?</summary>
-      <p>It runs in the browser — best on Android with Chrome today, and fine on most modern phones. The speak-aloud features use your device's own speech engine; if a phone lacks one, you can still tap or type your answers.</p></details>
+      <p>It runs in the browser — best on Android with Chrome today, fine on most modern phones. Speech recognition is only a trigger to move the drill along, never a grade — if the mic misses you (car noise, cheap earbuds), tap or type instead. Nothing about your progress depends on being heard perfectly.</p></details>
+    <details><summary>Isn't there a free option already, like Language Transfer?</summary>
+      <p>Yes — Language Transfer is genuinely free and genuinely good. Isshin's difference is hands-free active recall with spaced repetition over a ~1,700-word deck rather than a fixed lesson track — and right now Isshin is free too, so try both.</p></details>
     <details><summary>What happens when early access ends?</summary>
-      <p>The price above goes live with a 7-day free trial, and we'll say so clearly before anything changes. Your progress is stored on your device and stays with you either way.</p></details>
+      <p>The pricing above goes live with a 7-day free trial, announced clearly beforehand. Everything you've learned stays on your device either way.</p></details>
   </div>
 </section>
 
@@ -192,6 +217,80 @@
     <div><a href="privacy.html">Privacy policy</a> · <a href="mailto:juliuspireh@gmail.com">Contact</a></div>
   </div>
 </footer>
+
+<script>
+(function(){
+  var WORDS=[
+    {kana:'みず', romaji:'mizu', en:'water'},
+    {kana:'ねこ', romaji:'neko', en:'cat'},
+    {kana:'コーヒー', romaji:'koohii', en:'coffee'},
+    {kana:'いぬ', romaji:'inu', en:'dog'},
+    {kana:'おはよう', romaji:'ohayou', en:'good morning'}
+  ];
+  var i=0, stage=document.getElementById('ldStage'), btn=document.getElementById('ldBtn');
+  if(!stage||!btn) return;
+
+  function jaVoice(){
+    try{
+      var vs=window.speechSynthesis?window.speechSynthesis.getVoices():[];
+      for(var k=0;k<vs.length;k++){ if((vs[k].lang||'').toLowerCase().indexOf('ja')===0) return vs[k]; }
+    }catch(e){}
+    return null;
+  }
+  // warm the voice list (Chrome populates async)
+  try{ if(window.speechSynthesis){ window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged=function(){}; } }catch(e){}
+
+  function reveal(w, spoken){
+    stage.innerHTML='';
+    var d1=document.createElement('div'); d1.className='ld-word jp'; d1.textContent=w.kana;
+    var d2=document.createElement('div'); d2.className='ld-romaji'; d2.textContent=w.romaji;
+    var d3=document.createElement('div'); d3.className='ld-meaning'; d3.textContent='= '+w.en;
+    var again=document.createElement('button'); again.className='ld-btn'; again.type='button';
+    again.textContent='▶ Another word'; again.style.marginTop='14px';
+    again.addEventListener('click', play);
+    stage.appendChild(d1); stage.appendChild(d2); stage.appendChild(d3); stage.appendChild(again);
+  }
+
+  function think(w, spoken){
+    stage.innerHTML='';
+    if(!spoken){
+      // no Japanese voice available: text-led fallback, same rhythm
+      var d1=document.createElement('div'); d1.className='ld-word jp'; d1.textContent=w.kana;
+      var d2=document.createElement('div'); d2.className='ld-romaji'; d2.textContent=w.romaji+' — say it out loud';
+      stage.appendChild(d1); stage.appendChild(d2);
+    } else {
+      var t=document.createElement('div'); t.className='ld-think'; t.textContent='· · · your turn — say it';
+      stage.appendChild(t);
+    }
+    setTimeout(function(){ reveal(w, spoken); }, 2000);
+  }
+
+  function play(){
+    var w=WORDS[i%WORDS.length]; i++;
+    var v=jaVoice();
+    if(v && window.speechSynthesis){
+      try{
+        window.speechSynthesis.cancel();
+        var u=new SpeechSynthesisUtterance(w.kana);
+        u.voice=v; u.lang=v.lang; u.rate=0.9;
+        var started=false;
+        u.onstart=function(){ started=true; };
+        u.onend=function(){ think(w, true); };
+        u.onerror=function(){ think(w, false); };
+        window.speechSynthesis.speak(u);
+        // safety: if nothing started within 1.2s, fall back to text
+        setTimeout(function(){ if(!started){ try{window.speechSynthesis.cancel();}catch(e){} think(w, false); } }, 1200);
+        stage.innerHTML='<div class="ld-think">🔊 listen…</div>';
+        return;
+      }catch(e){ /* fall through to text mode */ }
+    }
+    think(w, false);
+  }
+
+  btn.addEventListener('click', play);
+})();
+</script>
 
 </body>
 </html>
