@@ -154,7 +154,10 @@ textarea.input{min-height:80px;resize:vertical;font-size:14px}
 /* Floating FABs */
 .notes-fab{position:fixed;right:16px;bottom:86px;width:52px;height:52px;border-radius:26px;background:var(--purple);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 8px 22px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center}
 .notes-fab:active{transform:scale(.92)}
-.ask-fab{position:fixed;right:16px;bottom:148px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#9d5cff,#ff5d9e);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 8px 22px rgba(124,58,237,.4);display:flex;align-items:center;justify-content:center}
+/* v8.61 fail-closed: default display:none — render() opts IN (display:flex) only
+   when aiChatReady() proves true. Previously default-visible + a try/catch-swallowed
+   hide, so any render() exception leaked the benched AI button to strangers. */
+.ask-fab{position:fixed;right:16px;bottom:148px;width:52px;height:52px;border-radius:26px;background:linear-gradient(135deg,#9d5cff,#ff5d9e);color:#fff;border:none;font-size:22px;cursor:pointer;z-index:45;box-shadow:0 8px 22px rgba(124,58,237,.4);display:none;align-items:center;justify-content:center}
 .ask-fab:active{transform:scale(.92)}
 /* Clean launch surface: the Ask-Claude / notes FABs overlapped the home stats
    row, and there's nothing to ask about on home anyway — hide them there; they
@@ -678,7 +681,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.60';
+const APP_VERSION = '8.61';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -22755,7 +22758,7 @@ function render(){
   /* v8.60 market tidy — the 🤖 Ask-Claude FAB only exists for devices that
      actually have AI connected (owner key/server). A paying customer without
      one never sees a robot button that opens a dead chat. */
-  try{ const af = document.getElementById('askFab'); if(af) af.style.display = aiChatReady() ? '' : 'none'; }catch(e){}
+  try{ const af = document.getElementById('askFab'); if(af) af.style.display = aiChatReady() ? 'flex' : 'none'; }catch(e){}
   bindScreen();
 }
 function nav(screen, data, fromPop){
@@ -22986,7 +22989,8 @@ function renderHome(){
      loop) instead of the benched AI conversation. This closes the onboarding
      funnel: a cold user is pitched drills, wins at drills, and lands on a
      Home whose top card is that same drill — not a keyed Talk mode they
-     can't use. Talk stays one tap away as the first row below the ladder. */
+     can't use. (v8.60: the ladder and the Talk row are gone from Home entirely —
+     conversation is benched until a subscriber base exists.) */
   const heroCard = `
     <div class="h8-hero">
       <div class="h8-hero-deco emoji">🎧</div>
