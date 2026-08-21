@@ -1,5 +1,12 @@
 # Store listing copy — draft v1
 
+> **⚠ POSITIONING SUPERSEDED 2026-08-21.** Owner pivoted go-to-market to the
+> hands-free DRILL app ("Learn Japanese by ear"); AI conversation is BENCHED
+> until a subscriber base exists, and the drill loop is the PAID product
+> ($8.99/mo · $59.99/yr · 7-day trial, Web+Stripe first — "drills free forever"
+> is dead). The conversation-first copy below is kept as raw material only —
+> do NOT ship it. Current voice: `landing/index.html` (rebuilt 2026-08-21).
+
 Drafted 2026-07-19 (v8.25 store-polish sweep — competitive punch-list item 8).
 For Phase 5 (store submission); also the source for the landing page and any
 Facebook ad copy. Positioning claim from the 2026-07-16 scan: **"Japanese-first ·

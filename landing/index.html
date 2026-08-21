@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Isshin — Speak Japanese, zero judgment</title>
-<meta name="description" content="A Japanese conversation partner, not a quiz. Have your first short spoken exchange within 90 seconds — no signup, no score, no judgment.">
-<meta property="og:title" content="Isshin — Speak Japanese, zero judgment">
-<meta property="og:description" content="A Japanese conversation partner, not a quiz. Real spoken conversations from day one — corrections that don't sting.">
+<title>Isshin — Learn Japanese by ear</title>
+<meta name="description" content="Hands-free Japanese drills. Hear the word, say it back, keep what sticks — while you drive, walk, cook, or just sit with your earbuds in. Free 7-day trial at launch.">
+<meta property="og:title" content="Isshin — Learn Japanese by ear">
+<meta property="og:description" content="Hands-free Japanese drills. Hear it, say it, keep what sticks — no screen-staring required.">
 <meta property="og:image" content="https://jvrj.github.io/japanese-trainer/icon-512.png">
 <meta property="og:url" content="https://jvrj.github.io/japanese-trainer/landing/">
 <meta property="og:type" content="website">
@@ -34,18 +34,19 @@
   .kana-eyebrow{font-size:14px;letter-spacing:.5em;color:var(--muted);margin-bottom:14px}
   h1{font-size:clamp(34px,7vw,52px);font-weight:900;line-height:1.15;letter-spacing:-.5px}
   h1 .grad{background:linear-gradient(100deg,var(--purple),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{font-size:clamp(16px,3.5vw,19px);color:var(--muted);max-width:540px;margin:18px auto 0}
+  .sub{font-size:clamp(16px,3.5vw,19px);color:var(--muted);max-width:560px;margin:18px auto 0}
   .sub b{color:var(--txt)}
   .cta{display:inline-block;margin-top:30px;padding:17px 38px;border-radius:16px;background:linear-gradient(100deg,var(--purple),var(--pink));color:#fff;font-weight:900;font-size:17px;text-decoration:none;box-shadow:0 10px 30px rgba(157,92,255,.35)}
   .cta:active{transform:scale(.98)}
   .cta-note{font-size:12.5px;color:var(--muted);margin-top:12px}
 
-  /* demo bubble strip */
+  /* demo drill strip */
   .demo{margin:48px auto 0;max-width:420px;text-align:left}
   .bubble{border-radius:16px;padding:12px 16px;margin-bottom:10px;font-size:15px;max-width:85%}
   .them{background:rgba(157,92,255,.13);border:1px solid var(--line)}
   .them .en{font-size:12px;color:var(--muted);margin-top:3px}
   .me{background:rgba(255,93,158,.12);border:1px solid rgba(255,93,158,.3);margin-left:auto;text-align:right}
+  .me .en{font-size:12px;color:var(--muted);margin-top:3px}
   .mic-line{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);margin-top:4px}
   .dot{width:9px;height:9px;border-radius:50%;background:var(--pink);animation:pulse 1.3s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -69,6 +70,8 @@
   .price-now{display:inline-block;background:rgba(95,220,180,.12);border:1px solid rgba(95,220,180,.35);color:var(--teal);font-weight:800;font-size:13px;border-radius:20px;padding:5px 16px;margin-bottom:16px}
   .price-big{font-size:44px;font-weight:900}
   .price-big span{font-size:16px;color:var(--muted);font-weight:600}
+  .price-alt{font-size:14.5px;color:var(--muted);margin-top:4px}
+  .price-alt b{color:var(--txt)}
   .price-list{list-style:none;margin:20px auto 0;max-width:380px;text-align:left;font-size:14.5px}
   .price-list li{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
   .price-list li:last-child{border:none}
@@ -88,48 +91,54 @@
 <div class="hero">
   <div class="wrap">
     <div class="kana-eyebrow jp">いっしん</div>
-    <h1>Speak Japanese,<br><span class="grad">zero judgment.</span></h1>
-    <p class="sub"><b>Isshin is a conversation partner, not a quiz.</b> Most apps make you tap flashcards for months before you ever speak. Isshin starts with your voice — your first short spoken exchange within 90 seconds of opening it.</p>
-    <a class="cta" href="https://jvrj.github.io/japanese-trainer/">Try the free preview →</a>
-    <div class="cta-note">Works in your browser · no signup · no score · no judgment</div>
+    <h1>Learn Japanese<br><span class="grad">by ear.</span></h1>
+    <p class="sub"><b>Isshin drills you out loud — no screen-staring required.</b> Put your earbuds in and it says a word; you say it back; it keeps score of what sticks and brings words back right before you'd forget them. Learn while you drive, walk, cook, or do the dishes.</p>
+    <a class="cta" href="https://jvrj.github.io/japanese-trainer/">Try it free →</a>
+    <div class="cta-note">Runs in your browser · nothing to install · no card needed</div>
 
     <div class="demo" aria-hidden="true">
-      <div class="bubble them"><span class="jp">きょうは なにを たべた？</span><div class="en">what did you eat today?</div></div>
-      <div class="bubble me"><span class="jp">えっと… ラーメン！</span></div>
-      <div class="bubble them"><span class="jp">いいね！ わたしも ラーメンが すき 🍜</span><div class="en">nice! I love ramen too</div></div>
-      <div class="mic-line"><span class="dot"></span> listening · take your time…</div>
+      <div class="bubble them">🔊 &ldquo;water&rdquo;</div>
+      <div class="bubble me"><span class="jp">みず！</span><div class="en">you, out loud — hands in the sink</div></div>
+      <div class="bubble them">🔊 <span class="jp">「コーヒー」</span><div class="en">new word — just listen and say what it means</div></div>
+      <div class="bubble me">&ldquo;coffee!&rdquo;</div>
+      <div class="mic-line"><span class="dot"></span> hands-free · next word coming up…</div>
     </div>
   </div>
 </div>
 
 <section>
   <div class="wrap">
-    <h2>A friend who happens to speak Japanese</h2>
-    <p class="lede">Everything in Isshin points at one goal: you, holding a real conversation, out loud.</p>
+    <h2>Made for the time you already have</h2>
+    <p class="lede">Flashcard apps need your eyes and your thumbs. Isshin only needs your ears and your voice — so your commute, your walk, and your chores become study time.</p>
 
-    <div class="feat"><div class="ico">🗣</div><div>
-      <h3>Real conversations, hands-free</h3>
-      <p>Talk with a warm AI partner who <b>listens patiently</b> — it waits while you think, follows wherever you take the conversation, and shares its own answers like a friend would. 14 everyday topics, or just free-talk.</p>
+    <div class="feat"><div class="ico">🎧</div><div>
+      <h3>Truly hands-free</h3>
+      <p>The drill runs itself: it speaks, <b>waits while you think</b>, reveals the answer, and moves on. Phone in your pocket, hands on the wheel or in the dishwater. Prefer tapping or typing? Both work too.</p>
     </div></div>
 
-    <div class="feat"><div class="ico">💬</div><div>
-      <h3>Corrections that don't sting</h3>
-      <p>When there's a more natural way to say something, your partner simply <b>says it back naturally</b> inside the conversation — an observation, never a red X. Ask <span class="jp">「〜って なに？」</span> about any word and you get an instant answer card.</p>
+    <div class="feat"><div class="ico">🗣</div><div>
+      <h3>You answer out loud</h3>
+      <p>Saying the word yourself — not recognising it on a card — is what moves it into long-term memory. Every step in Isshin is <b>active recall</b>: hear the cue, produce the answer, then hear the real thing.</p>
+    </div></div>
+
+    <div class="feat"><div class="ico">👂</div><div>
+      <h3>Listening first, speaking second</h3>
+      <p>Brand-new words arrive as <b>listening steps</b> — Isshin says the Japanese, you say what it means. Once a word settles in, it flips: you hear English and <b>produce the Japanese</b>. One tap flips the whole drill's direction whenever you like.</p>
+    </div></div>
+
+    <div class="feat"><div class="ico">🧠</div><div>
+      <h3>Spaced repetition that trusts you</h3>
+      <p>A proven scheduler brings each word back <b>just before you'd forget it</b>. And instead of a robot grading your accent, Isshin simply asks you how it went — 😬 🙂 💪 — and schedules accordingly. No red X's, no grades, ever.</p>
     </div></div>
 
     <div class="feat"><div class="ico">🎌</div><div>
-      <h3>Japanese only, done deeply</h3>
-      <p>Not 40 languages wide — <b>one language deep</b>: kana-first reading, nuance and politeness notes on every word, and conversations built from the words <b>you</b> actually know, so they always feel possible.</p>
+      <h3>Japanese only, from zero</h3>
+      <p>Not 40 languages wide — one language deep. A curated <b>~1,700-word core deck</b>, everything in kana with audio (the app teaches you kana too), plus sentence drills, verb forms, and counting.</p>
     </div></div>
 
-    <div class="feat"><div class="ico">🔁</div><div>
-      <h3>Drills that feed the conversation</h3>
-      <p>Hands-free, audio-led vocab drills (use them while driving), verb-form ladders, and spaced repetition — all pointed at the same goal: your next conversation.</p>
-    </div></div>
-
-    <div class="feat"><div class="ico">📈</div><div>
-      <h3>Progress you can feel</h3>
-      <p>No grades, no leaderboards, no guilt streaks. Isshin counts <b>minutes talked and words spoken out loud</b> — and plays your own Japanese sentences back to you at the end of every conversation.</p>
+    <div class="feat"><div class="ico">🔒</div><div>
+      <h3>Nothing leaves your phone</h3>
+      <p>Speech happens through your phone's <b>built-in</b> voice service — your audio is never sent to, stored on, or heard by our servers. No ad trackers, no data selling. It even works offline once loaded.</p>
     </div></div>
   </div>
 </section>
@@ -137,7 +146,7 @@
 <section style="padding-top:0">
   <div class="wrap">
     <div class="research">
-      <b>Why conversation-first?</b> A 2023 review of 32 studies (<a href="https://doi.org/10.1017/S0958344023000034" rel="noopener">Jeon, ReCALL</a>) found conversation-partner practice is one of the most effective ways to build real speaking ability. Speaking badly, safely, is how speaking well starts.
+      <b>Why out loud, why spaced?</b> The two most robust findings in memory research: actively retrieving an answer beats re-reading it (<a href="https://doi.org/10.1111/j.1467-9280.2006.01693.x" rel="noopener">Roediger &amp; Karpicke, 2006</a>), and spacing reviews out beats cramming (<a href="https://doi.org/10.1037/0033-2909.132.3.354" rel="noopener">Cepeda et&nbsp;al., 2006</a>). Isshin is those two findings, pointed at Japanese, with your eyes closed.
     </div>
   </div>
 </section>
@@ -145,15 +154,16 @@
 <section>
   <div class="wrap">
     <h2>Simple, honest pricing</h2>
-    <p class="lede">While Isshin is in early access, the preview is free.</p>
+    <p class="lede">While Isshin is in early access, everything is free to try.</p>
     <div class="price-card">
-      <div class="price-now">Early access — free preview now</div>
+      <div class="price-now">Early access — free right now</div>
       <div class="price-big">$8.99<span> / month at launch</span></div>
+      <div class="price-alt">or <b>$59.99 / year</b> — about $5 a month</div>
       <ul class="price-list">
-        <li><span class="tick">✓</span><b>7-day free trial</b> of live AI conversation — no card required</li>
-        <li><span class="tick">✓</span>Drills, kana learning &amp; scripted practice — <b>free forever</b></li>
-        <li><span class="tick">✓</span>Cheaper yearly plan available</li>
-        <li><span class="tick">✓</span>Cancel anytime — your progress stays yours</li>
+        <li><span class="tick">✓</span><b>7-day free trial</b> at launch — cancel anytime</li>
+        <li><span class="tick">✓</span>Full deck, all drills, kana, sentences &amp; verb forms</li>
+        <li><span class="tick">✓</span>Your progress stays yours, on your device</li>
+        <li><span class="tick">✓</span>No ads, no trackers — you're the customer, not the product</li>
       </ul>
     </div>
   </div>
@@ -164,18 +174,21 @@
     <h2>Questions</h2>
     <details><summary>I can't read Japanese at all. Can I start?</summary>
       <p>Yes — Isshin starts from zero. Everything is written in kana (the phonetic script) with audio on every word, and the app teaches you kana itself. No kanji is thrown at you.</p></details>
+    <details><summary>Do I really not need to look at the screen?</summary>
+      <p>For the core drill, no. It speaks the cue, leaves you a thinking gap, then speaks the answer and moves on by itself. Glance at the screen whenever you want the spelling or a hint — but the loop never requires it.</p></details>
     <details><summary>Is my voice recorded or stored?</summary>
       <p>No. Speech recognition happens through your phone's built-in service; Isshin's servers never receive, store, or hear your audio. Details in our <a href="privacy.html">privacy policy</a>.</p></details>
     <details><summary>What phones does it work on?</summary>
-      <p>The free preview runs in the browser on Android (Chrome) today, with iPhone app support planned for launch. The conversation features need a device with speech recognition — most modern phones have it.</p></details>
-    <details><summary>Is it really judgment-free?</summary>
-      <p>Literally. The app contains no grades, scores, red X's, or "wrong!" anywhere — that's a hard design rule, not marketing. Your partner responds the way a patient friend would.</p></details>
+      <p>It runs in the browser — best on Android with Chrome today, and fine on most modern phones. The speak-aloud features use your device's own speech engine; if a phone lacks one, you can still tap or type your answers.</p></details>
+    <details><summary>What happens when early access ends?</summary>
+      <p>The price above goes live with a 7-day free trial, and we'll say so clearly before anything changes. Your progress is stored on your device and stays with you either way.</p></details>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
     <div style="font-weight:800;color:var(--txt);margin-bottom:6px">Isshin <span class="jp" style="color:var(--muted)">いっしん</span></div>
+    <div style="margin-bottom:6px">Learn Japanese by ear — hear it, say it, keep what sticks.</div>
     <div><a href="privacy.html">Privacy policy</a> · <a href="mailto:juliuspireh@gmail.com">Contact</a></div>
   </div>
 </footer>
