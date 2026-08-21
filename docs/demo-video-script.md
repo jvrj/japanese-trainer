@@ -45,3 +45,16 @@ There is no narration, so muted IS the native experience: captions are the prima
 
 ## 15S-CUT (TikTok/IG)
 Keep: 0:00–0:09 (cold open + gap + reveal + auto-advance) → one 1.5s recurrence card that REUSES the master's time-jump label exactly as captured ("THE NEXT DAY — real session" or the softened "LATER — real session" — never a stronger claim than the master's) + "— already knew it." → 0:20–0:24 CTA compressed to ~2.5s → end card ~2s. Drop: the rating-row beat and the unattended-corner beat (the tested hook carries the routine in this length). Same locked caption template throughout.
+
+---
+
+## OWNER-DIRECTION ADDENDUM (21 Aug 2026 — applies at production time)
+
+The landing copy was re-angled on owner direction AFTER this script was judged: the OUTCOME is vocabulary ("you need words to learn any language"), the MECHANISM is recall, scientifically proven; commute is only how-you-use-it, and no jargon a total beginner wouldn't know. Apply the same rule to the caption layer when producing:
+
+- 0:16–0:20 caption pair becomes vocab-outcome-first: "Ten new words a session — kept for good." → "Where will yours run?" (the second card keeps the routine plant).
+- End card gains one outcome line above the URL: "Real words, kept for good."
+- No caption may use: kana, kanji, deck, SRS, "spaced repetition", "active recall". Plain words only.
+- Hook set unchanged (hooks target specific researched pains and are A/B tested as-is).
+
+These are caption-text swaps only — shot structure, timing, disclosure rules and the locked hook template are unchanged from the judged version above.
