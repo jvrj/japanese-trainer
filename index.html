@@ -819,6 +819,16 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 <div class="modal-bg" id="modal"><div class="modal" id="modalInner"></div></div>
 
+<!-- v8.68 — supabase-js v2, EXACT pinned version + SRI so the auth bundle
+     can't be swapped server-side without detection. `defer` so it never
+     blocks first paint; the client itself is created lazily (see the
+     SUPABASE AUTH module below), never at parse time. Optional-by-construction:
+     every auth helper is null-safe if this never loads (offline, host
+     blocked, Supabase paused). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.min.js"
+        integrity="sha384-l8ah+VgaWtk1mvOe9VC+OirC6qHFF4yH7l7mKRidV9MSti3E9F463bMp6ZVN4kuC"
+        crossorigin="anonymous" defer></script>
+
 <script>
 /* =========================================================================
    Isshin (一心)
@@ -826,7 +836,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.67';
+const APP_VERSION = '8.68';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5464,6 +5474,13 @@ function focusGenParse(text){
    Security: the secret appears only in the x-app-secret header — never in any
    console call, error string, or DOM output (same rule as the API key). */
 const RELAY_BASE = 'https://hslibrbdovrzhaxhtevr.functions.supabase.co';
+/* Supabase project config for the account layer (v8.68). This is the
+   PUBLISHABLE client key — public by design, safe in git — the exact same
+   value already committed in .github/workflows/supabase-keepalive.yml.
+   Nothing else (service-role key, Stripe secret, JWT signing key) ever goes
+   client-side; this is the only credential-shaped string this sprint adds. */
+const SUPA_URL = 'https://hslibrbdovrzhaxhtevr.supabase.co';
+const SUPA_ANON_KEY = 'sb_publishable_s0J6vsL5sFA3J2MdlkqVRw_xU9dlSJ8';
 function relaySecret(){ return (state.settings.relaySecret || '').trim(); }
 function relayOn(){ return !!relaySecret(); }
 /* "Is a real AI conversation possible on this device?" — relay OR a pasted key. */
@@ -5480,6 +5497,112 @@ function aiChatEndpoint(){
                'anthropic-version':'2023-06-01',
                'anthropic-dangerous-direct-browser-access':'true' } };
 }
+
+/* ===================== SUPABASE AUTH — foundation (v8.68, ADR-005) =====================
+   Account-layer plumbing ONLY. This sprint wires the client + session helpers;
+   it adds NO routing, NO gate, and NO new screens — render()/nav()/init() are
+   untouched. A future sprint reads this module to build the entitlement gate.
+
+   Null-safety contract: the CDN <script> above can fail to load (offline, the
+   host blocked, Supabase paused — all real, all observed in this project).
+   Every helper below MUST degrade to a safe default instead of throwing when
+   that happens, so a signed-in, entitled user is never bricked by auth
+   plumbing. authClient() is the single choke point for that check.
+
+   Privacy: onAuthStateChange only updates the in-memory mirror below (_authState).
+   Nothing here logs, persists to localStorage, or otherwise moves the raw
+   access/refresh token outside supabase-js's own internal handling — this
+   module never touches save()/load() or the storage-hardening path. */
+let _authClientSingleton = null;   // set on first successful authClient() call
+let _authListenerWired = false;    // guards double-registering onAuthStateChange
+const _authState = { user: null }; // in-memory only — never written to storage
+
+/* Lazily creates (once) and returns the supabase-js client. Returns null —
+   never throws — when the CDN script never loaded or exposed no createClient
+   (offline, host blocked, an ad/tracker blocker, Supabase paused). Callers
+   must treat null as "auth unavailable right now" and degrade gracefully.
+   Once created, the SAME instance is reused on every later call. */
+function authClient(){
+  if(_authClientSingleton) return _authClientSingleton;
+  if(typeof window === 'undefined' || !window.supabase || typeof window.supabase.createClient !== 'function') return null;
+  try {
+    _authClientSingleton = window.supabase.createClient(SUPA_URL, SUPA_ANON_KEY);
+  } catch(e) {
+    return null; // never throw out of this helper — auth must fail open
+  }
+  _authWireAuthListener();
+  return _authClientSingleton;
+}
+
+/* Registers the auth-state hook exactly once, right after the client is
+   created. A missing/broken client is a no-op here, never an error — this
+   only keeps _authState.user current for the owner diagnostics line (and
+   later, gating); it writes nothing to disk. */
+function _authWireAuthListener(){
+  if(_authListenerWired) return;
+  const c = _authClientSingleton;
+  if(!c || !c.auth || typeof c.auth.onAuthStateChange !== 'function') return;
+  _authListenerWired = true;
+  try {
+    c.auth.onAuthStateChange((_event, session) => {
+      _authState.user = (session && session.user) || null;
+    });
+  } catch(e) { /* swallow — wiring the listener must never brick boot */ }
+}
+
+/* Current Supabase session, or null (no client, no session, or the call
+   failed — e.g. token refresh failed while offline). Never throws. */
+async function authSession(){
+  const c = authClient();
+  if(!c || !c.auth || typeof c.auth.getSession !== 'function') return null;
+  try {
+    const { data, error } = await c.auth.getSession();
+    if(error) return null;
+    return (data && data.session) || null;
+  } catch(e) { return null; }
+}
+
+/* Signed-in user object, or null. Reads the live in-memory mirror first
+   (kept current by onAuthStateChange) so callers get a fast, sync-feeling
+   answer once the listener has fired at least once; falls back to asking
+   the client directly before that. */
+async function authUser(){
+  if(_authState.user) return _authState.user;
+  const session = await authSession();
+  return (session && session.user) || null;
+}
+
+/* Current access token (JWT) for an Authorization: Bearer header, or null.
+   Never logged, never persisted by this module — callers pass it straight
+   through to a fetch() header. */
+async function authToken(){
+  const session = await authSession();
+  return (session && session.access_token) || null;
+}
+
+/* Signs out. Clears the in-memory mirror immediately (so the diagnostics
+   line updates even if the network call below fails) and is a safe no-op
+   when there is no client. */
+async function authSignOut(){
+  _authState.user = null;
+  const c = authClient();
+  if(!c || !c.auth || typeof c.auth.signOut !== 'function') return;
+  try { await c.auth.signOut(); } catch(e) { /* offline/etc — mirror already cleared */ }
+}
+
+/* Owner-only Settings diagnostics line (v8.68) — plain sync read of the
+   in-memory mirror, safe to call from render(). "Account:" is deliberately
+   the only word this line uses; it never surfaces "JWT"/"entitlement"/etc. */
+function _authDiagText(){
+  const u = _authState.user;
+  return 'Account: ' + (u && u.email ? u.email : 'signed out');
+}
+
+window.authClient = authClient;
+window.authSession = authSession;
+window.authUser = authUser;
+window.authToken = authToken;
+window.authSignOut = authSignOut;
 
 async function focusGenCall(w, retryNote){
   if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
@@ -24849,6 +24972,11 @@ function _renderSettingsOwner(){
         ${state.words.length} words in the deck · ${Object.keys(state.stats).length} studied<br>
         Learn Japanese by ear — hands-free drills built on active recall.
       </div>
+    </div>
+
+    <div class="card">
+      <h3>Account (owner diagnostics)</h3>
+      <div class="muted" style="font-size:12px">${esc(_authDiagText() + (authClient() ? '' : ' · connection unavailable right now'))}</div>
     </div>
 
     <details style="margin:16px 4px 4px">
