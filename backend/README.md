@@ -8,6 +8,7 @@ daily cap, rate limit, auth). Built per `docs/decisions/ADR-004`.
 backend/supabase/
   migrations/0001_init.sql           db schema + RLS + atomic counters
   migrations/0002_trial.sql          7-day trial: trial clock on signup + get_access() snapshot
+  migrations/0005_marketing_consent.sql  profiles: marketing_opt_in + self-write RLS policy
   functions/_shared/gate.ts          auth + entitlement + spend ceiling + cap + rate limit
   functions/_shared/entitlement.mjs  the trial/subscription decision (pure, unit-tested)
   functions/transcribe/index.ts      POST /transcribe  -> OpenAI gpt-4o-mini-transcribe
@@ -28,6 +29,17 @@ entitles regardless of trial. After trial with no sub the gate returns
 shows the offer. Drills + scripted practice never call the relay, so the free
 tier stays free by construction. The whole check sits behind
 `REQUIRE_ENTITLEMENT` (set `true` at launch; `false` = pre-launch open door).
+
+## Marketing consent (migration 0005)
+`profiles` gains two columns for the sign-up screen's unchecked-by-default
+marketing checkbox (capture now, send nothing):
+- `marketing_opt_in boolean not null default false`
+- `marketing_opt_in_at timestamptz`
+
+`profiles` shipped with select-only RLS (0001); migration 0005 adds
+`own_profile_upd` — `for update using (auth.uid() = id) with check (auth.uid() = id)`
+— so a signed-in caller can update only their own profile row (consent
+columns included) and nothing else's. No insert/delete/select widening.
 
 ## Billing (Stripe — wired 2026-08-23, TEST mode)
 Web + Stripe first (go-to-market lock 2026-08-20): $8.99/mo + $59.99/yr, 7-day
