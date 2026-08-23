@@ -681,7 +681,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.62';
+const APP_VERSION = '8.63';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -21875,7 +21875,12 @@ function renderBuildModeComplete(){
           const missedCount = (state.buildMode?._missed?.size) || 0;
           const summaryHead = l._meta?.mode === 'hard'
             ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words.`
-            : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks.`;
+            : (typeof l._meta?.freshCount === 'number')
+              /* v8.63 — honest recap: spam lessons put ALL words in new_words
+                 (carryover_words stays []), so the old line claimed "30 new ·
+                 0 callbacks" even when 20 were review. Mirror the start toast. */
+              ? `${(l._meta.reviewCount || 0) + (l._meta.freshCount || 0)} words — ${l._meta.reviewCount || 0} review · ${l._meta.freshCount || 0} new.`
+              : `${l.new_words.length} new words practiced · ${(l.carryover_words||[]).length} callbacks.`;
           const srsTail = missedCount > 0
             ? ` <span style="color:var(--green)">${(l._meta?.real_word_ids?.length || 0) - missedCount} counted ✓</span> · <span style="color:var(--blue)">🔁 ${missedCount} coming back to learn more</span>`
             : ` <span style="color:var(--green)">All counted toward your progress ✓</span>`;
