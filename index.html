@@ -701,6 +701,23 @@ body[data-screen="onboard"] .notes-fab,
 body[data-screen="onboard"] .ask-fab,
 body[data-screen="onboard"] .back-fab{display:none !important}
 
+/* ===== v8.66 Anki-style word grade row (post-reveal) ===== */
+.grade-wrap{margin-top:12px}
+.grade-q{text-align:center;font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.grade-row{display:flex;gap:8px}
+.grade-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 6px 10px;
+  border-radius:14px;cursor:pointer;font-family:inherit;background:none;transition:transform .1s ease}
+.grade-btn:active{transform:scale(.96)}
+.grade-btn .grade-emo{font-size:21px;line-height:1}
+.grade-btn .grade-lab{font-size:12.5px;font-weight:700;line-height:1.2}
+.grade-btn .grade-sub{font-size:10px;opacity:.75;line-height:1.2}
+.grade-btn.more{background:rgba(251,146,60,.10);border:1.5px solid rgba(251,146,60,.5);color:var(--orange)}
+.grade-btn.more.on{background:var(--orange);border-color:var(--orange);color:#1c1207}
+.grade-btn.more.on .grade-sub{opacity:.85}
+.grade-btn.master{background:rgba(52,211,153,.10);border:1.5px solid rgba(52,211,153,.5);color:var(--green)}
+.grade-btn.sent{background:rgba(139,123,255,.10);border:1.5px solid rgba(139,123,255,.5);color:var(--blue)}
+.grade-hint{text-align:center;font-size:10.5px;color:var(--muted);margin-top:7px;line-height:1.45}
+
 /* ===== v8.65 Studio home + road (approved design batch 2) ===== */
 .hv9-hello{padding:6px 4px 0}
 .hv9-hi{font-size:13px;font-weight:600;color:var(--dim,#a99fc7)}
@@ -771,7 +788,7 @@ body[data-screen="onboard"] .back-fab{display:none !important}
 
 'use strict';
 
-const APP_VERSION = '8.65';
+const APP_VERSION = '8.66';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20943,7 +20960,7 @@ function renderBuildModeStart(){
 
     <div class="card">
       <div class="muted" style="font-size:12px;line-height:1.5">
-        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. Every word you get through counts toward your progress. Driving? Just listen — it advances on its own. Want a word to stick better? Tap <b>🔁 Learn this more</b> after Reveal and it'll come back more often. ${esc(seqStatus)}
+        <b>How it works:</b> audio leads. Produce each answer <b>out loud</b> (no typing, no voice recognition — trust-based). Tap <b>Reveal</b> to hear and see the correct answer, then <b>Next</b>. Every word you get through counts toward your progress. Driving? Just listen — it advances on its own. Want a word to stick better? Tap <b>🔁 Show me this more</b> after Reveal and it'll come back more often. ${esc(seqStatus)}
       </div>
       ${seqLen > 0 ? `
       <div style="margin-top:10px;text-align:center">
@@ -21065,15 +21082,38 @@ function renderBuildModeStep(){
          of failure and never told a stranger what tapping it DOES; the rename
          + always-visible hint make the one signal the scheduler has
          discoverable. Same buildToggleMissed seam underneath — unchanged. */
+      /* v8.66 — Anki-style grade row: big colour-coded tap targets replace the
+         old muted ghost buttons. Same seams underneath (buildToggleMissed /
+         buildMasterCurrentWord) — only the surface changed. "Use in sentences"
+         is a separate app aspect whose launch inclusion is undecided, so it is
+         owner-mode-only for now (flip the gate to bring it back for customers). */
       const marked = b._missed && b._missed.has(wid);
-      return `<div style="text-align:center;margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;${marked ? 'color:var(--green);border-color:var(--green)' : 'color:var(--muted)'}" onclick="buildToggleMissed()">${marked ? '🔁 Coming back more often ✓' : '🔁 Learn this more'}</button>
-        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="buildMasterCurrentWord()" title="You know this word for good — it leaves the rotation">★ Never show again</button>
-        <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="focusAddCurrentBuild()" title="Add to your sentence-practice basket">⭐ Use in sentences</button>
-      </div>
-      <div class="muted" style="text-align:center;font-size:10.5px;margin-top:5px;line-height:1.45">${marked
-        ? `Got it — this word will show up more often until it sticks.`
-        : `Didn't quite know this one? Tap <b>🔁 Learn this more</b> and it'll come back more often until it sticks.`}</div>`;
+      const sentBtn = state.settings.ownerMode === true
+        ? `<button class="grade-btn sent" onclick="focusAddCurrentBuild()" title="Add to your sentence-practice basket">
+            <span class="grade-emo">⭐</span>
+            <span class="grade-lab">Use in sentences</span>
+            <span class="grade-sub">save for later</span>
+          </button>`
+        : '';
+      return `<div class="grade-wrap">
+        <div class="grade-q">How well do you know this word?</div>
+        <div class="grade-row">
+          <button class="grade-btn more ${marked ? 'on' : ''}" onclick="buildToggleMissed()">
+            <span class="grade-emo">🔁</span>
+            <span class="grade-lab">${marked ? 'Coming back more ✓' : 'Show me this more'}</span>
+            <span class="grade-sub">${marked ? 'tap to undo' : 'still learning it'}</span>
+          </button>
+          <button class="grade-btn master" onclick="buildMasterCurrentWord()" title="You know this word for good — it leaves the rotation">
+            <span class="grade-emo">★</span>
+            <span class="grade-lab">Never show again</span>
+            <span class="grade-sub">I know it for good</span>
+          </button>
+          ${sentBtn}
+        </div>
+        <div class="grade-hint">${marked
+          ? `Got it — this word will show up more often until it sticks.`
+          : `No tap needed — leave it and the word comes back at its normal pace.`}</div>
+      </div>`;
     })()}
 
     <div style="text-align:center;margin-top:10px">
