@@ -651,6 +651,55 @@ body:has(.home-v8) .header{display:none}
 .ob-chip-row{display:flex;flex-direction:column;gap:9px;margin-top:18px}
 .ob-chip{padding:13px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
 .ob-chip:active{transform:scale(.97)}
+
+/* ===== v8.64 — onboarding funnel (Studio B, from the design-project cards) ===== */
+.obf{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:linear-gradient(175deg,#0f0a1a,#120c20);color:var(--text);letter-spacing:-.011em;overflow:hidden}
+.obf .jp{font-family:'Noto Sans JP',sans-serif}
+.obf svg{display:block}
+.obf-top{display:flex;align-items:center;gap:16px;padding:calc(14px + env(safe-area-inset-top)) 20px 0}
+.obf-back{background:none;border:none;color:var(--faint);padding:4px;cursor:pointer}
+.obf-prog{flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.obf-prog i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9d5cff,#ff5d9e);transition:width .3s}
+.obf-main{flex:1;padding:0 24px;display:flex;flex-direction:column;overflow-y:auto;position:relative}
+.obf-h1{margin:24px 0 8px;font-size:31px;font-weight:800;letter-spacing:-.035em;line-height:1.1;color:var(--text)}
+.obf-h1 em{font-style:normal;background:linear-gradient(90deg,#b97bff,#ff5d9e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.obf-sub{font-size:14px;font-weight:500;color:var(--dim,#a99fc7);line-height:1.55;margin-bottom:22px}
+.obf-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px 18px;margin-bottom:10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);color:var(--text);font-family:inherit;letter-spacing:inherit;cursor:pointer}
+.obf-opt.sel{border-color:#9d5cff;background:rgba(157,92,255,.1)}
+.obf-opt:active{transform:scale(.98)}
+.obf-opt .ico{color:var(--dim,#a99fc7);flex:none;width:22px;text-align:center;font-weight:700;font-size:18px}
+.obf-opt b{display:block;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.obf-opt span span{display:block;font-size:12.5px;font-weight:500;color:var(--faint);margin-top:2px}
+.obf-cta{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:14px;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;font-weight:800;font-size:15.5px;letter-spacing:-.015em;border:none;font-family:inherit;box-shadow:0 10px 30px rgba(157,92,255,.28);cursor:pointer}
+.obf-cta:disabled{opacity:.4;box-shadow:none}
+.obf-cta:active{transform:scale(.98)}
+.obf-foot{padding:12px 24px calc(20px + env(safe-area-inset-bottom))}
+.obf-hint{text-align:center;font-size:12px;font-weight:500;color:var(--faint);margin-top:10px}
+.obf-skip{margin-top:8px;width:100%;padding:8px;border:none;background:none;color:var(--faint);font-family:inherit;font-weight:600;font-size:12px;cursor:pointer}
+.obf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.obf-w{padding:12px 6px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);text-align:center;color:var(--text);font-family:inherit;cursor:pointer}
+.obf-w.sel{border-color:#9d5cff;background:rgba(157,92,255,.12)}
+.obf-w .k{font-family:'Noto Sans JP',sans-serif;font-size:20px;font-weight:700;display:block}
+.obf-w .r{font-size:13px;font-weight:600;color:var(--dim,#a99fc7);display:block;margin-top:3px}
+.obf-wave{display:flex;align-items:center;gap:5px;justify-content:center;height:44px;margin:28px 0 0}
+.obf-wave i{width:4px;border-radius:99px;background:linear-gradient(180deg,#b97bff,#ff5d9e)}
+.obf-stats{display:flex;margin:30px 0 0;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07)}
+.obf-stats>div{flex:1;text-align:center;padding:13px 0}
+.obf-stats>div+div{border-left:1px solid rgba(255,255,255,.07)}
+.obf-stats b{font-size:19px;font-weight:800;letter-spacing:-.02em;display:block;color:var(--text)}
+.obf-stats span{font-size:11px;color:var(--faint);font-weight:600}
+.obf-line{display:flex;gap:13px;padding:14px 0;border-top:1px solid rgba(255,255,255,.07);align-items:flex-start}
+.obf-line:first-child{border-top:none}
+.obf-line b{display:block;font-size:14.5px;font-weight:700;color:var(--text)}
+.obf-line span span{display:block;font-size:12.5px;font-weight:500;color:var(--faint);margin-top:2px;line-height:1.5}
+.obf-wm{position:absolute;top:-30px;right:-40px;font-family:'Noto Sans JP',sans-serif;font-size:300px;font-weight:700;color:rgba(157,92,255,.055);line-height:1;pointer-events:none;z-index:0}
+/* The .app wrapper's stacking context (z-index:1) sits below the fixed nav
+   (z-index:50), so the funnel overlay can never out-paint it — hide the
+   app chrome outright while onboarding owns the screen. */
+body[data-screen="onboard"] .bottom-nav,
+body[data-screen="onboard"] .notes-fab,
+body[data-screen="onboard"] .ask-fab,
+body[data-screen="onboard"] .back-fab{display:none !important}
 </style>
 </head>
 <body>
@@ -681,7 +730,7 @@ body:has(.home-v8) .header{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.63';
+const APP_VERSION = '8.64';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -17721,6 +17770,17 @@ window.startBuildModeFormMix = startBuildModeFormMix;
    at n=30) instead of re-serving the same seen set forever. Unseen pool empty
    => pure review; seen pool thin => the fresh share grows to fill. Off by
    default so the convo word-seed (which wants only learned words) is untouched. */
+/* v8.64 — onboarding "why" wiring. When the funnel stored a topic bias
+   (settings.topicBias, e.g. travel themes for "a trip to Japan"), UNSEEN
+   words from those themes are introduced first. Advisory only: it orders
+   fresh picks, never filters the deck, and review scheduling is untouched. */
+function _obfBiasFresh(unseen, need){
+  const bias = state.settings.topicBias;
+  if(!Array.isArray(bias) || !bias.length) return shuffleFY(unseen.slice()).slice(0, need);
+  const pref = [], rest = [];
+  for(const w of unseen) (bias.includes(w.theme) ? pref : rest).push(w);
+  return [...shuffleFY(pref), ...shuffleFY(rest)].slice(0, need);
+}
 function _buildSpamPick(arr, n, opts){
   if(n <= 0 || !arr.length) return [];
   const seen = [], unseen = [];
@@ -17736,7 +17796,7 @@ function _buildSpamPick(arr, n, opts){
   const freshReserve = (opts && opts.freshMix) ? Math.min(unseen.length, Math.ceil(n / 3)) : 0;
   const learnTake = seen.slice(0, n - freshReserve);
   const need = n - learnTake.length;
-  const fresh = need > 0 ? shuffleFY(unseen.slice()).slice(0, need) : [];
+  const fresh = need > 0 ? _obfBiasFresh(unseen, need) : [];
   let chosen = [...learnTake, ...fresh];
   if(chosen.length < n){
     const have = new Set(chosen.map(w => w.id));
@@ -22789,7 +22849,7 @@ function nav(screen, data, fromPop){
      again. Without this, the system back button from the micro-drill pops the
      replaceState('#onboard') history entry and re-runs the whole first-run
      pass (fresh _obEnsure) on an already-onboarded profile. */
-  if(screen === 'onboard' && state.settings.onboard.done) screen = 'home';
+  if(screen === 'onboard' && state.settings.onboard.done && !(state.onboard && state.onboard.preview)) screen = 'home';
   state.screen = screen;
   state._navData = data;
   if(!fromPop){
@@ -23082,17 +23142,29 @@ const OB_STARTER_WORDS = [
   { jp:'すし', en:'sushi' }
 ];
 
-/* Router — skippable, <=3 chip questions. Each answer's `stage` feeds the
-   display-only placedStage (Stage C's advisory spine reads it; non-locking
-   per ADR-003 — it never gates or restricts content). */
-const OB_ROUTER_QUESTIONS = [
-  { jp:'にほんごは はじめて ですか？', en:'Is Japanese completely new to you?',
-    opts:[ {label:'はい、はじめてです', en:'yes, brand new', stage:1}, {label:'すこし わかります', en:'I know a bit', stage:2}, {label:'けっこう わかります', en:'a fair amount', stage:3} ] },
-  { jp:'ひらがなは よめますか？', en:'Can you read hiragana?',
-    opts:[ {label:'よめません', en:'not yet', stage:1}, {label:'すこし よめます', en:'a little', stage:2}, {label:'よめます', en:'yes', stage:3} ] },
-  { jp:'はなす れんしゅうを した ことが ありますか？', en:'Have you practiced speaking before?',
-    opts:[ {label:'ありません', en:'never', stage:1}, {label:'すこし あります', en:'a little', stage:2}, {label:'よく します', en:'often', stage:3} ] }
+/* v8.64 — funnel word-check pool (step 5). 12 concrete kana words resolved
+   from the live deck by jp at finish; tapped = "already know" = a real SM-2
+   head start (graduated, ~3-day interval) so the claim on the plan screen —
+   known words skip ahead — is literally true. */
+const OB_CHECK_WORDS = [
+  {jp:'みず',r:'mizu'}, {jp:'ねこ',r:'neko'}, {jp:'すし',r:'sushi'},
+  {jp:'いぬ',r:'inu'}, {jp:'おちゃ',r:'ocha'}, {jp:'くるま',r:'kuruma'},
+  {jp:'ほん',r:'hon'}, {jp:'あめ',r:'ame'}, {jp:'さかな',r:'sakana'},
+  {jp:'えき',r:'eki'}, {jp:'ともだち',r:'tomodachi'}, {jp:'たべます',r:'tabemasu'}
 ];
+
+/* v8.64 — "why" answer -> deck theme bias. Biases which UNSEEN words freshMix
+   introduces first (_buildSpamPick); never restricts the deck (advisory, in
+   the spirit of ADR-003 non-locking placement). null = no bias. */
+const OB_WHY_THEMES = {
+  trip:    ['travel','food','places','shopping','greetings','phrases'],
+  media:   ['hobbies','feelings','social','people','phrases'],
+  someone: ['family','people','social','greetings','feelings'],
+  self:    null
+};
+
+/* level pick -> the same advisory placedStage the old router produced. */
+const OB_LEVEL_STAGE = { zero:1, few:2, letters:3 };
 
 /* Transient pass state — created on first entry to the onboarding screen,
    torn down (nulled) once OB-4 hands off to Home. Not persisted; only the
@@ -23101,12 +23173,14 @@ const OB_ROUTER_QUESTIONS = [
 function _obEnsure(){
   if(!state.onboard){
     state.onboard = {
-      step:'ob0',
-      path:null,            // 'beginner' | 'router'
-      micAsked:false,        // OB-2 gate — pre-prompt resolves exactly once per pass
+      step:'w1',             // w1..w6 funnel -> 'mic' -> drill
+      why:null,              // 'trip' | 'media' | 'someone' | 'self'
+      level:null,            // 'zero' | 'few' | 'letters'
+      when:null,             // 'drive' | 'walk' | 'home'
+      known:[],              // indices into OB_CHECK_WORDS the user tapped
+      preview:false,         // Settings "Replay the intro" — render-only pass, zero writes
+      micAsked:false,        // mic pre-prompt resolves exactly once per pass
       micGranted:null,       // true | false | null
-      routerIdx:0,           // OB-3B question index
-      stageVotes:[],         // OB-3B collected `stage` picks -> placedStage
       _t0:now()               // timing-marker base for console evidence
     };
     _obLog('ob_start', {});
@@ -23124,36 +23198,108 @@ function _obLog(evt, data){
 }
 function obGoto(step){
   const ob = _obEnsure();
-  if(step === 'ob2'){
-    if(ob.micAsked){
-      /* Gate: OB-2 only ever resolves once per pass. Back-navigation or a
-         re-render must not re-show (or re-ask) it — skip straight through
-         to wherever the current path leads. */
-      step = ob.path === 'router' ? 'ob3b' : 'drill';
-    } else if(!voiceSupported()){
-      /* Fallback (b): STT API absent — skip the mic ask SCREEN entirely
-         (never rendered, no permission prompt of any kind is ever
-         attempted); the micro-drill runs in tap/auto-advance mode. */
-      ob.micGranted = false;
-      ob.micAsked = true;
-      _obLog('mic_skipped_unsupported', {});
-      step = ob.path === 'router' ? 'ob3b' : 'drill';
+  if(step === 'mic'){
+    if(ob.micAsked || !voiceSupported()){
+      /* Mic ask resolves at most once per pass; STT-absent browsers skip the
+         screen entirely (no permission prompt of any kind) and the micro-
+         drill runs in tap/auto-advance mode. */
+      if(!ob.micAsked){ ob.micGranted = false; ob.micAsked = true; _obLog('mic_skipped_unsupported', {}); }
+      step = 'drill';
     }
   }
   if(step === 'drill'){ startOnboardMicroDrill(); return; }
   ob.step = step;
-  _obLog('step_' + step, {path:ob.path});
+  _obLog('step_' + step, {});
   render();
 }
 window.obGoto = obGoto;
 
-function obSelectPath(path){
+/* Funnel answer setters — record the pick and re-render so the row shows
+   selected + the Continue button arms. Advancing is always the CTA's job. */
+function obfPick(field, val){
   const ob = _obEnsure();
-  ob.path = path;
-  _obLog('path_selected', {path});
-  obGoto('ob2');
+  ob[field] = val;
+  _obLog('pick_' + field, {val});
+  render();
 }
-window.obSelectPath = obSelectPath;
+window.obfPick = obfPick;
+
+function obfToggleWord(i){
+  const ob = _obEnsure();
+  const at = ob.known.indexOf(i);
+  if(at >= 0) ob.known.splice(at, 1); else ob.known.push(i);
+  render();
+}
+window.obfToggleWord = obfToggleWord;
+
+/* Welcome-screen "tap to hear" — the product demos itself before a single
+   screen is read. Pure TTS, no state. */
+function obfHear(){
+  try{ speakJP('みず'); }catch(e){}
+  _obLog('hear_tap', {});
+}
+window.obfHear = obfHear;
+
+/* Step order for back navigation + the progress bar. */
+const _OBF_ORDER = ['w1','w2','w3','w4','w5','w6','mic'];
+function obfBack(){
+  const ob = _obEnsure();
+  const i = _OBF_ORDER.indexOf(ob.step);
+  if(i > 0) obGoto(_OBF_ORDER[i - 1]);
+}
+window.obfBack = obfBack;
+
+/* w6 CTA — commit the funnel's answers (real pass) or exit untouched
+   (preview), then hand off to the mic ask -> micro-drill. */
+function obfFinish(){
+  const ob = _obEnsure();
+  if(ob.preview){
+    _obLog('preview_done', {});
+    state.onboard = null;
+    nav('home');
+    showToast('That was the intro — nothing about your progress changed.');
+    return;
+  }
+  /* Advisory placement + preference record (all additive). */
+  state.settings.onboard.why = ob.why;
+  state.settings.onboard.when = ob.when;
+  state.settings.onboard.placedStage = OB_LEVEL_STAGE[ob.level] || null;
+  ob.placedStage = state.settings.onboard.placedStage;
+  state.settings.topicBias = (OB_WHY_THEMES[ob.why] || null);
+  /* Word-check head starts: each tapped word enters SM-2 graduated with a
+     ~3-day interval — it exists in rotation but skips the induction grind. */
+  ob.knownIds = [];
+  try{
+    const deck = state.words || [];
+    for(const i of ob.known){
+      const t = OB_CHECK_WORDS[i];
+      const w = t && deck.find(x => x.jp === t.jp);
+      if(!w) continue;
+      recordAttempt(w.id, true, 'onboardKnown');
+      const st = smStatFor(w.id);
+      st.inLearning = false;
+      st.learningStepIdx = SM_LEARNING_STEPS_MIN.length;
+      st.smInterval = 3 * 24 * 60;
+      st.smNext = now() + st.smInterval * 60 * 1000;
+      ob.knownIds.push(w.id);
+    }
+  }catch(e){ log('onboard_headstart_err', {err:String(e)}); }
+  _obLog('funnel_done', {why:ob.why, level:ob.level, when:ob.when, known:ob.knownIds.length});
+  save();
+  obGoto('mic');
+}
+window.obfFinish = obfFinish;
+
+/* Settings — "Replay the intro". Runs the funnel in preview: fully
+   navigable, but obfFinish exits to Home without writing anything. */
+function obReplayIntro(){
+  state.onboard = null;
+  const ob = _obEnsure();
+  ob.preview = true;
+  _obLog('preview_start', {});
+  nav('onboard');
+}
+window.obReplayIntro = obReplayIntro;
 
 /* OB-2 mic ask. Only ever called from a tap (never auto-fires) so the
    permission prompt is always attached to a user gesture. Reuses the
@@ -23173,7 +23319,6 @@ async function obMicAllow(){
      startOnboardMicroDrill's save(). */
   if(ob.micGranted && voiceSupported()) state.settings.buildVoiceMode = true;
   _obLog('mic_result', {granted:ob.micGranted});
-  if(ob.path === 'router'){ obGoto('ob3b'); return; }
   startOnboardMicroDrill();
 }
 window.obMicAllow = obMicAllow;
@@ -23185,7 +23330,6 @@ function obMicDecline(){
   ob.micGranted = false;
   ob.micAsked = true;
   _obLog('mic_declined', {});
-  if(ob.path === 'router'){ obGoto('ob3b'); return; }
   startOnboardMicroDrill();
 }
 window.obMicDecline = obMicDecline;
@@ -23202,21 +23346,24 @@ function startOnboardMicroDrill(){
   /* Mark onboarded BEFORE launching — bailing out of the drill must land on
      normal Home, never back in a half-run onboarding pass. */
   state.settings.onboard.done = true;
-  state.settings.onboard.path = ob.path || null;
-  state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : null;
-  _obLog('micro_drill_start', {path:ob.path, placedStage:state.settings.onboard.placedStage, voice: state.settings.buildVoiceMode === true});
+  state.settings.onboard.path = 'funnel';
+  state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : (state.settings.onboard.placedStage ?? null);
+  _obLog('micro_drill_start', {placedStage:state.settings.onboard.placedStage, voice: state.settings.buildVoiceMode === true});
+  /* v8.64 — words the funnel's word check head-started are already known;
+     the first drill must teach NEW words, not re-teach those. */
+  const knownSet = new Set(ob.knownIds || []);
   state.onboard = null;
   const deck = state.words || [];
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   const picks = OB_STARTER_WORDS
-    .map(t => deck.find(w => w.jp === t.jp && w.en === t.en && !suspendedSet.has(w.id)))
+    .map(t => deck.find(w => w.jp === t.jp && w.en === t.en && !suspendedSet.has(w.id) && !knownSet.has(w.id)))
     .filter(Boolean);
-  /* Deck drifted and a starter word vanished? Top up from the active deck. */
+  /* Deck drifted / starter word head-started? Top up from the active deck. */
   if(picks.length < OB_STARTER_WORDS.length){
     const seen = new Set(picks.map(w => w.id));
     for(const w of getActiveWords()){
       if(picks.length >= OB_STARTER_WORDS.length) break;
-      if(!seen.has(w.id) && w.pos === 'n' && _isVocabDrillSurface(w)){ picks.push(w); seen.add(w.id); }
+      if(!seen.has(w.id) && !knownSet.has(w.id) && w.pos === 'n' && _isVocabDrillSurface(w)){ picks.push(w); seen.add(w.id); }
     }
   }
   if(picks.length < 1){ save(); nav('home'); return; }
@@ -23242,113 +23389,174 @@ function startOnboardMicroDrill(){
 }
 window.startOnboardMicroDrill = startOnboardMicroDrill;
 
-function _obRenderOb0(){
-  _obEnsure();
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">🎧</div>
-      <div class="ob-title">Learn Japanese by ear</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">みみで おぼえましょう</div>
-      <div class="ob-body">Isshin drills words into you hands-free — you hear a word, say it back, and the app keeps what sticks. No typing, no judgment, no signup. Your first 3 words take a couple of minutes.</div>
-      <button class="ob-cta" onclick="obGoto('ob1')">Start →</button>
+/* ---------- v8.64 funnel renders (Studio B design, docs: onboarding cards
+   in the "Isshin" claude.ai/design project). Full-screen fixed overlay
+   (.obf) — draws over header + bottom nav; kana content, plain-English
+   chrome, romaji everywhere a beginner needs to read. ---------- */
+const _OBF_ARROW = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>`;
+const _OBF_TICK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="m5 13 4 4L19 7"/></svg>`;
+function _obfShell(step, pct, inner, foot){
+  const top = step === 'w1' ? '' : `
+    <div class="obf-top">
+      <button class="obf-back" onclick="obfBack()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5m6 6-6-6 6-6"/></svg></button>
+      <div class="obf-prog"><i style="width:${pct}%"></i></div>
     </div>`;
+  return `<div class="obf">${step === 'w1' ? '<div class="obf-wm">心</div>' : ''}${top}<div class="obf-main"${step === 'w1' ? ' style="justify-content:center"' : ''}>${inner}</div><div class="obf-foot">${foot}</div></div>`;
 }
-function _obRenderOb1(){
+function _obfW1(){
   _obEnsure();
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">🎌</div>
-      <div class="ob-title">Where should we start?</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">どちらから はじめますか？</div>
-      <button class="ob-path-card" onclick="obSelectPath('beginner')">
-        <div class="ob-path-em">🔰</div>
-        <div class="ob-path-t">Beginner — はじめて</div>
-        <div class="ob-path-s">Start from zero — your first 3 words are minutes away</div>
-      </button>
-      <button class="ob-path-card" onclick="obSelectPath('router')">
-        <div class="ob-path-em">⚡</div>
-        <div class="ob-path-t">I know a little — すこし わかる</div>
-        <div class="ob-path-s">Answer up to 3 quick questions so we place you right (skippable)</div>
-      </button>
+  const wave = [10,18,30,42,26,36,14,22,38,44,20,30,12,24,8].map(h => `<i style="height:${h}px"></i>`).join('');
+  const inner = `
+    <div style="margin-top:34px;display:flex;align-items:baseline;gap:10px">
+      <span class="jp" style="font-size:20px;font-weight:700;color:#b97bff">一心</span>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.26em;color:var(--faint)">ISSHIN</span>
+    </div>
+    <h1 class="obf-h1" style="font-size:38px;margin-top:24px">Learn Japanese with your <em>ears,</em><br>not your thumbs.</h1>
+    <div class="obf-sub" style="font-size:15px;margin-bottom:0">Hear a word, say it back, own it forever. Hands-free drills built for drives, walks and washing up.</div>
+    <button onclick="obfHear()" style="background:none;border:none;color:inherit;font-family:inherit;cursor:pointer;padding:0;width:100%">
+      <div class="obf-wave">${wave}</div>
+      <div class="jp" style="text-align:center;font-size:15px;font-weight:700;color:var(--dim,#a99fc7);margin-top:12px">みず — mizu — "water"</div>
+      <div style="text-align:center;font-size:11.5px;font-weight:600;color:#b97bff;margin-top:6px">▶&nbsp; tap to hear your first word</div>
+    </button>
+    <div class="obf-stats">
+      <div><b>90%</b><span>of everyday speech</span></div>
+      <div><b>4 min</b><span>a day</span></div>
+      <div><b>0</b><span>typing</span></div>
     </div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w2')">Get started${_OBF_ARROW}</button>
+    <div class="obf-hint">2 minutes to your first spoken words — no account needed</div>`;
+  return _obfShell('w1', 0, inner, foot);
 }
-function _obRenderOb2(){
+function _obfW2(){
   const ob = _obEnsure();
-  /* Fallback (b) — STT-API-absent — is handled upstream in obGoto(), which
-     never routes here at all when !voiceSupported(); it jumps straight to
-     the micro-drill. This defensive branch only guards against a caller
-     landing on 'ob2' some other way (e.g. a future direct render() call). */
+  const opt = (val, ico, t, s) => `
+    <button class="obf-opt${ob.why === val ? ' sel' : ''}" onclick="obfPick('why','${val}')"><span class="ico">${ico}</span><span><b>${t}</b><span>${s}</span></span></button>`;
+  const inner = `
+    <h1 class="obf-h1" style="font-size:34px">Why Japanese?</h1>
+    <div class="obf-sub">Your words get picked around it — a trip needs different words than a night of anime.</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:30px">
+      ${opt('trip', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>`, 'A trip to Japan', 'Order food, find your way, be understood')}
+      ${opt('media', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="m10 9.5 4.5 2.5-4.5 2.5z" fill="currentColor" stroke="none"/></svg>`, 'Anime, music &amp; culture', 'Understand what you already love')}
+      ${opt('someone', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 13.6 12 21l-7.5-7.4a5 5 0 1 1 7.5-6.6 5 5 0 1 1 7.5 6.6z"/></svg>`, 'Someone in my life', 'A partner, family, or friends who speak it')}
+      ${opt('self', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>`, 'For myself', 'The challenge, the habit, the long game')}
+    </div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w3')" ${ob.why ? '' : 'disabled'}>Continue${_OBF_ARROW}</button>`;
+  return _obfShell('w2', 20, inner, foot);
+}
+function _obfW3(){
+  const ob = _obEnsure();
+  const opt = (val, ico, jpIco, t, s) => `
+    <button class="obf-opt${ob.level === val ? ' sel' : ''}" onclick="obfPick('level','${val}')"><span class="ico${jpIco ? ' jp' : ''}">${ico}</span><span><b>${t}</b><span>${s}</span></span></button>`;
+  const inner = `
+    <h1 class="obf-h1" style="font-size:34px">Where are you<br>starting?</h1>
+    <div class="obf-sub">Be honest — nobody's listening but you. That's the point of Isshin.</div>
+    <div style="margin-top:auto">
+      ${opt('zero', '0', false, 'From zero', 'Never studied? We&#39;ll walk you in word by word')}
+      ${opt('few', 'あ', true, 'I know a few words', 'You&#39;ve picked up konnichiwa and arigatou')}
+      ${opt('letters', 'ア', true, 'I can read Japanese letters', 'Hiragana readers skip straight to real vocabulary')}
+    </div>
+    <div style="margin-top:auto;margin-bottom:16px;padding:15px 18px;border-radius:14px;background:rgba(52,211,153,.07);border:1px solid rgba(52,211,153,.2)">
+      <div style="font-size:13px;font-weight:700;color:#34d399;margin-bottom:3px">No judgment, ever</div>
+      <div style="font-size:12.5px;color:var(--dim,#a99fc7);font-weight:500;line-height:1.5">You speak out loud to no one. No grades on your accent, no streak-shaming — just words that stick.</div>
+    </div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w4')" ${ob.level ? '' : 'disabled'}>Continue${_OBF_ARROW}</button>`;
+  return _obfShell('w3', 40, inner, foot);
+}
+function _obfW4(){
+  const ob = _obEnsure();
+  const opt = (val, ico, t, s) => `
+    <button class="obf-opt${ob.when === val ? ' sel' : ''}" onclick="obfPick('when','${val}')"><span class="ico">${ico}</span><span><b>${t}</b><span>${s}</span></span></button>`;
+  const inner = `
+    <h1 class="obf-h1" style="font-size:34px">When would you<br>practice?</h1>
+    <div class="obf-sub">Isshin is hands-free and eyes-free — it fits into time you already have.</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:30px">
+      ${opt('drive', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 11l1.5-4.5A2 2 0 0 1 9.4 5h5.2a2 2 0 0 1 1.9 1.5L18 11m-14 0h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z"/><circle cx="7.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>`, 'Driving or commuting', 'Eyes on the road, words in your ears')}
+      ${opt('walk', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6" rx="2"/><rect x="16.5" y="14" width="4.5" height="6" rx="2"/></svg>`, 'Walks, gym, chores', 'Earbuds in, phone in your pocket')}
+      ${opt('home', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 18a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v1H3z"/><path d="M12 14V8m0 0c1.8 0 3-1.2 3-3-1.8 0-3 1.2-3 3zm0 0C10.2 8 9 6.8 9 5c1.8 0 3 1.2 3 3z"/></svg>`, 'Quiet time at home', 'A few focused minutes with your coffee')}
+    </div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w5')" ${ob.when ? '' : 'disabled'}>Continue${_OBF_ARROW}</button>`;
+  return _obfShell('w4', 60, inner, foot);
+}
+function _obfW5(){
+  const ob = _obEnsure();
+  const cells = OB_CHECK_WORDS.map((w, i) => `
+    <button class="obf-w${ob.known.includes(i) ? ' sel' : ''}" onclick="obfToggleWord(${i})"><span class="k">${esc(w.jp)}</span><span class="r">${esc(w.r)}</span></button>`).join('');
+  const n = ob.known.length;
+  const inner = `
+    <h1 class="obf-h1" style="font-size:34px">Tap any words you<br>already know</h1>
+    <div class="obf-sub">None is a perfectly good answer — it just means we start at word one.</div>
+    <div class="obf-grid">${cells}</div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w6')">Continue${n ? ` — ${n} known` : ''}${_OBF_ARROW}</button>
+    <div class="obf-hint">These count as a head start, not a test score</div>`;
+  return _obfShell('w5', 80, inner, foot);
+}
+function _obfW6(){
+  const ob = _obEnsure();
+  const whyLine = ({
+    trip:'travel words first', media:'anime &amp; culture words first',
+    someone:'people &amp; family words first', self:'the most useful words first'
+  })[ob.why] || 'the most useful words first';
+  const whenLine = ({
+    drive:['Fits your drive', 'Hands-free and eyes-free, a full round in one commute'],
+    walk:['Fits your walks', 'Earbuds in — a full round fits any walk or workout'],
+    home:['Fits your day', 'A focused round takes about four minutes']
+  })[ob.when] || ['Fits your day', 'A focused round takes about four minutes'];
+  const n = ob.known.length;
+  const startLine = n
+    ? `The ${n} word${n === 1 ? '' : 's'} you know skip ahead, no wasted reps`
+    : 'We start at word one and build from there';
+  const inner = `
+    <div style="margin-top:22px;font-size:12px;font-weight:700;letter-spacing:.14em;color:#b97bff">YOUR PLAN</div>
+    <h1 class="obf-h1" style="font-size:34px;margin-top:8px">Your first 30 words<br>are <em>ready</em></h1>
+    <div class="obf-sub">Built from your answers — ${whyLine}, starting at your real level.</div>
+    <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:16px;padding:6px 18px">
+      <div class="obf-line">${_OBF_TICK}<span><b>Starts at your level</b><span>${startLine}</span></span></div>
+      <div class="obf-line">${_OBF_TICK}<span><b>${whenLine[0]}</b><span>${whenLine[1]}</span></span></div>
+      <div class="obf-line">${_OBF_TICK}<span><b>Keeps what sticks</b><span>Words come back right before you'd forget them</span></span></div>
+    </div>
+    <div style="margin-top:auto;margin-bottom:16px;text-align:center">
+      <div class="jp" style="font-size:21px;font-weight:600">みみで おぼえましょう</div>
+      <div style="font-size:13px;color:var(--dim,#a99fc7);font-weight:600;margin-top:6px">mimi de oboemashou — "let's learn by ear"</div>
+      <div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:3px">your first three words take 2 minutes</div>
+    </div>`;
+  const cta = ob.preview
+    ? `<button class="obf-cta" onclick="obfFinish()">Finish preview — back to my app</button>`
+    : `<button class="obf-cta" onclick="obfFinish()"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>Hear your first word</button>`;
+  return _obfShell('w6', 100, inner, cta);
+}
+function _obfMic(){
+  const ob = _obEnsure();
+  /* STT-absent browsers never route here (obGoto skips to the drill); this
+     defensive branch only guards a stray direct render. */
   if(!voiceSupported()){
     ob.micGranted = false;
     ob.micAsked = true;
-    return `
-      <div class="ob-screen">
-        <div class="ob-emoji">🎙️</div>
-        <div class="ob-title">Almost there</div>
-        <div class="ob-sub" style="font-family:'Noto Sans JP'">もうすこし です</div>
-        <div class="ob-body">Voice input isn't supported in this browser, so drills will advance with taps and timers instead.</div>
-        <button class="ob-cta" onclick="obGoto('${ob.path==='router'?'ob3b':'drill'}')">Continue →</button>
-      </div>`;
+    return _obfShell('mic', 100, `
+      <h1 class="obf-h1" style="font-size:34px">Almost there</h1>
+      <div class="obf-sub">Voice input isn't supported in this browser, so drills will advance with taps and timers instead.</div>`,
+      `<button class="obf-cta" onclick="obGoto('drill')">Continue${_OBF_ARROW}</button>`);
   }
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">🎙️</div>
-      <div class="ob-title">Drills are hands-free</div>
-      <div class="ob-sub" style="font-family:'Noto Sans JP'">こえに だして いいましょう</div>
-      <div class="ob-body">You'll hear each word, then say it back out loud. Okay to use your microphone? Saying it is how it sticks — but everything also works without.</div>
-      <button class="ob-cta" onclick="obMicAllow()">🎤 Use my mic</button>
-      <button class="ob-skip" onclick="obMicDecline()">Not now — I'll speak without the mic</button>
+  const inner = `
+    <h1 class="obf-h1" style="font-size:34px">Say it out loud —<br>that's the <em>trick</em></h1>
+    <div class="obf-sub">You'll hear each word, then say it back. Okay to use your microphone? Speaking is how words stick — but everything also works without it.</div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center">
+      <div class="jp" style="font-size:26px;font-weight:700;color:var(--dim,#a99fc7)">こえに だして いいましょう</div>
     </div>`;
+  const foot = `<button class="obf-cta" onclick="obMicAllow()">Use my microphone</button>
+    <button class="obf-skip" onclick="obMicDecline()">Not now — I'll speak without the mic</button>`;
+  return _obfShell('mic', 100, inner, foot);
 }
 
-/* OB-3B — skippable <=3-question router. Chip-only (no STT needed); each
-   pick records a display-only stage vote. Skippable at every question. */
-function obRouterAnswer(stage){
-  const ob = state.onboard;
-  if(!ob) return;
-  ob.stageVotes.push(stage);
-  _obLog('router_answer', {q:ob.routerIdx, stage});
-  ob.routerIdx++;
-  if(ob.routerIdx >= OB_ROUTER_QUESTIONS.length){ obRouterFinish(); return; }
-  render();
-}
-window.obRouterAnswer = obRouterAnswer;
-function obRouterFinish(){
-  const ob = state.onboard;
-  if(!ob) return;
-  const votes = ob.stageVotes.length ? ob.stageVotes : [1];
-  ob.placedStage = Math.round(votes.reduce((a,b)=>a+b,0) / votes.length);
-  _obLog('router_done', {placedStage:ob.placedStage, answered:votes.length});
-  startOnboardMicroDrill();
-}
-window.obRouterFinish = obRouterFinish;
-function _obRenderOb3b(){
-  const ob = _obEnsure();
-  if(ob.routerIdx === 0 && !ob._routerLogged){ ob._routerLogged = true; _obLog('router_reached', {}); }
-  const q = OB_ROUTER_QUESTIONS[ob.routerIdx];
-  if(!q){ obRouterFinish(); return ''; }
-  const opts = q.opts.map(o => `<button class="ob-chip" onclick="obRouterAnswer(${o.stage})">${esc(o.label)}${o.en ? `<span style="display:block;font-size:11px;opacity:.65;font-weight:600;margin-top:2px">${esc(o.en)}</span>` : ''}</button>`).join('');
-  return `
-    <div class="ob-screen">
-      <div class="ob-emoji">❓</div>
-      <div class="ob-jp">${esc(q.jp)}</div>
-      <div class="ob-sub">${esc(q.en)}</div>
-      <div class="ob-turn-meta">${ob.routerIdx + 1} / ${OB_ROUTER_QUESTIONS.length}</div>
-      <div class="ob-chip-row">${opts}</div>
-      <button class="ob-skip" onclick="obRouterFinish()">Skip</button>
-    </div>`;
-}
-
-/* The first-win card lives in Build Mode now — renderBuildModeComplete's
+/* The first-win card lives in Build Mode — renderBuildModeComplete's
    'onboardMicro' branch — so completion celebrates the actual drilled words
    and hands off to Home via the normal buildExit() path. */
 function renderOnboard(){
   const ob = _obEnsure();
   const body = ({
-    ob0:_obRenderOb0, ob1:_obRenderOb1, ob2:_obRenderOb2,
-    ob3b:_obRenderOb3b
-  }[ob.step] || _obRenderOb0)();
-  return `<div class="ob-wrap">${body}</div>`;
+    w1:_obfW1, w2:_obfW2, w3:_obfW3, w4:_obfW4, w5:_obfW5, w6:_obfW6,
+    mic:_obfMic
+  }[ob.step] || _obfW1)();
+  return body;
 }
 
 /* ---------- PRACTICE (topics browser — former Home, Stage A renamed) ----------
@@ -24289,6 +24497,11 @@ function renderSettings(){
         <div class="muted" style="font-size:12px;margin-bottom:8px">If your progress ever looks reset, screenshot this box or tap Copy and send it.</div>
         <pre style="font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.18);padding:10px;border-radius:10px;margin:0 0 10px">${esc(_storageHealthText())}</pre>
         <button class="btn btn-secondary" style="width:100%" onclick="copyStorageHealth()">📋 Copy report</button>
+      </div>
+      <div class="card" style="margin-top:8px">
+        <h3>Intro tour</h3>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">Watch the first-run intro again, exactly as a new user sees it. Preview only — nothing about your words, streak, or progress changes.</div>
+        <button class="btn btn-secondary" style="width:100%" onclick="obReplayIntro()">▶ Replay the intro</button>
       </div>
       <div class="card" style="margin-top:8px">
         <h3>Update</h3>
