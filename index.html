@@ -700,6 +700,47 @@ body[data-screen="onboard"] .bottom-nav,
 body[data-screen="onboard"] .notes-fab,
 body[data-screen="onboard"] .ask-fab,
 body[data-screen="onboard"] .back-fab{display:none !important}
+
+/* ===== v8.65 Studio home + road (approved design batch 2) ===== */
+.hv9-hello{padding:6px 4px 0}
+.hv9-hi{font-size:13px;font-weight:600;color:var(--dim,#a99fc7)}
+.hv9-stick{display:block;background:none;border:none;padding:0;margin-top:5px;text-align:left;
+  font-family:inherit;color:var(--text,#f5f2ff);font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1.15;cursor:pointer}
+.hv9-stick em{font-style:normal;background:linear-gradient(90deg,#b97bff,#ff5d9e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hv9-arr{font-size:20px;font-weight:700;color:var(--dim,#a99fc7)}
+.hv9-hero{margin-top:16px;border-radius:22px;padding:22px 20px 20px;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(157,92,255,.22),rgba(255,93,158,.10)),rgba(255,255,255,.05);
+  border:1px solid rgba(157,92,255,.32)}
+.hv9-wm{position:absolute;right:-8px;top:-14px;font-family:'Noto Sans JP',sans-serif;font-size:110px;font-weight:700;color:rgba(255,255,255,.045);pointer-events:none;line-height:1}
+.hv9-eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:#b97bff}
+.hv9-title{margin:8px 0 5px;font-size:26px;font-weight:800;letter-spacing:-.03em}
+.hv9-meta{font-size:13.5px;font-weight:600;color:var(--dim,#a99fc7)}
+.hv9-wave{display:flex;align-items:center;gap:4px;height:26px;margin:14px 0 2px}
+.hv9-wave i{width:4px;border-radius:99px;background:linear-gradient(180deg,#b97bff,#ff5d9e);opacity:.75}
+.hv9-pill{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;padding:13px 14px;
+  border-radius:13px;font-size:13px;font-weight:700;font-family:inherit;color:#fff;cursor:pointer;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.30)}
+.hv9-pill.on{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.85)}
+.road-page{padding:4px 2px 10px}
+.road-head{padding:8px 2px 14px}
+.road-h1{margin:8px 0 0;font-size:27px;font-weight:800;letter-spacing:-.035em;line-height:1.12}
+.road-h1 em{font-style:normal;background:linear-gradient(90deg,#b97bff,#ff5d9e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.road-list{padding:4px 2px 0}
+.road-stop{display:flex;gap:15px}
+.road-rail{display:flex;flex-direction:column;align-items:center;width:32px;flex:none}
+.road-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;font-weight:900;font-size:13px}
+.road-dot.done{background:#34d399;color:#06281c}
+.road-dot.here{background:linear-gradient(120deg,#9d5cff,#ff5d9e);box-shadow:0 0 0 5px rgba(157,92,255,.22),0 0 20px rgba(255,93,158,.5)}
+.road-dot.next{border:2px solid rgba(255,255,255,.25)}
+.road-seg{width:3px;flex:1;min-height:14px;border-radius:99px;background:rgba(255,255,255,.12);margin:4px 0}
+.road-seg.done{background:rgba(52,211,153,.55)}
+.road-body{flex:1;padding:2px 0 18px;text-align:left}
+.road-body b{display:block;font-size:15px;font-weight:800;letter-spacing:-.01em}
+.road-body small{display:block;font-size:12px;font-weight:600;color:var(--dim,#a99fc7);margin-top:3px}
+.road-k{font-weight:400;font-size:14px}
+.road-here{margin-top:10px;border-radius:14px;padding:13px 14px;background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.4)}
+.road-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:9px}
+.road-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9d5cff,#ff5d9e)}
 </style>
 </head>
 <body>
@@ -730,7 +771,7 @@ body[data-screen="onboard"] .back-fab{display:none !important}
 
 'use strict';
 
-const APP_VERSION = '8.64';
+const APP_VERSION = '8.65';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3208,6 +3249,7 @@ const DEFAULT_SETTINGS = {
   focusWords:[],              // v6.10 — Library: user-boosted; priority slot in every Vocab Blitz pool. v7.31: user-owned (no auto-clear).
   buildWholeDeck:true,        // v7.33 — Build Mode draws from the whole active deck, not just Vocab-Blitz-seen words. false = old gated behaviour.
   masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
+  ownerMode:null,             // v8.65 — full-control Settings page. null = unset (load() backfills true on keyed owner devices); customers stay on the slim "set base" page until the 7-tap version-line switch.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
   relaySecret:'',             // v8.38 — Isshin server secret (ADR-004 Phase 1, owner-only). Set: AI calls route through the app's own relay; keys stay server-side. localStorage only.
   anthropicModel:'claude-haiku-4-5-20251001',
@@ -3892,6 +3934,17 @@ function load(){
       state.settings.onboard.done = true;
     }
   }catch(e){ log('onboard_backfill_err',{err:String(e)}); }
+  try{
+    /* v8.65 — owner-mode boot backfill. The slim customer Settings page is
+       the new default; devices that hold a relay secret or API key are the
+       owner's own, so they keep the full control room without hunting for
+       the 7-tap switch. Only ever fills in an UNSET value — an explicit
+       true/false (7-tap toggle or Hide button) is never overridden. */
+    if(state.settings.ownerMode === undefined || state.settings.ownerMode === null){
+      const _keyed = !!((state.settings.relaySecret || '').trim() || (state.settings.anthropicKey || '').trim() || (state.settings.openaiKey || '').trim());
+      if(_keyed) state.settings.ownerMode = true;
+    }
+  }catch(e){ log('ownermode_backfill_err',{err:String(e)}); }
   state.notes = _lsArr(lsGet(LS.notes, []));
   state.logs = _lsArr(lsGet(LS.logs, []));
   state.streak = {...state.streak, ..._lsObj(lsGet(LS.streak, {}))};
@@ -22816,7 +22869,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -23036,8 +23089,6 @@ function renderHome(){
   const bm = state.buildMode;
   const hasResume = !!(bm && bm.lesson && !bm.done);
 
-  const spineHeader = _spineHeaderHtml();
-
   const resumeChip = hasResume ? (() => {
     const stepsLeft = Math.max(0, (bm.steps?.length || 0) - (bm.stepIdx || 0));
     return `<button class="continue-strip" style="width:100%;text-align:left;font-family:inherit" onclick="nav('buildMode')">
@@ -23050,19 +23101,44 @@ function renderHome(){
     </button>`;
   })() : '';
 
-  /* v8.49 — hero leads with the CORE product (the hands-free hear→say drill
-     loop) instead of the benched AI conversation. This closes the onboarding
-     funnel: a cold user is pitched drills, wins at drills, and lands on a
-     Home whose top card is that same drill — not a keyed Talk mode they
-     can't use. (v8.60: the ladder and the Talk row are gone from Home entirely —
-     conversation is benched until a subscriber base exists.) */
+  /* v8.65 Studio home — approved design batch 2, card 1. Greeting + the
+     words-that-stick headline (tap → the road screen), ONE drill hero with a
+     live session composition + hands-free pill, then three doors. The old
+     spine collapsible is replaced by the road; renderProgress stays reachable
+     from the road's footer link. */
+  const _h = new Date().getHours();
+  const greet = _h < 5 ? 'Good evening' : _h < 12 ? 'Good morning' : _h < 18 ? 'Good afternoon' : 'Good evening';
+  let stickLine;
+  try{
+    const { N } = wordsThatStick();
+    stickLine = N > 0
+      ? `<em>${N} word${N===1?'':'s'}</em> stick with you`
+      : `Let's make your first words <em>stick</em>`;
+  }catch(e){ stickLine = `Learn Japanese <em>by ear</em>`; }
+
+  const bc = blitzCounts();
+  const reviewsLabel = Math.min(bc.due, state.settings.blitzReviews || 20);
+  const newsLabel = Math.min(bc.unseen, state.settings.blitzNew || 10);
+  const est = Math.max(2, Math.round((reviewsLabel + newsLabel) * 5 / 60));
+  const heroMeta = (reviewsLabel + newsLabel) > 0
+    ? `${reviewsLabel} review · ${newsLabel} new · about ${est} minutes`
+    : `All caught up — a fresh round is ready whenever you are`;
+
+  const voiceOn = state.settings.buildVoiceMode === true && voiceSupported();
+  const handsfree = voiceSupported()
+    ? `<button class="hv9-pill ${voiceOn?'on':''}" onclick="homeToggleVoiceMode()">🎙 ${voiceOn ? 'Hands-free is ON — just listen and speak' : 'Hands-free is OFF — tap to turn on'}</button>`
+    : '';
+  const wave = `<div class="hv9-wave">` + [8,16,24,12,20,26,10,18,24,8,14,22].map(x=>`<i style="height:${x}px"></i>`).join('') + `</div>`;
+
   const heroCard = `
-    <div class="h8-hero">
-      <div class="h8-hero-deco emoji">🎧</div>
-      <div class="h8-hero-eyebrow">DRILL</div>
-      <div class="h8-hero-title">Today's words</div>
-      <div class="h8-hero-meta">Hands-free — hear it, say it, keep what sticks</div>
-      <button class="h8-hero-cta" style="margin-top:14px" onclick="startBuildModeVocabSpam()">🎧 Start drilling</button>
+    <div class="hv9-hero">
+      <div class="hv9-wm jp-font">聴</div>
+      <div class="hv9-eyebrow">TODAY'S DRILL</div>
+      <div class="hv9-title">Today's words</div>
+      <div class="hv9-meta">${esc(heroMeta)}</div>
+      ${wave}
+      <button class="h8-hero-cta" style="margin-top:12px" onclick="startBuildModeVocabSpam()">▶ Start drilling</button>
+      ${handsfree}
     </div>`;
 
   /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
@@ -23091,8 +23167,8 @@ function renderHome(){
       <button class="h8-row" onclick="startKanaBlitz('all')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">Learn Kana</div>
-          <div class="h8-row-meta">Hiragana · Katakana · Mix</div>
+          <div class="h8-row-title">Japanese letters</div>
+          <div class="h8-row-meta">Learn to read hiragana &amp; katakana</div>
         </div>
         <div class="h8-row-arrow">›</div>
       </button>
@@ -23101,10 +23177,101 @@ function renderHome(){
   return `
     <div class="home-v8">
       ${_homeTopBar()}
-      ${spineHeader}
+      <div class="hv9-hello">
+        <div class="hv9-hi">${greet}</div>
+        <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
+      </div>
       ${resumeChip}
       ${heroCard}
       ${extras}
+    </div>`;
+}
+
+/* =========================================================================
+   YOUR ROAD (v8.65) — approved design batch 2, card 2. Progress as a
+   journey: every stop is a topic (the existing VOCAB_SECTIONS), and a stop
+   is "done" when enough of its words stick (wtsStuck — the Delve-11 honest
+   metric). Purely a VIEW over existing data: nothing is locked, gated, or
+   rescheduled here (ADR-003 posture). Continue = the same topic hands-free
+   launch the topic chips use (startTopicHandsFree — sets the scope, drills).
+   ========================================================================= */
+/* Journey order — a curated beginner-friendly sequence (greetings before
+   grammar bits), NOT the VOCAB_SECTIONS declaration order. Sections missing
+   from this list fall to the end in declaration order. */
+const ROAD_ORDER = ['greetings','phrases','food','numbers','time','family','places','travel',
+  'shopping','feelings','dailylife','home','objects','animals','weather','nature','clothing',
+  'body','health','social','hobbies','sports','school','work','tech','cooking','counters',
+  'describing','verbpairs','onomatope','grammar'];
+function _roadStops(){
+  const active = getActiveWords();
+  const secs = VOCAB_SECTIONS.filter(x => Array.isArray(x.themes) && x.themes.length)
+    .slice().sort((a, b) => {
+      const ai = ROAD_ORDER.indexOf(a.id), bi = ROAD_ORDER.indexOf(b.id);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    });
+  const bias = Array.isArray(state.settings.topicBias) ? state.settings.topicBias : [];
+  const stops = [];
+  for(const sec of secs){
+    const set = new Set(sec.themes);
+    const words = active.filter(w => set.has(w.theme));
+    if(!words.length) continue;
+    let stuck = 0;
+    for(const w of words){ try{ if(wtsStuck(w)) stuck++; }catch(e){} }
+    const need = Math.min(20, words.length);
+    stops.push({ sec, total: words.length, stuck, need, done: stuck >= need,
+      biased: sec.themes.some(t => bias.includes(t)) });
+  }
+  /* Stable partition: your interests first, then the standard order. */
+  const ordered = [...stops.filter(s => s.biased), ...stops.filter(s => !s.biased)];
+  let curIdx = ordered.findIndex(s => !s.done);
+  if(curIdx < 0) curIdx = ordered.length - 1;
+  return { ordered, curIdx };
+}
+function renderRoad(){
+  const { ordered, curIdx } = _roadStops();
+  const cur = ordered[curIdx];
+  const FUTURE_SHOWN = 3;
+  const rows = [];
+  ordered.forEach((s, i) => {
+    if(i > curIdx + FUTURE_SHOWN) return;
+    const last = (i === curIdx + FUTURE_SHOWN) || (i === ordered.length - 1);
+    const kana = `<span class="road-k jp-font">${esc(s.sec.emoji)}</span>`;
+    if(i < curIdx){
+      rows.push(`<div class="road-stop">
+        <div class="road-rail"><div class="road-dot done">✓</div>${last?'':'<div class="road-seg done"></div>'}</div>
+        <div class="road-body"><b>${esc(s.sec.name)} ${kana}</b><small>${s.stuck} word${s.stuck===1?'':'s'} stick</small></div>
+      </div>`);
+    } else if(i === curIdx){
+      rows.push(`<div class="road-stop">
+        <div class="road-rail"><div class="road-dot here"></div>${last?'':'<div class="road-seg"></div>'}</div>
+        <div class="road-body">
+          <b style="font-size:17px;color:#fff">${esc(s.sec.name)} ${kana}</b><small>You are here</small>
+          <div class="road-here">
+            <div style="font-size:13px;font-weight:700">${s.stuck} of ${s.need} words stick so far</div>
+            <div class="road-bar"><i style="width:${Math.max(3, Math.min(100, Math.round(s.stuck * 100 / s.need)))}%"></i></div>
+          </div>
+        </div>
+      </div>`);
+    } else {
+      const dim = i === curIdx + 1 ? .65 : .4;
+      rows.push(`<div class="road-stop" style="opacity:${dim}">
+        <div class="road-rail"><div class="road-dot next"></div>${last?'':'<div class="road-seg"></div>'}</div>
+        <div class="road-body"><b>${esc(s.sec.name)} ${kana}</b><small>${i === curIdx + 1 ? 'Next stop' : 'Down the road'}</small></div>
+      </div>`);
+    }
+  });
+  const hidden = ordered.length - Math.min(ordered.length, curIdx + FUTURE_SHOWN + 1);
+  const more = hidden > 0 ? `<div class="muted" style="font-size:12px;margin:2px 0 0 50px">+ ${hidden} more stops down the road</div>` : '';
+  return `
+    <div class="road-page">
+      <div class="road-head">
+        <div class="hv9-eyebrow">YOUR ROAD</div>
+        <h1 class="road-h1">Every stop is words<br>that <em>stick</em></h1>
+        <div class="muted" style="font-size:13px;line-height:1.5;margin-top:6px">Finish a stop and its words stay with you — they keep coming back right before you'd forget.</div>
+      </div>
+      <div class="road-list">${rows.join('')}${more}</div>
+      ${cur ? `<button class="h8-hero-cta" style="margin:18px 0 6px;width:100%;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 10px 30px rgba(157,92,255,.28)" onclick="startTopicHandsFree('${jsEsc(cur.sec.id)}')">▶ Continue — ${esc(cur.sec.name)}</button>` : ''}
+      <button class="btn btn-ghost" style="width:100%;font-size:13px" onclick="nav('progress')">Full progress details ›</button>
     </div>`;
 }
 
@@ -23839,8 +24006,8 @@ function renderPractice(){
       <button class="h8-row" onclick="startKanaBlitz('all')">
         <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
         <div class="h8-row-body">
-          <div class="h8-row-title">Learn Kana</div>
-          <div class="h8-row-meta">Hiragana · Katakana · Mix</div>
+          <div class="h8-row-title">Japanese letters</div>
+          <div class="h8-row-meta">Learn to read hiragana &amp; katakana</div>
         </div>
         <div class="h8-row-arrow">›</div>
       </button>
@@ -24290,7 +24457,136 @@ let _nextTimer = null;
 function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer = null; } }
 
 /* ---------- SETTINGS ---------- */
+/* =========================================================================
+   SETTINGS v8.65 — "set base" (owner decision 23 Aug 2026): customers get a
+   slim page with feature switches only — NO tuning knobs. Every pace/speed/
+   mix value ships locked to the owner-tuned defaults already in the code
+   (JP 0.7× drills, think 5s, linger 8s, new-word linger 10s, listen 7s,
+   auto-advance on, 20 review + 10 new). The full control room (the old
+   settings wall, unchanged) is now the OWNER page, revealed by tapping the
+   version line 7 times — settings.ownerMode, persisted. load() backfills
+   ownerMode:true on devices that hold a relay secret / API key (the owner's
+   own phones), so nothing moves for him; a customer install starts slim.
+   ========================================================================= */
 function renderSettings(){
+  const s = state.settings;
+  if(s.ownerMode === true){
+    return `
+      <div class="settings-v2">
+        <div class="card" style="border:1px solid rgba(255,179,92,.4);background:rgba(255,179,92,.06)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div class="word-jp">🔧 Owner controls ON</div>
+              <div class="word-en">Customers see the simple page. Changes here set the experience for this device.</div>
+            </div>
+            <button class="btn btn-secondary" style="white-space:nowrap;font-size:12px" onclick="ownerModeOff()">Hide</button>
+          </div>
+        </div>
+      </div>
+      ${_renderSettingsOwner()}`;
+  }
+
+  const row = (title, sub, ctrl) => `
+    <label class="word-row"><div class="word-main"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</label>`;
+  const chk = (key, on) => `<input type="checkbox" ${on?'checked':''} onchange="toggleSetting('${key}')">`;
+
+  const soundRows = voiceSupported()
+    ? row('🎙️ Hands-free mode', 'Drills listen for your answer and move on for you — made for earbuds and driving.', chk('buildVoiceMode', s.buildVoiceMode===true))
+    : `<div class="word-row"><div class="word-main"><div class="word-jp">🎙️ Hands-free mode</div><div class="word-en">Not supported in this browser — drills auto-advance instead.</div></div></div>`;
+
+  /* Topics — advisory bias only (settings.topicBias orders which UNSEEN words
+     come first; it NEVER filters the deck — the module-lock empty-pool bug
+     class stays impossible). Chips mirror the onboarding "why" wiring. */
+  const bias = Array.isArray(s.topicBias) ? s.topicBias : [];
+  const topicSecs = VOCAB_SECTIONS.filter(x => x.themes && x.themes.length);
+  const topicChips = topicSecs.map(x => {
+    const on = x.themes.some(t => bias.includes(t));
+    return `<button class="tag ${on?'active':''}" onclick="custToggleTopic('${jsEsc(x.id)}')">${x.emoji} ${esc(x.name)}</button>`;
+  }).join('');
+
+  return `
+    <div class="settings-v2">
+    <div class="h8-section" style="margin:16px 4px 8px">Sound &amp; voice</div>
+    <div class="card">
+      ${soundRows}
+    </div>
+
+    <div class="h8-section" style="margin:16px 4px 8px">Learning</div>
+    <div class="card">
+      ${row('👂 Listening steps', 'Newer words play the Japanese and you say the English — trains understanding, the other half of conversation.', chk('buildListenSteps', s.buildListenSteps!==false))}
+      <div class="word-row"><div class="word-main"><div class="word-jp">Show kanji <span style="font-size:10px;font-weight:800;letter-spacing:.06em;color:#c9b3ff;background:rgba(157,92,255,.16);border:1px solid rgba(157,92,255,.3);padding:2px 7px;border-radius:8px;vertical-align:2px">COMING SOON</span></div><div class="word-en">Kanji are the characters borrowed from Chinese. For now everything stays in simple Japanese letters.</div></div><input type="checkbox" disabled></div>
+    </div>
+
+    <div class="h8-section" style="margin:16px 4px 8px">My words</div>
+    <div class="card">
+      <details>
+        <summary style="cursor:pointer;list-style:none"><div class="word-row" style="border:none"><div class="word-main"><div class="word-jp">Topics</div><div class="word-en">${bias.length ? 'Your picks come up first — nothing is ever locked out.' : 'Pick what interests you — those words come up first.'}</div></div><span class="muted">›</span></div></summary>
+        <div class="tags" style="margin-top:8px">${topicChips}</div>
+      </details>
+    </div>
+    <div class="card">
+      <details>
+        <summary style="cursor:pointer;list-style:none"><div class="word-row" style="border:none"><div class="word-main"><div class="word-jp">Add your own word</div><div class="word-en">Anything you want to remember — it joins your drills.</div></div><span class="muted">›</span></div></summary>
+        <div style="margin-top:8px">
+          <input class="input" id="addJP" placeholder="the Japanese word (e.g. たべる)">
+          <div class="spacer"></div>
+          <input class="input" id="addEN" placeholder="what it means in English">
+          <div class="spacer"></div>
+          <button class="btn btn-primary" onclick="addWord()">Add word</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="h8-section" style="margin:16px 4px 8px">App</div>
+    <div class="card">
+      ${row('▶ Replay the intro', 'See the welcome tour again — nothing about your progress changes.', `<button class="btn btn-secondary" style="font-size:12px" onclick="obReplayIntro()">Replay</button>`)}
+      ${row('⬇ Back up my progress', 'Saves a file you can bring to a new phone.', `<button class="btn btn-secondary" style="font-size:12px" onclick="exportJSON()">Save</button>`)}
+      ${row('⬆ Restore a backup', 'Load a backup file you saved earlier.', `<button class="btn btn-secondary" style="font-size:12px" onclick="importJSON()">Load</button>`)}
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+      ${row('🔄 Get the latest version', 'If the app feels stale, this fetches the newest version. Your progress is untouched.', `<button class="btn btn-secondary" style="font-size:12px" onclick="forceUpdate()">Update</button>`)}
+    </div>
+    <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 6px;user-select:none;cursor:default" onclick="_verTap()">Isshin · version ${APP_VERSION}</div>
+    </div>`;
+}
+
+/* Secret owner switch — 7 taps on the version line toggles the full control
+   room. Silent for the first 3 taps so customers never trip over it. */
+let _verTapCount = 0, _verTapT = 0;
+function _verTap(){
+  const t = Date.now();
+  if(t - _verTapT > 2500) _verTapCount = 0;
+  _verTapT = t;
+  _verTapCount++;
+  if(_verTapCount >= 7){
+    _verTapCount = 0;
+    state.settings.ownerMode = true;
+    save(); render();
+    showToast('🔧 Owner controls unlocked');
+  } else if(_verTapCount >= 4){
+    showToast((7 - _verTapCount) + ' more…');
+  }
+}
+window._verTap = _verTap;
+function ownerModeOff(){
+  state.settings.ownerMode = false;
+  save(); render();
+}
+window.ownerModeOff = ownerModeOff;
+
+/* Customer Topics chip — toggles a section's themes in/out of the advisory
+   topicBias list (ordering only; never filters the deck). */
+function custToggleTopic(secId){
+  const sec = VOCAB_SECTIONS.find(x => x.id === secId);
+  if(!sec || !sec.themes) return;
+  const bias = state.settings.topicBias = Array.isArray(state.settings.topicBias) ? state.settings.topicBias : [];
+  const on = sec.themes.some(t => bias.includes(t));
+  if(on){ state.settings.topicBias = bias.filter(t => !sec.themes.includes(t)); }
+  else { sec.themes.forEach(t => { if(!bias.includes(t)) bias.push(t); }); }
+  save(); render();
+}
+window.custToggleTopic = custToggleTopic;
+
+function _renderSettingsOwner(){
   const s = state.settings;
   const themes = [...new Set(state.words.map(w=>w.theme).filter(Boolean))].sort();
   const posList = [...new Set(state.words.map(w=>w.pos).filter(Boolean))].sort();
