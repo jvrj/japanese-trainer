@@ -1,0 +1,6 @@
+# never commit secrets or local Supabase state
+.env
+.env.*
+.supabase/
+supabase/.temp/
+*.key

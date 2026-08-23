@@ -29,6 +29,41 @@ shows the offer. Drills + scripted practice never call the relay, so the free
 tier stays free by construction. The whole check sits behind
 `REQUIRE_ENTITLEMENT` (set `true` at launch; `false` = pre-launch open door).
 
+## Billing (Stripe — wired 2026-08-23, TEST mode)
+Web + Stripe first (go-to-market lock 2026-08-20): $8.99/mo + $59.99/yr, 7-day
+card trial, USD. Stripe writes the `entitlements` table (migration 0004 adds the
+stripe columns); the gate reads it unchanged — RevenueCat's old seat, taken by
+Stripe.
+
+```
+POST /functions/v1/checkout        json { plan: 'monthly'|'yearly' } + Supabase JWT -> { url }
+POST /functions/v1/stripe-webhook  Stripe events (signature-verified) -> entitlements upsert
+```
+
+- `checkout` is JWT-only (no soft-secret path): an entitlement must belong to a
+  real account. 409 if already subscribed; success/cancel URLs pinned to
+  https://jvrj.github.io.
+- `stripe-webhook` is the ONLY writer of entitlements. HMAC-verified
+  (`STRIPE_WEBHOOK_SECRET`); handles checkout.session.completed +
+  customer.subscription.updated/deleted; idempotent (recomputes the row from the
+  subscription object each event). Access statuses: trialing|active.
+- Test-mode objects: products `prod_V7ezxhr3w0ygAe` (monthly) /
+  `prod_V7ez24XjOYND7a` (yearly), prices by lookup key `isshin_monthly` /
+  `isshin_yearly`, webhook endpoint `we_1U7PoGIQuM7ZfpFg8LlP46fT`.
+- Secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`,
+  `STRIPE_PRICE_YEARLY` (values in the owner's private keys file).
+- E2E (2026-08-23, all green): 401 no-JWT · 400 bad plan · 400 forged webhook ·
+  4242 checkout -> entitlement active (trial expiry correct) · 409 double-subscribe ·
+  cancel -> entitlement deactivated.
+- **Go-live checklist:** create live-mode products/prices + webhook endpoint,
+  swap the four secrets to live values, re-run the E2E against live with a real
+  card, and activate the Stripe account (business + bank details).
+
+**Ops note:** the Supabase free tier PAUSES the project after ~7 days idle
+(happened 2026-08-23 — restore via dashboard or management API). The
+`.github/workflows/supabase-keepalive.yml` cron pings REST every 3 days to
+prevent it.
+
 ## Endpoints
 ```
 POST /functions/v1/transcribe   multipart { file, prompt? } -> { text }
