@@ -283,14 +283,14 @@ body[data-screen="home"] .notes-fab,body[data-screen="home"] .ask-fab{display:no
 .build-chip-variation{background:#1e3f3a;color:#93e6d8}
 .build-chip-qa{background:#3a3f1e;color:#e6e093}
 .build-chip-aiqa{background:#3f1e3a;color:#e693d8}
-.build-progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:4px}
-.build-progress-fill{height:100%;background:var(--red);transition:width .2s}
-.build-big-jp{font-size:38px;text-align:center;padding:14px 0;font-weight:500}
-.build-big-en{font-size:18px;text-align:center;color:var(--muted);padding:6px 0}
-.build-romaji{font-size:13px;text-align:center;color:var(--faint);padding:2px 0}
-.build-placeholder{text-align:center;font-size:14px;padding:16px 0;color:var(--faint);border:1px dashed var(--border);border-radius:8px;margin-top:4px}
+.build-progress{height:3px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin-bottom:4px}
+.build-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#9d5cff,#ff5d9e);transition:width .2s}
+.build-big-jp{font-size:44px;text-align:center;padding:12px 0;font-weight:700;letter-spacing:.01em;line-height:1.15}
+.build-big-en{font-size:22px;text-align:center;color:var(--dim,#a99fc7);font-weight:700;padding:6px 0}
+.build-romaji{font-size:15px;text-align:center;color:var(--dim,#a99fc7);font-weight:600;padding:2px 0}
+.build-placeholder{text-align:center;font-size:13px;padding:14px 0 4px;color:var(--faint)}
 .build-callback-banner{text-align:center;font-size:12px;color:#fca5a5;background:#2a0f0f;border:1px solid #4a1010;border-radius:6px;padding:6px 10px;margin-bottom:10px;letter-spacing:.3px;font-weight:700}
-.build-countdown{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:8px 0 4px}
+.build-countdown{width:150px;height:4px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;margin:12px auto 4px}
 .build-countdown-fill{height:100%;background:var(--blue);width:100%;transform-origin:left center}
 .build-countdown-fill.run{animation:buildCount linear forwards}
 .build-countdown-fill.think{background:var(--orange)}
@@ -701,6 +701,44 @@ body[data-screen="onboard"] .notes-fab,
 body[data-screen="onboard"] .ask-fab,
 body[data-screen="onboard"] .back-fab{display:none !important}
 
+/* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
+/* The drill owns its own header (X + progress + counter) — hide the app
+   chrome above it, same pattern as the home screen. Bottom nav stays. */
+body[data-screen="buildMode"] .header{display:none}
+body[data-screen="buildMode"] .app{padding-top:max(10px,env(safe-area-inset-top))}
+body[data-screen="buildMode"] .back-fab,
+body[data-screen="buildMode"] .notes-fab,
+body[data-screen="buildMode"] .ask-fab{display:none}
+.bm-head{display:flex;align-items:center;gap:14px;margin:2px 0 4px}
+.bm-x{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--faint,#8a80a8);
+  font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0}
+.bm-head .build-progress{flex:1;margin:0}
+.bm-count{font-size:12px;font-weight:800;color:var(--dim,#a99fc7);white-space:nowrap}
+.bm-cycle{text-align:center;font-size:10.5px;color:var(--faint,#8a80a8);margin:4px 0 8px}
+.bm-stage{background:transparent;border:none;box-shadow:none;padding:10px 4px;
+  min-height:44vh;display:flex;flex-direction:column}
+.bm-stage-body{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
+.bm-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--grape2,#b97bff);
+  text-transform:uppercase;text-align:center;margin-bottom:10px}
+.build-nuance{margin:14px auto 0;max-width:330px;border-radius:14px;padding:13px 16px;
+  background:rgba(255,255,255,.05);border:1px solid var(--border);
+  font-size:12.5px;font-weight:500;color:var(--dim,#a99fc7);line-height:1.55;text-align:left}
+.build-nuance b{color:var(--text)}
+.bm-heard{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:99px;
+  background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4);
+  font-size:13.5px;font-weight:700;color:#9fe9cf;margin-top:14px}
+.bm-ctl{width:50px;height:50px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);
+  font-size:17px;cursor:pointer;font-family:inherit;padding:0}
+.bm-ctl:disabled{opacity:.35;cursor:default}
+.bm-cta{flex:1;display:flex;align-items:center;justify-content:center;padding:14px;border-radius:99px;
+  background:linear-gradient(95deg,var(--grape,#9d5cff),var(--pink,#ff5d9e));color:#fff;
+  font-weight:800;font-size:15.5px;border:none;cursor:pointer;font-family:inherit;
+  box-shadow:0 8px 24px rgba(157,92,255,.25)}
+.bm-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.bm-wait{flex:1;text-align:center;color:var(--faint,#8a80a8);font-size:12px}
+
 /* ===== v8.66 Anki-style word grade row (post-reveal) ===== */
 .grade-wrap{margin-top:12px}
 .grade-q{text-align:center;font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
@@ -788,7 +826,7 @@ body[data-screen="onboard"] .back-fab{display:none !important}
 
 'use strict';
 
-const APP_VERSION = '8.66';
+const APP_VERSION = '8.67';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5628,7 +5666,7 @@ function focusSentencesFor(w, max){
 function buildFocusLesson(){
   const pool = focusBasketWords().slice(0, 14);
   if(pool.length < 1) throw new Error('Your Focus basket is empty — add some words first.');
-  const toRef = w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji });
+  const toRef = w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note });
   const steps = [];
   for(const w of pool){
     steps.push({ type:'recall', word_id:w.id });
@@ -17298,7 +17336,7 @@ function buildGenerateLesson(mode){
   const [w1, w2, w3] = newWords;
   const [cb1, cb2] = callbacks;
   const lessonId = (mode === 'complex' ? 'Gc' : mode === 'social' ? 'Gx' : 'Gs') + (sequence.length + 1);
-  const toRef = w => ({ id: buildGenWordId(w), jp: w.jp, en: w.en, r: w.romaji });
+  const toRef = w => ({ id: buildGenWordId(w), jp: w.jp, en: w.en, r: w.romaji, note: w.note });
 
   const p1 = buildFillTemplate(primary, w1), p2 = buildFillTemplate(primary, w2), p3 = buildFillTemplate(primary, w3);
   const s1 = buildFillTemplate(secondary, w1), s2 = buildFillTemplate(secondary, w2), s3 = buildFillTemplate(secondary, w3);
@@ -17710,7 +17748,7 @@ function buildGenerateFormSpamLesson(formId, opts){
     id: 'Gf_' + formId + '_' + Date.now().toString(36),
     title: `Form Spam — ${f.name} (${f.hint})`,
     duration_mins: Math.max(3, Math.round(n * 0.6)),
-    new_words: pool.map(w => ({ id: w.id, jp: w.jp, en: w.en, r: w.romaji })),
+    new_words: pool.map(w => ({ id: w.id, jp: w.jp, en: w.en, r: w.romaji, note: w.note })),
     carryover_words: [],
     cycles: [
       { id: 'spam', name: `${f.name} · ${f.hint}`, steps }
@@ -17977,7 +18015,7 @@ function buildGenerateVocabSpamLesson(opts){
     id: 'Gv_' + Date.now().toString(36),
     title: `Vocab Spam — ${scopeName}`,
     duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
-    new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji })),
+    new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note })),
     carryover_words: [],
     cycles: [{ id:'spam', name:`Vocab · ${scopeName}`, steps }],
     _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id),
@@ -18068,7 +18106,7 @@ function startRandomDrill(opts){
       id: 'Gr_' + Date.now().toString(36),
       title: `Random Drill — ${picked.length} words`,
       duration_mins: Math.max(3, Math.round(picked.length * 0.4)),
-      new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
+      new_words: picked.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note})),
       carryover_words: [],
       cycles: [{id:'random', name:'Random · full deck', steps: randomSteps}],
       _meta: {mode:'randomDrill', real_word_ids: picked.map(w => w.id),
@@ -21037,10 +21075,14 @@ function renderBuildModeStep(){
     : '';
 
   return `
-    <div class="build-progress"><div class="build-progress-fill" style="width:${pct}%"></div></div>
-    <div class="muted" style="text-align:center;font-size:11px;margin:2px 0 6px">Step ${b.stepIdx+1} of ${total} · ${esc(step._cycleName)}${chainPill}</div>
+    <div class="bm-head">
+      <button class="bm-x" onclick="buildExit()" title="Exit lesson">✕</button>
+      <div class="build-progress"><div class="build-progress-fill" style="width:${pct}%"></div></div>
+      <div class="bm-count">${b.stepIdx+1} / ${total}</div>
+    </div>
+    <div class="bm-cycle">${esc(step._cycleName)}${chainPill}</div>
 
-    <div class="card">
+    <div class="card bm-stage">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
@@ -21049,20 +21091,20 @@ function renderBuildModeStep(){
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
-      ${body}
+      <div class="bm-stage-body">${body}</div>
       ${countdown}
     </div>
 
-    <div class="btn-row">
-      <button class="btn btn-secondary" onclick="buildPrevStep()" ${b.stepIdx === 0 ? 'disabled' : ''}>‹ Back</button>
-      <button class="btn btn-secondary" onclick="buildReplayAudio()">🔊 Replay</button>
+    <div class="bm-row">
+      <button class="bm-ctl" onclick="buildPrevStep()" ${b.stepIdx === 0 ? 'disabled' : ''} title="Back">‹</button>
+      <button class="bm-ctl" onclick="buildReplayAudio()" title="Replay audio">🔊</button>
       ${b.revealed || step.type === 'introduce'
-        ? `<button class="btn btn-primary" onclick="buildNextStep()">${b.stepIdx === total - 1 ? 'Finish ✓' : 'Next ›'}</button>`
+        ? `<button class="bm-cta" onclick="buildNextStep()">${b.stepIdx === total - 1 ? 'Finish ✓' : 'Next ›'}</button>`
         : (step.type === 'similar'
-            ? `<span style="flex:1;text-align:center;color:var(--muted);font-size:12px">tap a choice</span>`
+            ? `<span class="bm-wait">tap a choice</span>`
             : (_buildWriteApplies(step)
-                ? `<button class="btn btn-ghost" style="font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
-                : `<button class="btn btn-blue" onclick="buildRevealStep()">Reveal</button>`))
+                ? `<button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
+                : `<button class="bm-cta" onclick="buildRevealStep()">Reveal</button>`))
       }
     </div>
 
@@ -21115,10 +21157,6 @@ function renderBuildModeStep(){
           : `No tap needed — leave it and the word comes back at its normal pace.`}</div>
       </div>`;
     })()}
-
-    <div style="text-align:center;margin-top:10px">
-      <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px" onclick="buildExit()">Exit lesson</button>
-    </div>
   `;
 }
 
@@ -21431,10 +21469,10 @@ function _buildRenderHeard(){
      wrong about. The mic is a bonus, never a judgment. */
   let display = (lv.heardDisplay && lv.heardDisplay.trim()) || '';
   if(!display) display = '(couldn’t catch the sound)';
-  const engineBadge = `<div class="muted" style="font-size:10px;margin-top:4px;text-align:right;opacity:0.7">${lv.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech'}</div>`;
+  const engineBadge = `<div class="muted" style="font-size:10px;margin-top:4px;opacity:0.7">${lv.engine === 'whisper' ? '🎤 Whisper' : '📢 Web Speech'}</div>`;
   return `
-    <div style="text-align:center;font-size:13px;color:var(--dim);margin-top:8px;padding:6px 10px;background:var(--card2);border-radius:8px">
-      🎤 heard: <b style="color:var(--text)">${esc(display)}</b>
+    <div style="text-align:center">
+      <span class="bm-heard">🎤 heard: <b style="color:#d6fff0">${esc(display)}</b></span>
       ${engineBadge}
     </div>`;
 }
@@ -21665,19 +21703,19 @@ function _buildRenderRecall(step){
   if(b.revealed){
     return `
       ${freshPill}
-      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct answer:</div>
+      <div class="bm-eyebrow">Say it in Japanese</div>
+      <div class="build-big-en" style="font-size:17px;padding:2px 0">${esc(w.en)}</div>
       <div class="build-big-jp">${esc(w.jp)}</div>
       <div class="build-romaji">${esc(w.r)}</div>
-      <div class="build-big-en">${esc(w.en)}</div>
-      ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
       ${_buildRenderHeard()}
+      ${w.note ? `<div class="build-nuance"><b>${esc(w.jp)}</b> — ${esc(w.note)}</div>` : ''}
     `;
   }
   return `
     ${freshPill}
-    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">How do you say this? (out loud)</div>
-    <div class="build-big-en">${esc(w.en)}</div>
-    <div class="build-placeholder">say it, then tap Reveal</div>
+    <div class="bm-eyebrow">Say it in Japanese</div>
+    <div class="build-big-en" style="font-size:26px;color:var(--text)">${esc(w.en)}</div>
+    <div class="build-placeholder">say it out loud, then tap Reveal</div>
   `;
 }
 
@@ -21692,17 +21730,17 @@ function _buildRenderRecallRev(step){
   if(b.revealed){
     return `
       ${freshPill}
-      <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">It means:</div>
-      <div class="build-big-en" style="font-size:26px;color:var(--text);font-weight:600">${esc(w.en)}</div>
-      <div class="build-big-jp" style="font-size:28px;padding:8px 0">${esc(w.jp)}</div>
+      <div class="bm-eyebrow">It means</div>
+      <div class="build-big-en" style="font-size:30px;color:var(--text)">${esc(w.en)}</div>
+      <div class="build-big-jp" style="font-size:28px;padding:6px 0">${esc(w.jp)}</div>
       <div class="build-romaji">${esc(w.r)}</div>
-      ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
       ${_buildRenderHeard()}
+      ${w.note ? `<div class="build-nuance"><b>${esc(w.jp)}</b> — ${esc(w.note)}</div>` : ''}
     `;
   }
   return `
     ${freshPill}
-    <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">What does this mean? (say it in English)</div>
+    <div class="bm-eyebrow">What does it mean?</div>
     <div class="build-big-jp">${esc(w.jp)}</div>
     <div class="build-romaji">${esc(w.r)}</div>
     <div class="build-placeholder">say the English, then tap Reveal</div>
@@ -22095,6 +22133,9 @@ function renderTopbar(){
      with in-flow skip/continue controls) and must not offer the generic
      back-arrow, which would let a tap exit the scripted flow mid-pass. */
   if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard') return '';
+  /* v8.67 — the drill draws its own header (✕ + progress + counter); the
+     generic back topbar would be a second, redundant exit above it. */
+  if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
   let title = SCREEN_TITLES[state.screen];
   /* v8.49 — the onboarding micro-drill is a stranger's first screen; "Build
      Mode" is internal jargon there. */
@@ -23583,7 +23624,7 @@ function startOnboardMicroDrill(){
     id: 'Gob_' + Date.now().toString(36),
     title: 'Your first words',
     duration_mins: 2,
-    new_words: picks.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji})),
+    new_words: picks.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note})),
     carryover_words: [],
     cycles: [{ id:'ob', name:'First words', steps }],
     _meta: { mode:'onboardMicro', real_word_ids: picks.map(w => w.id) }
