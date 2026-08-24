@@ -853,7 +853,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.70';
+const APP_VERSION = '8.71';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5623,6 +5623,11 @@ async function authToken(){
    when there is no client. */
 async function authSignOut(){
   _authState.user = null;
+  /* v8.71 — explicit sign-out must always re-close the gate, even if this
+     device was let through earlier on the grace rule (unverifiable session +
+     remembered breadcrumb). Without this, a signed-out-then-back-in device
+     would stay "open" on a stale grace flag until the next full reload. */
+  state._authGraceOpen = false;
   const c = authClient();
   if(!c || !c.auth || typeof c.auth.signOut !== 'function') return;
   try { await c.auth.signOut(); } catch(e) { /* offline/etc — mirror already cleared */ }
@@ -5802,13 +5807,135 @@ async function _authHandleReturn(){
     if(session && session.user){
       _authState.user = session.user;
       await _authWriteConsentOnce(session.user.id);
-      try{ render(); }catch(e){ /* boot already rendered once; a re-render failure is non-fatal */ }
+      /* v8.71 — no render() here anymore: init() now AWAITS this whole
+         function before making its one gate/Stage-B screen decision and
+         rendering once (see init()). Rendering here too would just be an
+         extra, harmless-but-redundant paint with the OLD (pre-gate-decision)
+         state.screen. If this function is ever reached outside boot in the
+         future, callers are responsible for their own re-render. */
     }
   } catch(e){ /* auth-return handling must never brick boot */ }
 }
 window.authSendMagicLink = authSendMagicLink;
 window.authContinueGoogle = authContinueGoogle;
 window.authDoSignOut = authDoSignOut;
+
+/* ===================== ACCOUNT GATE (v8.71, auth-gate-placement sprint) =====================
+   Turns the v8.68/v8.70 auth foundation + screen into a REAL gate: signed-out
+   traffic is redirected to `auth` before it reaches onboard/home (and, via the
+   single nav() choke point, before it reaches anything else the user's history
+   might replay). Builds entirely on the existing helpers above (authClient,
+   authSession, _authState) — no second client, no parallel session store.
+
+   Security posture (CWE-863/284 — see the security_gate_authorization_review
+   rubric item this sprint is graded on): authorization is always RE-DERIVED
+   from live state at the moment of each check, never trusted from a flag an
+   attacker (or a stray extension) could set:
+     - state.settings.ownerMode is the existing, already-trusted owner toggle
+       (7-tap Settings switch) — not attacker-reachable from outside the app.
+     - _authState.user is a mirror kept current by Supabase's OWN
+       onAuthStateChange listener (v8.68), not something callers can poke —
+       and authDoSignOut()/authSignOut() clear it (and the grace flag below)
+       immediately on sign-out.
+     - state._authGraceOpen is set ONLY by _authGateDecide() below, and ONLY
+       after a REAL attempt to verify the session failed to complete (CDN
+       unreachable, Supabase paused, offline, or a timeout) AND this device
+       has a locally-remembered prior sign-in. A definitive "no session"
+       answer from a completed check is never treated as grace — an unknown
+       or first-time device always lands on `auth`, even fully offline. No
+       URL param, and no raw localStorage read of the remembered-session
+       breadcrumb by itself, can substitute for that live check — the
+       breadcrumb only ever decides whether a FAILED check fails open. */
+
+const AUTH_GATE_TIMEOUT_MS = 4000;
+
+/* Local-only breadcrumb — "has this device ever completed a sign-in", not an
+   authorization decision by itself (see posture note above). Used only to
+   decide whether an unverifiable live check should grace the device through
+   pending re-check, or treat it like a true first-time/never-signed-in
+   visitor. Matches supabase-js v2's default session storage key shape
+   (`sb-<project-ref>-auth-token`); falls back to a loose scan so a custom
+   storageKey still counts as "remembered" rather than silently locking out
+   an entitled offline user. */
+function _authGateRemembered(){
+  try{
+    if(typeof window === 'undefined' || !window.localStorage) return false;
+    let ref = '';
+    try{ ref = new URL(SUPA_URL).hostname.split('.')[0]; }catch(e){}
+    if(ref && localStorage.getItem('sb-' + ref + '-auth-token')) return true;
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) return true;
+    }
+  } catch(e){ /* localStorage unavailable — treat as not-remembered */ }
+  return false;
+}
+
+/* Races the REAL supabase-js session check against a bounded timeout so a
+   hung CDN/network call can never stall boot. Returns one of:
+     {pass:true,  reason:'session'}     — a live session was confirmed now
+     {pass:false, reason:'signed-out'}  — the check completed; no session
+     {pass:true,  reason:'grace'}       — check could not complete AND this
+                                          device has a remembered session
+                                          (fail-open, spec-mandated)
+     {pass:false, reason:'unavailable'} — check could not complete and this
+                                          is a never-signed-in device — NOT
+                                          graced; no default-permit for an
+                                          unknown/first-time state. */
+async function _authGateDecide(){
+  const remembered = _authGateRemembered();
+  try{
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.getSession !== 'function'){
+      return remembered ? { pass:true, reason:'grace' } : { pass:false, reason:'unavailable' };
+    }
+    const timeout = new Promise(resolve => setTimeout(() => resolve('__auth_gate_timeout__'), AUTH_GATE_TIMEOUT_MS));
+    const result = await Promise.race([
+      c.auth.getSession().catch(() => '__auth_gate_error__'),
+      timeout
+    ]);
+    if(result === '__auth_gate_timeout__' || result === '__auth_gate_error__'){
+      return remembered ? { pass:true, reason:'grace' } : { pass:false, reason:'unavailable' };
+    }
+    const session = (result && result.data && result.data.session) || null;
+    if(session && session.user){
+      _authState.user = session.user;
+      return { pass:true, reason:'session' };
+    }
+    return { pass:false, reason:'signed-out' };
+  } catch(e){
+    return remembered ? { pass:true, reason:'grace' } : { pass:false, reason:'unavailable' };
+  }
+}
+
+/* The single synchronous predicate nav()'s gate normalization (and the boot
+   decision in init()) call. Re-evaluated fresh on EVERY invocation — never
+   cached itself — from the three live signals above. */
+function _authGateOpen(){
+  if(state.settings.ownerMode === true) return true;
+  if(_authState.user) return true;
+  if(state._authGraceOpen === true) return true;
+  return false;
+}
+
+/* Background re-check for a device that boot let through on the grace rule
+   (unverifiable at boot, but remembered). Runs once, well after boot, so a
+   CDN/network hiccup that clears up mid-session still gets caught. If the
+   check can NOW positively confirm there is no session, the grace flag is
+   revoked and — if the app is still sitting on a gate-covered screen — it is
+   routed back to `auth`. A session that verifies fine, or a check that still
+   cannot complete, both leave the app exactly as it is. */
+function _authGateRecheck(){
+  if(state.settings.ownerMode === true) return;
+  if(!state._authGraceOpen) return;
+  _authGateDecide().then(d => {
+    if(d.reason === 'signed-out'){
+      state._authGraceOpen = false;
+      if(state.screen !== 'auth' && !_authGateOpen()) nav('auth');
+    }
+  }).catch(()=>{});
+}
+window._authGateOpen = _authGateOpen;
 
 async function focusGenCall(w, retryNote){
   if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
@@ -23305,6 +23432,17 @@ function nav(screen, data, fromPop){
      pathGo()'s bail-detection (which compares state.screen==='home') all keep
      seeing one canonical string instead of a second stale 'today'. */
   if(screen === 'today') screen = 'home';
+  /* Account gate (v8.71, auth-gate-placement sprint) — placed ahead of the
+     Stage-B home->onboard normalization below (and everything after it) so
+     it is the FIRST thing every nav() dispatch hits, including ones replayed
+     by browser back/forward (fromPop=true, see the popstate listener in
+     init()) or a manually-poked #hash. There is no second entry point into
+     onboard/home/drill screens that can skip this — that is what makes back-
+     button escape impossible, not a one-time boot check. `auth` itself is
+     always left reachable so its own form can render. _authGateOpen() is
+     re-derived fresh on every call (see its definition) — never a cached
+     "already checked" flag trusted blindly on later dispatches. */
+  if(screen !== 'auth' && !_authGateOpen()) screen = 'auth';
   /* Stage B (v8.08) — Home routes to onboarding until the first-run flow
      completes. Boot-time backfill in load() already marks existing users
      (non-empty stats or convoXp>0) done:true, so this only ever fires for
@@ -23348,8 +23486,12 @@ function updateBackFab(){
   if(!fab) return;
   /* Stage B — onboarding is a linear scripted flow with its own in-screen
      skip/continue controls; the global back-FAB would let a user escape
-     mid-script into a half-onboarded state, so it's hidden there too. */
-  fab.classList.toggle('show', state.screen !== 'home' && state.screen !== 'onboard');
+     mid-script into a half-onboarded state, so it's hidden there too.
+     v8.71 — 'auth' joins the list for the same reason: it is a gate, not a
+     screen with anywhere valid to "go back" to (a back-FAB tap would only
+     bounce off the gate's own nav() normalization anyway, but hiding it
+     avoids offering a dead-end control). */
+  fab.classList.toggle('show', state.screen !== 'home' && state.screen !== 'onboard' && state.screen !== 'auth');
 }
 function updateNav(){
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen));
@@ -25810,14 +25952,30 @@ function bindScreen(){
 }
 
 /* ---------- INIT ---------- */
-function init(){
+async function init(){
   load();
-  /* v8.70 — magic-link/OAuth return handling. Fire-and-forget: this must
-     never block or delay first paint, and every step inside is already
-     wrapped so it can never throw into boot (see _authHandleReturn). Placed
-     right after load() so an in-memory session it establishes is available
-     before the first render() call below finishes settling. */
-  try{ _authHandleReturn(); }catch(e){ /* must never brick boot */ }
+  /* v8.71 — magic-link/OAuth return handling is now AWAITED (was fire-and-
+     forget in v8.70). This has to land before the account-gate boot decision
+     just below it: a fresh magic-link/OAuth return has to open the gate on
+     THIS boot, not one render late. Every step inside is already wrapped so
+     it can never throw into boot (see _authHandleReturn), and the gate
+     decision right after this has its own bounded timeout, so a slow/absent
+     CDN still cannot hang boot indefinitely. */
+  try{ await _authHandleReturn(); }catch(e){ /* must never brick boot */ }
+  /* v8.71 — account-gate boot decision (auth-gate-placement sprint). Mirrors
+     the existing Stage-B pattern right below (decide state.screen BEFORE the
+     first render() call so the very first paint is already correct — no
+     flash of the wrong screen). Skipped entirely when ownerMode is already
+     on, or when _authHandleReturn just above established a live session —
+     no need to also spend a network round trip re-confirming what is
+     already known. _authGateDecide() itself is bounded by
+     AUTH_GATE_TIMEOUT_MS, so this can never hang boot. */
+  if(state.settings.ownerMode !== true && !_authState.user){
+    try{
+      const decision = await _authGateDecide();
+      state._authGraceOpen = (decision.pass === true);
+    }catch(e){ state._authGraceOpen = false; }
+  }
   /* v8.57 — if localStorage lost the progress, restore from the IDB mirror
      (async; re-renders + toasts if it recovers anything). Also probes the
      mirror's meta for the Storage Health card. */
@@ -25887,17 +26045,35 @@ function init(){
   /* keep header version label in sync with APP_VERSION so it never goes stale */
   const _vLabel = document.getElementById('appVersionLabel');
   if(_vLabel) _vLabel.textContent = '一心 · v' + APP_VERSION;
-  /* Stage B (v8.08) — first-run redirect for the very first render. Boot-time
-     backfill in load() already marked existing users done:true, so this only
-     ever fires for a genuinely first-run profile. nav()'s own 'home'->
-     'onboard' normalization (added Stage B) also covers every LATER call to
-     nav('home'); this line just makes the initial state.screen agree with it
-     before the first render() call below, and keeps the seeded history entry
-     honest. */
-  if(state.screen === 'home' && !state.settings.onboard.done){
+  /* Account gate (v8.71) — first-render redirect, mirroring the Stage-B
+     pattern right below it: decide state.screen BEFORE the first render()
+     call so the very first paint is already correct, no flash of home/
+     onboard before flipping to auth. The gate decision itself (grace flag /
+     ownerMode / live session) was already settled above, before load()'s
+     boot-time onboard.done backfill and everything else that follows it —
+     this line just makes the initial state.screen (and the seeded history
+     entry) agree with it. Placed ahead of the Stage-B block so a gated
+     device never even reaches the home->onboard decision. */
+  if(!_authGateOpen()){
+    state.screen = 'auth';
+    try{ history.replaceState({screen:'auth'}, '', '#auth'); }catch(e){}
+  } else if(state.screen === 'home' && !state.settings.onboard.done){
+    /* Stage B (v8.08) — first-run redirect for the very first render. Boot-
+       time backfill in load() already marked existing users done:true, so
+       this only ever fires for a genuinely first-run profile. nav()'s own
+       'home'->'onboard' normalization (added Stage B) also covers every
+       LATER call to nav('home'); this line just makes the initial
+       state.screen agree with it before the first render() call below, and
+       keeps the seeded history entry honest. */
     state.screen = 'onboard';
     try{ history.replaceState({screen:'onboard'}, '', '#onboard'); }catch(e){}
   }
+  /* v8.71 — if boot let this device through on the grace rule (session
+     unverifiable, but remembered), schedule one background re-check so a
+     CDN/network recovery mid-session still closes the gate on a device that
+     turns out to be genuinely signed out. No-op (returns immediately) for
+     every other boot outcome — see _authGateRecheck(). */
+  setTimeout(_authGateRecheck, 8000);
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
