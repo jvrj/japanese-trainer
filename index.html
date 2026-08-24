@@ -640,6 +640,14 @@ body:has(.home-v8) .header{display:none}
 .ob-cta{margin-top:20px;width:100%;padding:15px;border:none;border-radius:16px;background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 10px 26px rgba(157,92,255,.35)}
 .ob-cta:active{transform:scale(.97)}
 .ob-cta.ob-mic{background:linear-gradient(100deg,#ff5d9e,#ff8a3d)}
+/* v8.70 — auth screen secondary CTA (Continue with Google): a plain outlined
+   button so the gradient primary (email link) stays the obvious first tap. */
+.ob-cta.ob-alt{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);box-shadow:none}
+.ob-cta:disabled{opacity:.5;cursor:default;box-shadow:none}
+.ob-consent{display:flex;align-items:flex-start;gap:10px;margin-top:16px;text-align:left;font-size:12.5px;color:var(--faint);font-weight:600;line-height:1.5;cursor:pointer}
+.ob-consent input{margin-top:2px;flex:none}
+.ob-note{margin-top:14px;font-size:12.5px;color:#ff8a3d;font-weight:700;line-height:1.5}
+.ob-switch{margin-top:18px;width:100%;padding:6px;border:none;background:none;color:var(--dim,#a99fc7);font-family:inherit;font-weight:700;font-size:12.5px;cursor:pointer;text-decoration:underline}
 .ob-listening{margin-top:20px;padding:15px;border-radius:16px;background:rgba(255,93,158,.14);border:1px solid rgba(255,93,158,.35);color:var(--text);font-weight:800;font-size:14px}
 .ob-input{margin-top:18px;width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-family:inherit;font-weight:700;font-size:15px;text-align:center;outline:none;box-sizing:border-box}
 .ob-skip{margin-top:14px;width:100%;padding:10px;border:none;background:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}
@@ -700,6 +708,15 @@ body[data-screen="onboard"] .bottom-nav,
 body[data-screen="onboard"] .notes-fab,
 body[data-screen="onboard"] .ask-fab,
 body[data-screen="onboard"] .back-fab{display:none !important}
+
+/* v8.70 — sign-in/create-account screen (auth-screens sprint) draws its own
+   full-screen ob-* card, same "own the viewport" treatment as onboarding:
+   the top app header and every floating control are hidden while it's up. */
+body[data-screen="auth"] .header,
+body[data-screen="auth"] .bottom-nav,
+body[data-screen="auth"] .notes-fab,
+body[data-screen="auth"] .ask-fab,
+body[data-screen="auth"] .back-fab{display:none !important}
 
 /* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
 /* The drill owns its own header (X + progress + counter) — hide the app
@@ -836,7 +853,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.69';
+const APP_VERSION = '8.70';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5624,6 +5641,174 @@ window.authSession = authSession;
 window.authUser = authUser;
 window.authToken = authToken;
 window.authSignOut = authSignOut;
+
+/* ===================== SUPABASE AUTH — sign-in screen (v8.70, auth-screens sprint) =====================
+   Builds ON the v8.68 foundation above — same client singleton, same
+   authClient()/authSession()/authUser()/authSignOut() helpers, no second
+   parallel client anywhere in this module. Adds ONLY: a Studio-styled
+   auth screen (sign-in / create-account / sent-link), the magic-link +
+   Google OAuth actions, the return-from-email/OAuth handler, and the
+   one-time marketing-consent write. NOT wired into any gate this sprint —
+   reachable via nav('auth'), never forced.
+
+   Same null-safety contract as the foundation: every call path here that
+   touches supabase-js is wrapped so a CDN failure, a paused Supabase
+   project, or a network drop degrades to a plain on-screen message
+   instead of an exception. Auth failures must never brick the app. */
+
+/* Fixed same-origin constant — NEVER built from a query/hash param, so a
+   crafted link can't redirect a completed sign-in anywhere off this page
+   (no open-redirect via redirectTo/emailRedirectTo). */
+const AUTH_REDIRECT_URL = (typeof window !== 'undefined' && window.location)
+  ? (window.location.origin + window.location.pathname)
+  : undefined;
+
+/* localStorage key for the create-account consent checkbox value, captured
+   right before a magic-link send or an OAuth redirect (both navigate the
+   tab away, so an in-memory JS variable would not survive the round trip).
+   Deliberately NOT under the app's own save()/load() storage-hardening
+   path — this is a short-lived flag, not SRS/profile state. */
+const AUTH_PENDING_CONSENT_KEY = 'isshin_pending_consent';
+
+/* Ephemeral UI state for the auth screen — never persisted, never touches
+   state.settings or save()/load(). */
+let _authUi = null;
+function _authUiEnsure(){
+  if(!_authUi) _authUi = { mode:'signin', view:'form', email:'', consent:false, busy:false, msg:'' };
+  return _authUi;
+}
+function authSetEmail(v){ _authUiEnsure().email = v; }
+function authToggleConsent(){ const ui = _authUiEnsure(); ui.consent = !ui.consent; render(); }
+function authSwitchMode(m){
+  const ui = _authUiEnsure();
+  ui.mode = (m === 'create') ? 'create' : 'signin';
+  ui.view = 'form'; ui.msg = '';
+  render();
+}
+
+const AUTH_TRY_EMAIL_MSG = "That didn't work — try the email link instead.";
+const AUTH_TRY_AGAIN_MSG = "That didn't work — try again in a moment.";
+
+/* Email magic-link (primary action, no password). Guards every step —
+   missing CDN, a paused Supabase project, or a rejected request all land
+   on the same plain message rather than an unhandled exception. */
+async function authSendMagicLink(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  const email = (ui.email || '').trim();
+  if(!email){ ui.msg = 'Enter your email first.'; render(); return; }
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    if(ui.mode === 'create'){
+      try{ localStorage.setItem(AUTH_PENDING_CONSENT_KEY, ui.consent ? '1' : '0'); }catch(e){ /* best-effort only */ }
+    }
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.signInWithOtp !== 'function') throw new Error('auth unavailable');
+    const { error } = await c.auth.signInWithOtp({ email, options:{ emailRedirectTo: AUTH_REDIRECT_URL } });
+    if(error) throw error;
+    ui.busy = false;
+    ui.view = 'sent';
+    render();
+  } catch(e){
+    ui.busy = false;
+    ui.msg = AUTH_TRY_AGAIN_MSG;
+    render();
+  }
+}
+
+/* Google OAuth (no password). Supabase-dashboard config (provider + redirect
+   allow-list) is an owner action outside this sprint — the code path ships
+   regardless and degrades to the same plain message if it isn't configured
+   yet, rather than throwing. */
+async function authContinueGoogle(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    if(ui.mode === 'create'){
+      try{ localStorage.setItem(AUTH_PENDING_CONSENT_KEY, ui.consent ? '1' : '0'); }catch(e){ /* best-effort only */ }
+    }
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.signInWithOAuth !== 'function') throw new Error('auth unavailable');
+    const { error } = await c.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: AUTH_REDIRECT_URL } });
+    if(error) throw error;
+    /* success navigates the tab to Google — nothing else to do here */
+  } catch(e){
+    ui.busy = false;
+    ui.msg = AUTH_TRY_EMAIL_MSG;
+    render();
+  }
+}
+
+/* Sign-out row (Settings) — reuses authSignOut() from the foundation above,
+   never a second signOut() implementation, then returns to a safe screen. */
+async function authDoSignOut(){
+  try{ await authSignOut(); }catch(e){ /* mirror already cleared inside authSignOut */ }
+  try{ nav('home'); }catch(e){ try{ render(); }catch(e2){} }
+}
+
+/* Strips any auth token/code out of the visible URL so a reload can never
+   replay the same fragment and the token never lingers in the address bar
+   or a history entry. Safe no-op if History API is unavailable. */
+function _authStripUrl(){
+  try{ history.replaceState(history.state, document.title, window.location.pathname); }catch(e){}
+}
+
+/* Writes the captured consent value to the caller's OWN profiles row
+   (matches 0005_marketing_consent.sql's update-only RLS — no insert path,
+   the on_auth_user_created trigger already made the row). The pending flag
+   is removed BEFORE the network call so a retry/re-entry can never fire
+   this twice for the same sign-in, even if the write itself fails. */
+async function _authWriteConsentOnce(userId){
+  try{
+    const raw = localStorage.getItem(AUTH_PENDING_CONSENT_KEY);
+    if(raw === null || !userId) return;
+    localStorage.removeItem(AUTH_PENDING_CONSENT_KEY);
+    const c = authClient();
+    if(!c || typeof c.from !== 'function') return;
+    const consent = raw === '1';
+    await c.from('profiles')
+      .update({ marketing_opt_in: consent, marketing_opt_in_at: new Date().toISOString() })
+      .eq('id', userId);
+  } catch(e){ /* consent write must never brick boot or block sign-in */ }
+}
+
+/* Magic-link / OAuth return handler — runs once on load (called from
+   init()). Detects a Supabase auth fragment/hash or PKCE `code` param,
+   establishes the session by reusing authClient()/authSession() from the
+   v8.68 foundation (NOT a second client), strips the URL immediately, then
+   fires the one-time consent write. Every step is wrapped; nothing here
+   can throw out into boot. */
+async function _authHandleReturn(){
+  try{
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const hashHasAuth = /(^|[#&])(access_token|refresh_token)=/.test(hash);
+    let hasCode = false;
+    try{ hasCode = new URLSearchParams(search).has('code'); }catch(e){}
+    if(!hashHasAuth && !hasCode) return;
+
+    let session = null;
+    try{
+      const c = authClient();
+      if(c) session = await authSession();
+    } catch(e){ session = null; }
+
+    /* Clear the token/code out of the address bar immediately, whether or
+       not a session was actually established — a bad/expired link must
+       not sit around replayable either. */
+    _authStripUrl();
+
+    if(session && session.user){
+      _authState.user = session.user;
+      await _authWriteConsentOnce(session.user.id);
+      try{ render(); }catch(e){ /* boot already rendered once; a re-render failure is non-fatal */ }
+    }
+  } catch(e){ /* auth-return handling must never brick boot */ }
+}
+window.authSendMagicLink = authSendMagicLink;
+window.authContinueGoogle = authContinueGoogle;
+window.authDoSignOut = authDoSignOut;
 
 async function focusGenCall(w, retryNote){
   if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
@@ -22266,7 +22451,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -22276,7 +22461,10 @@ function renderTopbar(){
   /* Stage B — onboarding draws its own full-screen chrome (ob-screen cards
      with in-flow skip/continue controls) and must not offer the generic
      back-arrow, which would let a tap exit the scripted flow mid-pass. */
-  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard') return '';
+  /* v8.70 — the auth screen reuses the same ob-screen chrome and draws its
+     own in-flow "Sign in"/"Create account" switch link, so it gets the same
+     no-generic-topbar treatment. */
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth') return '';
   /* v8.67 — the drill draws its own header (✕ + progress + counter); the
      generic back topbar would be a second, redundant exit above it. */
   if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
@@ -23094,7 +23282,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -23951,6 +24139,60 @@ function renderOnboard(){
   return body;
 }
 
+/* ---------- AUTH (v8.70, auth-screens sprint) ----------
+   One screen, two states (sign in / create account) plus a sent-link
+   confirmation, built from the same ob-* Studio classes as onboarding
+   (index.html ~632-653). Reachable via nav('auth'); NOT yet mandatory —
+   no boot redirect, no gate. Defensive: a thrown error here must never
+   blank the rest of the app (same rule as renderHome's stickDetail). */
+function renderAuth(){
+  try{
+    const ui = _authUiEnsure();
+    if(ui.view === 'sent') return _authSentHtml(ui);
+    return _authFormHtml(ui);
+  } catch(e){
+    return `
+      <div class="ob-wrap"><div class="ob-screen">
+        <div class="ob-title">Sign in</div>
+        <div class="ob-body">${AUTH_TRY_AGAIN_MSG}</div>
+        <button class="ob-cta" onclick="nav('home')">Back to Isshin</button>
+      </div></div>`;
+  }
+}
+
+function _authSentHtml(ui){
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">📩</div>
+      <div class="ob-title">Check your email</div>
+      <div class="ob-body">We sent a sign-in link to <b>${esc(ui.email)}</b>. Open it on this device to continue — you can close this tab.</div>
+      <button class="ob-skip" onclick="authSwitchMode('${ui.mode === 'create' ? 'create' : 'signin'}')">Use a different email</button>
+    </div></div>`;
+}
+
+function _authFormHtml(ui){
+  const isCreate = ui.mode === 'create';
+  const consentRow = isCreate ? `
+      <label class="ob-consent">
+        <input type="checkbox" ${ui.consent ? 'checked' : ''} onchange="authToggleConsent()">
+        <span>Email me tips and updates. No spam, unsubscribe anytime.</span>
+      </label>` : '';
+  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">一</div>
+      <div class="ob-title">${isCreate ? 'Create your account' : 'Sign in'}</div>
+      <div class="ob-sub">No passwords — we'll email you a one-tap link.</div>
+      <input class="ob-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"
+        value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${ui.busy ? 'disabled' : ''}>
+      <button class="ob-cta" onclick="authSendMagicLink()" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Sending…' : 'Email me a sign-in link'}</button>
+      ${consentRow}
+      <button class="ob-cta ob-alt" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>Continue with Google</button>
+      ${msgRow}
+      <button class="ob-switch" onclick="authSwitchMode('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : "New here? Create an account"}</button>
+    </div></div>`;
+}
+
 /* ---------- PRACTICE (topics browser — former Home, Stage A renamed) ----------
    Everything below is unchanged topics/vocab-section browsing logic; only the
    function name + tab binding moved. Still bound to the "practice" screen via
@@ -24762,6 +25004,13 @@ function renderSettings(){
       </details>
     </div>
 
+    <div class="h8-section" style="margin:16px 4px 8px">Account</div>
+    <div class="card">
+      ${_authState.user
+        ? row('👤 ' + esc(_authState.user.email || 'Signed in'), 'Signed in', `<button class="btn btn-secondary" style="font-size:12px" onclick="authDoSignOut()">Sign out</button>`)
+        : row('👤 Sign in', 'Create an account or sign in with a link — no password needed.', `<button class="btn btn-secondary" style="font-size:12px" onclick="nav('auth')">Sign in</button>`)}
+    </div>
+
     <div class="h8-section" style="margin:16px 4px 8px">App</div>
     <div class="card">
       ${row('▶ Replay the intro', 'See the welcome tour again — nothing about your progress changes.', `<button class="btn btn-secondary" style="font-size:12px" onclick="obReplayIntro()">Replay</button>`)}
@@ -25563,6 +25812,12 @@ function bindScreen(){
 /* ---------- INIT ---------- */
 function init(){
   load();
+  /* v8.70 — magic-link/OAuth return handling. Fire-and-forget: this must
+     never block or delay first paint, and every step inside is already
+     wrapped so it can never throw into boot (see _authHandleReturn). Placed
+     right after load() so an in-memory session it establishes is available
+     before the first render() call below finishes settling. */
+  try{ _authHandleReturn(); }catch(e){ /* must never brick boot */ }
   /* v8.57 — if localStorage lost the progress, restore from the IDB mirror
      (async; re-renders + toasts if it recovers anything). Also probes the
      mirror's meta for the Storage Health card. */
