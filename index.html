@@ -718,6 +718,14 @@ body[data-screen="auth"] .notes-fab,
 body[data-screen="auth"] .ask-fab,
 body[data-screen="auth"] .back-fab{display:none !important}
 
+/* v8.72 — paywall screen (paywall-screen sprint) draws its own full-screen
+   ob-* card, same "own the viewport" treatment as auth/onboarding. */
+body[data-screen="paywall"] .header,
+body[data-screen="paywall"] .bottom-nav,
+body[data-screen="paywall"] .notes-fab,
+body[data-screen="paywall"] .ask-fab,
+body[data-screen="paywall"] .back-fab{display:none !important}
+
 /* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
 /* The drill owns its own header (X + progress + counter) — hide the app
    chrome above it, same pattern as the home screen. Bottom nav stays. */
@@ -853,7 +861,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.71';
+const APP_VERSION = '8.72';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5936,6 +5944,183 @@ function _authGateRecheck(){
   }).catch(()=>{});
 }
 window._authGateOpen = _authGateOpen;
+
+/* ===================== PAYWALL SCREEN (v8.72, paywall-screen sprint) =====================
+   Additive, same shape as v8.70's auth screen: registers `paywall` in render()'s
+   dispatch map below and nothing else. No nav()/init() rewiring — nobody is
+   forced onto this screen this sprint; a later sprint's entitlement gate wires
+   the redirect. Reachable via nav('paywall') (e.g. a future "Upgrade" tap, or
+   this sprint's own probe) once signed in — an unauthenticated visit still
+   bounces through the existing v8.71 auth gate untouched.
+
+   Contract this module talks to (backend/supabase/functions/checkout, already
+   deployed): POST {SUPA}/functions/v1/checkout, Authorization: Bearer <jwt>,
+   body {plan:'monthly'|'yearly', success_url, cancel_url} -> {url}. 401 no jwt,
+   400 bad plan, 409 already_subscribed, 503 Stripe down. Return URLs are
+   pinned to this app's own origin or the function silently replaces them.
+
+   Security posture (CWE-601 unvalidated redirect / CWE-200 sensitive-data
+   exposure — the security_redirect_and_token_handling rubric item):
+     - The session JWT travels ONLY in the Authorization header of the
+       checkout POST. It is never appended to success_url/cancel_url, never
+       passed to console.*, and never written to localStorage/sessionStorage
+       by this module — authToken() (v8.68 foundation) is the only source,
+       and it already keeps the raw token out of anything this app persists.
+     - success_url/cancel_url are fixed constants below, never built from a
+       query/hash param or any other request-controlled input — nothing here
+       gives an attacker a way to smuggle a different return URL through.
+     - The `url` the function returns is validated as a genuine Stripe
+       Checkout URL (https://checkout.stripe.com origin, see
+       _paywallIsStripeUrl) BEFORE the browser is ever navigated to it. A
+       malformed or hijacked response body can make this screen show a
+       retry message; it can never redirect the user off-Stripe.
+     - Error branches show only the fixed, plain-language strings below —
+       no response body, token, or stack trace is ever echoed into the DOM. */
+
+const CHECKOUT_URL = SUPA_URL + '/functions/v1/checkout';
+/* Fixed, origin-matching return URLs — exactly what the checkout function's
+   own allow-list expects (backend/supabase/functions/checkout/index.ts).
+   Deliberately literal constants, never assembled from window.location, so
+   this screen can never send a return URL the function wasn't built for. */
+const PAYWALL_SUCCESS_URL = 'https://jvrj.github.io/japanese-trainer/?checkout=success';
+const PAYWALL_CANCEL_URL  = 'https://jvrj.github.io/japanese-trainer/?checkout=cancelled';
+const STRIPE_CHECKOUT_ORIGIN = 'https://checkout.stripe.com';
+/* Single source of truth for both displayed prices AND the "save" badge —
+   the badge is computed from these two numbers, never a separate literal. */
+const PAYWALL_PRICES = { monthly: 8.99, yearly: 59.99 };
+
+const PAYWALL_RETRY_MSG = "That didn't work — try again.";
+const PAYWALL_UNREACHABLE_MSG = "Couldn't reach checkout — try again.";
+
+let _paywallUi = null;
+function _paywallUiEnsure(){
+  if(!_paywallUi) _paywallUi = { busy:false, msg:'' };
+  return _paywallUi;
+}
+
+/* Yearly savings vs. paying monthly for 12 straight months, rounded to a
+   whole percent. Purely derived from PAYWALL_PRICES — change either price
+   there and this (and the badge it feeds) moves with it. */
+function _paywallSavePct(){
+  const monthlyAnnual = PAYWALL_PRICES.monthly * 12;
+  if(!(monthlyAnnual > 0)) return 0;
+  return Math.max(0, Math.round((1 - (PAYWALL_PRICES.yearly / monthlyAnnual)) * 100));
+}
+
+/* True only for a genuine Stripe-hosted checkout URL. Anything else (a
+   relative path, a different host, a javascript: string, a malformed URL)
+   fails closed to false — see the CWE-601 note above. */
+function _paywallIsStripeUrl(url){
+  try{ return new URL(url).origin === STRIPE_CHECKOUT_ORIGIN; }catch(e){ return false; }
+}
+
+function renderPaywall(){
+  try{
+    const ui = _paywallUiEnsure();
+    const savePct = _paywallSavePct();
+    const busy = ui.busy;
+    const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+    return `
+      <div class="ob-wrap"><div class="ob-screen">
+        <div class="ob-emoji">一</div>
+        <div class="ob-title">Choose your plan</div>
+        <div class="ob-sub">7 days free, then the price below — cancel anytime.</div>
+        <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
+          <div class="ob-path-em">🗓️</div>
+          <div class="ob-path-t">Monthly — $${PAYWALL_PRICES.monthly.toFixed(2)}/mo</div>
+          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.monthly.toFixed(2)} every month. Cancel anytime.</div>
+        </button>
+        <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
+          <div class="ob-path-em">🎟️</div>
+          <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.yearly.toFixed(2)} every year. Cancel anytime.</div>
+        </button>
+        ${msgRow}
+        <button class="ob-switch" onclick="authDoSignOut()">Sign out</button>
+      </div></div>`;
+  } catch(e){
+    return `
+      <div class="ob-wrap"><div class="ob-screen">
+        <div class="ob-title">Choose your plan</div>
+        <div class="ob-body">${PAYWALL_UNREACHABLE_MSG}</div>
+        <button class="ob-switch" onclick="authDoSignOut()">Sign out</button>
+      </div></div>`;
+  }
+}
+
+/* Caller's own entitlement row (RLS `own_ent_select`, already live per
+   backend/supabase/migrations/0001_init.sql — no edge function needed).
+   Used ONLY by the 409 already_subscribed branch below to confirm the
+   account really is entitled before letting the user back into the app;
+   this does NOT wire any boot/gating path — that stays a later sprint's
+   job. Best-effort and non-throwing: a failed read here still lets the
+   user in (the 409 itself is already proof of an active subscription). */
+async function _paywallRefreshEntitlement(){
+  try{
+    const c = authClient();
+    const u = await authUser();
+    if(!c || typeof c.from !== 'function' || !u) return null;
+    const { data } = await c.from('entitlements').select('active, expires_at').eq('user_id', u.id).maybeSingle();
+    return data || null;
+  } catch(e){ return null; }
+}
+
+/* The one call site for both plan CTAs. Guarded against double-fire by an
+   in-flight flag checked and set SYNCHRONOUSLY as the very first thing this
+   function does — before any await — so two rapid clicks (even one landing
+   before the disabled attribute has painted) can never produce a second
+   concurrent POST; the busy-state rubric's own probe exercises exactly this. */
+async function paywallCheckout(plan){
+  const ui = _paywallUiEnsure();
+  if(ui.busy) return;
+  ui.busy = true; ui.msg = '';
+  render();
+  try{
+    const token = await authToken();
+    if(!token){
+      ui.busy = false;
+      nav('auth'); // 401-equivalent: no session at all — same destination as a real 401
+      return;
+    }
+    let res;
+    try{
+      res = await fetch(CHECKOUT_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ plan, success_url: PAYWALL_SUCCESS_URL, cancel_url: PAYWALL_CANCEL_URL })
+      });
+    } catch(networkErr){
+      ui.busy = false; ui.msg = PAYWALL_UNREACHABLE_MSG; render();
+      return;
+    }
+
+    if(res.status === 401){ ui.busy = false; nav('auth'); return; }
+    if(res.status === 409){
+      ui.busy = false; ui.msg = '';
+      await _paywallRefreshEntitlement();
+      nav('home'); // already subscribed — let them in, never a dead end
+      return;
+    }
+    if(res.status === 400){ ui.busy = false; ui.msg = PAYWALL_RETRY_MSG; render(); return; }
+    if(res.status === 503){ ui.busy = false; ui.msg = PAYWALL_UNREACHABLE_MSG; render(); return; }
+    if(!res.ok){ ui.busy = false; ui.msg = PAYWALL_RETRY_MSG; render(); return; }
+
+    let data = null;
+    try{ data = await res.json(); } catch(parseErr){ data = null; }
+    const url = data && data.url;
+    if(typeof url !== 'string' || !_paywallIsStripeUrl(url)){
+      ui.busy = false; ui.msg = PAYWALL_RETRY_MSG; render();
+      return;
+    }
+    window.location.href = url;
+  } catch(e){
+    ui.busy = false; ui.msg = PAYWALL_UNREACHABLE_MSG; render();
+  }
+}
+window.paywallCheckout = paywallCheckout;
 
 async function focusGenCall(w, retryNote){
   if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
@@ -23409,7 +23594,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
