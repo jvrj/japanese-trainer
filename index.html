@@ -836,7 +836,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.68';
+const APP_VERSION = '8.69';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3337,6 +3337,7 @@ const DEFAULT_SETTINGS = {
   buildEnTtsRate:1.35,        // Build Mode EN TTS rate (close to natural speed)
   buildAiQa:false,            // v6.12 — Build Mode: when true, QA steps use STT + Claude API for real conversation (off by default — opt-in feature)
   buildVoiceMode:false,       // Build Mode: hands-free voice-input mode. Listens via STT, scores against target JP, speaks verdict, falls back to type after 2 STT misses on a step.
+  voiceMusicReset:false,      // v8.69 one-time migration flag: silent funnel voice-mode flip undone (open mic paused background music)
   voiceListenSec:6,           // Voice Mode: how long to listen on each step before timing out
   buildListenSteps:true,      // v8.58 — two-direction drill: newer (new/learning) words run JP→speak-EN listening steps; apprentice+ words keep EN→speak-JP production. Off = every card is EN→JP like before.
   fastPace:false,             // v8.37 — speak drills: ON roughly halves the pre-mic beat + post-answer waits. Settings row + in-drill chip.
@@ -4010,6 +4011,26 @@ function load(){
       if(_keyed) state.settings.ownerMode = true;
     }
   }catch(e){ log('ownermode_backfill_err',{err:String(e)}); }
+  try{
+    /* v8.69 — one-time voice-mode reset (owner call 2026-08-23). The v8.64
+       funnel's mic grant silently flipped buildVoiceMode ON, and the per-card
+       open mic makes Android pause background music/podcasts. The flip left
+       no persisted marker (state.onboard.micGranted is runtime-only), so the
+       reset applies once to ANY voice-ON device — pre-launch those are only
+       the owner's. A user who re-enables voice via the 🎙 pill afterwards is
+       never reset again (voiceMusicReset guards). */
+    if(state.settings.voiceMusicReset !== true &&
+       state.settings.buildVoiceMode === true){
+      state.settings.buildVoiceMode = false;
+      state.settings.voiceMusicReset = true;
+      log('voice_music_reset', {});
+      setTimeout(() => { try{ showToast('🎵 Fixed: voice listening no longer turns on by itself — it was pausing background music. Tap 🎙 Voice in a drill any time you want it.', {tone:'info', duration:7000}); }catch(e){} }, 1500);
+    } else if(state.settings.voiceMusicReset !== true){
+      /* Devices that never got the silent flip need no reset — mark them so
+         a future funnel replay can't trigger a surprise reset years later. */
+      state.settings.voiceMusicReset = true;
+    }
+  }catch(e){ log('voice_music_reset_err',{err:String(e)}); }
   state.notes = _lsArr(lsGet(LS.notes, []));
   state.logs = _lsArr(lsGet(LS.logs, []));
   state.streak = {...state.streak, ..._lsObj(lsGet(LS.streak, {}))};
@@ -8782,7 +8803,7 @@ function renderBlitz(){
   const _circ = 119.38;                 // 2πr, r=19
   const _off = (_circ * (1 - _done / _denom)).toFixed(1);
 
-  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="blitzToggleVoiceMode()" title="Hands-free voice mode — listens for your spoken answer">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
+  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="blitzToggleVoiceMode()" title="Hands-free voice mode — listens for your spoken answer. The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
   const head = `<div class="card blitz-head">
     <div class="bring">
       <svg class="bring-svg" viewBox="0 0 44 44">
@@ -9688,7 +9709,7 @@ function renderFormDrill(){
   const dirNow = d.currentDir || resolveFormDrillDir(dirRaw);
   const dirLabel = dirRaw === 'mixed' ? `mixed (${dirNow})` : dirRaw;
   const dirChip = `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="formDrillToggleDir()" title="Cycle direction: jp-en → en-jp → mixed">↔ ${esc(dirLabel)}</button>`;
-  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="formDrillToggleVoiceMode()" title="Hands-free voice mode — speak the answer">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
+  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="formDrillToggleVoiceMode()" title="Hands-free voice mode — speak the answer. The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
 
   const head = `<div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -21210,7 +21231,7 @@ function renderBuildModeStep(){
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildListenSteps !== false ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleListenSteps()" title="Flip drill direction — 👂 EN: newer words play in Japanese and you say the English · 🗣 JP: every card shows English and you speak the Japanese">${state.settings.buildListenSteps !== false ? '👂 EN' : '🗣 JP'}</button>
-          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — speak the answer and it advances (never graded)">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
+          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — speak the answer and it advances (never graded). The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
@@ -23684,11 +23705,11 @@ async function obMicAllow(){
   ob._micPending = false;
   ob.micGranted = !!granted;
   ob.micAsked = true;
-  /* Grant flips the app-wide voice mode ON so the micro-drill (and every
-     drill after it) listens for the spoken answer — the mic ask IS the
-     voice-mode opt-in, not a separate Settings hunt later. Persisted by
-     startOnboardMicroDrill's save(). */
-  if(ob.micGranted && voiceSupported()) state.settings.buildVoiceMode = true;
+  /* v8.69 — grant NO LONGER flips voice mode on (owner call 2026-08-23):
+     an open mic makes Android pause the user's background music/podcast on
+     every card, and drills are fully hands-free on TTS + auto-advance
+     without it. The grant pre-authorizes the browser permission so the
+     🎙 Voice pill works instantly, with no prompt, when the user chooses it. */
   _obLog('mic_result', {granted:ob.micGranted});
   startOnboardMicroDrill();
 }
