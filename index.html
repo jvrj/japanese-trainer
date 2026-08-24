@@ -726,6 +726,14 @@ body[data-screen="paywall"] .notes-fab,
 body[data-screen="paywall"] .ask-fab,
 body[data-screen="paywall"] .back-fab{display:none !important}
 
+/* entitlement-gate sprint — the checkout-return ("setting up your account")
+   screen owns the viewport the same way, while the checkout poll runs. */
+body[data-screen="checkoutReturn"] .header,
+body[data-screen="checkoutReturn"] .bottom-nav,
+body[data-screen="checkoutReturn"] .notes-fab,
+body[data-screen="checkoutReturn"] .ask-fab,
+body[data-screen="checkoutReturn"] .back-fab{display:none !important}
+
 /* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
 /* The drill owns its own header (X + progress + counter) — hide the app
    chrome above it, same pattern as the home screen. Bottom nav stays. */
@@ -861,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.72';
+const APP_VERSION = '8.73';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6121,6 +6129,246 @@ async function paywallCheckout(plan){
   }
 }
 window.paywallCheckout = paywallCheckout;
+
+/* ===================== ENTITLEMENT GATE (entitlement-gate sprint, v8.73) =====================
+   Turns the v8.68/v8.70/v8.71 sign-in gate + v8.72 paywall screen into a REAL
+   lock: a signed-in visitor with no active subscription lands on `paywall`,
+   not `home`. Builds entirely on the existing authClient()/authUser() helpers
+   above — no second client, no parallel session store — and reuses the RLS
+   policy that already exists (own_ent_select, backend/supabase/migrations/
+   0001_init.sql:91): a signed-in client reads its OWN entitlements row
+   directly, no edge function needed. `entitlements` has no `status` column —
+   only `active boolean`, `product`, `expires_at` — so the unlock test below
+   is deliberately `active && (!expires_at || expires_at > now)`, the exact
+   test checkout/index.ts:41 already uses server-side. No `status` field is
+   invented anywhere in this module.
+
+   Fail-open contract (spec's top risk): CDN unreachable, Supabase paused,
+   network offline, and a thrown fetch/token error are NOT four special
+   cases — they all fall through entFetch() returning {ok:false}, and
+   isUnlocked() below has exactly ONE branch for that outcome: fall back to
+   entCache, unlocked only while it is both a good row AND fetched within
+   the last 72h. An already-entitled user can only ever be locked out by a
+   DEFINITIVE fresh "not entitled" answer, never by an infra hiccup.
+
+   Drill safety: nothing in this module ever calls nav() from a background
+   task except the checkout-return poll loop's own OWN success screen (never
+   a screen the user is mid-session on) — see _entGateRefreshIfStale()'s
+   header note. A running drill is never yanked mid-session. */
+
+const ENT_CACHE_KEY = 'isshin_ent_cache';
+const ENT_GRACE_MS = 72 * 60 * 60 * 1000;  // 72h — spec-mandated offline/error grace window
+const ENT_GATE_TIMEOUT_MS = 4000;          // bounds entFetch() so a hung CDN/network call can never stall boot
+const ENT_STALE_MS = 5 * 60 * 1000;        // visibilitychange only re-fetches when the last attempt is older than this
+
+/* True iff an {active, expires_at} pair — a FRESH entFetch() result or a
+   CACHED entry, same two fields, same test — represents a currently-
+   entitled row. The one place this comparison is written; both branches of
+   isUnlocked() below call it so they can never diverge. */
+function _entRowIsGood(row){
+  if(!row || !row.active) return false;
+  if(!row.expires_at) return true;
+  try{ return new Date(row.expires_at).getTime() > Date.now(); }catch(e){ return false; }
+}
+
+function _entCacheRead(){
+  try{
+    const raw = localStorage.getItem(ENT_CACHE_KEY);
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || typeof obj !== 'object' || typeof obj.fetchedAt !== 'number') return null;
+    return obj;
+  } catch(e){ return null; }
+}
+
+/* Persists EXACTLY {active, expires_at, fetchedAt} — never `product`, never
+   a `status` field — on every entFetch() that actually completed, even a
+   definitive "not entitled" result, so the grace path always reflects the
+   most recently CONFIRMED state. Called ONLY from entFetch() below with a
+   real Supabase response object — never from a URL/query param, postMessage,
+   or any other attacker-reachable input (CWE-602: a forged cache entry
+   could otherwise unlock the app for a visitor who was never entitled). */
+function _entCacheWrite(active, expiresAt){
+  try{
+    const entry = { active: !!active, expires_at: expiresAt || null, fetchedAt: Date.now() };
+    localStorage.setItem(ENT_CACHE_KEY, JSON.stringify(entry));
+    return entry;
+  } catch(e){ return null; }
+}
+
+/* True iff a cached entry is both a good (entitled, unexpired) row AND was
+   fetched within the last 72h — the grace rule's own definition, in one
+   place so isUnlocked() never has to restate it. */
+function _entCacheGraceGood(entry){
+  if(!entry) return false;
+  if(Date.now() - entry.fetchedAt > ENT_GRACE_MS) return false;
+  return _entRowIsGood(entry);
+}
+
+/* The RLS select this whole module is built on (own_ent_select already
+   permits it — no new edge function). Returns {ok:true, active, expires_at}
+   for ANY query that actually COMPLETED — including a genuine "no row" /
+   inactive / expired result, which is still a real, current answer — and
+   writes that result straight to entCache. Returns {ok:false} — never
+   throws — for every failure mode this sprint must fail OPEN on: no CDN
+   client (authClient() null), no signed-in user, a Supabase error, or a
+   thrown network error. */
+async function entFetch(){
+  try{
+    const c = authClient();
+    const u = await authUser();
+    if(!c || typeof c.from !== 'function' || !u) return { ok:false };
+    const { data, error } = await c.from('entitlements').select('active, product, expires_at').eq('user_id', u.id).maybeSingle();
+    if(error) return { ok:false };
+    const active = !!(data && data.active);
+    const expires_at = (data && data.expires_at) || null;
+    _entCacheWrite(active, expires_at);
+    return { ok:true, active, expires_at };
+  } catch(e){ return { ok:false }; }
+}
+window.entFetch = entFetch;
+
+/* THE single decision function. Branches, in order:
+     1. ownerMode === true          -> unlocked, unconditionally, always.
+     2. entFetch() completes        -> the FRESH result decides it, win or
+        lose (entCache is already updated by entFetch() itself either way).
+     3. entFetch() could not complete (any failure mode — see the module
+        header) -> the ONE shared grace fallback: entCache, unlocked only
+        if the cached row is itself good AND fetched within the last 72h.
+   Bounded by ENT_GATE_TIMEOUT_MS so a hung network call can never stall
+   boot or the checkout-return poll loop below. */
+async function isUnlocked(){
+  state._entLastAttemptAt = Date.now();
+  if(state.settings.ownerMode === true) return { unlocked:true, reason:'owner' };
+  const cached = _entCacheRead();
+  let result = null;
+  try{
+    const timeout = new Promise(resolve => setTimeout(() => resolve(null), ENT_GATE_TIMEOUT_MS));
+    result = await Promise.race([ entFetch(), timeout ]);
+  } catch(e){ result = null; }
+  if(result && result.ok === true){
+    return _entRowIsGood(result) ? { unlocked:true, reason:'fresh' } : { unlocked:false, reason:'locked' };
+  }
+  return _entCacheGraceGood(cached) ? { unlocked:true, reason:'grace' } : { unlocked:false, reason:'locked' };
+}
+window.isUnlocked = isUnlocked;
+
+/* Sync predicate nav()'s normalization (and the boot decision in init())
+   read — mirrors _authGateOpen()'s async-decide-once/sync-check-many-times
+   split so nav() never has to await mid-dispatch. state._entUnlocked is
+   written ONLY by isUnlocked() callers (init(), the checkout poll loop, and
+   the visibilitychange refresh below) — never read from anything attacker-
+   reachable (URL, postMessage, etc). */
+function _entGateOpen(){
+  if(state.settings.ownerMode === true) return true;
+  return state._entUnlocked === true;
+}
+window._entGateOpen = _entGateOpen;
+
+/* Background resume refresh (visibilitychange), mirroring the v8.71 account
+   gate's own _authGateRecheck(). Deliberately NEVER calls nav() or redirects
+   anything — a running drill session must never be interrupted mid-session.
+   It only refreshes the flag that the user's OWN next nav() call will
+   normalize against, and only when the last attempt is stale, so repeated
+   backgrounding/foregrounding of the tab can't spam entFetch(). */
+function _entGateRefreshIfStale(){
+  if(state.settings.ownerMode === true) return;
+  const last = state._entLastAttemptAt || 0;
+  if(Date.now() - last < ENT_STALE_MS) return;
+  isUnlocked().then(d => { state._entUnlocked = d.unlocked; }).catch(()=>{});
+}
+
+/* ===================== CHECKOUT-RETURN POLLING (entitlement-gate sprint) =====================
+   Handles the ?checkout=success / ?checkout=cancelled query param Stripe's
+   hosted checkout redirects back to — PAYWALL_SUCCESS_URL / PAYWALL_CANCEL_URL
+   (fixed constants in the paywall-screen module above; this module reads the
+   RETURNED param only, never sends one).
+
+   Security note (CWE-79): the raw ?checkout= value below is compared with
+   === against exactly two fixed literals and NEVER concatenated into
+   innerHTML/insertAdjacentHTML or any other DOM sink; renderCheckoutReturn()
+   below emits only fixed copy. Same for the polled entFetch() result — only
+   its boolean unlock outcome is ever used, never rendered as text. */
+const CHECKOUT_POLL_CEILING_MS = 30000;
+/* Visible backoff, not a tight loop — six waits, each longer than the last,
+   the loop itself also bails the moment the ~30s ceiling is crossed. */
+const CHECKOUT_POLL_INTERVALS = [1000, 2000, 3000, 5000, 8000, 8000];
+
+let _checkoutUi = null;
+function _checkoutUiEnsure(){
+  if(!_checkoutUi) _checkoutUi = { status:'polling', attempt:0, startedAt: Date.now() };
+  return _checkoutUi;
+}
+
+/* Reads the RAW ?checkout= value ONLY to pick a screen — see the CWE-79 note
+   above. Any other value (or none) is treated as "no checkout return". */
+function _checkoutParam(){
+  try{
+    const v = new URLSearchParams(window.location.search || '').get('checkout');
+    if(v === 'success' || v === 'cancelled') return v;
+  } catch(e){}
+  return null;
+}
+
+/* Strips the checkout param out of the visible URL — same pattern as
+   _authStripUrl() above — so a reload/back-nav can never replay a stale
+   checkout=success/cancelled state once it has been consumed. */
+function _checkoutStripParam(){
+  try{
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    const qs = url.searchParams.toString();
+    history.replaceState(history.state, document.title, url.pathname + (qs ? '?' + qs : '') + url.hash);
+  } catch(e){}
+}
+
+/* Polls isUnlocked() (which itself calls entFetch()) with visible backoff
+   until a good row appears or the ~30s ceiling is hit — never a tight or
+   unbounded loop: each attempt waits for the previous one to finish before
+   the next is scheduled, and the schedule itself backs off. Gives up
+   gracefully (a plain retry screen, never an infinite spinner) once the
+   ceiling is reached. */
+async function _checkoutPollLoop(){
+  const ui = _checkoutUiEnsure();
+  for(let i = 0; i < CHECKOUT_POLL_INTERVALS.length; i++){
+    if(Date.now() - ui.startedAt >= CHECKOUT_POLL_CEILING_MS) break;
+    let d;
+    try{ d = await isUnlocked(); } catch(e){ d = { unlocked:false }; }
+    state._entUnlocked = d.unlocked;
+    if(d.unlocked){
+      _checkoutStripParam();
+      nav('home');
+      return;
+    }
+    ui.attempt = i + 1;
+    if(state.screen === 'checkoutReturn') render();
+    if(Date.now() - ui.startedAt >= CHECKOUT_POLL_CEILING_MS) break;
+    await new Promise(r => setTimeout(r, CHECKOUT_POLL_INTERVALS[i]));
+  }
+  ui.status = 'gaveup';
+  _checkoutStripParam();
+  if(state.screen === 'checkoutReturn') render();
+}
+window._checkoutPollLoop = _checkoutPollLoop;
+
+function renderCheckoutReturn(){
+  const ui = _checkoutUiEnsure();
+  if(ui.status === 'gaveup'){
+    return `
+      <div class="ob-wrap"><div class="ob-screen">
+        <div class="ob-emoji">⏳</div>
+        <div class="ob-title">Still setting up</div>
+        <div class="ob-sub">This is taking longer than expected — check back in a minute.</div>
+        <button class="ob-cta" onclick="nav('paywall')">Back to plans</button>
+      </div></div>`;
+  }
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">✨</div>
+      <div class="ob-title">Setting up your account</div>
+      <div class="ob-sub">Just a moment — confirming your subscription…</div>
+    </div></div>`;
+}
 
 async function focusGenCall(w, retryNote){
   if(!aiChatReady()) throw new Error('AI sentence generation is unavailable on this device right now.');
@@ -23594,7 +23842,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -23628,6 +23876,16 @@ function nav(screen, data, fromPop){
      re-derived fresh on every call (see its definition) — never a cached
      "already checked" flag trusted blindly on later dispatches. */
   if(screen !== 'auth' && !_authGateOpen()) screen = 'auth';
+  /* Entitlement gate (entitlement-gate sprint) — placed right after the
+     account gate above, same choke-point pattern: once a visitor is
+     signed in (or owner), they still need an active entitlement to reach
+     anything but the paywall/checkout-return screens themselves. Like
+     _authGateOpen(), _entGateOpen() is re-derived fresh (a live sync read
+     of state._entUnlocked / ownerMode) on every call — never a stale
+     one-time flag. Deliberately does NOT run when the account gate above
+     already redirected to `auth` (screen === 'auth' at this point) —
+     there is nothing to entitlement-check for a signed-out visitor. */
+  if(screen !== 'auth' && screen !== 'paywall' && screen !== 'checkoutReturn' && !_entGateOpen()) screen = 'paywall';
   /* Stage B (v8.08) — Home routes to onboarding until the first-run flow
      completes. Boot-time backfill in load() already marks existing users
      (non-empty stats or convoXp>0) done:true, so this only ever fires for
@@ -26161,6 +26419,22 @@ async function init(){
       state._authGraceOpen = (decision.pass === true);
     }catch(e){ state._authGraceOpen = false; }
   }
+  /* entitlement-gate sprint — boot decision, same pattern as the account
+     gate immediately above: awaited before the first render() so the very
+     first paint is already correct (no flash of home before flipping to
+     paywall). Only meaningful once the account gate is open (owner, a live
+     session, or auth-grace) — a signed-out visitor is headed to `auth`
+     regardless, so this skips the network round trip for that case.
+     isUnlocked() has its own bounded timeout (ENT_GATE_TIMEOUT_MS), so this
+     can never hang boot either. */
+  if(state.settings.ownerMode === true){
+    state._entUnlocked = true;
+  } else if(_authGateOpen()){
+    try{
+      const d = await isUnlocked();
+      state._entUnlocked = d.unlocked;
+    }catch(e){ state._entUnlocked = false; }
+  }
   /* v8.57 — if localStorage lost the progress, restore from the IDB mirror
      (async; re-renders + toasts if it recovers anything). Also probes the
      mirror's meta for the Storage Health card. */
@@ -26227,6 +26501,13 @@ async function init(){
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'visible'){ try{ _stateAdoptRicher(); }catch(e){} }
   });
+  /* entitlement-gate sprint — resume refresh, mirroring the pattern above.
+     Only updates the flag (never navs — see _entGateRefreshIfStale()'s own
+     header note on why a background check must never interrupt a drill)
+     and only when the cached result is stale. */
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible'){ try{ _entGateRefreshIfStale(); }catch(e){} }
+  });
   /* keep header version label in sync with APP_VERSION so it never goes stale */
   const _vLabel = document.getElementById('appVersionLabel');
   if(_vLabel) _vLabel.textContent = '一心 · v' + APP_VERSION;
@@ -26239,9 +26520,28 @@ async function init(){
      this line just makes the initial state.screen (and the seeded history
      entry) agree with it. Placed ahead of the Stage-B block so a gated
      device never even reaches the home->onboard decision. */
+  /* entitlement-gate sprint — checkout-return detection runs BEFORE the
+     entitlement-gate screen decision below: a fresh Stripe return always
+     gets its own screen (checkoutReturn's polling loop, or a neutral bounce
+     back to paywall) regardless of what the boot decision above already
+     found, since that decision can't know about a webhook that is still in
+     flight. Read once, here, never re-derived from a stale URL later. */
+  const _checkoutReturn = _checkoutParam();
   if(!_authGateOpen()){
     state.screen = 'auth';
     try{ history.replaceState({screen:'auth'}, '', '#auth'); }catch(e){}
+  } else if(_checkoutReturn === 'success'){
+    state.screen = 'checkoutReturn';
+    try{ history.replaceState({screen:'checkoutReturn'}, '', '#checkoutReturn'); }catch(e){}
+    setTimeout(_checkoutPollLoop, 0); // fire-and-forget — never blocks boot; see _checkoutPollLoop's own ceiling
+  } else if(_checkoutReturn === 'cancelled'){
+    _checkoutStripParam();
+    _paywallUiEnsure().msg = "No charge — pick a plan whenever you're ready.";
+    state.screen = 'paywall';
+    try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
+  } else if(!_entGateOpen()){
+    state.screen = 'paywall';
+    try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
   } else if(state.screen === 'home' && !state.settings.onboard.done){
     /* Stage B (v8.08) — first-run redirect for the very first render. Boot-
        time backfill in load() already marked existing users done:true, so

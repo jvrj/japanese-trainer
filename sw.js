@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jp-trainer-v872';
+const CACHE_NAME = 'jp-trainer-v873';
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 const STATIC_ASSETS = ['./manifest.json', './icon-192.png', './icon-512.png'];
 
