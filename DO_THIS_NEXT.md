@@ -1,81 +1,171 @@
 # Isshin → Product · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-08-11***
+*Last updated: **2026-08-27***
 
 ---
 
-## ✅ 11 Aug — Delve 11 SHIPPED (v8.54 live): the 0% bar is fixed
+## 🎉 Where things stand (27 Aug)
 
-You approved ADR-021/022/023 and the whole design is built, gated, and
-deployed (commits df688c6→c9fa359, forge 4/4 sprints passed):
+The **sign-in + paywall is LIVE** and now fully app-standard:
+- **v8.74–8.78** — sign up free (no card) → straight in for a free week;
+  welcome screen with real Sign up / Sign in buttons, email + password,
+  "Forgot your password?" — all live-tested end to end.
+- **v8.79 (new)** — day 8 is no longer a wall. After the free week the
+  account drops to the **free plan**: unlimited reviewing of the words you
+  already unlocked, plus **3 new words a day**. Home shows a quiet
+  "Unlock" banner; the plan picker ($8.99/mo · **$59.99/yr listed first**)
+  appears once at the transition and stays one tap away. Research behind
+  this: `reports/hydra-research/2026-08-27-gating-model/REPORT.md`.
 
-- Home now leads with **"Words that stick"** — a two-segment milestone bar
-  (solid = stuck, translucent = warming up). It unfreezes from your existing
-  phone data the moment the app updates; nothing was reset.
-- **Interrupted rounds keep their credit** — each word is credited the moment
-  you pass its card, and the 🔥 streak finally lights from ordinary drilling.
-- The completion screen shows a recap ("14 words drilled · 2 newly stuck").
-- Sentence drills (Fill-the-gap / Make-a-sentence) now feed the warming
-  segment (attempts-only — they never inflate the headline number).
-- The old "Your path to a real conversation" header is retired (no data
-  deleted). Same ship also carried v8.50–8.53: category drills serve
-  ~20 review + ~10 new, "Run it again" builds a fresh batch, and the app
-  was audited (hydra-review; all verified findings fixed or shipped here).
+**Your own account (juliuspireh@gmail.com) is allow-listed — sign in
+anywhere and you're in, never asked to pay.** Everything machine-testable
+is green on the live site.
 
-### 🟢 YOUR STEP (~5 min on the phone)
-1. Close and reopen the app twice → Settings shows **8.54**.
-2. Home should show a LIVE "Words that stick" bar (not 0%).
-3. Do a category drill: banner "30 words — N review · M new", ✦ NEW WORD
-   pills, recap line at the end — and quit one drill mid-round on purpose:
-   the words you passed should still count (check the bar/streak after).
-4. Report anything that feels off; otherwise say "next" → pricing/packaging
-   (Stripe vs Play Billing) toward the ads test.
+Decisions you locked today: phone-check first · setup via this checklist ·
+Resend for sign-in emails · **buy a cheap domain** · no free taste-demo in v1.
+
+What's left before the $150 ads test is mostly **your hands** (accounts +
+dashboard switches Claude can't touch), then the video re-shoot.
 
 ---
 
-## 🎨 31 Jul — Delve 10 decided: your talk partners get FACES (awaiting your yes)
+## 🟢 STEP 1 — Phone-check (~10 min, on the Pixel)
 
-Your avatar question ("like Praktika, but themed?") is fully designed: a still
-illustrated portrait for each of the 8 partners, framed by the orb's colored
-aura that shows listening / thinking / speaking. The mouth NEVER moves (moving
-mouths are exactly what makes Praktika's avatar feel broken), there's a one-tap
-off-switch back to today's look, and it would be on by default so you actually
-see it. Full design: `docs/delve-cycles/10-avatar-presence.md`.
+You haven't seen v8.64 → 8.73 on a real phone. Open the app:
 
-### 🟢 GATE 0 — one look from you before ANY building (~10 min)
-1. Generate 1–2 test portraits from the style prompt in that doc (§4.2) — any
-   image generator you like.
-2. Claude composes ONE mockup: the face in its aura frame on a real convo
-   screenshot.
-3. You look at it. "Feels like a friend" → build goes ahead. "Feels like a
-   sticker" → we keep the current look and lose nothing but the mockup.
+1. Settings → **Get latest** → close + reopen twice → version shows **8.79**.
+2. You'll see a one-time toast about the **music fix** (mic permission no
+   longer switches voice on by itself).
+3. Walk these and note anything that feels off:
+   - **Home** — new look: "Words that stick" bar + Studio layout.
+   - **The road screen** (tap the headline) — your path of topics.
+   - **A drill** — new card design: X to exit, slim progress bar, step
+     counter, circular controls, gradient Reveal/Next button.
+   - **Settings** — now a short, clean customer page. Your owner controls
+     moved behind **7 taps on the version number** at the bottom.
+4. **See the customer's view once:** open a **private/incognito tab** in
+   Chrome → `jvrj.github.io/japanese-trainer/` → you should hit the
+   **welcome screen** (Sign up free / Sign in / Google) — and after
+   signing in, land **straight in the app** (free week, no plan picker).
+   Your own email gets you in permanently, no trial clock.
 
-Two decision records await your yes/no in `docs/decisions-pending/`:
-**ADR-019** (the face + default on) and **ADR-020** (the art pipeline).
-Video-first bonus: the ad recording (positioning v1) doubles as the demo asset —
-its thumbnail becomes the "AI friend", face and name.
+Tell Claude what you find. Anything broken gets fixed before the video.
 
 ---
 
-## 🚀 30 Jul — THE BACKEND IS LIVE (you did the accounts; Claude deployed it)
+## 🟢 STEP 2 — Buy the domain (~10 min, at the computer)
 
-The app now has its own server. Deployed today: database schema + 7-day-trial
-logic + the security lockdown, plus the two relay functions (chat + voice
-transcription). Verified live: a real Anthropic reply came back through it, and
-a wrong secret gets rejected. It runs in pre-launch mode (open door for anyone
-with the owner secret; the customer trial gate is coded but switched off).
+Why: sign-in emails need a domain you own (Resend can't send from
+github.io), and your Facebook ads will look legitimate pointing at a real
+address. ~US$10–14/year — the only unavoidable running cost so far.
 
-**v8.38 shipped with it:** the app can now route ALL its AI through that server
-instead of your personal keys.
+1. Go to **https://www.cloudflare.com** → create a free account (Google
+   sign-in is fine).
+2. In the left sidebar: **Domain Registration → Register Domains**.
+3. Search a name. Ideas (pick what feels right — short + easy to say wins):
+   `isshin.app`, `isshinapp.com`, `tryisshin.com`, `learnisshin.com`.
+   Anything available at ~$10–14/yr is fine; skip "premium" priced ones.
+4. Buy it (Cloudflare sells at cost, auto-renew on).
+5. Write the domain in your keys file (`isshin-keys.txt`) as
+   `domain: ...` and tell Claude — the ads/landing plan will use it too.
 
-### 🟢 YOUR ONE NEXT STEP (~3 min, on your phone)
-1. Open the app → close + reopen twice → Settings should show **v8.38**.
-2. Settings → scroll to **⚙ Advanced** → **Isshin server (owner)**.
-3. Paste the **`app soft secret`** line's value from your `isshin-keys.txt`
-   (the 48-character one) → tap **Test** → expect "✅ Connected".
-4. Have one real conversation + one speak drill (tests chat AND voice through
-   the server). If it all feels normal, your personal keys are officially
-   retired from the call path on that phone — tell Claude how it went.
+---
+
+## 🟢 STEP 3 — Supabase + Google + email sender (~25 min, at the computer)
+
+Everything below happens in dashboards only Claude can't log into. Exact
+clicks; menu names may drift slightly — if something's missing, tell Claude.
+**All keys/secrets go into `isshin-keys.txt`, never into chat.**
+
+Your Supabase dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
+*(If the project says PAUSED — free tier naps after ~7 idle days — click
+Restore first and wait ~2 min.)*
+
+### 3a. Tell Supabase which addresses are allowed (2 min)
+1. Left sidebar: **Authentication → URL Configuration**.
+2. **Site URL:** `https://jvrj.github.io/japanese-trainer/index.html`
+3. Under **Redirect URLs**, add all three:
+   - `https://jvrj.github.io/japanese-trainer/index.html`
+   - `https://jvrj.github.io/japanese-trainer/`
+   - `http://localhost:8765/index.html`  *(lets Claude test sign-in locally)*
+4. Save.
+
+### 3b. Switch on "Continue with Google" (10 min — two dashboards)
+First get a Google "OAuth client" (the ID card that lets your app use
+Google sign-in):
+1. Go to **https://console.cloud.google.com** (your normal Google account).
+2. Top bar project picker → **New project** → name `isshin` → Create →
+   make sure it's selected.
+3. Search bar: **"OAuth consent screen"** (may appear as *Google Auth
+   Platform → Branding*). App name: `Isshin` · support email: your Gmail ·
+   audience/user type: **External**. Save through the steps (scopes: skip,
+   defaults are fine). If there's a **Publish app** button, click it.
+4. Now **Credentials** (or *Clients*) → **Create credentials → OAuth client
+   ID** → type **Web application** → name `isshin-web`.
+5. Under **Authorized redirect URIs** add exactly:
+   `https://hslibrbdovrzhaxhtevr.supabase.co/auth/v1/callback`
+6. Create → copy **Client ID** and **Client secret** into `isshin-keys.txt`
+   as `google oauth client id: ...` / `google oauth client secret: ...`.
+
+Then flip the switch in Supabase:
+7. Supabase → **Authentication → Sign In / Providers** → **Google** →
+   Enable → paste the Client ID + Client secret → Save.
+
+### 3c. Apply the consent-checkbox database change (2 min)
+The sign-up screen has a marketing checkbox; the database needs two columns
+for it. In Supabase: **SQL Editor → New query** → paste ALL of this → **Run**:
+
+```sql
+alter table profiles
+  add column if not exists marketing_opt_in boolean not null default false,
+  add column if not exists marketing_opt_in_at timestamptz;
+
+drop policy if exists own_profile_upd on profiles;
+create policy own_profile_upd
+  on profiles
+  for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+```
+
+Expect "Success. No rows returned." That's it.
+
+### 3d. Hook up Resend for sign-in emails (10 min — needs Step 2's domain)
+Right now sign-in emails go through Supabase's built-in sender — a few per
+hour, which would lock customers out the moment ads run.
+1. Go to **https://resend.com** → sign up (free: 3,000 emails/month).
+2. **Domains → Add domain** → enter your new domain → it shows 3–4 DNS
+   records to add. Because the domain is at Cloudflare, Resend usually
+   offers a **"Sign in to Cloudflare to add automatically"** button — use
+   it. Otherwise copy each record into Cloudflare → your domain → **DNS**.
+   Wait for Resend to show **Verified** (minutes, occasionally an hour).
+3. **API Keys → Create API key** → name `isshin-supabase`, permission
+   **Sending access** → copy it into `isshin-keys.txt` as
+   `resend api key: ...` (shown once).
+4. Supabase → **Authentication → Emails → SMTP Settings** (older layout:
+   Project Settings → Authentication) → **Enable custom SMTP**:
+   - Sender email: `hello@<your-domain>` · Sender name: `Isshin`
+   - Host: `smtp.resend.com` · Port: `465`
+   - Username: `resend` · Password: *the Resend API key*
+   - Save.
+5. Same area → **Rate Limits** → raise **emails per hour** to `60`.
+
+---
+
+## 🟢 STEP 4 — One real sign-in test (2 min, after Step 3)
+
+Incognito tab → `jvrj.github.io/japanese-trainer/` → you should see the
+welcome screen (Sign up free / Sign in / Google).
+1. **Set your password once:** Sign in → **Forgot your password?** → your
+   email → open the link → set a password. (Your account was created
+   before passwords existed, so it doesn't have one yet.)
+2. Then sign in with email + password → you land **inside the app**
+   (your account = always unlocked; a stranger gets a free week, then
+   drops to the free plan — 3 new words/day — with the plan picker one
+   tap away).
+3. Try **Continue with Google** too (needs Step 3b done first).
+4. Tell Claude the results. (Checkout is still Stripe TEST mode — nobody
+   can be charged yet. Going live is a later step.)
 
 ---
 
@@ -84,165 +174,22 @@ instead of your personal keys.
 > Open Claude Code in this folder and type:
 > **"Read DO_THIS_NEXT.md and tell me the one next step."**
 >
-> 30 seconds. Claude re-reads everything, tells you where things stand, gives you ONE small action. You never need to remember anything — that sentence is the system. (This is exactly what fixed the July stall.)
+> 30 seconds. Claude re-reads everything and gives you ONE small action.
 
 ---
 
-## 🆕 WHILE YOU WERE AWAY (21 Jul afternoon) — Claude's autonomous sprint
-
-- **v8.34 shipped:** every one of the 14 conversation topics now has its own scripted
-  practice conversation (free tier) — before, every topic played the same 5 generic questions.
-- **Landing page is live** for your future Facebook ads: https://jvrj.github.io/japanese-trainer/landing/
-  (+ a real privacy policy behind it — both needed for store submission anyway).
-- **Backend trial logic built + tested:** the 7-day-free-trial gate you decided on is coded
-  and unit-tested (10/10), sitting ready in `backend/` — it goes live the moment you do the
-  "keys ready" accounts step below.
-- **Praktika deep-dive research DONE** — the closest competitor is proof your idea works at
-  scale ($35.5M raised, ~$2M/month revenue, same "no judgment" pitch). Its verified weaknesses
-  (no spaced repetition, words never come back, forced avatar, progress resets) are exactly
-  what Isshin already does right. Full report: `reports/hydra-research/2026-07-21/REPORT.md`.
-- **Delve 9 RAN and is decided (24 Jul):** the design investigation on first-run flow,
-  sign-in screens, and the day-7 trial moment is done — every screen is now specced
-  (sign-in first → your scripted first conversation → day-7 offer with zero pressure
-  tactics), the trial clock now starts at a customer's FIRST live conversation (fairer),
-  and a security review caught + scheduled fixes for real holes in the backend before any
-  customer touches it. 5 decision records await your yes/no in `docs/decisions-pending/`
-  (ADR-014..018) — Claude will walk you through them in ~10 min when you're ready.
-
-## 🆕 25 Jul — v8.37: NEW "Fast pace" toggle for speak drills (you asked for it)
-
-You wanted practice to move faster. The slowness was hard-coded: a ~1.5s pause
-before the mic opens plus a 2.6–6s wait after every answer. Now there's a
-**⚡ Fast pace** switch that roughly halves both. Flip it either place:
-- **inside any drill** — the little `🐢 relaxed` / `⚡ fast` chip in the top bar
-- **Settings** — "⚡ Fast pace (speak drills)", right under Listen window
-
-Default stays relaxed; your choice sticks. (Build Mode & Vocab Blitz pacing
-already had their own sliders in Settings — this covers the speak-drill loop.)
-
-## 🆕 22 Jul (later) — v8.36: your two field reports are FIXED
-
-You reported: no teal answer card, and no recap when backing out. Both were real
-bugs, both reproduced in a headless browser before fixing:
-
-1. **Teal card** — your phone's speech-to-text writes the word you ask about in
-   *kanji* (元気って何), but the app's dictionary is all kana, so the lookup
-   missed every single time. The app now carries a kanji→kana reading table for
-   ~230 common words. Ask 「〜って なに？」 again — the teal card should pop.
-2. **Back-button recap** — two bugs: restarting/resuming conversations stacked
-   duplicate history entries (so one back press did *nothing*), and backing out
-   while the AI was still thinking skipped the recap entirely. Both fixed — one
-   back press after 3+ turns now always shows your recap.
-
-**Re-test:** close + reopen the app twice → Settings should show **v8.36** →
-one conversation: ask 「〜って なに？」 about a word the AI used (teal card),
-then after 3+ turns press BACK (recap). Tell Claude what you see.
-
-## 🆕 22 Jul — v8.35: your full ~1,700-word deck is BACK in the practice area
-
-You asked why practice showed 80 words instead of ~1,800. That was the "Vocab focus
-lock" (a 19 Jul design decision) doing its thing — it kept drills to words you'd met
-plus the next 80. Your verdict overruled it: **the lock is now OFF by default and the
-whole deck is open again.** Nothing was lost — it was hidden, never deleted. If you
-ever want the focused mode back, it's the "Vocab focus lock" switch in Settings.
-Close + reopen the app twice → Settings should show **v8.35**.
-
-## 🟢 RIGHT NOW — TEST v8.33/v8.34 changes (meaning questions now answered BY THE APP)
-
-Your field report: mic patience ✅ fixed · 「〜って なに？」 ❌ still ignored. Root cause found — the instruction to the AI was getting buried, and the AI ignores polite instructions anyway. **v8.33 stops trusting the AI:**
-
-- Ask 「Xって なに？」 and **the app itself looks the word up** in its own dictionary and instantly shows a **teal answer card** — the word, romaji, English meaning, and a nuance note. It appears *while the AI is still thinking*, so it can never be ignored.
-- The AI is also handed the exact answer so its spoken reply agrees with the card.
-- Detection got wider: it now catches how your phone's speech-to-text actually writes it (て何, kanji forms) and even English "what does X mean".
-
-**Setup:** phone → open the app → close + reopen twice → Settings should show **v8.33**.
-
-**Do:** one conversation.
-1. Ask 「〜って なに？」 about a word the AI used → the teal card should pop up straight away.
-2. **The recap test you haven't done yet:** after at least 3 back-and-forth turns, press the BACK button mid-conversation → your recap should appear before you leave.
-
-**Then tell Claude:** did the teal answer card appear? Did the recap show on back-out? Anything else still off.
-
-## ✅ DONE 30 Jul — the accounts checklist below is COMPLETE (kept for reference)
-
-Supabase project created, both API keys made, everything landed in
-`isshin-keys.txt`, backend deployed the same day. Steps 4 (Apple) and 5
-(Google sign-in) below are still future items — nothing waits on them yet.
-
-## 📋 ~~STILL WAITING ON YOU~~ (≈15–20 min at the computer, unblocks Phase 1 backend)
-
-*(Note: the Anthropic key already pasted in the app's Settings is your PERSONAL one — it powers your open AI chat today. The keys below are SEPARATE ones just for the app's future server, so customer costs never touch your personal key.)*
-
-First, make a **private keys file** if you don't have one: open Notepad, save an empty file as `isshin-keys.txt` somewhere private (e.g. Documents). Everything below gets pasted into THAT file — never into chat.
-
-### 1. Supabase (~7 min) — the app's future account/paywall server
-1. Go to **https://supabase.com** → **Start your project** → sign in with your Google account.
-2. It may ask you to create an "organization" — accept the defaults, Free plan.
-3. Click **New project**. Name: `isshin`. Database password: click **Generate a password** → copy it into your keys file as `supabase db password: ...`. Region: pick **Sydney** (closest to you). Click **Create new project** and wait ~2 min while it spins up.
-4. In the left sidebar: gear icon (**Project Settings**) → **API**.
-5. Copy **Project URL** into your keys file as `supabase url: ...`
-6. On the same page, under **Project API keys**, reveal the **`service_role`** key (NOT the `anon` one) → copy it as `supabase service_role: ...`
-7. Done. Tell Claude **"Supabase ready"**.
-
-### 2. Dedicated OpenAI key (~4 min)
-1. Go to **https://platform.openai.com/api-keys** → sign in.
-2. **Create new secret key** → name it `isshin-backend` → Create → copy the `sk-...` key into your keys file (it's shown ONCE).
-3. Then go to **Settings → Limits** (or "Budgets") and set a **monthly budget of $20** so a bug can never run up a big bill.
-
-### 3. Dedicated Anthropic key (~4 min)
-1. Go to **https://console.anthropic.com** → sign in → **API keys**.
-2. **Create key** → name `isshin-backend` → copy into your keys file.
-3. In **Settings/Limits**, set a monthly **spend limit ~$20**.
-   *(This is a second key — leave the one already in your phone's app Settings alone.)*
-
-### 4. Apple Developer ($99/yr — background only; it gates ONLY the iPhone version)
-*(Decided 24 Jul, Delve 9: Apple sign-in isn't needed until the actual iPhone
-App Store build — months away. So this step stays background; nothing waits on it.)*
-1. **https://developer.apple.com/programs/enroll** → sign in with (or create) an Apple ID → enrol as an **Individual** → pay $99.
-2. Once approved (can take days), apply for the **Small Business Program** (Apple takes 15% instead of 30%): search "App Store Small Business Program apply".
-3. This one can run in the background — steps 1–3 above are what actually unblock Claude.
-
-### 5. Google sign-in switch (LATER — Claude will ask when it's time, ~10 min)
-The sign-in screens were designed on 24 Jul (Delve 9): customers will tap
-**"Continue with Google"** as the very first screen. Before that version can go
-live you'll need to (Claude will walk you through it step by step when the
-backend is running): in Supabase → **Authentication → Providers → enable
-Google** (needs a small Google-Cloud "OAuth client" created on your Google
-account), and set the app's address
-`https://jvrj.github.io/japanese-trainer/` as the **Site URL**. Not needed for
-the "keys ready" step below — just know it's coming.
-
-When 1–3 are in your keys file, tell Claude: **"keys ready"** → the backend build starts.
-
-## ⏭️ AFTER YOUR FIELD REPORT
-
-- **Claude tunes/dials-back the sensei** if anything felt off (the design has three pre-built dial-back levers) → then builds **S3: the vocab lock you chose** (rolling frontier of 80 — decided 19 Jul, ADR-012) + S4 recap close.
-- **Phase 1 backend** starts once your accounts above exist.
-
 ## 🗺️ THE JOURNEY
 
-- [x] Market research — "AI friend, zero judgment" validated; **Japanese-first is unowned space**; $8.99/mo is right
-- [x] **Phase 0 — One focused, conversation-first app** — shipped (v8.08–v8.11 + talk-loop depth v8.24)
-- [x] **Feedback soul** — patient mic, feedback layer, honest modes, modules, anti-robotic (v8.16–v8.20)
-- [x] **Sensei layer S1+S2** — teach card + spoken breath (v8.26, 19 Jul) ← **testing NOW (you!)**
-- [ ] Sensei S3+S4 — vocab frontier lock (80) + recap close *(gated on your field report)*
-- [x] **Phase 1 — Backend live (30 Jul)** — server deployed + verified; v8.38 routes the app through it. *Remaining: you paste the secret on your phone + field-test (the step above).*
-- [ ] Phase 1.5 — Sign-in + free-trial switch-on: customers sign in with Google, get 7 free days of live talk (clock starts at their FIRST conversation, not signup), and the paste-your-API-key cards disappear for good *(screens fully designed 24 Jul, Delve 9)*
-- [ ] Phase 2 — World-class polish *(first sweep shipped v8.25: style guide, store copy, 320px)*
-- [ ] Phase 3 — iPhone mic test in the native wrapper (gates the whole store plan)
-- [ ] Phase 4 — Native apps + subscriptions (RevenueCat, $8.99/mo, free trial)
-- [ ] Phase 5 — Store submission → **you run ads**
+- [x] Market research — "AI friend, zero judgment" validated; $8.99/mo is right
+- [x] Phase 0–1 — focused app + own backend live (30 Jul)
+- [x] Core-loop polish — Home/road/Studio, onboarding funnel, new drill card, batch progression, storage hardening (v8.50–8.67)
+- [x] **Sign-in + trial paywall LIVE** (v8.70–8.73, 24 Aug)
+- [x] **App-standard entry + free plan** (v8.74–8.79, 27 Aug) — password auth, free week, day-8 = 3-new-words free tier
+- [ ] **← YOU ARE HERE: phone-check + the setup checklist above**
+- [ ] Ad video re-shoot on the new UI (capture profile ready)
+- [ ] Stripe go-live (live products/prices/webhook + account activation)
+- [ ] **$150 Facebook ads test** (US$10/day × 14) — the anchor's finish line
+- Benched until subscribers exist: AI conversation relaunch + avatar (the big update)
 
-Details: `INDEX_ROADMAP.md` (plan) · `docs/delve-cycles/` (designs) · `docs/decisions/` (locked choices). You never need to read them — Claude does.
-
-## 🎯 YOUR ACTUAL JOB (it's small)
-
-The hydras build; you steer:
-1. **Decide** — read short summaries, say yes/no (~10 min when asked)
-2. **Test on phone** — try what shipped, say what feels wrong (~10 min when asked) ← **you are here**
-3. **Later: market** — ads + willingness-to-pay testing (your declared department)
-
-## ❓ OPEN (no rush)
-
-- ~~ADR-003 vocab lock question~~ — **DECIDED 19 Jul**: rolling-frontier hard lock, 80-word window (ADR-012). Builds after your field report.
-- **STT check:** during the field session, Settings → Voice recognition card → tell Claude what "Last voice attempt" says (feeds the mic-reliability track).
+Details: `INDEX_ROADMAP.md` · `docs/delve-cycles/` · `docs/decisions/`. You
+never need to read them — Claude does.
