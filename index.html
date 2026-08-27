@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.77';
+const APP_VERSION = '8.78';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5600,6 +5600,17 @@ function _authWireAuthListener(){
   try {
     c.auth.onAuthStateChange((_event, session) => {
       _authState.user = (session && session.user) || null;
+      /* v8.78 — boot can decide the entitlement flag BEFORE supabase-js has
+         hydrated the stored session (observed live: reload -> flag never
+         set -> the next nav bounces an entitled trial user to paywall, even
+         though a fresh isUnlocked() says trial). Whenever a session lands
+         and the flag isn't already open, re-derive it. Updates the flag
+         ONLY — never navs (same no-interrupt rule as
+         _entGateRefreshIfStale), so a running drill is never yanked. */
+      if(_authState.user && typeof state !== 'undefined' && state && state._entUnlocked !== true
+         && typeof isUnlocked === 'function'){
+        try{ isUnlocked().then(d => { state._entUnlocked = d.unlocked; }).catch(()=>{}); }catch(e){}
+      }
       /* v8.75 — a recovery-link return signs the user in with a session
          meant for setting a new password. Flip the auth screen to the
          set-new-password view; everything is wrapped so a half-booted
@@ -6183,6 +6194,16 @@ function _paywallIsStripeUrl(url){
 function renderPaywall(){
   try{
     const ui = _paywallUiEnsure();
+    /* v8.78 self-heal — if this device landed here while a FRESH check says
+       entitled (boot hydration race, stale flag), bounce home automatically.
+       One probe per paywall visit; a genuinely locked user stays put. */
+    if(!ui._healProbe){
+      ui._healProbe = true;
+      isUnlocked().then(d => {
+        state._entUnlocked = d.unlocked;
+        if(d.unlocked && state.screen === 'paywall') nav('home');
+      }).catch(()=>{});
+    }
     const savePct = _paywallSavePct();
     const busy = ui.busy;
     const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
