@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.75';
+const APP_VERSION = '8.76';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5850,6 +5850,14 @@ async function authDoSignUp(){
       await _authWriteConsentOnce(data.session.user.id);
       await _authCompleteSignIn(data.session.user);
       return;
+    }
+    /* v8.76 — an EXISTING account: Supabase anti-enumeration returns an
+       obfuscated user with an EMPTY identities array and sends nothing.
+       Without this branch the user is shown a "check your email" screen
+       for an email that will never come. */
+    if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0){
+      ui.msg = 'That email already has an account — sign in instead.';
+      render(); return;
     }
     ui.view = 'sent'; ui.sentKind = 'signup';
     render();
