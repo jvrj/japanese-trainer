@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.74';
+const APP_VERSION = '8.75';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5600,6 +5600,17 @@ function _authWireAuthListener(){
   try {
     c.auth.onAuthStateChange((_event, session) => {
       _authState.user = (session && session.user) || null;
+      /* v8.75 — a recovery-link return signs the user in with a session
+         meant for setting a new password. Flip the auth screen to the
+         set-new-password view; everything is wrapped so a half-booted
+         page can never be bricked by this event. */
+      if(_event === 'PASSWORD_RECOVERY'){
+        try{
+          const ui = _authUiEnsure();
+          ui.view = 'reset'; ui.msg = ''; ui.pw = '';
+          if(typeof nav === 'function') nav('auth');
+        }catch(e){}
+      }
     });
   } catch(e) { /* swallow — wiring the listener must never brick boot */ }
 }
@@ -5695,16 +5706,24 @@ const AUTH_PENDING_CONSENT_KEY = 'isshin_pending_consent';
    state.settings or save()/load(). */
 let _authUi = null;
 function _authUiEnsure(){
-  if(!_authUi) _authUi = { mode:'signin', view:'form', email:'', consent:false, busy:false, msg:'' };
+  if(!_authUi) _authUi = { mode:'signin', view:'welcome', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
   return _authUi;
 }
 function authSetEmail(v){ _authUiEnsure().email = v; }
+function authSetPw(v){ _authUiEnsure().pw = v; }
 function authToggleConsent(){ const ui = _authUiEnsure(); ui.consent = !ui.consent; render(); }
-function authSwitchMode(m){
+/* v8.75 standard-auth — the one view switcher. Clears message + password on
+   every hop so a stale error (or a typed password) never leaks between
+   views. 'signin'/'create' also set the mode the actions read. */
+function authGoto(view){
   const ui = _authUiEnsure();
-  ui.mode = (m === 'create') ? 'create' : 'signin';
-  ui.view = 'form'; ui.msg = '';
+  ui.view = view;
+  if(view === 'create' || view === 'signin') ui.mode = view;
+  ui.msg = ''; ui.pw = '';
   render();
+}
+function authSwitchMode(m){
+  authGoto((m === 'create') ? 'create' : 'signin');
 }
 
 const AUTH_TRY_EMAIL_MSG = "That didn't work — try the email link instead.";
@@ -5758,6 +5777,123 @@ async function authContinueGoogle(){
     ui.busy = false;
     ui.msg = AUTH_TRY_EMAIL_MSG;
     render();
+  }
+}
+
+/* ---------- v8.75 standard-auth: email+password sign-in, sign-up with a
+   confirmation link, forgot-password, set-new-password. Same defensive
+   contract as the helpers above: a missing CDN client, a paused project or
+   a rejected request all land on a fixed plain message, never a throw. ---------- */
+
+/* Shared completion for IN-PAGE auth (password sign-in, new-password save)
+   — the flows that establish a session without leaving the page, unlike the
+   email-link/OAuth returns that go through _authHandleReturn at boot.
+   Refreshes the entitlement flag, then nav('home'); nav()'s own gate
+   normalization routes to onboard/paywall as appropriate. */
+async function _authCompleteSignIn(user){
+  if(user) _authState.user = user;
+  try{
+    const d = await isUnlocked();
+    state._entUnlocked = d.unlocked;
+  }catch(e){ state._entUnlocked = false; }
+  try{ nav('home'); }catch(e){ try{ render(); }catch(e2){} }
+}
+
+async function authDoPasswordSignIn(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  const email = (ui.email || '').trim();
+  const pw = ui.pw || '';
+  if(!email){ ui.msg = 'Enter your email first.'; render(); return; }
+  if(!pw){ ui.msg = 'Enter your password.'; render(); return; }
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.signInWithPassword !== 'function') throw new Error('auth unavailable');
+    const { data, error } = await c.auth.signInWithPassword({ email, password: pw });
+    if(error){
+      ui.busy = false;
+      /* Fixed strings only — never echo error.message into the DOM. */
+      ui.msg = /invalid/i.test(String(error.message || '')) ? "Email or password doesn't match." : AUTH_TRY_AGAIN_MSG;
+      render(); return;
+    }
+    ui.busy = false; ui.pw = '';
+    await _authCompleteSignIn((data && data.session && data.session.user) || null);
+  } catch(e){
+    ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render();
+  }
+}
+
+/* Create account: email+password. With Supabase "Confirm email" ON (the
+   default) this sends a confirmation link that lands back through
+   _authHandleReturn exactly like the old magic link — so the consent write
+   and the boot-time gate decision are reused unchanged. If confirmation is
+   OFF the call returns a live session and we complete in-page. */
+async function authDoSignUp(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  const email = (ui.email || '').trim();
+  const pw = ui.pw || '';
+  if(!email){ ui.msg = 'Enter your email first.'; render(); return; }
+  if(pw.length < 8){ ui.msg = 'Pick a password of at least 8 characters.'; render(); return; }
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    try{ localStorage.setItem(AUTH_PENDING_CONSENT_KEY, ui.consent ? '1' : '0'); }catch(e){ /* best-effort only */ }
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.signUp !== 'function') throw new Error('auth unavailable');
+    const { data, error } = await c.auth.signUp({ email, password: pw, options:{ emailRedirectTo: AUTH_REDIRECT_URL } });
+    if(error){
+      ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render(); return;
+    }
+    ui.busy = false; ui.pw = '';
+    if(data && data.session && data.session.user){
+      await _authWriteConsentOnce(data.session.user.id);
+      await _authCompleteSignIn(data.session.user);
+      return;
+    }
+    ui.view = 'sent'; ui.sentKind = 'signup';
+    render();
+  } catch(e){
+    ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render();
+  }
+}
+
+/* Forgot password: emails a recovery link. Its return establishes a
+   recovery session and supabase-js fires PASSWORD_RECOVERY — the listener
+   in _authWireAuthListener flips this screen to the set-new-password view. */
+async function authDoForgot(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  const email = (ui.email || '').trim();
+  if(!email){ ui.msg = 'Enter your email first.'; render(); return; }
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.resetPasswordForEmail !== 'function') throw new Error('auth unavailable');
+    const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: AUTH_REDIRECT_URL });
+    if(error) throw error;
+    ui.busy = false; ui.view = 'sent'; ui.sentKind = 'reset';
+    render();
+  } catch(e){
+    ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render();
+  }
+}
+
+async function authDoSetNewPassword(){
+  const ui = _authUiEnsure();
+  if(ui.busy) return;
+  const pw = ui.pw || '';
+  if(pw.length < 8){ ui.msg = 'Pick a password of at least 8 characters.'; render(); return; }
+  ui.busy = true; ui.msg = ''; render();
+  try{
+    const c = authClient();
+    if(!c || !c.auth || typeof c.auth.updateUser !== 'function') throw new Error('auth unavailable');
+    const { data, error } = await c.auth.updateUser({ password: pw });
+    if(error) throw error;
+    ui.busy = false; ui.pw = ''; ui.view = 'signin';
+    await _authCompleteSignIn((data && data.user) || null);
+  } catch(e){
+    ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render();
   }
 }
 
@@ -5835,6 +5971,12 @@ async function _authHandleReturn(){
 window.authSendMagicLink = authSendMagicLink;
 window.authContinueGoogle = authContinueGoogle;
 window.authDoSignOut = authDoSignOut;
+window.authGoto = authGoto;
+window.authSetPw = authSetPw;
+window.authDoPasswordSignIn = authDoPasswordSignIn;
+window.authDoSignUp = authDoSignUp;
+window.authDoForgot = authDoForgot;
+window.authDoSetNewPassword = authDoSetNewPassword;
 
 /* ===================== ACCOUNT GATE (v8.71, auth-gate-placement sprint) =====================
    Turns the v8.68/v8.70 auth foundation + screen into a REAL gate: signed-out
@@ -24771,6 +24913,9 @@ function renderAuth(){
   try{
     const ui = _authUiEnsure();
     if(ui.view === 'sent') return _authSentHtml(ui);
+    if(ui.view === 'welcome') return _authWelcomeHtml(ui);
+    if(ui.view === 'forgot') return _authForgotHtml(ui);
+    if(ui.view === 'reset') return _authResetHtml(ui);
     return _authFormHtml(ui);
   } catch(e){
     return `
@@ -24783,12 +24928,31 @@ function renderAuth(){
 }
 
 function _authSentHtml(ui){
+  const body = ui.sentKind === 'reset'
+    ? `We sent a password-reset link to <b>${esc(ui.email)}</b>. Open it on this device to set a new password.`
+    : `We sent a confirmation link to <b>${esc(ui.email)}</b>. Open it on this device to finish creating your account — you can close this tab.`;
   return `
     <div class="ob-wrap"><div class="ob-screen">
       <div class="ob-emoji">📩</div>
       <div class="ob-title">Check your email</div>
-      <div class="ob-body">We sent a sign-in link to <b>${esc(ui.email)}</b>. Open it on this device to continue — you can close this tab.</div>
-      <button class="ob-skip" onclick="authSwitchMode('${ui.mode === 'create' ? 'create' : 'signin'}')">Use a different email</button>
+      <div class="ob-body">${body}</div>
+      <button class="ob-skip" onclick="authGoto('${ui.sentKind === 'reset' ? 'forgot' : 'create'}')">Use a different email</button>
+    </div></div>`;
+}
+
+/* v8.75 — the front door: what a cold visitor sees. Two clear buttons
+   (sign up / sign in) plus Google, modelled on standard consumer apps. */
+function _authWelcomeHtml(ui){
+  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">一</div>
+      <div class="ob-title">Isshin</div>
+      <div class="ob-sub">Japanese words that actually stick. Try everything free for 7 days — no card needed.</div>
+      <button class="ob-cta" onclick="authGoto('create')">Sign up free</button>
+      <button class="ob-cta ob-alt" onclick="authGoto('signin')">Sign in</button>
+      <button class="ob-cta ob-alt" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>Continue with Google</button>
+      ${msgRow}
     </div></div>`;
 }
 
@@ -24804,14 +24968,47 @@ function _authFormHtml(ui){
     <div class="ob-wrap"><div class="ob-screen">
       <div class="ob-emoji">一</div>
       <div class="ob-title">${isCreate ? 'Create your account' : 'Sign in'}</div>
-      <div class="ob-sub">No passwords — we'll email you a one-tap link.</div>
+      <div class="ob-sub">${isCreate ? 'Free for 7 days — no card needed.' : 'Welcome back.'}</div>
       <input class="ob-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"
         value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${ui.busy ? 'disabled' : ''}>
-      <button class="ob-cta" onclick="authSendMagicLink()" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Sending…' : 'Email me a sign-in link'}</button>
+      <input class="ob-input" type="password" autocomplete="${isCreate ? 'new-password' : 'current-password'}" placeholder="${isCreate ? 'Choose a password (8+ characters)' : 'Password'}"
+        value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" ${ui.busy ? 'disabled' : ''}>
+      <button class="ob-cta" onclick="${isCreate ? 'authDoSignUp()' : 'authDoPasswordSignIn()'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
       ${consentRow}
+      ${isCreate ? '' : `<button class="ob-switch" onclick="authGoto('forgot')">Forgot your password?</button>`}
       <button class="ob-cta ob-alt" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>Continue with Google</button>
       ${msgRow}
-      <button class="ob-switch" onclick="authSwitchMode('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : "New here? Create an account"}</button>
+      <button class="ob-switch" onclick="authGoto('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : 'New here? Sign up free'}</button>
+      <button class="ob-switch" onclick="authGoto('welcome')">← Back</button>
+    </div></div>`;
+}
+
+function _authForgotHtml(ui){
+  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">🔑</div>
+      <div class="ob-title">Reset your password</div>
+      <div class="ob-sub">Type your email and we'll send you a link to set a new one.</div>
+      <input class="ob-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"
+        value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${ui.busy ? 'disabled' : ''}>
+      <button class="ob-cta" onclick="authDoForgot()" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Sending…' : 'Email me a reset link'}</button>
+      ${msgRow}
+      <button class="ob-switch" onclick="authGoto('signin')">← Back to sign in</button>
+    </div></div>`;
+}
+
+function _authResetHtml(ui){
+  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  return `
+    <div class="ob-wrap"><div class="ob-screen">
+      <div class="ob-emoji">🔑</div>
+      <div class="ob-title">Set a new password</div>
+      <div class="ob-sub">You're signed in — pick the password you'll use from now on.</div>
+      <input class="ob-input" type="password" autocomplete="new-password" placeholder="New password (8+ characters)"
+        value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" ${ui.busy ? 'disabled' : ''}>
+      <button class="ob-cta" onclick="authDoSetNewPassword()" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'Saving…' : 'Save password'}</button>
+      ${msgRow}
     </div></div>`;
 }
 
