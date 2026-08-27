@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.73';
+const APP_VERSION = '8.74';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6031,8 +6031,8 @@ function renderPaywall(){
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">一</div>
-        <div class="ob-title">Choose your plan</div>
-        <div class="ob-sub">7 days free, then the price below — cancel anytime.</div>
+        <div class="ob-title">Keep going with Isshin</div>
+        <div class="ob-sub">Your free week is finished — pick a plan to keep everything unlocked. Cancel anytime.</div>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
           <div class="ob-path-t">Monthly — $${PAYWALL_PRICES.monthly.toFixed(2)}/mo</div>
@@ -6161,6 +6161,35 @@ const ENT_GRACE_MS = 72 * 60 * 60 * 1000;  // 72h — spec-mandated offline/erro
 const ENT_GATE_TIMEOUT_MS = 4000;          // bounds entFetch() so a hung CDN/network call can never stall boot
 const ENT_STALE_MS = 5 * 60 * 1000;        // visibilitychange only re-fetches when the last attempt is older than this
 
+/* v8.74 free-entry change — the 7 free days now start at ACCOUNT CREATION,
+   no card required: a signed-in user inside that window is entitled without
+   any entitlements row. The owner's own account is additionally
+   allow-listed outright, so the owner is never gated on any device or
+   browser. Both checks read ONLY the authenticated Supabase user object
+   (authUser(), server-issued session) — never a URL/query/postMessage
+   value — so neither can be forged by page input. */
+const ENT_FREE_TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+const ENT_OWNER_EMAILS = ['juliuspireh@gmail.com'];
+
+function _entOwnerAccount(u){
+  try{
+    const e = u && u.email ? String(u.email).trim().toLowerCase() : '';
+    return !!e && ENT_OWNER_EMAILS.indexOf(e) !== -1;
+  } catch(err){ return false; }
+}
+
+/* True iff the signed-in account is still inside its free week, measured
+   from the auth user's own created_at (part of the server-issued session,
+   not client-settable state). Absent/unparsable created_at fails CLOSED. */
+function _entTrialGood(u){
+  try{
+    if(!u || !u.created_at) return false;
+    const t = new Date(u.created_at).getTime();
+    if(!isFinite(t)) return false;
+    return (Date.now() - t) < ENT_FREE_TRIAL_MS;
+  } catch(e){ return false; }
+}
+
 /* True iff an {active, expires_at} pair — a FRESH entFetch() result or a
    CACHED entry, same two fields, same test — represents a currently-
    entitled row. The one place this comparison is written; both branches of
@@ -6230,16 +6259,22 @@ window.entFetch = entFetch;
 
 /* THE single decision function. Branches, in order:
      1. ownerMode === true          -> unlocked, unconditionally, always.
-     2. entFetch() completes        -> the FRESH result decides it, win or
-        lose (entCache is already updated by entFetch() itself either way).
-     3. entFetch() could not complete (any failure mode — see the module
-        header) -> the ONE shared grace fallback: entCache, unlocked only
-        if the cached row is itself good AND fetched within the last 72h.
+     2. owner account (email allow-list) -> unlocked, any device, always.
+     3. entFetch() completes        -> a good row wins; a definitive "no
+        row" still unlocks while the account's free week (created_at + 7d)
+        is running — v8.74: the trial needs no card and no Stripe row.
+     4. entFetch() could not complete (any failure mode — see the module
+        header) -> the ONE shared grace fallback: entCache (good row fetched
+        within 72h), else the same free-week check.
    Bounded by ENT_GATE_TIMEOUT_MS so a hung network call can never stall
    boot or the checkout-return poll loop below. */
 async function isUnlocked(){
   state._entLastAttemptAt = Date.now();
   if(state.settings.ownerMode === true) return { unlocked:true, reason:'owner' };
+  let u = null;
+  try{ u = await authUser(); } catch(e){ u = null; }
+  if(_entOwnerAccount(u)) return { unlocked:true, reason:'owner-account' };
+  const trial = _entTrialGood(u);
   const cached = _entCacheRead();
   let result = null;
   try{
@@ -6247,9 +6282,11 @@ async function isUnlocked(){
     result = await Promise.race([ entFetch(), timeout ]);
   } catch(e){ result = null; }
   if(result && result.ok === true){
-    return _entRowIsGood(result) ? { unlocked:true, reason:'fresh' } : { unlocked:false, reason:'locked' };
+    if(_entRowIsGood(result)) return { unlocked:true, reason:'fresh' };
+    return trial ? { unlocked:true, reason:'trial' } : { unlocked:false, reason:'locked' };
   }
-  return _entCacheGraceGood(cached) ? { unlocked:true, reason:'grace' } : { unlocked:false, reason:'locked' };
+  if(_entCacheGraceGood(cached)) return { unlocked:true, reason:'grace' };
+  return trial ? { unlocked:true, reason:'trial' } : { unlocked:false, reason:'locked' };
 }
 window.isUnlocked = isUnlocked;
 
