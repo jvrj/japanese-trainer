@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.78';
+const APP_VERSION = '8.79';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6207,22 +6207,30 @@ function renderPaywall(){
     const savePct = _paywallSavePct();
     const busy = ui.busy;
     const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+    /* v8.79 free plan — this screen is now a plan PICKER, not a wall: the
+       free plan continues underneath it, so it always offers a way back.
+       Yearly leads (monthly churn is the category's weak point — gating
+       research 2026-08-27); the deck size is computed, never a literal. */
+    let deckN = 0;
+    try{ deckN = getActiveWords().length; }catch(e){ deckN = 0; }
+    const deckLine = deckN > 0 ? `all ${deckN.toLocaleString()} words` : 'every word';
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">一</div>
         <div class="ob-title">Keep going with Isshin</div>
-        <div class="ob-sub">Your free week is finished — pick a plan to keep everything unlocked. Cancel anytime.</div>
+        <div class="ob-sub">You're on the free plan — reviews are unlimited, plus ${FREE_NEW_WORDS_PER_DAY} new words a day. Unlock ${deckLine} and learn at full speed. Cancel anytime.</div>
+        <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
+          <div class="ob-path-em">🎟️</div>
+          <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.yearly.toFixed(2)} every year. Cancel anytime.</div>
+        </button>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
           <div class="ob-path-t">Monthly — $${PAYWALL_PRICES.monthly.toFixed(2)}/mo</div>
           <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.monthly.toFixed(2)} every month. Cancel anytime.</div>
         </button>
-        <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
-          <div class="ob-path-em">🎟️</div>
-          <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.yearly.toFixed(2)} every year. Cancel anytime.</div>
-        </button>
         ${msgRow}
+        <button class="ob-switch" onclick="nav('home')">Keep the free plan for now</button>
         <button class="ob-switch" onclick="authDoSignOut()">Sign out</button>
       </div></div>`;
   } catch(e){
@@ -6492,6 +6500,108 @@ function _entGateRefreshIfStale(){
   const last = state._entLastAttemptAt || 0;
   if(Date.now() - last < ENT_STALE_MS) return;
   isUnlocked().then(d => { state._entUnlocked = d.unlocked; }).catch(()=>{});
+}
+
+/* ===================== FREE PLAN (v8.79 — the day-8 tier) =====================
+   When the free week ends the app no longer hard-locks behind the paywall.
+   The account drops to the FREE PLAN instead: everything on-device stays
+   usable (drilling, reviews, streak, kana, sentences), but only
+   FREE_NEW_WORDS_PER_DAY unseen words may enter drill sessions per local
+   day. Rationale (gating research, reports/hydra-research/2026-08-27):
+   a locked-out web user is unreachable forever and writes off the ad spend
+   that acquired them; a review-only user keeps opening the app, keeps
+   seeing the unlock CTA, and keeps converting well past week 6. The cap is
+   on NEW-WORD INTAKE only — never on effort (no hearts, no timers, no
+   drills-per-day limits), because unlimited drilling of your own words is
+   the commute habit the app is built around.
+
+   The grant ledger lives in state.settings.freeTier {day, granted[]} so it
+   rides the normal settings save/load. `granted` holds word IDs (not a
+   count) so re-building sessions the same day re-serves the SAME new words
+   instead of consuming more quota. Resets at LOCAL midnight. */
+const FREE_NEW_WORDS_PER_DAY = 3;
+
+/* Free plan = the entitlement gate says "not unlocked" and this device is
+   not the owner's. During the boot-hydration window this can be briefly
+   true for an entitled user (see the v8.78 heal notes) — every consumer of
+   this predicate degrades softly (a capped pool, a banner), never a lock. */
+function _freeTierActive(){
+  if(state.settings.ownerMode === true) return false;
+  return state._entUnlocked !== true;
+}
+window._freeTierActive = _freeTierActive;
+
+function _freeTierLocalDay(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function _freeTierEnsure(){
+  const day = _freeTierLocalDay();
+  let ft = state.settings.freeTier;
+  if(!ft || typeof ft !== 'object' || ft.day !== day || !Array.isArray(ft.granted)){
+    ft = { day, granted: [] };
+    state.settings.freeTier = ft;
+    try{ save(); }catch(e){}
+  }
+  return ft;
+}
+
+function _freeTierWordSeen(id){
+  const st = state.stats[id];
+  return !!(st && st.attempts && st.attempts.length);
+}
+
+/* Filters a candidate word pool down to what the free plan allows today:
+   every seen word passes; unseen words pass only while on today's granted
+   list, which this filter itself fills up to the daily cap (first come, in
+   pool order). Paid / trial / owner => the pool is returned untouched. */
+function _freeTierCapPool(arr){
+  try{
+    if(!_freeTierActive()) return arr;
+    const ft = _freeTierEnsure();
+    const grantedSet = new Set(ft.granted);
+    const out = [];
+    let dirty = false;
+    for(const w of arr){
+      if(_freeTierWordSeen(w.id) || grantedSet.has(w.id)){ out.push(w); continue; }
+      if(grantedSet.size < FREE_NEW_WORDS_PER_DAY){
+        grantedSet.add(w.id);
+        ft.granted.push(w.id);
+        dirty = true;
+        out.push(w);
+      }
+    }
+    if(dirty){ try{ save(); }catch(e){} }
+    return out;
+  }catch(e){ return arr; }
+}
+window._freeTierCapPool = _freeTierCapPool;
+
+/* How many NEW words the next session may still contain today — granted-but-
+   not-yet-drilled words plus the unconsumed remainder of the daily cap.
+   Infinity when the account is not on the free plan (callers Math.min it). */
+function _freeTierNewBudget(){
+  try{
+    if(!_freeTierActive()) return Infinity;
+    const ft = _freeTierEnsure();
+    let undrilled = 0;
+    for(const id of ft.granted){ if(!_freeTierWordSeen(id)) undrilled++; }
+    return undrilled + Math.max(0, FREE_NEW_WORDS_PER_DAY - ft.granted.length);
+  }catch(e){ return Infinity; }
+}
+
+/* Words in the active deck the free plan has NOT yet released — the honest
+   "still locked" number the home banner shows. */
+function _freeTierLockedCount(){
+  try{
+    const grantedSet = new Set((state.settings.freeTier && state.settings.freeTier.granted) || []);
+    let n = 0;
+    for(const w of getActiveWords()){
+      if(!_freeTierWordSeen(w.id) && !grantedSet.has(w.id)) n++;
+    }
+    return n;
+  }catch(e){ return 0; }
 }
 
 /* ===================== CHECKOUT-RETURN POLLING (entitlement-gate sprint) =====================
@@ -18995,6 +19105,11 @@ function _obfBiasFresh(unseen, need){
   return [...shuffleFY(pref), ...shuffleFY(rest)].slice(0, need);
 }
 function _buildSpamPick(arr, n, opts){
+  /* v8.79 free plan — after the free week, unseen words beyond today's
+     3-new-words allowance never enter the candidate pool (reviews are
+     untouched). One line here covers every session this picker composes:
+     Vocab Spam, topic hands-free launches, and the convo word seed. */
+  arr = _freeTierCapPool(arr);
   if(n <= 0 || !arr.length) return [];
   const seen = [], unseen = [];
   for(const w of arr){
@@ -19188,6 +19303,11 @@ function startRandomDrill(opts){
          v7.55 — also skip particles + bound counters (~mai, ~dai, etc.) — reference
          morphemes, not flashcards. */
       pool = getActiveWords().filter(w => !suspendedSet.has(w.id) && !masteredSet.has(w.id) && _isVocabDrillSurface(w));
+      /* v8.79 free plan — Random Drill pulls from the whole deck, so without
+         this it would be a hole straight through the daily new-word cap. Same
+         filter _buildSpamPick applies; the explicit-ids seam above is left
+         alone (those words were already drilled, i.e. already seen). */
+      pool = _freeTierCapPool(pool);
       if(pool.length < 1){
         showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
         return;
@@ -24092,16 +24212,13 @@ function nav(screen, data, fromPop){
      re-derived fresh on every call (see its definition) — never a cached
      "already checked" flag trusted blindly on later dispatches. */
   if(screen !== 'auth' && !_authGateOpen()) screen = 'auth';
-  /* Entitlement gate (entitlement-gate sprint) — placed right after the
-     account gate above, same choke-point pattern: once a visitor is
-     signed in (or owner), they still need an active entitlement to reach
-     anything but the paywall/checkout-return screens themselves. Like
-     _authGateOpen(), _entGateOpen() is re-derived fresh (a live sync read
-     of state._entUnlocked / ownerMode) on every call — never a stale
-     one-time flag. Deliberately does NOT run when the account gate above
-     already redirected to `auth` (screen === 'auth' at this point) —
-     there is nothing to entitlement-check for a signed-out visitor. */
-  if(screen !== 'auth' && screen !== 'paywall' && screen !== 'checkoutReturn' && !_entGateOpen()) screen = 'paywall';
+  /* Entitlement tier (v8.79 free plan) — the old hard redirect to the
+     paywall is GONE. A signed-in account past its free week now drops to
+     the free plan (reviews unlimited, FREE_NEW_WORDS_PER_DAY new words a
+     day — enforced in _freeTierCapPool, not here) and navigates freely.
+     The paywall stays a normal screen reached by explicit CTAs (home
+     banner, the once-only boot intro, checkout-cancelled bounce). See the
+     free-plan module next to isUnlocked() for the rationale. */
   /* Stage B (v8.08) — Home routes to onboarding until the first-run flow
      completes. Boot-time backfill in load() already marks existing users
      (non-empty stats or convoXp>0) done:true, so this only ever fires for
@@ -24332,7 +24449,9 @@ function renderHome(){
 
   const bc = blitzCounts();
   const reviewsLabel = Math.min(bc.due, state.settings.blitzReviews || 20);
-  const newsLabel = Math.min(bc.unseen, state.settings.blitzNew || 10);
+  /* v8.79 free plan — the "N new" promise must never exceed what the daily
+     cap will actually serve (budget is Infinity on trial/paid/owner). */
+  const newsLabel = Math.min(bc.unseen, state.settings.blitzNew || 10, _freeTierNewBudget());
   const est = Math.max(2, Math.round((reviewsLabel + newsLabel) * 5 / 60));
   const heroMeta = (reviewsLabel + newsLabel) > 0
     ? `${reviewsLabel} review · ${newsLabel} new · about ${est} minutes`
@@ -24388,6 +24507,30 @@ function renderHome(){
       </button>
     </div>`;
 
+  /* v8.79 free plan — unlock banner. Only once the session is hydrated AND
+     the free week is genuinely over for THIS account (guards below), so a
+     boot-hydration race on an entitled device can't flash it. Quiet,
+     factual, one tap to the plan screen — the boundary published plainly. */
+  let freeBanner = '';
+  try{
+    if(_freeTierActive() && typeof _authState !== 'undefined' && _authState.user
+       && !_entTrialGood(_authState.user) && !_entOwnerAccount(_authState.user)){
+      const ftLeft = _freeTierNewBudget();
+      const ftLocked = _freeTierLockedCount();
+      freeBanner = `
+      <div class="hv9-hero" style="padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:22px">🔓</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:14px">Free plan — ${isFinite(ftLeft) ? ftLeft : 0} new word${ftLeft === 1 ? '' : 's'} left today</div>
+            <div class="muted" style="font-size:12px;margin-top:2px">Reviews are unlimited.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} words waiting to unlock.` : ''}</div>
+          </div>
+          <button class="hv9-pill on" style="flex-shrink:0" onclick="nav('paywall')">Unlock</button>
+        </div>
+      </div>`;
+    }
+  }catch(e){}
+
   return `
     <div class="home-v8">
       ${_homeTopBar()}
@@ -24395,6 +24538,7 @@ function renderHome(){
         <div class="hv9-hi">${greet}</div>
         <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
       </div>
+      ${freeBanner}
       ${resumeChip}
       ${heroCard}
       ${extras}
@@ -26810,7 +26954,16 @@ async function init(){
     _paywallUiEnsure().msg = "No charge — pick a plan whenever you're ready.";
     state.screen = 'paywall';
     try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
-  } else if(!_entGateOpen()){
+  } else if(!_entGateOpen() && state.settings.freePlanIntroSeen !== true){
+    /* v8.79 free plan — the free week just ended on this device: show the
+       plan screen ONCE (a quiet, matter-of-fact transition), then never
+       force it again. From the next boot on, the account simply runs on
+       the free plan and home carries the unlock banner instead. The v8.78
+       heal probe on renderPaywall still bounces a mis-flagged entitled
+       user straight home, so a boot-hydration race costs one flag, not a
+       lockout. */
+    state.settings.freePlanIntroSeen = true;
+    try{ save(); }catch(e){}
     state.screen = 'paywall';
     try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
   } else if(state.screen === 'home' && !state.settings.onboard.done){
