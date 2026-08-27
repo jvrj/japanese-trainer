@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.76';
+const APP_VERSION = '8.77';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5843,7 +5843,15 @@ async function authDoSignUp(){
     if(!c || !c.auth || typeof c.auth.signUp !== 'function') throw new Error('auth unavailable');
     const { data, error } = await c.auth.signUp({ email, password: pw, options:{ emailRedirectTo: AUTH_REDIRECT_URL } });
     if(error){
-      ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render(); return;
+      ui.busy = false;
+      /* v8.77 — with autoconfirm ON Supabase reports an existing email as an
+         explicit "already registered" error (vs the silent obfuscated user
+         when confirmations are on — both shapes handled). Fixed strings
+         only; never echo error.message into the DOM. */
+      ui.msg = /already|registered/i.test(String(error.message || ''))
+        ? 'That email already has an account — sign in instead.'
+        : AUTH_TRY_AGAIN_MSG;
+      render(); return;
     }
     ui.busy = false; ui.pw = '';
     if(data && data.session && data.session.user){
