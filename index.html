@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.79';
+const APP_VERSION = '8.80';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3917,6 +3917,9 @@ function save(){
   }catch(_){}
   if(errs.length) log('save_err', { errs });
   idbBackupMaybe();
+  /* v8.80 account sync — every local save arms one debounced cloud push
+     (no-op when signed out; see the ACCOUNT SYNC module). */
+  try{ if(typeof _syncQueue === 'function') _syncQueue(); }catch(e){}
 }
 
 function load(){
@@ -5661,6 +5664,9 @@ async function authToken(){
    when there is no client. */
 async function authSignOut(){
   _authState.user = null;
+  /* v8.80 — a later sign-in (possibly a different account) must re-run the
+     full account-sync decision, not skip on this session's already-ran flag. */
+  try{ _syncSignInRan = false; }catch(e){}
   /* v8.71 — explicit sign-out must always re-close the gate, even if this
      device was let through earlier on the grace rule (unverifiable session +
      remembered breadcrumb). Without this, a signed-out-then-back-in device
@@ -5807,6 +5813,10 @@ async function _authCompleteSignIn(user){
     const d = await isUnlocked();
     state._entUnlocked = d.unlocked;
   }catch(e){ state._entUnlocked = false; }
+  /* v8.80 account sync — restore/merge the account's saved progress BEFORE
+     navigating, so a returning account on a fresh device lands on home with
+     everything in place instead of being walked through onboarding again. */
+  try{ await _accountSyncOnSignIn(); }catch(e){}
   try{ nav('home'); }catch(e){ try{ render(); }catch(e2){} }
 }
 
@@ -5927,6 +5937,10 @@ async function authDoSetNewPassword(){
 /* Sign-out row (Settings) — reuses authSignOut() from the foundation above,
    never a second signOut() implementation, then returns to a safe screen. */
 async function authDoSignOut(){
+  /* v8.80 account sync — final flush BEFORE the session goes away, so the
+     account's cloud copy includes everything from this sitting. Bounded:
+     a dead network can't hold the sign-out hostage. */
+  try{ await _syncWithTimeout(_syncPushNow(), 4000, false); }catch(e){}
   try{ await authSignOut(); }catch(e){ /* mirror already cleared inside authSignOut */ }
   try{ nav('home'); }catch(e){ try{ render(); }catch(e2){} }
 }
@@ -5955,6 +5969,198 @@ async function _authWriteConsentOnce(userId){
       .update({ marketing_opt_in: consent, marketing_opt_in_at: new Date().toISOString() })
       .eq('id', userId);
   } catch(e){ /* consent write must never brick boot or block sign-in */ }
+}
+
+/* ===================== ACCOUNT SYNC (v8.80) =====================
+   "Sign in once, your details follow you." Backs the learning state up to
+   the account's own `user_state` row (RLS: own-row select/insert/update,
+   shipped in 0001_init.sql and unused until now) and restores it on
+   sign-in, so a new phone / reinstall / incognito sign-in resumes exactly
+   where the account left off — onboarding runs ONCE per account, not once
+   per device.
+
+   Decision table on sign-in (all outcomes end with `accountUserId = user.id`,
+   a local save, and a push of the merged result back to the cloud):
+     - different account than the one this device's data belongs to
+         -> replace local learning state with THAT account's cloud copy
+            (or a fresh start if it has none) — accounts never see each
+            other's progress on a shared device
+     - this device is virgin (onboarding not done, zero stats) and the
+       account has a cloud copy -> full restore (the new-device case)
+     - otherwise -> keep local as the live truth, but adopt any per-word
+       record the cloud holds with MORE attempts (same rule as
+       _stateAdoptRicher) so two devices merge instead of clobbering.
+
+   Never synced: API keys / relay secret (device-only, dedicated LS slots)
+   and ownerMode (a per-device trust switch, not an account property).
+   Every network path is wrapped + timeout-bounded — sync can slow nothing
+   down and brick nothing; a failed sync just means this device behaves
+   like today (local-only) until the next push. */
+const SYNC_SETTINGS_EXCLUDE = ['openaiKey', 'anthropicKey', 'relaySecret', 'ownerMode'];
+const SYNC_DEBOUNCE_MS = 45000;
+let _syncTimer = null;
+let _syncPushChain = Promise.resolve(false);
+let _syncSignInRan = false;
+
+function _syncWithTimeout(p, ms, fallback){
+  return Promise.race([
+    p.catch(() => fallback),
+    new Promise(res => setTimeout(() => res(fallback), ms))
+  ]);
+}
+
+/* The account snapshot — the same slices the export/backup path considers
+   the learning state, minus device-only secrets. */
+function _syncCollect(){
+  const s = {};
+  for(const k in state.settings){
+    if(!SYNC_SETTINGS_EXCLUDE.includes(k)) s[k] = state.settings[k];
+  }
+  return {
+    v: 1, app: APP_VERSION, savedAt: new Date().toISOString(),
+    settings: s,
+    stats: state.stats,
+    streak: state.streak,
+    words: state.words.filter(w => w.source === 'user'),
+    notes: state.notes,
+    formStats: state.formStats || {},
+    kanaStats: state.kanaStats || {},
+    sentenceStats: state.sentenceStats || {},
+    phraseStats: state.phraseStats || {},
+    particleStats: state.particleStats || {},
+    variationStats: state.variationStats || {},
+    similarStats: state.similarStats || {}
+  };
+}
+
+async function _syncFetchCloud(){
+  const u = _authState.user;
+  if(!u || !u.id) return null;
+  const c = authClient();
+  if(!c || typeof c.from !== 'function') return null;
+  try{
+    const { data, error } = await c.from('user_state')
+      .select('state_json').eq('user_id', u.id).maybeSingle();
+    if(error || !data) return null;
+    const s = data.state_json;
+    return (s && typeof s === 'object') ? s : null;
+  }catch(e){ return null; }
+}
+
+/* Full overwrite from a cloud snapshot ({} = fresh start for a new account).
+   Device-only settings are preserved; everything else becomes the account's. */
+function _syncApplyCloud(cloud){
+  cloud = cloud || {};
+  const keep = {};
+  for(const k of SYNC_SETTINGS_EXCLUDE){
+    if(state.settings[k] !== undefined) keep[k] = state.settings[k];
+  }
+  const base = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  state.settings = {...base, ...(cloud.settings || {}), ...keep};
+  if(!state.settings.onboard) state.settings.onboard = {done:false, path:null, placedStage:null};
+  state.stats = (cloud.stats && typeof cloud.stats === 'object') ? cloud.stats : {};
+  state.streak = {current:0, longest:0, lastDate:null, freezeWeekKey:null, freezesUsedWeek:0, ...(cloud.streak || {})};
+  state.notes = Array.isArray(cloud.notes) ? cloud.notes : [];
+  for(const k of ['formStats','kanaStats','sentenceStats','phraseStats','particleStats','variationStats','similarStats']){
+    state[k] = (cloud[k] && typeof cloud[k] === 'object') ? cloud[k] : {};
+  }
+  const userWords = Array.isArray(cloud.words) ? cloud.words : [];
+  state.words = state.words.filter(w => w.source !== 'user').concat(userWords);
+  /* The device's own anti-data-loss machinery must not resurrect the
+     PREVIOUS account's records over what we just applied: _stateAdoptRicher
+     (runs at the top of every save) re-adopts anything on disk with more
+     attempts, and the IDB mirror restores non-empty backups over empty
+     stats at boot. Overwrite both stores NOW so disk, mirror, and memory
+     all agree on the applied account's state. */
+  try{ localStorage.setItem(LS.stats, JSON.stringify(state.stats)); }catch(e){}
+  try{ localStorage.setItem(LS.streak, JSON.stringify(state.streak)); }catch(e){}
+  try{
+    if(typeof _idbPut === 'function'){
+      _idbPut('stats', state.stats)
+        .then(() => _idbPut('streak', state.streak))
+        .then(() => _idbPut('meta', { ts: Date.now(), statsCount: Object.keys(state.stats).length, v: APP_VERSION }))
+        .catch(()=>{});
+    }
+  }catch(e){}
+}
+
+/* Cross-device merge — mirror of _stateAdoptRicher, but against the cloud
+   copy: attempts only ever grow, so the record with MORE attempts is the
+   newer work whichever device it came from. Streak: later lastDate wins. */
+function _syncAdoptRicher(cloud){
+  try{
+    const cs = (cloud && cloud.stats) || {};
+    for(const id in cs){
+      const c0 = cs[id], m = state.stats[id];
+      const cn = (c0 && c0.attempts && c0.attempts.length) || 0;
+      const mn = (m && m.attempts && m.attempts.length) || 0;
+      if(!m || cn > mn) state.stats[id] = c0;
+    }
+    const st = cloud && cloud.streak;
+    if(st && st.lastDate && (!state.streak.lastDate || st.lastDate > state.streak.lastDate)){
+      state.streak = {...state.streak, ...st};
+    }
+  }catch(e){}
+}
+
+/* Pushes are SERIALIZED on a promise chain: each call waits its turn and
+   then collects a FRESH snapshot. (A simple busy-flag here silently dropped
+   the newer snapshot when a push was already in flight — e.g. the sign-out
+   flush racing a background push — so the cloud kept the stale copy.) */
+function _syncPushNow(){
+  if(_syncTimer){ clearTimeout(_syncTimer); _syncTimer = null; }
+  const run = async () => {
+    const u = _authState.user;
+    if(!u || !u.id) return false;
+    const c = authClient();
+    if(!c || typeof c.from !== 'function') return false;
+    try{
+      const { error } = await c.from('user_state')
+        .upsert({ user_id: u.id, state_json: _syncCollect(), updated_at: new Date().toISOString() });
+      return !error;
+    }catch(e){ return false; }
+  };
+  _syncPushChain = _syncPushChain.then(run, run);
+  return _syncPushChain;
+}
+
+/* Called from save() after every local write — one debounced cloud push per
+   burst of activity, and a flush when the tab hides (drill over, app
+   backgrounded), so the cloud copy is at most one short session behind. */
+function _syncQueue(){
+  if(!_authState || !_authState.user) return;
+  if(_syncTimer) return;
+  _syncTimer = setTimeout(() => { _syncTimer = null; _syncPushNow(); }, SYNC_DEBOUNCE_MS);
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden' && _authState && _authState.user){
+    try{ _syncPushNow(); }catch(e){}
+  }
+});
+
+/* The sign-in hook — awaited by _authCompleteSignIn/_authHandleReturn BEFORE
+   the post-sign-in nav, so a restored device lands on home with its progress
+   already in place (never a flash of the onboarding funnel). Timeout-bounded:
+   a slow network degrades to today's local-only behavior, never a hang. */
+async function _accountSyncOnSignIn(){
+  const u = _authState.user;
+  if(!u || !u.id) return;
+  if(_syncSignInRan && state.settings.accountUserId === u.id){ _syncQueue(); return; }
+  const cloud = await _syncWithTimeout(_syncFetchCloud(), 6000, null);
+  const prevOwner = state.settings.accountUserId || null;
+  const virgin = !(state.settings.onboard && state.settings.onboard.done)
+    && Object.keys(state.stats).length === 0;
+  if(prevOwner && prevOwner !== u.id){
+    _syncApplyCloud(cloud);
+  } else if(virgin && cloud){
+    _syncApplyCloud(cloud);
+  } else if(cloud){
+    _syncAdoptRicher(cloud);
+  }
+  state.settings.accountUserId = u.id;
+  _syncSignInRan = true;
+  try{ save(); }catch(e){}
+  _syncPushNow();
 }
 
 /* Magic-link / OAuth return handler — runs once on load (called from
@@ -5986,6 +6192,11 @@ async function _authHandleReturn(){
     if(session && session.user){
       _authState.user = session.user;
       await _authWriteConsentOnce(session.user.id);
+      /* v8.80 account sync — same restore-before-first-paint as
+         _authCompleteSignIn, for the email-confirm / OAuth return path
+         (init() awaits this whole function before its screen decision, so
+         a Google sign-in on a brand-new device skips onboarding too). */
+      try{ await _accountSyncOnSignIn(); }catch(e){}
       /* v8.71 — no render() here anymore: init() now AWAITS this whole
          function before making its one gate/Stage-B screen decision and
          rendering once (see init()). Rendering here too would just be an
@@ -26983,6 +27194,14 @@ async function init(){
      turns out to be genuinely signed out. No-op (returns immediately) for
      every other boot outcome — see _authGateRecheck(). */
   setTimeout(_authGateRecheck, 8000);
+  /* v8.80 account sync — background pass for a device that booted with an
+     existing session (no fresh sign-in this load): merge any richer cloud
+     records in, stamp accountUserId, and push. Never blocks boot; the
+     _syncSignInRan guard makes it a cheap no-op if _authHandleReturn
+     already synced this load. */
+  if(_authState && _authState.user){
+    setTimeout(() => { try{ _accountSyncOnSignIn(); }catch(e){} }, 2500);
+  }
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
