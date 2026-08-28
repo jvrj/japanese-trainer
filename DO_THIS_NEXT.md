@@ -39,7 +39,7 @@ dashboard switches Claude can't touch), then the video re-shoot.
 
 You haven't seen v8.64 → 8.73 on a real phone. Open the app:
 
-1. Settings → **Get latest** → close + reopen twice → version shows **8.80**.
+1. Settings → **Get latest** → close + reopen twice → version shows **8.81**.
 2. You'll see a one-time toast about the **music fix** (mic permission no
    longer switches voice on by itself).
 3. Walk these and note anything that feels off:
@@ -177,6 +177,7 @@ welcome screen (Sign up free / Sign in / Google).
 - [x] **Sign-in + trial paywall LIVE** (v8.70–8.73, 24 Aug)
 - [x] **App-standard entry + free plan** (v8.74–8.79, 27 Aug) — password auth, free week, day-8 = 3-new-words free tier
 - [x] **Account sync** (v8.80, 28 Aug) — progress follows the account; onboarding once per account, not per device
+- [x] **Conversion polish** (v8.81, 28 Aug) — one day-5/6 upgrade nudge after a good drill; checkout now charges immediately (no second Stripe free week)
 - [ ] **← YOU ARE HERE: phone-check + the setup checklist above**
 - [ ] Ad video re-shoot on the new UI (capture profile ready)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
