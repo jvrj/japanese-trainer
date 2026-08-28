@@ -1,16 +1,19 @@
 // POST /checkout  { plan: 'monthly' | 'yearly' }  ->  { url }
-// Creates a Stripe Checkout session (subscription mode, 7-day card trial) for
-// the SIGNED-IN Supabase user. JWT-only on purpose: an entitlement must always
-// belong to a real account, so there is no soft-secret path here.
+// Creates a Stripe Checkout session (subscription mode) for the SIGNED-IN
+// Supabase user. JWT-only on purpose: an entitlement must always belong to a
+// real account, so there is no soft-secret path here.
 // The webhook (stripe-webhook/) is the only writer of entitlements; this
 // function only mints the redirect URL.
+// No Stripe-side trial (owner call 2026-08-28): the app itself gives the
+// 7-day free week from account creation, so checkout charges immediately —
+// the old trial_period_days stacked a SECOND free week on top and pushed
+// first revenue to day ~14.
 
 import { CORS, json, svc } from '../_shared/gate.ts'
 import { stripeFetch } from '../_shared/stripe.ts'
 
 const ALLOWED_RETURN_ORIGIN = 'https://jvrj.github.io'
 const DEFAULT_RETURN = 'https://jvrj.github.io/japanese-trainer/landing/'
-const TRIAL_DAYS = 7 // locked pricing: 7-day free trial on both plans
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
@@ -55,7 +58,6 @@ Deno.serve(async (req) => {
     mode: 'subscription',
     'line_items[0][price]': priceId,
     'line_items[0][quantity]': '1',
-    'subscription_data[trial_period_days]': String(TRIAL_DAYS),
     'subscription_data[metadata][user_id]': user.id,
     client_reference_id: user.id,
     success_url: successUrl,

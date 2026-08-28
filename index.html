@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.80';
+const APP_VERSION = '8.81';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5612,7 +5612,7 @@ function _authWireAuthListener(){
          _entGateRefreshIfStale), so a running drill is never yanked. */
       if(_authState.user && typeof state !== 'undefined' && state && state._entUnlocked !== true
          && typeof isUnlocked === 'function'){
-        try{ isUnlocked().then(d => { state._entUnlocked = d.unlocked; }).catch(()=>{}); }catch(e){}
+        try{ isUnlocked().then(d => { state._entUnlocked = d.unlocked; state._entReason = d.reason; }).catch(()=>{}); }catch(e){}
       }
       /* v8.75 — a recovery-link return signs the user in with a session
          meant for setting a new password. Flip the auth screen to the
@@ -5811,7 +5811,7 @@ async function _authCompleteSignIn(user){
   if(user) _authState.user = user;
   try{
     const d = await isUnlocked();
-    state._entUnlocked = d.unlocked;
+    state._entUnlocked = d.unlocked; state._entReason = d.reason;
   }catch(e){ state._entUnlocked = false; }
   /* v8.80 account sync — restore/merge the account's saved progress BEFORE
      navigating, so a returning account on a fresh device lands on home with
@@ -6411,7 +6411,7 @@ function renderPaywall(){
     if(!ui._healProbe){
       ui._healProbe = true;
       isUnlocked().then(d => {
-        state._entUnlocked = d.unlocked;
+        state._entUnlocked = d.unlocked; state._entReason = d.reason;
         if(d.unlocked && state.screen === 'paywall') nav('home');
       }).catch(()=>{});
     }
@@ -6433,12 +6433,12 @@ function renderPaywall(){
         <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">🎟️</div>
           <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.yearly.toFixed(2)} every year. Cancel anytime.</div>
+          <div class="ob-path-s">$${PAYWALL_PRICES.yearly.toFixed(2)} a year — about $${(PAYWALL_PRICES.yearly/12).toFixed(2)} a month. Cancel anytime.</div>
         </button>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
           <div class="ob-path-t">Monthly — $${PAYWALL_PRICES.monthly.toFixed(2)}/mo</div>
-          <div class="ob-path-s">7 days free, then $${PAYWALL_PRICES.monthly.toFixed(2)} every month. Cancel anytime.</div>
+          <div class="ob-path-s">$${PAYWALL_PRICES.monthly.toFixed(2)} a month. Cancel anytime.</div>
         </button>
         ${msgRow}
         <button class="ob-switch" onclick="nav('home')">Keep the free plan for now</button>
@@ -6710,7 +6710,7 @@ function _entGateRefreshIfStale(){
   if(state.settings.ownerMode === true) return;
   const last = state._entLastAttemptAt || 0;
   if(Date.now() - last < ENT_STALE_MS) return;
-  isUnlocked().then(d => { state._entUnlocked = d.unlocked; }).catch(()=>{});
+  isUnlocked().then(d => { state._entUnlocked = d.unlocked; state._entReason = d.reason; }).catch(()=>{});
 }
 
 /* ===================== FREE PLAN (v8.79 — the day-8 tier) =====================
@@ -6871,7 +6871,7 @@ async function _checkoutPollLoop(){
     if(Date.now() - ui.startedAt >= CHECKOUT_POLL_CEILING_MS) break;
     let d;
     try{ d = await isUnlocked(); } catch(e){ d = { unlocked:false }; }
-    state._entUnlocked = d.unlocked;
+    state._entUnlocked = d.unlocked; state._entReason = d.reason;
     if(d.unlocked){
       _checkoutStripParam();
       nav('home');
@@ -23383,6 +23383,68 @@ function buildRateWord(wid, rating){
 }
 window.buildRateWord = buildRateWord;
 
+/* ===================== DAY-5/6 TRIAL NUDGE (v8.81) =====================
+   The gating research's one in-trial conversion surface: a single, quiet
+   upgrade card on the lesson-complete screen ("nice work" moment), shown
+   ONCE per account-device, only when ALL of:
+     - the unlock is coming from the TRIAL clock (reason 'trial' — never
+       owner, owner-account, paid/fresh, or cached-grace)
+     - trial day 5-7 (late enough to have felt the value, before day-8)
+     - real engagement (10+ words drilled) — a nudge on top of nothing
+       converts nobody and reads as a beg.
+   One nudge, then silence: dismissing (or just seeing) it marks
+   trialNudgeShown and it never returns; day 8 has its own surface. */
+function _trialNudgeEligible(){
+  try{
+    if(state.settings.ownerMode === true) return false;
+    if(state.settings.trialNudgeShown === true) return false;
+    if(state._entUnlocked !== true || state._entReason !== 'trial') return false;
+    const u = _authState.user;
+    if(!u || !u.created_at || _entOwnerAccount(u)) return false;
+    const day = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86400000) + 1;
+    if(!(day >= 5 && day <= 7)) return false;
+    let n = 0;
+    for(const id in state.stats){
+      const st = state.stats[id];
+      if(st && st.attempts && st.attempts.length && ++n >= 10) break;
+    }
+    return n >= 10;
+  }catch(e){ return false; }
+}
+function _trialNudgeCard(){
+  const b = state.buildMode;
+  if(b && b._nudgeActive){ /* keep it up across re-renders of THIS screen (rate taps etc.) */ }
+  else if(_trialNudgeEligible()){
+    if(b) b._nudgeActive = true;
+    state.settings.trialNudgeShown = true;
+    try{ save(); }catch(e){}
+  } else return '';
+  let drilled = 0;
+  try{
+    for(const id in state.stats){
+      const st = state.stats[id];
+      if(st && st.attempts && st.attempts.length) drilled++;
+    }
+  }catch(e){}
+  let left = 2;
+  try{
+    const u = _authState.user;
+    left = Math.max(1, 7 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86400000));
+  }catch(e){}
+  return `<div style="text-align:left;background:linear-gradient(135deg,rgba(159,233,207,.10),rgba(255,255,255,.04));border:1px solid rgba(159,233,207,.28);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px">
+    <div style="font-weight:800;font-size:15px;margin-bottom:4px">It's sticking 🎉</div>
+    <div style="font-weight:600;font-size:12.5px;color:#cfc8e6;line-height:1.55;margin-bottom:12px">You've drilled ${drilled} words this week. Your free week ends in ${left} day${left === 1 ? '' : 's'} — lock in full speed and keep going.</div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('paywall')">See plans →</button>
+    <button class="ob-switch" style="width:100%" onclick="trialNudgeDismiss()">Not now</button>
+  </div>`;
+}
+function trialNudgeDismiss(){
+  const b = state.buildMode;
+  if(b) b._nudgeActive = false;
+  render();
+}
+window.trialNudgeDismiss = trialNudgeDismiss;
+
 function _buildRatePanel(){
   const b = state.buildMode;
   const cands = b._rateCands || (b._rateCands = _buildRateCandidates(b.lesson));
@@ -23516,6 +23578,7 @@ function renderBuildModeComplete(){
       </div>
       ${_buildRoundRecap()}
       ${_buildRatePanel()}
+      ${_trialNudgeCard()}
       ${chainSummary}
       ${chainBtn}
       ${keepGoingBtn}
@@ -27058,7 +27121,7 @@ async function init(){
   } else if(_authGateOpen()){
     try{
       const d = await isUnlocked();
-      state._entUnlocked = d.unlocked;
+      state._entUnlocked = d.unlocked; state._entReason = d.reason;
     }catch(e){ state._entUnlocked = false; }
   }
   /* v8.57 — if localStorage lost the progress, restore from the IDB mirror
