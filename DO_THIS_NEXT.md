@@ -10,12 +10,18 @@ The **sign-in + paywall is LIVE** and now fully app-standard:
 - **v8.74–8.78** — sign up free (no card) → straight in for a free week;
   welcome screen with real Sign up / Sign in buttons, email + password,
   "Forgot your password?" — all live-tested end to end.
-- **v8.79 (new)** — day 8 is no longer a wall. After the free week the
+- **v8.79** — day 8 is no longer a wall. After the free week the
   account drops to the **free plan**: unlimited reviewing of the words you
   already unlocked, plus **3 new words a day**. Home shows a quiet
   "Unlock" banner; the plan picker ($8.99/mo · **$59.99/yr listed first**)
   appears once at the transition and stays one tap away. Research behind
   this: `reports/hydra-research/2026-08-27-gating-model/REPORT.md`.
+- **v8.80 (new)** — **your account remembers you.** Progress, settings and
+  onboarding answers now back up to the account and come back on sign-in,
+  so a new phone / reinstall / incognito sign-in lands straight in the
+  app with everything in place — the intro runs once per ACCOUNT, not
+  once per device. Two devices merge (the one with more drilling wins per
+  word), and a different account on the same device gets a clean start.
 
 **Your own account (juliuspireh@gmail.com) is allow-listed — sign in
 anywhere and you're in, never asked to pay.** Everything machine-testable
@@ -33,7 +39,7 @@ dashboard switches Claude can't touch), then the video re-shoot.
 
 You haven't seen v8.64 → 8.73 on a real phone. Open the app:
 
-1. Settings → **Get latest** → close + reopen twice → version shows **8.79**.
+1. Settings → **Get latest** → close + reopen twice → version shows **8.80**.
 2. You'll see a one-time toast about the **music fix** (mic permission no
    longer switches voice on by itself).
 3. Walk these and note anything that feels off:
@@ -111,24 +117,9 @@ Then flip the switch in Supabase:
 7. Supabase → **Authentication → Sign In / Providers** → **Google** →
    Enable → paste the Client ID + Client secret → Save.
 
-### 3c. Apply the consent-checkbox database change (2 min)
-The sign-up screen has a marketing checkbox; the database needs two columns
-for it. In Supabase: **SQL Editor → New query** → paste ALL of this → **Run**:
-
-```sql
-alter table profiles
-  add column if not exists marketing_opt_in boolean not null default false,
-  add column if not exists marketing_opt_in_at timestamptz;
-
-drop policy if exists own_profile_upd on profiles;
-create policy own_profile_upd
-  on profiles
-  for update
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
-```
-
-Expect "Success. No rows returned." That's it.
+### 3c. ~~Apply the consent-checkbox database change~~ — **DONE (28 Aug)**
+Claude applied this (and the account-sync guard) directly through the
+Supabase management API. Nothing for you to do here anymore.
 
 ### 3d. Hook up Resend for sign-in emails (10 min — needs Step 2's domain)
 Right now sign-in emails go through Supabase's built-in sender — a few per
@@ -185,6 +176,7 @@ welcome screen (Sign up free / Sign in / Google).
 - [x] Core-loop polish — Home/road/Studio, onboarding funnel, new drill card, batch progression, storage hardening (v8.50–8.67)
 - [x] **Sign-in + trial paywall LIVE** (v8.70–8.73, 24 Aug)
 - [x] **App-standard entry + free plan** (v8.74–8.79, 27 Aug) — password auth, free week, day-8 = 3-new-words free tier
+- [x] **Account sync** (v8.80, 28 Aug) — progress follows the account; onboarding once per account, not per device
 - [ ] **← YOU ARE HERE: phone-check + the setup checklist above**
 - [ ] Ad video re-shoot on the new UI (capture profile ready)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
