@@ -1,6 +1,6 @@
 {
-  "name": "Isshin",
-  "short_name": "Isshin",
+  "name": "WordStick",
+  "short_name": "WordStick",
   "description": "Learn Japanese by ear — hands-free drills. Hear it, say it, keep what sticks.",
   "start_url": "./index.html",
   "display": "standalone",

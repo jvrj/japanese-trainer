@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0a1a">
-<title>Isshin</title>
+<title>WordStick</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -834,7 +834,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 <body>
 <div class="app" id="app">
   <div class="header">
-    <h1>一心</h1>
+    <h1>WordStick</h1>
     <div class="sub" id="appVersionLabel"></div>
   </div>
   <main id="main"></main>
@@ -864,12 +864,12 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 <script>
 /* =========================================================================
-   Isshin (一心)
+   WordStick (formerly Isshin 一心 — renamed v8.82, 2 Sep 2026)
    ========================================================================= */
 
 'use strict';
 
-const APP_VERSION = '8.81';
+const APP_VERSION = '8.82';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3294,7 +3294,7 @@ const LS = {
   snapshots:'jp4_snapshots',       // v7.44 — weekly progress snapshots for the Progress screen
   openaiKey:'jp4_openai_key',      // v7.48 — Whisper API key, stored independently from the settings blob so partial-writes / blob corruption / iOS PWA storage quirks can't lose it
   anthropicKey:'jp4_anthropic_key',// v8.39 — same dedicated-slot armor for the Claude key (owner reported it vanishing between launches)
-  relaySecret:'jp4_relay_secret',  // v8.39 — same for the Isshin server secret
+  relaySecret:'jp4_relay_secret',  // v8.39 — same for the WordStick server secret
   convo:'jp4_convo',               // oshaberi — mid-session conversation state (scene, messages, pool, etc.)
   convoLog:'jp4_convo_log'         // Stage D (v8.10) — capped session-volume log; see state.convoLog
 };
@@ -3349,7 +3349,7 @@ const DEFAULT_SETTINGS = {
   masteredWords:[],           // v6.10 — Library: permanently retired from Vocab Blitz drilling ("I know this forever"). Other modes unaffected.
   ownerMode:null,             // v8.65 — full-control Settings page. null = unset (load() backfills true on keyed owner devices); customers stay on the slim "set base" page until the 7-tap version-line switch.
   anthropicKey:'',            // Claude API key — lives only in localStorage on this device
-  relaySecret:'',             // v8.38 — Isshin server secret (ADR-004 Phase 1, owner-only). Set: AI calls route through the app's own relay; keys stay server-side. localStorage only.
+  relaySecret:'',             // v8.38 — WordStick server secret (ADR-004 Phase 1, owner-only). Set: AI calls route through the app's own relay; keys stay server-side. localStorage only.
   anthropicModel:'claude-haiku-4-5-20251001',
   openaiKey:'',               // v7.46 — OpenAI API key for Whisper STT (voice recognition). localStorage only.
   voiceSttEngine:'auto',      // v7.46 — 'auto' = Whisper when key+online, else Web Speech fallback; 'webspeech' = always browser STT
@@ -3948,7 +3948,7 @@ function load(){
       }
     } catch(e){ log('openai_key_restore_err', { err: String(e) }); }
     /* v8.39 — the same restore-from-dedicated-slot for the Claude key and the
-       Isshin server secret. Root cause of "I have to reconnect every time":
+       WordStick server secret. Root cause of "I have to reconnect every time":
        a second open copy of the app (old tab/PWA window) that booted BEFORE the
        secret was saved can flush its stale settings blob over the fresh one.
        The dedicated slots are written only by the setters, so a stale tab can
@@ -4190,7 +4190,7 @@ function idbRestoreMaybe(){
    state, last-save result, corrupt keys, and quota usage. */
 function _storageHealthText(){
   const lines = [];
-  lines.push('Isshin v' + APP_VERSION);
+  lines.push('WordStick v' + APP_VERSION);
   lines.push('Protected storage: ' + (state._storagePersistent === true ? 'YES' : state._storagePersistent === false ? 'NO (browser may clear data!)' : 'unknown'));
   lines.push('Words tracked (in app now): ' + Object.keys(state.stats).length);
   let diskCount = 'UNREADABLE';
@@ -6427,8 +6427,8 @@ function renderPaywall(){
     const deckLine = deckN > 0 ? `all ${deckN.toLocaleString()} words` : 'every word';
     return `
       <div class="ob-wrap"><div class="ob-screen">
-        <div class="ob-emoji">一</div>
-        <div class="ob-title">Keep going with Isshin</div>
+        <div class="ob-emoji">📌</div>
+        <div class="ob-title">Keep going with WordStick</div>
         <div class="ob-sub">You're on the free plan — reviews are unlimited, plus ${FREE_NEW_WORDS_PER_DAY} new words a day. Unlock ${deckLine} and learn at full speed. Cancel anytime.</div>
         <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">🎟️</div>
@@ -8057,7 +8057,7 @@ async function _whisperTranscribe(blob, hint){
   if(hint) fd.append('prompt', hint);
   fd.append('response_format', 'json');
   fd.append('temperature', '0');
-  /* v8.38 — relay mode sends the same multipart to the Isshin server, which
+  /* v8.38 — relay mode sends the same multipart to the WordStick server, which
      holds the OpenAI key; the relay reads only the file + prompt fields. */
   const wep = relayOn()
     ? { url: RELAY_BASE + '/transcribe', headers: { 'x-app-secret': relaySecret() } }
@@ -11759,7 +11759,7 @@ function _convoPreamble(pool, freeSet, scene, partner, sceneId){
   const learner = _convoSafeName();
   const personaLines = [
     'YOUR IDENTITY: You are ' + p.name + ', a friendly Japanese person — NOT an app or assistant.',
-    'Never call yourself "Isshin" or any English/app name. ' + p.persona,
+    'Never call yourself "WordStick" or any English/app name. ' + p.persona,
     (p.flavor ? 'ABOUT YOU — your own tastes and life, the well you draw self-disclosure from: ' + p.flavor + '.' : ''),
     'When the scene calls for a self-introduction, introduce yourself as 「わたしは ' + p.name + ' です」.',
     (learner
@@ -24562,7 +24562,7 @@ function _homeTopBar(){
   return `
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
-      <div class="h8-mark">一心<span class="r">Isshin</span></div>
+      <div class="h8-mark">WordStick<span class="r">Words that stick</span></div>
       ${streak > 0 ? `<span class="h8-streak">🔥 ${streak}</span>` : `<span style="width:38px"></span>`}
     </div>`;
 }
@@ -25200,15 +25200,15 @@ function _obfShell(step, pct, inner, foot){
       <button class="obf-back" onclick="obfBack()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5m6 6-6-6 6-6"/></svg></button>
       <div class="obf-prog"><i style="width:${pct}%"></i></div>
     </div>`;
-  return `<div class="obf">${step === 'w1' ? '<div class="obf-wm">心</div>' : ''}${top}<div class="obf-main"${step === 'w1' ? ' style="justify-content:center"' : ''}>${inner}</div><div class="obf-foot">${foot}</div></div>`;
+  return `<div class="obf">${step === 'w1' ? '<div class="obf-wm">W</div>' : ''}${top}<div class="obf-main"${step === 'w1' ? ' style="justify-content:center"' : ''}>${inner}</div><div class="obf-foot">${foot}</div></div>`;
 }
 function _obfW1(){
   _obEnsure();
   const wave = [10,18,30,42,26,36,14,22,38,44,20,30,12,24,8].map(h => `<i style="height:${h}px"></i>`).join('');
   const inner = `
     <div style="margin-top:34px;display:flex;align-items:baseline;gap:10px">
-      <span class="jp" style="font-size:20px;font-weight:700;color:#b97bff">一心</span>
-      <span style="font-size:12px;font-weight:700;letter-spacing:.26em;color:var(--faint)">ISSHIN</span>
+      <span class="jp" style="font-size:20px;font-weight:700;color:#b97bff">ことば</span>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.26em;color:var(--faint)">WORDSTICK</span>
     </div>
     <h1 class="obf-h1" style="font-size:38px;margin-top:24px">Learn Japanese with your <em>ears,</em><br>not your thumbs.</h1>
     <div class="obf-sub" style="font-size:15px;margin-bottom:0">Hear a word, say it back, own it forever. Hands-free drills built for drives, walks and washing up.</div>
@@ -25248,7 +25248,7 @@ function _obfW3(){
     <button class="obf-opt${ob.level === val ? ' sel' : ''}" onclick="obfPick('level','${val}')"><span class="ico${jpIco ? ' jp' : ''}">${ico}</span><span><b>${t}</b><span>${s}</span></span></button>`;
   const inner = `
     <h1 class="obf-h1" style="font-size:34px">Where are you<br>starting?</h1>
-    <div class="obf-sub">Be honest — nobody's listening but you. That's the point of Isshin.</div>
+    <div class="obf-sub">Be honest — nobody's listening but you. That's the point of WordStick.</div>
     <div style="margin-top:auto">
       ${opt('zero', '0', false, 'From zero', 'Never studied? We&#39;ll walk you in word by word')}
       ${opt('few', 'あ', true, 'I know a few words', 'You&#39;ve picked up konnichiwa and arigatou')}
@@ -25267,7 +25267,7 @@ function _obfW4(){
     <button class="obf-opt${ob.when === val ? ' sel' : ''}" onclick="obfPick('when','${val}')"><span class="ico">${ico}</span><span><b>${t}</b><span>${s}</span></span></button>`;
   const inner = `
     <h1 class="obf-h1" style="font-size:34px">When would you<br>practice?</h1>
-    <div class="obf-sub">Isshin is hands-free and eyes-free — it fits into time you already have.</div>
+    <div class="obf-sub">WordStick is hands-free and eyes-free — it fits into time you already have.</div>
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:30px">
       ${opt('drive', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 11l1.5-4.5A2 2 0 0 1 9.4 5h5.2a2 2 0 0 1 1.9 1.5L18 11m-14 0h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z"/><circle cx="7.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>`, 'Driving or commuting', 'Eyes on the road, words in your ears')}
       ${opt('walk', `<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6" rx="2"/><rect x="16.5" y="14" width="4.5" height="6" rx="2"/></svg>`, 'Walks, gym, chores', 'Earbuds in, phone in your pocket')}
@@ -25377,7 +25377,7 @@ function renderAuth(){
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-title">Sign in</div>
         <div class="ob-body">${AUTH_TRY_AGAIN_MSG}</div>
-        <button class="ob-cta" onclick="nav('home')">Back to Isshin</button>
+        <button class="ob-cta" onclick="nav('home')">Back to WordStick</button>
       </div></div>`;
   }
 }
@@ -25401,8 +25401,8 @@ function _authWelcomeHtml(ui){
   const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
   return `
     <div class="ob-wrap"><div class="ob-screen">
-      <div class="ob-emoji">一</div>
-      <div class="ob-title">Isshin</div>
+      <div class="ob-emoji">📌</div>
+      <div class="ob-title">WordStick</div>
       <div class="ob-sub">Japanese words that actually stick. Try everything free for 7 days — no card needed.</div>
       <button class="ob-cta" onclick="authGoto('create')">Sign up free</button>
       <button class="ob-cta ob-alt" onclick="authGoto('signin')">Sign in</button>
@@ -25561,7 +25561,7 @@ function renderPractice(){
   const topBar = `
     <div class="h8-bar">
       <button class="h8-icon-btn" onclick="nav('settings')" title="Settings">⚙</button>
-      <div class="h8-mark">一心<span class="r">Isshin</span></div>
+      <div class="h8-mark">WordStick<span class="r">Words that stick</span></div>
       ${streak > 0
         ? `<span class="h8-streak">🔥 ${streak}</span>`
         : `<span style="width:38px"></span>`}
@@ -26293,7 +26293,7 @@ function renderSettings(){
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
       ${row('🔄 Get the latest version', 'If the app feels stale, this fetches the newest version. Your progress is untouched.', `<button class="btn btn-secondary" style="font-size:12px" onclick="forceUpdate()">Update</button>`)}
     </div>
-    <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 6px;user-select:none;cursor:default" onclick="_verTap()">Isshin · version ${APP_VERSION}</div>
+    <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 6px;user-select:none;cursor:default" onclick="_verTap()">WordStick · version ${APP_VERSION}</div>
     </div>`;
 }
 
@@ -26361,7 +26361,7 @@ function _renderSettingsOwner(){
   const connectAiCard = `
     <div class="card" style="margin-top:8px;border:1px solid rgba(167,139,250,.35)">
       <h3>🔌 Connect AI</h3>
-      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the Isshin server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.<br><b>Have an Isshin server secret instead?</b> Skip this card — paste it under Isshin server below.'}</div>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${relayOn() ? '✅ Connected through the WordStick server — no key needed on this device.' : (s.anthropicKey||'').trim() ? '✅ Connected key saved on this device.' : 'Three steps and Talk becomes a real conversation. The key is stored only on this device.<br><b>Have an WordStick server secret instead?</b> Skip this card — paste it under WordStick server below.'}</div>
       <div style="display:flex;gap:9px;align-items:baseline;margin-bottom:9px">
         <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(157,92,255,.25);color:#d6c2ff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">1</span>
         <span style="font-size:12px;line-height:1.55">Create a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:#c9b3ff;font-weight:700">console.anthropic.com</a> — it looks like <b>sk-ant-…</b></span>
@@ -26512,7 +26512,7 @@ function _renderSettingsOwner(){
     <div class="card">
       <h3>About</h3>
       <div class="muted">
-        Isshin · v${APP_VERSION}<br>
+        WordStick · v${APP_VERSION}<br>
         ${state.words.length} words in the deck · ${Object.keys(state.stats).length} studied<br>
         Learn Japanese by ear — hands-free drills built on active recall.
       </div>
@@ -26558,8 +26558,8 @@ function _renderSettingsOwner(){
         <button class="btn btn-primary" style="width:100%" onclick="forceUpdate()">🔄 Force update from server</button>
       </div>
       <div class="card" style="margin-top:8px">
-        <div class="word-jp" style="margin-bottom:4px">Isshin server (owner)</div>
-        <div class="word-en" style="margin-bottom:8px">${relayOn() ? '✅ On — AI runs through the app’s own server; the pasted keys above are ignored on this device.' : 'Paste the server secret to route AI through the Isshin server instead of personal keys.'}</div>
+        <div class="word-jp" style="margin-bottom:4px">WordStick server (owner)</div>
+        <div class="word-en" style="margin-bottom:8px">${relayOn() ? '✅ On — AI runs through the app’s own server; the pasted keys above are ignored on this device.' : 'Paste the server secret to route AI through the WordStick server instead of personal keys.'}</div>
         <div style="display:flex;gap:8px;align-items:center">
           <input type="password" value="${esc(s.relaySecret||'')}" oninput="setRelaySecret(this.value)" placeholder="server secret" autocomplete="off" style="flex:1;min-width:0;padding:9px 11px;border-radius:9px;border:1px solid rgba(157,92,255,.35);background:rgba(255,255,255,.05);color:#fff;font-family:inherit;font-size:13px">
           <button class="btn" onclick="testRelay()" style="padding:9px 14px;font-size:13px">Test</button>
@@ -26638,7 +26638,7 @@ function setAnthropicKey(v){
 }
 window.setAnthropicKey = setAnthropicKey;
 
-/* v8.38 — Isshin server secret (owner). Same rules as the key: localStorage
+/* v8.38 — WordStick server secret (owner). Same rules as the key: localStorage
    only, never rendered outside the password field, never logged. */
 function setRelaySecret(v){
   state.settings.relaySecret = String(v || '').trim();
@@ -26657,7 +26657,7 @@ async function testRelay(){
     const ep = aiChatEndpoint();
     const res = await fetch(ep.url, { method:'POST', headers: ep.headers,
       body: JSON.stringify({ max_tokens: 8, messages: [{ role:'user', content:'こんにちは' }] }) });
-    if(res.ok){ if(el) el.textContent = '✅ Connected — AI now runs through the Isshin server on this device.'; }
+    if(res.ok){ if(el) el.textContent = '✅ Connected — AI now runs through the WordStick server on this device.'; }
     else if(res.status === 401){ if(el) el.textContent = '❌ The server secret isn\'t right — check it and paste again.'; }
     else if(res.status === 503 || res.status === 429){ if(el) el.textContent = '⏳ The server is busy right now — try again in a moment.'; }
     else { if(el) el.textContent = '❌ The server said no (' + res.status + ') — tell Claude.'; }
@@ -27199,7 +27199,7 @@ async function init(){
   });
   /* keep header version label in sync with APP_VERSION so it never goes stale */
   const _vLabel = document.getElementById('appVersionLabel');
-  if(_vLabel) _vLabel.textContent = '一心 · v' + APP_VERSION;
+  if(_vLabel) _vLabel.textContent = 'WordStick · v' + APP_VERSION;
   /* Account gate (v8.71) — first-render redirect, mirroring the Stage-B
      pattern right below it: decide state.screen BEFORE the first render()
      call so the very first paint is already correct, no flash of home/

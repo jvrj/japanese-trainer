@@ -1,6 +1,10 @@
-# Isshin → Product · DO THIS NEXT
+# WordStick (was Isshin) · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-08-27***
+*Last updated: **2026-09-02***
+
+> **2 Sep:** the app's new name is **WordStick** (~60 names checked; "Recall",
+> "PeraPera" and Japanese words all taken or already competitor brands).
+> Buy **wordstick.app** in Step 2. Claude renames everything in-app after.
 
 ---
 
@@ -35,7 +39,7 @@ dashboard switches Claude can't touch), then the video re-shoot.
 
 ---
 
-## 🟢 STEP 1 — Phone-check (~10 min, on the Pixel)
+## ✅ STEP 1 — Phone-check — **DONE (1 Sep)** — v8.81 checked on the Pixel, all good
 
 You haven't seen v8.64 → 8.73 on a real phone. Open the app:
 
@@ -68,12 +72,12 @@ address. ~US$10–14/year — the only unavoidable running cost so far.
 1. Go to **https://www.cloudflare.com** → create a free account (Google
    sign-in is fine).
 2. In the left sidebar: **Domain Registration → Register Domains**.
-3. Search a name. Ideas (pick what feels right — short + easy to say wins):
-   `isshin.app`, `isshinapp.com`, `tryisshin.com`, `learnisshin.com`.
-   Anything available at ~$10–14/yr is fine; skip "premium" priced ones.
-4. Buy it (Cloudflare sells at cost, auto-renew on).
-5. Write the domain in your keys file (`isshin-keys.txt`) as
-   `domain: ...` and tell Claude — the ads/landing plan will use it too.
+3. Search **`wordstick.app`** — the locked name (verified free 2 Sep;
+   ~US$14/yr). If it somehow shows taken/premium, STOP and tell Claude.
+4. Buy it (Cloudflare sells at cost, auto-renew on). Skip every upsell —
+   no email add-ons (Resend handles email in Step 3d).
+5. Write `domain: wordstick.app` in your keys file (`isshin-keys.txt`)
+   and tell Claude — the rename pass + ads/landing plan use it.
 
 ---
 
@@ -100,14 +104,14 @@ Restore first and wait ~2 min.)*
 First get a Google "OAuth client" (the ID card that lets your app use
 Google sign-in):
 1. Go to **https://console.cloud.google.com** (your normal Google account).
-2. Top bar project picker → **New project** → name `isshin` → Create →
+2. Top bar project picker → **New project** → name `wordstick` → Create →
    make sure it's selected.
 3. Search bar: **"OAuth consent screen"** (may appear as *Google Auth
-   Platform → Branding*). App name: `Isshin` · support email: your Gmail ·
+   Platform → Branding*). App name: `WordStick` · support email: your Gmail ·
    audience/user type: **External**. Save through the steps (scopes: skip,
    defaults are fine). If there's a **Publish app** button, click it.
 4. Now **Credentials** (or *Clients*) → **Create credentials → OAuth client
-   ID** → type **Web application** → name `isshin-web`.
+   ID** → type **Web application** → name `wordstick-web`.
 5. Under **Authorized redirect URIs** add exactly:
    `https://hslibrbdovrzhaxhtevr.supabase.co/auth/v1/callback`
 6. Create → copy **Client ID** and **Client secret** into `isshin-keys.txt`
@@ -125,17 +129,17 @@ Supabase management API. Nothing for you to do here anymore.
 Right now sign-in emails go through Supabase's built-in sender — a few per
 hour, which would lock customers out the moment ads run.
 1. Go to **https://resend.com** → sign up (free: 3,000 emails/month).
-2. **Domains → Add domain** → enter your new domain → it shows 3–4 DNS
+2. **Domains → Add domain** → enter `wordstick.app` → it shows 3–4 DNS
    records to add. Because the domain is at Cloudflare, Resend usually
    offers a **"Sign in to Cloudflare to add automatically"** button — use
    it. Otherwise copy each record into Cloudflare → your domain → **DNS**.
    Wait for Resend to show **Verified** (minutes, occasionally an hour).
-3. **API Keys → Create API key** → name `isshin-supabase`, permission
+3. **API Keys → Create API key** → name `wordstick-supabase`, permission
    **Sending access** → copy it into `isshin-keys.txt` as
    `resend api key: ...` (shown once).
 4. Supabase → **Authentication → Emails → SMTP Settings** (older layout:
    Project Settings → Authentication) → **Enable custom SMTP**:
-   - Sender email: `hello@<your-domain>` · Sender name: `Isshin`
+   - Sender email: `hello@wordstick.app` · Sender name: `WordStick`
    - Host: `smtp.resend.com` · Port: `465`
    - Username: `resend` · Password: *the Resend API key*
    - Save.
