@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.82';
+const APP_VERSION = '8.83';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19382,6 +19382,27 @@ function _buildInductionWarmCache(words){
     }catch(e){}
   }
 }
+/* v8.83 — sticky-batch top-up: when seats open in a pinned batch (mastered/
+   suspended words dropped off, or the user rotated), refill UNSEEN-first
+   (bias-ordered) so new words arrive only when the user made room — padding
+   from due-first seen words only when the unseen pool runs dry. The free-plan
+   daily new-word cap applies via the same pool gate as every other picker. */
+function _stickyTopUp(rest, need){
+  rest = _freeTierCapPool(rest);
+  if(need <= 0 || !rest.length) return [];
+  const seen = [], unseen = [];
+  for(const w of rest){
+    const st = state.stats[w.id];
+    if(st && st.attempts && st.attempts.length) seen.push(w); else unseen.push(w);
+  }
+  seen.sort((a, b) => {
+    const sa = state.stats[a.id], sb = state.stats[b.id];
+    ensureSm(sa); ensureSm(sb);
+    return (sa.smNext || 0) - (sb.smNext || 0);
+  });
+  const fresh = _obfBiasFresh(unseen, need);
+  return fresh.length >= need ? fresh.slice(0, need) : [...fresh, ...seen.slice(0, need - fresh.length)];
+}
 function buildGenerateVocabSpamLesson(opts){
   const want = (opts && opts.count) || 30;
   const masteredSet = new Set(state.settings.masteredWords || []);
@@ -19416,8 +19437,40 @@ function buildGenerateVocabSpamLesson(opts){
      pure random shuffle. Prioritize seen/SRS-due words (due-first) so the
      session reflects your real study and rotates as reviews come due, then top
      up with new words. Fixes "build mode doesn't change / isn't my words." */
-  const pool = _buildSpamPick(sectionPool, Math.min(want, sectionPool.length), {freshMix:true});
+  /* v8.83 — sticky batch (owner call, 2 Sep): the same ~30 words now repeat
+     across sessions until the USER rotates, replacing v8.50's silent
+     10-new-every-rebuild (novelty outran recall — the owner felt it drilling
+     daily). First build of a section composes via freshMix (~20 review + ~10
+     new) and PINS those word ids; every later build reuses them, reshuffled
+     ("Run it again"'s v8.52 regen path now converges on the same set by
+     design). Words that get mastered/suspended/filtered drop off and the
+     batch tops back up unseen-first (_stickyTopUp). Rotation is explicit:
+     buildRotateBatch() on the complete screen. Mastered-review mode keeps
+     the old dynamic pull (locking a review-of-retired-words set is useless). */
   const sec = activeVocabSection();
+  const wantN = Math.min(want, sectionPool.length);
+  let pool;
+  if(isMasteredMode){
+    pool = _buildSpamPick(sectionPool, wantN, {freshMix:true});
+  } else {
+    const key = sec.id || 'all';
+    const sticky = (state.settings.stickyBatch || {})[key];
+    const byId = new Map(sectionPool.map(w => [w.id, w]));
+    const kept = Array.isArray(sticky) ? sticky.map(id => byId.get(id)).filter(Boolean) : [];
+    if(kept.length){
+      const keptIds = new Set(kept.map(w => w.id));
+      const need = wantN - kept.length;
+      pool = need > 0
+        ? [...kept, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id)), need)]
+        : kept.slice(0, wantN);
+      pool = shuffleFY(pool.slice());
+    } else {
+      pool = _buildSpamPick(sectionPool, wantN, {freshMix:true});
+    }
+    if(!state.settings.stickyBatch) state.settings.stickyBatch = {};
+    state.settings.stickyBatch[key] = pool.map(w => w.id);
+    try{ save(); }catch(e){}
+  }
   /* v8.53 — scope-honest label: widening levels 2-3 drop the theme filter, so
      the session must not keep claiming the category name over deck-wide words */
   const scopeName = widenedAt >= 2 ? `${sec.name} → whole deck` : sec.name;
@@ -21025,6 +21078,33 @@ function buildRestart(){
   render();
 }
 window.buildRestart = buildRestart;
+
+/* v8.83 — the explicit rotation the sticky batch waits for: drop the ~10
+   BEST-KNOWN words from this section's pinned batch (longest SM-2 interval =
+   most owned; strugglers and still-new words stay — their smNext sorts them
+   to the back), then rebuild, which tops the batch up unseen-first.
+   Graduated words stay in SRS and resurface in Random Drill's due-first
+   whole-deck pull; rotation only frees their batch seats. */
+function buildRotateBatch(){
+  const sec = activeVocabSection();
+  const key = sec.id || 'all';
+  const batch = (state.settings.stickyBatch || {})[key];
+  if(!Array.isArray(batch) || !batch.length){ startBuildModeVocabSpam(); return; }
+  const scored = batch.map(id => {
+    const st = state.stats[id];
+    return { id, next: (st && st.smNext) || 0 };
+  }).sort((a, b) => b.next - a.next);
+  const dropN = Math.min(10, Math.max(0, batch.length - 10));
+  const drop = new Set(scored.slice(0, dropN).map(x => x.id));
+  state.settings.stickyBatch[key] = batch.filter(id => !drop.has(id));
+  try{ save(); }catch(e){}
+  startBuildModeVocabSpam();
+  if(dropN > 0){
+    const fc = state.buildMode?.lesson?._meta?.freshCount;
+    showToast(`${dropN} best-known words graduated 🎓${typeof fc === 'number' && fc > 0 ? ` — ${fc} new in` : ' — topped up from your reviews'}.`, {tone:'info', duration:4000});
+  }
+}
+window.buildRotateBatch = buildRotateBatch;
 
 function buildOnComplete(){
   const l = state.buildMode?.lesson;
@@ -23583,6 +23663,8 @@ function renderBuildModeComplete(){
       ${chainBtn}
       ${keepGoingBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
+      ${l._meta?.mode === 'vocabSpam' ? `<div style="height:8px"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch()">🎓 Swap my 10 best for 10 new</button>` : ''}
       <div style="height:8px"></div>
       <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
     </div>
