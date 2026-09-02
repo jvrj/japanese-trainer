@@ -12,8 +12,10 @@
 import { CORS, json, svc } from '../_shared/gate.ts'
 import { stripeFetch } from '../_shared/stripe.ts'
 
-const ALLOWED_RETURN_ORIGIN = 'https://jvrj.github.io'
-const DEFAULT_RETURN = 'https://jvrj.github.io/japanese-trainer/landing/'
+// app.wordstick.app is the app's home; jvrj.github.io stays allowed so a
+// not-yet-updated cached client can still check out during the domain move.
+const ALLOWED_RETURN_ORIGINS = ['https://app.wordstick.app', 'https://jvrj.github.io']
+const DEFAULT_RETURN = 'https://app.wordstick.app/'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
@@ -49,7 +51,7 @@ Deno.serve(async (req) => {
   // (a raw prefix check passes https://jvrj.github.io.attacker.tld / @-userinfo tricks).
   const ok = (s: unknown) => {
     if (typeof s !== 'string') return false
-    try { return new URL(s).origin === ALLOWED_RETURN_ORIGIN } catch { return false }
+    try { return ALLOWED_RETURN_ORIGINS.includes(new URL(s).origin) } catch { return false }
   }
   const successUrl = ok(body?.success_url) ? body.success_url : DEFAULT_RETURN + '?checkout=success'
   const cancelUrl = ok(body?.cancel_url) ? body.cancel_url : DEFAULT_RETURN + '?checkout=cancelled'
