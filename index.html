@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.83';
+const APP_VERSION = '8.84';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -19456,20 +19456,44 @@ function buildGenerateVocabSpamLesson(opts){
     const key = sec.id || 'all';
     const sticky = (state.settings.stickyBatch || {})[key];
     const byId = new Map(sectionPool.map(w => [w.id, w]));
-    const kept = Array.isArray(sticky) ? sticky.map(id => byId.get(id)).filter(Boolean) : [];
-    if(kept.length){
-      const keptIds = new Set(kept.map(w => w.id));
-      const need = wantN - kept.length;
-      pool = need > 0
-        ? [...kept, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id)), need)]
-        : kept.slice(0, wantN);
-      pool = shuffleFY(pool.slice());
+    let batchWords = Array.isArray(sticky) ? sticky.map(id => byId.get(id)).filter(Boolean) : [];
+    if(batchWords.length){
+      const keptIds = new Set(batchWords.map(w => w.id));
+      const need = wantN - batchWords.length;
+      if(need > 0) batchWords = [...batchWords, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id)), need)];
+      else batchWords = batchWords.slice(0, wantN);
     } else {
-      pool = _buildSpamPick(sectionPool, wantN, {freshMix:true});
+      batchWords = _buildSpamPick(sectionPool, wantN, {freshMix:true});
     }
+    /* PIN the batch identity (full intended set)… */
     if(!state.settings.stickyBatch) state.settings.stickyBatch = {};
-    state.settings.stickyBatch[key] = pool.map(w => w.id);
+    state.settings.stickyBatch[key] = batchWords.map(w => w.id);
     try{ save(); }catch(e){}
+    /* …but the SESSION is the free-plan-gated view of it: a batch pinned
+       during the trial must not smuggle its unseen words past the
+       3-new-words-a-day cap on day 8 (v879 regression). Seen and
+       already-granted words pass; the pin itself never shrinks, so
+       tomorrow's allowance meets the same batch. Paid/trial: no-op. */
+    pool = shuffleFY(_freeTierCapPool(batchWords.slice()));
+    /* Free-plan session padding: when the gate shrank the session (batch
+       pinned before the user had history => mostly locked-new), fill the
+       remaining seats with the user's SEEN words from the section, due-first
+       — "reviews are unlimited" must hold even against an all-new pin. These
+       guests are session-only: the pin never changes. Paid/trial: no-op. */
+    if(pool.length < wantN){
+      const inPool = new Set(pool.map(w => w.id));
+      const seenRest = sectionPool.filter(w => {
+        if(inPool.has(w.id)) return false;
+        const st = state.stats[w.id];
+        return !!(st && st.attempts && st.attempts.length);
+      });
+      seenRest.sort((a, b) => {
+        const sa = state.stats[a.id], sb = state.stats[b.id];
+        ensureSm(sa); ensureSm(sb);
+        return (sa.smNext || 0) - (sb.smNext || 0);
+      });
+      if(seenRest.length) pool = shuffleFY([...pool, ...seenRest.slice(0, wantN - pool.length)]);
+    }
   }
   /* v8.53 — scope-honest label: widening levels 2-3 drop the theme filter, so
      the session must not keep claiming the category name over deck-wide words */
