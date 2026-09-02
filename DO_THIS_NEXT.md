@@ -42,26 +42,16 @@ One unhurried session. Your hands on the dashboards, Claude prepping and
 verifying each move. **All keys/secrets go into `isshin-keys.txt`, never
 into chat.**
 
-### 3a. Point the domain (you: ~5 min in Cloudflare)
-1. **https://dash.cloudflare.com** → click **wordstick.app** → left
-   sidebar **DNS → Records**.
-2. Add THREE records — for each one, set **Proxy status to "DNS only"**
-   (click the orange cloud so it turns **grey** — important, GitHub needs
-   to see the domain directly to issue its security certificate):
-   - Type **CNAME** · Name **`@`** · Target **`jvrj.github.io`**
-   - Type **CNAME** · Name **`www`** · Target **`jvrj.github.io`**
-   - Type **CNAME** · Name **`app`** · Target **`jvrj.github.io`**
-3. Tell Claude **"DNS is in."**
+### ✅ 3a. Point the domain — **DONE (2 Sep)** — all 3 records in Cloudflare
+### ✅ 3b. The domain move — **DONE (2 Sep)** — Claude shipped + verified it
+**https://app.wordstick.app** is the app (v8.86, full live test PASS);
+**https://wordstick.app** is the sales page; the old github.io address
+redirects automatically; Stripe return addresses updated on the server.
 
-### 3b. Claude does the move (you: nothing — ~30 min of Claude work)
-Claude then: creates the small second repo for the sales page, points
-**wordstick.app** at it and **app.wordstick.app** at the app, updates
-every address inside the code (links, share images, Stripe return
-addresses), ships, and live-verifies both sites.
-
-Then your one action: on the phone, open **https://app.wordstick.app** →
-**sign in** (progress comes back via account sync) → Chrome ⋮ → **Add to
-Home screen** → remove the old icon. Fresh install, new Sticker W icon.
+**Your one action left from this step:** on the phone, open
+**https://app.wordstick.app** → **sign in** (progress comes back via
+account sync) → Chrome ⋮ → **Add to Home screen** → remove the old
+icon. Fresh install, new Sticker W icon.
 
 ### 3c. Tell Supabase the new addresses (you: 2 min)
 Dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
