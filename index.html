@@ -869,7 +869,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.85';
+const APP_VERSION = '8.86';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6370,8 +6370,8 @@ const CHECKOUT_URL = SUPA_URL + '/functions/v1/checkout';
    own allow-list expects (backend/supabase/functions/checkout/index.ts).
    Deliberately literal constants, never assembled from window.location, so
    this screen can never send a return URL the function wasn't built for. */
-const PAYWALL_SUCCESS_URL = 'https://jvrj.github.io/japanese-trainer/?checkout=success';
-const PAYWALL_CANCEL_URL  = 'https://jvrj.github.io/japanese-trainer/?checkout=cancelled';
+const PAYWALL_SUCCESS_URL = 'https://app.wordstick.app/?checkout=success';
+const PAYWALL_CANCEL_URL  = 'https://app.wordstick.app/?checkout=cancelled';
 const STRIPE_CHECKOUT_ORIGIN = 'https://checkout.stripe.com';
 /* Single source of truth for both displayed prices AND the "save" badge —
    the badge is computed from these two numbers, never a separate literal. */
