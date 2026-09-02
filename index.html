@@ -864,7 +864,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.87';
+const APP_VERSION = '8.88';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2542,7 +2542,7 @@ const N5_PACK = [
   {jp:"おやこどんぶり",romaji:"oyakodonburi",en:"oyakodon (chicken & egg rice bowl)",pos:"n",theme:"food",register:"neutral",jlpt:4},
   {jp:"ざいりょう",romaji:"zairyou",en:"material, ingredient",pos:"n",theme:"cooking",register:"neutral",jlpt:4},
   {jp:"ぶん",romaji:"bun",en:"portion / share",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
-  {jp:"グラム",romaji:"guramu",en:"gram",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"グラム",romaji:"guramu",en:"gram",pos:"expr",theme:"counters",register:"neutral",jlpt:4,retired:true}, /* v8.88 dup of the later gram (weight) entry */
   {jp:"よんぶんのいち",romaji:"yonbunnoichi",en:"one fourth",pos:"n",theme:"numbers",register:"neutral",jlpt:4},
   {jp:"ちょうみりょう",romaji:"choumiryou",en:"seasoning , flavouring",pos:"n",theme:"cooking",register:"neutral",jlpt:4},
   {jp:"てきとうな おおきさに",romaji:"tekitouna ookisani",en:"in right size",pos:"expr",theme:"phrases",register:"neutral",jlpt:4},
@@ -3074,6 +3074,62 @@ const N5_PACK = [
   /* v8.87 — appended only (ids are positional; never insert mid-array). */
   {jp:"どれでも",romaji:"doredemo",en:"any of them (3+ choices)",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"どれ (which, of 3+) + でも = whichever one, they're all OK. どれでも いい です = any of them is fine. For exactly two, use どっちでも."},
   {jp:"どっちでも",romaji:"docchidemo",en:"either one (of two)",pos:"n",theme:"grammar",register:"casual",jlpt:4,note:"どっち (which of two, casual) + でも. どっちでも いい = either's fine / I don't mind. Polite twin: どちらでも. Careless tone if said flatly — can sound like 'whatever'."},
+  /* v8.88 — batch: pattern families + thin-topic fill + N5 gap sweep (append-only). */
+  {jp:"こっち",romaji:"kocchi",en:"this way / this one (casual)",pos:"pron",theme:"grammar",register:"casual",jlpt:5,note:"Casual こちら. Points near YOU the speaker: こっち きて = come here. Also means my side in a comparison."},
+  {jp:"そっち",romaji:"socchi",en:"that way / your side (casual)",pos:"pron",theme:"grammar",register:"casual",jlpt:5,note:"Casual そちら. Points near the LISTENER — also your end on the phone: そっち は どう? = how about your end?"},
+  {jp:"あっち",romaji:"acchi",en:"over there (casual)",pos:"pron",theme:"grammar",register:"casual",jlpt:5,note:"Casual あちら. Away from BOTH people. あっち いって = go away — blunt, use with care."},
+  {jp:"だれか",romaji:"dareka",en:"someone",pos:"n",theme:"people",register:"neutral",jlpt:5,note:"だれ (who) + か = an unknown person. だれか いますか = is anyone there? Family: なにか, どこか, いつか."},
+  {jp:"なにか",romaji:"nanika",en:"something",pos:"n",theme:"grammar",register:"neutral",jlpt:5,note:"なに (what) + か. なにか たべたい = I want to eat something. Question word + か = some___."},
+  {jp:"どこか",romaji:"dokoka",en:"somewhere",pos:"n",theme:"places",register:"neutral",jlpt:5,note:"どこ (where) + か. どこか いきたい = I want to go somewhere — vague on purpose, no particular place in mind."},
+  {jp:"いつか",romaji:"itsuka",en:"someday / sometime",pos:"n",theme:"time",register:"neutral",jlpt:5,note:"いつ (when) + か. いつか にほんに いきたい = someday I want to go to Japan. An undecided future time."},
+  {jp:"どれか",romaji:"doreka",en:"one of them (3+)",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"どれ + か = some one of the choices. どれか えらんで = pick one. Compare どれでも = ALL of them are fine."},
+  {jp:"どちらか",romaji:"dochiraka",en:"one of the two",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"どちら + か. どちらか えらんで ください = please choose one of the two. Casual: どっちか."},
+  {jp:"だれも",romaji:"daremo",en:"nobody (with a negative)",pos:"n",theme:"people",register:"neutral",jlpt:5,note:"Needs a negative verb: だれも いません = nobody is there. With a positive verb use みんな instead."},
+  {jp:"なにも",romaji:"nanimo",en:"nothing (with a negative)",pos:"n",theme:"grammar",register:"neutral",jlpt:5,note:"なにも たべませんでした = I ate nothing at all. Question word + も + negative = no___ at all."},
+  {jp:"どこも",romaji:"dokomo",en:"everywhere / nowhere (with neg.)",pos:"n",theme:"places",register:"neutral",jlpt:5,note:"Flips with the verb: どこも こんでいます = everywhere is crowded; どこも いきません = I am going nowhere."},
+  {jp:"どちらも",romaji:"dochiramo",en:"both (of the two)",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"どちらも すきです = I like both. Casual: どっちも. Noun version: りょうほう."},
+  {jp:"どちらでも",romaji:"dochirademo",en:"either one (polite)",pos:"n",theme:"grammar",register:"polite",jlpt:4,note:"Polite twin of どっちでも. どちらでも いいです = either is fine — the safe form with staff, teachers, customers."},
+  {jp:"いくらでも",romaji:"ikurademo",en:"as much as you like",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"いくら (how much) + でも = no limit. いくらでも たべて ください = eat as much as you like."},
+  {jp:"きみどり",romaji:"kimidori",en:"yellow-green (light green)",pos:"n",theme:"colors",register:"neutral",jlpt:4,note:"き (yellow) + みどり (green) — fresh new-leaf green. Plain darker green stays みどり."},
+  {jp:"カラフル",romaji:"karafuru",en:"colorful",pos:"adj",theme:"colors",register:"neutral",jlpt:4,note:"Loanword na-adjective: カラフルな ふく = colorful clothes. Many bright colors; ONE loud color is はで."},
+  {jp:"もよう",romaji:"moyou",en:"pattern (printed design)",pos:"n",theme:"colors",register:"neutral",jlpt:4,note:"The design on fabric or paper: はなの もよう = flower pattern. Opposite: むじ (plain)."},
+  {jp:"むじ",romaji:"muji",en:"plain / no pattern",pos:"n",theme:"colors",register:"neutral",jlpt:4,note:"One solid color, no print: むじの シャツ. The shop MUJI is literally むじるし = no brand."},
+  {jp:"みずたま",romaji:"mizutama",en:"polka dots",pos:"n",theme:"colors",register:"neutral",jlpt:3,note:"Literally water drops. みずたまの ワンピース = polka-dot dress."},
+  {jp:"しましま",romaji:"shimashima",en:"stripes / stripy",pos:"n",theme:"colors",register:"casual",jlpt:3,note:"Doubled しま (stripe) — casual and a bit cute. しましまの シャツ = stripy shirt."},
+  {jp:"すうじ",romaji:"suuji",en:"number / digit (written)",pos:"n",theme:"numbers",register:"neutral",jlpt:4,note:"The written figure 1, 2, 3 — digits on a form or screen, not an amount of something."},
+  {jp:"ばんごう",romaji:"bangou",en:"number (assigned / ID)",pos:"n",theme:"numbers",register:"neutral",jlpt:5,note:"An assigned number: でんわばんごう = phone number, へやの ばんごう = room number. Not for counting things."},
+  {jp:"ごうけい",romaji:"goukei",en:"total / sum",pos:"n",theme:"numbers",register:"neutral",jlpt:4,note:"The added-up amount: ごうけいで せんえん = 1,000 yen in total. Printed on every receipt."},
+  {jp:"たす",romaji:"tasu",en:"to add (numbers / more of)",pos:"v",theme:"numbers",register:"neutral",jlpt:4,note:"に たす さん は ご = 2 + 3 = 5. Also add more of something: さとうを たす = add sugar."},
+  {jp:"りょうほう",romaji:"ryouhou",en:"both (things)",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"Noun both of them: りょうほう ください = I will take both. どちらも is the same idea as a chooser word."},
+  {jp:"しゅうかん",romaji:"shuukan",en:"counter for weeks",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"にしゅうかん = two weeks. Same sound as しゅうかん (habit) — a number in front means weeks."},
+  {jp:"ページ",romaji:"peeji",en:"page",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"ごページ = page 5 or five pages — both the page number and the count."},
+  {jp:"キロ",romaji:"kiro",en:"kilo (kg or km)",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"Short for キログラム AND キロメートル — weight or distance, context decides. ごキロ = 5 kg or 5 km."},
+  {jp:"にんまえ",romaji:"ninmae",en:"portions (of food)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,note:"Servings when ordering: すしを ににんまえ = two portions of sushi."},
+  {jp:"おまたせしました",romaji:"omatase shimashita",en:"sorry to keep you waiting",pos:"expr",theme:"greetings",register:"polite",jlpt:4,note:"Said when you arrive late or serve food. Casual clip: おまたせ!"},
+  {jp:"ようこそ",romaji:"youkoso",en:"welcome!",pos:"expr",theme:"greetings",register:"neutral",jlpt:4,note:"Welcoming someone to a place: にほんへ ようこそ = welcome to Japan. On signs and doorways everywhere."},
+  {jp:"おさきに",romaji:"osaki ni",en:"excuse me, I am leaving first",pos:"expr",theme:"greetings",register:"polite",jlpt:4,note:"Short for おさきに しつれいします — said when leaving work before others. The reply is おつかれさまでした."},
+  {jp:"ワンピース",romaji:"wanpiisu",en:"dress (one-piece)",pos:"n",theme:"clothing",register:"neutral",jlpt:5,note:"From one piece = a dress. Wearing verb is きる (upper-body rule)."},
+  {jp:"ポケット",romaji:"poketto",en:"pocket",pos:"n",theme:"clothing",register:"neutral",jlpt:5,note:"ポケットに いれます = put it in a pocket."},
+  {jp:"ティーシャツ",romaji:"tiishatsu",en:"T-shirt",pos:"n",theme:"clothing",register:"neutral",jlpt:5,note:"Usually written Tシャツ but said tiishatsu. Wear with きる."},
+  {jp:"ふたご",romaji:"futago",en:"twins",pos:"n",theme:"family",register:"neutral",jlpt:4,note:"ふた (two) + ご (child). ふたごの あに = my twin older brother."},
+  {jp:"きんぎょ",romaji:"kingyo",en:"goldfish",pos:"n",theme:"animals",register:"neutral",jlpt:4,note:"きん (gold) + ぎょ (fish). きんぎょすくい = goldfish scooping, the classic summer-festival game."},
+  {jp:"ハムスター",romaji:"hamusutaa",en:"hamster",pos:"n",theme:"animals",register:"neutral",jlpt:4,note:"A popular first pet. Keep or raise a pet = かう."},
+  {jp:"ゆきだるま",romaji:"yukidaruma",en:"snowman",pos:"n",theme:"weather",register:"neutral",jlpt:3,note:"ゆき (snow) + だるま (the round doll) — Japanese snowmen have TWO balls, not three."},
+  {jp:"さらいねん",romaji:"sarainen",en:"the year after next",pos:"n",theme:"time",register:"neutral",jlpt:4,note:"さ + らいねん (next year). Works for weeks too: さらいしゅう = the week after next."},
+  {jp:"ゆうがた",romaji:"yuugata",en:"early evening (dusk)",pos:"n",theme:"time",register:"neutral",jlpt:5,note:"Roughly 4-7pm while there is still light. After dark = よる. TV news uses ゆうがた for the evening slot."},
+  {jp:"こんばん",romaji:"konban",en:"this evening / tonight",pos:"n",theme:"time",register:"neutral",jlpt:5,note:"こん (this) + ばん (evening) — same family as こんしゅう, こんげつ. Hiding inside こんばんは (good evening)."},
+  {jp:"こんや",romaji:"kon'ya",en:"tonight (this night)",pos:"n",theme:"time",register:"neutral",jlpt:4,note:"Slightly later, more night-time feel than こんばん; both mean tonight and mostly swap freely."},
+  {jp:"まよなか",romaji:"mayonaka",en:"middle of the night",pos:"n",theme:"time",register:"neutral",jlpt:4,note:"Dead of night, around 12-3am. まよなかに めが さめた = I woke in the middle of the night."},
+  {jp:"ななめ",romaji:"naname",en:"diagonal / at an angle",pos:"n",theme:"places",register:"neutral",jlpt:4,note:"Not straight: ななめ まえ = diagonally ahead. Also crooked: ちょっと ななめ = a bit tilted."},
+  {jp:"むかい",romaji:"mukai",en:"across from / opposite",pos:"n",theme:"places",register:"neutral",jlpt:4,note:"Facing you across a street or table: えきの むかい = across from the station."},
+  {jp:"てまえ",romaji:"temae",en:"this side of (before reaching)",pos:"n",theme:"places",register:"neutral",jlpt:3,note:"The near side, just before a landmark: ぎんこうの てまえ = just before the bank. Opposite of おく."},
+  {jp:"おく",romaji:"oku",en:"the back / far inside (of a place)",pos:"n",theme:"places",register:"neutral",jlpt:4,note:"Deep interior: みせの おく = the back of the shop. Opposite of てまえ (the near side)."},
+  {jp:"おく",romaji:"oku",en:"to put / place",pos:"v",theme:"home",register:"neutral",jlpt:5,note:"テーブルの うえに おく = put it on the table. Same sound as おく (the back of a place) — different word."},
+  {jp:"かど",romaji:"kado",en:"corner (street / edge)",pos:"n",theme:"travel",register:"neutral",jlpt:5,note:"つぎの かどを みぎに まがって = turn right at the next corner. Directions essential."},
+  {jp:"しんごう",romaji:"shingou",en:"traffic light",pos:"n",theme:"travel",register:"neutral",jlpt:5,note:"しんごうを わたって = cross at the light. The green light is called あお (blue) in Japanese!"},
+  {jp:"こうさてん",romaji:"kousaten",en:"intersection / crossing",pos:"n",theme:"travel",register:"neutral",jlpt:5,note:"Where streets cross: こうさてんを まっすぐ = go straight through the intersection."},
+  {jp:"るす",romaji:"rusu",en:"away from home / not in",pos:"n",theme:"home",register:"neutral",jlpt:4,note:"The state of nobody being home. るすばん = minding the house while others are out."},
+  {jp:"うそ",romaji:"uso",en:"lie / no way!",pos:"n",theme:"social",register:"casual",jlpt:5,note:"うそを つく = to tell a lie. As an exclamation うそ! = no way, you are kidding — extremely common, not an accusation."},
 ];
 
 /* ===================== ADVANCED PACK (N4/N3) =====================
