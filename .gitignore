@@ -1,3 +1,9 @@
 # Transient files used by the validation/deploy workflow
 .__check.js
 .__msg.txt
+
+# Local-only agent/session state
+.state/
+
+# Raw phone screen recordings for the ad/landing video (never published)
+video_raw/

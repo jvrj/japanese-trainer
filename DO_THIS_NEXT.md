@@ -1,144 +1,113 @@
-# WordStick (was Isshin) · DO THIS NEXT
+# WordStick · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
 *Last updated: **2026-09-02***
 
-> **2 Sep:** the app's new name is **WordStick** (~60 names checked; "Recall",
-> "PeraPera" and Japanese words all taken or already competitor brands).
-> Buy **wordstick.app** in Step 2. Claude renames everything in-app after.
+> **2 Sep — three things locked:** the name is **WordStick** (domain
+> **wordstick.app** bought ✓), the app icon is the **Sticker W** (live in
+> v8.85 ✓), and the site layout is decided: **wordstick.app** will be the
+> sales page, **app.wordstick.app** will be the app — the standard setup
+> paying customers expect. We point the domain FIRST, so every address you
+> type into Google/Supabase/Resend is typed once, ever.
 
 ---
 
-## 🎉 Where things stand (27 Aug)
+## 🎉 Where things stand
 
-The **sign-in + paywall is LIVE** and now fully app-standard:
-- **v8.74–8.78** — sign up free (no card) → straight in for a free week;
-  welcome screen with real Sign up / Sign in buttons, email + password,
-  "Forgot your password?" — all live-tested end to end.
-- **v8.79** — day 8 is no longer a wall. After the free week the
-  account drops to the **free plan**: unlimited reviewing of the words you
-  already unlocked, plus **3 new words a day**. Home shows a quiet
-  "Unlock" banner; the plan picker ($8.99/mo · **$59.99/yr listed first**)
-  appears once at the transition and stays one tap away. Research behind
-  this: `reports/hydra-research/2026-08-27-gating-model/REPORT.md`.
-- **v8.80 (new)** — **your account remembers you.** Progress, settings and
-  onboarding answers now back up to the account and come back on sign-in,
-  so a new phone / reinstall / incognito sign-in lands straight in the
-  app with everything in place — the intro runs once per ACCOUNT, not
-  once per device. Two devices merge (the one with more drilling wins per
-  word), and a different account on the same device gets a clean start.
+- **Sign-in + paywall LIVE** since 24 Aug: sign up free → free week →
+  free plan (3 new words/day) with the plan picker one tap away
+  ($8.99/mo · $59.99/yr). Your account (juliuspireh@gmail.com) is
+  allow-listed — always in, never asked to pay.
+- **Account sync (v8.80):** progress, settings and onboarding follow the
+  ACCOUNT. This matters below — when the app moves to its new address,
+  you just sign in once and everything comes back.
+- **Rename + icon done:** WordStick everywhere, Sticker W icon shipped
+  (v8.85). You'll see the new icon automatically when you reinstall the
+  app at its new address in Step 3 — no separate icon step needed.
+- Checkout is still **Stripe TEST mode** — nobody can be charged yet.
 
-**Your own account (juliuspireh@gmail.com) is allow-listed — sign in
-anywhere and you're in, never asked to pay.** Everything machine-testable
-is green on the live site.
-
-Decisions you locked today: phone-check first · setup via this checklist ·
-Resend for sign-in emails · **buy a cheap domain** · no free taste-demo in v1.
-
-What's left before the $150 ads test is mostly **your hands** (accounts +
-dashboard switches Claude can't touch), then the video re-shoot.
+What's left before the $150 ads test: **one sitting at the computer**
+(Step 3), a **2-min test** (Step 4), the **video shoot** (Step 5), then
+Stripe go-live and ads.
 
 ---
 
-## ✅ STEP 1 — Phone-check — **DONE (1 Sep)** — v8.81 checked on the Pixel, all good
-
-You haven't seen v8.64 → 8.73 on a real phone. Open the app:
-
-1. Settings → **Get latest** → close + reopen twice → version shows **8.81**.
-2. You'll see a one-time toast about the **music fix** (mic permission no
-   longer switches voice on by itself).
-3. Walk these and note anything that feels off:
-   - **Home** — new look: "Words that stick" bar + Studio layout.
-   - **The road screen** (tap the headline) — your path of topics.
-   - **A drill** — new card design: X to exit, slim progress bar, step
-     counter, circular controls, gradient Reveal/Next button.
-   - **Settings** — now a short, clean customer page. Your owner controls
-     moved behind **7 taps on the version number** at the bottom.
-4. **See the customer's view once:** open a **private/incognito tab** in
-   Chrome → `jvrj.github.io/japanese-trainer/` → you should hit the
-   **welcome screen** (Sign up free / Sign in / Google) — and after
-   signing in, land **straight in the app** (free week, no plan picker).
-   Your own email gets you in permanently, no trial clock.
-
-Tell Claude what you find. Anything broken gets fixed before the video.
+## ✅ STEP 1 — Phone-check — **DONE (1 Sep)**
+## ✅ STEP 2 — Buy wordstick.app — **DONE (2 Sep)**
 
 ---
 
-## 🟢 STEP 2 — Buy the domain (~10 min, at the computer)
+## 🟢 STEP 3 — THE BIG SITTING (~60 min, at the computer, with Claude)
 
-Why: sign-in emails need a domain you own (Resend can't send from
-github.io), and your Facebook ads will look legitimate pointing at a real
-address. ~US$10–14/year — the only unavoidable running cost so far.
+One unhurried session. Your hands on the dashboards, Claude prepping and
+verifying each move. **All keys/secrets go into `isshin-keys.txt`, never
+into chat.**
 
-1. Go to **https://www.cloudflare.com** → create a free account (Google
-   sign-in is fine).
-2. In the left sidebar: **Domain Registration → Register Domains**.
-3. Search **`wordstick.app`** — the locked name (verified free 2 Sep;
-   ~US$14/yr). If it somehow shows taken/premium, STOP and tell Claude.
-4. Buy it (Cloudflare sells at cost, auto-renew on). Skip every upsell —
-   no email add-ons (Resend handles email in Step 3d).
-5. Write `domain: wordstick.app` in your keys file (`isshin-keys.txt`)
-   and tell Claude — the rename pass + ads/landing plan use it.
+### 3a. Point the domain (you: ~5 min in Cloudflare)
+1. **https://dash.cloudflare.com** → click **wordstick.app** → left
+   sidebar **DNS → Records**.
+2. Add THREE records — for each one, set **Proxy status to "DNS only"**
+   (click the orange cloud so it turns **grey** — important, GitHub needs
+   to see the domain directly to issue its security certificate):
+   - Type **CNAME** · Name **`@`** · Target **`jvrj.github.io`**
+   - Type **CNAME** · Name **`www`** · Target **`jvrj.github.io`**
+   - Type **CNAME** · Name **`app`** · Target **`jvrj.github.io`**
+3. Tell Claude **"DNS is in."**
 
----
+### 3b. Claude does the move (you: nothing — ~30 min of Claude work)
+Claude then: creates the small second repo for the sales page, points
+**wordstick.app** at it and **app.wordstick.app** at the app, updates
+every address inside the code (links, share images, Stripe return
+addresses), ships, and live-verifies both sites.
 
-## 🟢 STEP 3 — Supabase + Google + email sender (~25 min, at the computer)
+Then your one action: on the phone, open **https://app.wordstick.app** →
+**sign in** (progress comes back via account sync) → Chrome ⋮ → **Add to
+Home screen** → remove the old icon. Fresh install, new Sticker W icon.
 
-Everything below happens in dashboards only Claude can't log into. Exact
-clicks; menu names may drift slightly — if something's missing, tell Claude.
-**All keys/secrets go into `isshin-keys.txt`, never into chat.**
-
-Your Supabase dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
-*(If the project says PAUSED — free tier naps after ~7 idle days — click
-Restore first and wait ~2 min.)*
-
-### 3a. Tell Supabase which addresses are allowed (2 min)
-1. Left sidebar: **Authentication → URL Configuration**.
-2. **Site URL:** `https://jvrj.github.io/japanese-trainer/index.html`
+### 3c. Tell Supabase the new addresses (you: 2 min)
+Dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
+*(If it says PAUSED, click Restore and wait ~2 min.)*
+1. **Authentication → URL Configuration**.
+2. **Site URL:** `https://app.wordstick.app/index.html`
 3. Under **Redirect URLs**, add all three:
-   - `https://jvrj.github.io/japanese-trainer/index.html`
-   - `https://jvrj.github.io/japanese-trainer/`
+   - `https://app.wordstick.app/index.html`
+   - `https://app.wordstick.app/`
    - `http://localhost:8765/index.html`  *(lets Claude test sign-in locally)*
 4. Save.
 
-### 3b. Switch on "Continue with Google" (10 min — two dashboards)
+### 3d. Switch on "Continue with Google" (you: ~10 min, two dashboards)
 First get a Google "OAuth client" (the ID card that lets your app use
 Google sign-in):
-1. Go to **https://console.cloud.google.com** (your normal Google account).
+1. **https://console.cloud.google.com** (your normal Google account).
 2. Top bar project picker → **New project** → name `wordstick` → Create →
    make sure it's selected.
 3. Search bar: **"OAuth consent screen"** (may appear as *Google Auth
-   Platform → Branding*). App name: `WordStick` · support email: your Gmail ·
-   audience/user type: **External**. Save through the steps (scopes: skip,
-   defaults are fine). If there's a **Publish app** button, click it.
-4. Now **Credentials** (or *Clients*) → **Create credentials → OAuth client
+   Platform → Branding*). App name: `WordStick` · support email: your
+   Gmail · audience/user type: **External**. Save through the steps
+   (scopes: skip, defaults are fine). If there's a **Publish app**
+   button, click it.
+4. **Credentials** (or *Clients*) → **Create credentials → OAuth client
    ID** → type **Web application** → name `wordstick-web`.
 5. Under **Authorized redirect URIs** add exactly:
    `https://hslibrbdovrzhaxhtevr.supabase.co/auth/v1/callback`
-6. Create → copy **Client ID** and **Client secret** into `isshin-keys.txt`
-   as `google oauth client id: ...` / `google oauth client secret: ...`.
-
-Then flip the switch in Supabase:
+6. Create → copy **Client ID** and **Client secret** into
+   `isshin-keys.txt` as `google oauth client id: ...` /
+   `google oauth client secret: ...`.
 7. Supabase → **Authentication → Sign In / Providers** → **Google** →
-   Enable → paste the Client ID + Client secret → Save.
+   Enable → paste both → Save.
 
-### 3c. ~~Apply the consent-checkbox database change~~ — **DONE (28 Aug)**
-Claude applied this (and the account-sync guard) directly through the
-Supabase management API. Nothing for you to do here anymore.
-
-### 3d. Hook up Resend for sign-in emails (10 min — needs Step 2's domain)
-Right now sign-in emails go through Supabase's built-in sender — a few per
-hour, which would lock customers out the moment ads run.
-1. Go to **https://resend.com** → sign up (free: 3,000 emails/month).
-2. **Domains → Add domain** → enter `wordstick.app` → it shows 3–4 DNS
-   records to add. Because the domain is at Cloudflare, Resend usually
-   offers a **"Sign in to Cloudflare to add automatically"** button — use
-   it. Otherwise copy each record into Cloudflare → your domain → **DNS**.
-   Wait for Resend to show **Verified** (minutes, occasionally an hour).
+### 3e. Hook up Resend for sign-in emails (you: ~10 min)
+Right now sign-in emails go through Supabase's built-in sender — a few
+per hour, which would lock customers out the moment ads run.
+1. **https://resend.com** → sign up (free: 3,000 emails/month).
+2. **Domains → Add domain** → `wordstick.app` → it shows 3–4 DNS records.
+   Resend usually offers **"Sign in to Cloudflare to add automatically"**
+   — use it. Otherwise copy each record into Cloudflare → DNS. Wait for
+   **Verified** (minutes, occasionally an hour).
 3. **API Keys → Create API key** → name `wordstick-supabase`, permission
-   **Sending access** → copy it into `isshin-keys.txt` as
+   **Sending access** → copy into `isshin-keys.txt` as
    `resend api key: ...` (shown once).
-4. Supabase → **Authentication → Emails → SMTP Settings** (older layout:
-   Project Settings → Authentication) → **Enable custom SMTP**:
+4. Supabase → **Authentication → Emails → SMTP Settings** →
+   **Enable custom SMTP**:
    - Sender email: `hello@wordstick.app` · Sender name: `WordStick`
    - Host: `smtp.resend.com` · Port: `465`
    - Username: `resend` · Password: *the Resend API key*
@@ -149,18 +118,46 @@ hour, which would lock customers out the moment ads run.
 
 ## 🟢 STEP 4 — One real sign-in test (2 min, after Step 3)
 
-Incognito tab → `jvrj.github.io/japanese-trainer/` → you should see the
-welcome screen (Sign up free / Sign in / Google).
-1. **Set your password once:** Sign in → **Forgot your password?** → your
-   email → open the link → set a password. (Your account was created
-   before passwords existed, so it doesn't have one yet.)
-2. Then sign in with email + password → you land **inside the app**
-   (your account = always unlocked; a stranger gets a free week, then
-   drops to the free plan — 3 new words/day — with the plan picker one
-   tap away).
-3. Try **Continue with Google** too (needs Step 3b done first).
-4. Tell Claude the results. (Checkout is still Stripe TEST mode — nobody
-   can be charged yet. Going live is a later step.)
+Incognito tab → **https://app.wordstick.app** → welcome screen.
+1. **Set your password once:** Sign in → **Forgot your password?** →
+   your email → open the link → set a password.
+2. Sign in with email + password → you land inside the app.
+3. Try **Continue with Google** too.
+4. Tell Claude the results.
+
+---
+
+## 🟢 STEP 5 — The video shoot (~20 min on the phone, after Step 3)
+
+**Decided 2 Sep: real phone screen recording** — one shoot, two cuts
+(15–30s Facebook ad + 30–60s "how it works" for the sales page). Shoot
+AFTER the domain move so the new icon appears in the opening shot.
+
+**Setup (2 min):** Do Not Disturb ON · brightness up · media volume up ·
+pull down Quick Settings → **Screen record** → when it asks, pick
+**"Device audio"** (so the app's voice is in the recording) · portrait.
+
+**Take 1 — the drill (~3 min, record twice):**
+1. Phone home screen → tap the **WordStick icon** (hold on it 2 seconds
+   before tapping — this is the ad's opening shot).
+2. Home → tap into your current topic → drill **8–10 steps** naturally:
+   word plays → you answer out loud → reveal → next. Don't perform —
+   real pace is the point. Mistakes are fine (honest = good ad).
+3. Finish the round → tap the 😬🙂💪 check-in → land back on Home so the
+   "words that stick" count is on screen.
+
+**Take 2 — the tour (~1 min, record once):**
+Slow, calm swipes: Home top to bottom → tap the headline to open the
+road screen → scroll it → back to Home. No tapping into menus.
+
+**Take 3 — the front door (~30s, record once):**
+Incognito tab → **app.wordstick.app** → let the welcome screen sit for
+5 seconds → tap Sign up free → stop recording before typing anything.
+
+**Then:** copy the video files into
+`Documents\GitHub\japanese-trainer\video_raw\` (Claude keeps this folder
+out of the public code) and tell Claude — Claude plans both cuts and the
+captions from your real footage.
 
 ---
 
@@ -177,13 +174,14 @@ welcome screen (Sign up free / Sign in / Google).
 
 - [x] Market research — "AI friend, zero judgment" validated; $8.99/mo is right
 - [x] Phase 0–1 — focused app + own backend live (30 Jul)
-- [x] Core-loop polish — Home/road/Studio, onboarding funnel, new drill card, batch progression, storage hardening (v8.50–8.67)
+- [x] Core-loop polish — Home/road/Studio, onboarding, drill card, batch progression, storage hardening (v8.50–8.67)
 - [x] **Sign-in + trial paywall LIVE** (v8.70–8.73, 24 Aug)
-- [x] **App-standard entry + free plan** (v8.74–8.79, 27 Aug) — password auth, free week, day-8 = 3-new-words free tier
-- [x] **Account sync** (v8.80, 28 Aug) — progress follows the account; onboarding once per account, not per device
-- [x] **Conversion polish** (v8.81, 28 Aug) — one day-5/6 upgrade nudge after a good drill; checkout now charges immediately (no second Stripe free week)
-- [ ] **← YOU ARE HERE: phone-check + the setup checklist above**
-- [ ] Ad video re-shoot on the new UI (capture profile ready)
+- [x] App-standard entry + free plan (v8.74–8.79, 27 Aug)
+- [x] Account sync (v8.80, 28 Aug) — progress follows the account
+- [x] Conversion polish + phone-check (v8.81, 1 Sep)
+- [x] **Rename to WordStick** (v8.82) · **domain bought** · **Sticker W icon** (v8.85) — 2 Sep
+- [ ] **← YOU ARE HERE: Step 3, the big sitting** (domain → Google → email)
+- [ ] Video shoot (shot list ready above)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
 - [ ] **$150 Facebook ads test** (US$10/day × 14) — the anchor's finish line
 - Benched until subscribers exist: AI conversation relaunch + avatar (the big update)
