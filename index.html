@@ -864,7 +864,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.88';
+const APP_VERSION = '8.89';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3779,6 +3779,31 @@ function kanaToRomaji(s){
   }
   return out;
 }
+
+/* v8.89 — romaji under sentences, for newbies who can't read kana yet.
+   sentRomaji() is token-aware: sentence banks space their particles, so a lone
+   は/へ/を token is read as the particle (wa/e/o), not the letter sound.
+   Toggle: Settings → Show romaji. Stored as hideRomaji so the default — an
+   absent key — means SHOWN (customers are exactly the newbies who need it). */
+function romajiOn(){ return !state || !state.settings || state.settings.hideRomaji !== true; }
+function sentRomaji(s){
+  if(!s) return '';
+  return String(s).split(/(\s+)/).map(tok => {
+    if(/^\s+$/.test(tok)) return tok;
+    if(tok === 'は') return 'wa';
+    if(tok === 'へ') return 'e';
+    if(tok === 'を') return 'o';
+    return kanaToRomaji(tok);
+  }).join('').replace(/。/g, '.').replace(/、/g, ', ');
+}
+function romajiLine(kana, px){
+  if(!romajiOn() || !kana) return '';
+  const r = sentRomaji(kana);
+  if(!r || r === String(kana)) return '';
+  return `<div style="font-size:${px || 12}px;color:#8a80a8;font-weight:600;margin-top:3px;letter-spacing:.02em">${esc(r)}</div>`;
+}
+function romajiWordLine(r){ return (romajiOn() && r) ? `<div class="build-romaji">${esc(r)}</div>` : ''; }
+function romajiSentLine(kana){ return (romajiOn() && kana) ? `<div class="build-romaji" style="font-size:13px">${esc(sentRomaji(kana))}</div>` : ''; }
 
 /* Normalize Japanese text for matching: romaji→hira, kata→hira, strip spaces/punct */
 function normJP(s){
@@ -15701,7 +15726,7 @@ function renderSentBuild(){
     let style = 'border-radius:16px;padding:15px 8px;text-align:center;cursor:pointer;font-family:inherit;color:#f5f2ff;';
     if(placed) style += 'border:2px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);opacity:.28';
     else style += 'border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04)';
-    return `<button onclick="sentBuildTap(${ti})" ${placed && !b.done ? 'disabled' : ''} style="${style}"><span style="font-family:'Noto Sans JP';font-weight:900;font-size:19px">${esc(t)}</span></button>`;
+    return `<button onclick="sentBuildTap(${ti})" ${placed && !b.done ? 'disabled' : ''} style="${style}"><span style="font-family:'Noto Sans JP';font-weight:900;font-size:19px">${esc(t)}</span>${romajiOn() ? `<span style="display:block;font-size:10.5px;color:#8a80a8;font-weight:600;margin-top:2px">${esc(sentRomaji(t))}</span>` : ''}</button>`;
   }).join('');
   const reveal = !b.done ? '' : `<div style="animation:riseIn .3s ease-out;background:linear-gradient(160deg,rgba(157,92,255,.16),rgba(255,93,158,.06));border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:15px 16px;margin-top:14px">
     <div style="font-weight:800;font-size:13px;color:${b.wasRight ? '#9fe9cf' : '#fb7185'};margin-bottom:7px">${b.wasRight ? '✓ Correct' : '✗ Not quite'}</div>
@@ -15709,6 +15734,7 @@ function renderSentBuild(){
       <div style="font-family:'Noto Sans JP';font-weight:800;font-size:19px;line-height:1.5">${esc(q.jpFull)}</div>
       <button onclick="speakJP('${jsEsc(q.jpFull)}')" style="flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:13px;cursor:pointer">🔊</button>
     </div>
+    ${romajiLine(q.jpFull, 12.5)}
     <div style="font-weight:600;font-size:12.5px;color:#a99fc7;margin-top:5px">${esc(q.enFull)}</div>
     ${q.note ? `<div style="font-weight:500;font-size:12px;line-height:1.55;color:#cdbfe8;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)">${esc(q.note)}</div>` : ''}
     <button onclick="sentBuildNext()" style="width:100%;margin-top:13px;padding:13px;border:none;border-radius:14px;font-family:inherit;font-weight:800;font-size:13px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer">Next →</button>
@@ -15752,7 +15778,7 @@ function _sentChip(label, idx, sess, pickFn){
   else if(idx === sess.pick) style += 'border:2px solid #fb7185;background:rgba(251,113,133,.1)';
   else style += 'border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);opacity:.55';
   const onTap = hasPick ? `speakJP('${jsEsc(label)}')` : `${pickFn}(${idx})`;
-  return `<button onclick="${onTap}" style="${style}"><span style="font-family:'Noto Sans JP';font-weight:900;font-size:19px">${esc(label)}</span>${hasPick && idx === q.correctIdx ? ' <span style="font-size:12px;color:#9fe9cf">✓</span>' : ''}</button>`;
+  return `<button onclick="${onTap}" style="${style}"><span style="font-family:'Noto Sans JP';font-weight:900;font-size:19px">${esc(label)}</span>${hasPick && idx === q.correctIdx ? ' <span style="font-size:12px;color:#9fe9cf">✓</span>' : ''}${romajiOn() ? `<span style="display:block;font-size:10.5px;color:#8a80a8;font-weight:600;margin-top:2px">${esc(sentRomaji(label))}</span>` : ''}</button>`;
 }
 
 function _sentReveal(sess, q, nextFn, note){
@@ -15764,6 +15790,7 @@ function _sentReveal(sess, q, nextFn, note){
       <div style="font-family:'Noto Sans JP';font-weight:800;font-size:19px;line-height:1.5">${esc(q.jpFull)}</div>
       <button onclick="speakJP('${jsEsc(q.jpFull)}')" style="flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font-size:13px;cursor:pointer">🔊</button>
     </div>
+    ${romajiLine(q.jpFull, 12.5)}
     <div style="font-weight:600;font-size:12.5px;color:#a99fc7;margin-top:5px">${esc(q.enFull)}</div>
     ${note ? `<div style="font-weight:500;font-size:12px;line-height:1.55;color:#cdbfe8;margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.09)">${esc(note)}</div>` : ''}
     <button onclick="${nextFn}()" style="width:100%;margin-top:13px;padding:13px;border:none;border-radius:14px;font-family:inherit;font-weight:800;font-size:13px;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);cursor:pointer">Next →</button>
@@ -15785,6 +15812,7 @@ function renderSentGap(){
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:20px 16px;margin-bottom:14px;text-align:center">
       <div style="font-size:64px;line-height:1.2">${q.emoji}</div>
       <div style="font-family:'Noto Sans JP';font-weight:800;font-size:21px;line-height:1.6;margin-top:12px">${sentence}</div>
+      ${romajiLine(q.pattern.replace('{N}', g.pick === null ? '…' : q.word.jp), 13)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${q.opts.map((o, i) => _sentChip(o.jp, i, g, 'sentGapPick')).join('')}</div>
     ${_sentReveal(g, q, 'sentGapNext', q.word.note || '')}
@@ -15809,6 +15837,7 @@ function renderSentCount(){
     <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);border-radius:18px;padding:20px 16px;margin-bottom:14px;text-align:center">
       ${scene}
       <div style="font-family:'Noto Sans JP';font-weight:800;font-size:21px;line-height:1.6;margin-top:12px">${sentence}</div>
+      ${romajiLine(q.item.jp + 'が ' + (s.pick === null ? '…' : q.opts[q.correctIdx]) + ' ' + verb, 13)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${q.opts.map((o, i) => _sentChip(o, i, s, 'sentCountPick')).join('')}</div>
     ${_sentReveal(s, q, 'sentCountNext', q.note)}
@@ -22935,6 +22964,7 @@ function _buildRenderFormDrill(step){
       <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Conjugated:</div>
       <div style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:6px">${esc(step.word_jp)} → <span style="color:var(--blue)">${esc(step.form_name)}</span></div>
       <div class="build-big-jp">${esc(step.expected_jp)}</div>
+      ${romajiSentLine(step.expected_jp)}
       <div class="build-big-en">${esc(step.word_en)} · ${esc(step.form_hint || '')}</div>
     `;
   }
@@ -22990,6 +23020,7 @@ function _buildRenderQa(step){
     return `
       <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Question:</div>
       <div class="build-big-jp" style="font-size:26px;padding:4px 0">${esc(step.question_jp)}</div>
+      ${romajiSentLine(step.question_jp)}
       <div class="build-big-en" style="font-size:13px">${esc(step.question_en)}</div>
       <div class="divider"></div>
       <div class="muted" style="text-align:center;font-size:13px;margin-bottom:4px">Two answer forms:</div>
@@ -23002,6 +23033,7 @@ function _buildRenderQa(step){
   return `
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">${aiMode ? '🤖 Answer Claude' : 'Answer this question (out loud)'}</div>
     <div class="build-big-jp" style="font-size:30px;padding:8px 0">${esc(step.question_jp)}</div>
+    ${romajiSentLine(step.question_jp)}
     <div class="build-big-en" style="font-size:14px">${esc(step.question_en)}</div>
     ${aiHint}
   `;
@@ -23013,7 +23045,7 @@ function _buildRenderIntroduce(step){
   return `
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">New word — listen, repeat aloud</div>
     <div class="build-big-jp">${esc(w.jp)}</div>
-    <div class="build-romaji">${esc(w.r)}</div>
+    ${romajiWordLine(w.r)}
     <div class="build-big-en">${esc(w.en)}</div>
     ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
     ${enOff ? `<div style="text-align:center;margin-top:6px"><button class="btn btn-ghost" style="font-size:12px;padding:4px 12px" onclick="buildSpeakENForce('${jsEsc(w.en)}')">🔊 EN meaning</button></div>` : ''}
@@ -23181,7 +23213,7 @@ function _buildRenderMeet(step){
   return `
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Meet a new word — listen, then repeat aloud</div>
     <div class="build-big-jp">${esc(w.jp)}</div>
-    <div class="build-romaji">${esc(w.r || w.romaji || '')}</div>
+    ${romajiWordLine(w.r || w.romaji || '')}
     <div class="build-big-en">${esc(w.en)}</div>
     ${w.note ? `<div style="margin:10px auto 0;max-width:340px;padding:9px 12px;background:var(--card2);border-radius:10px;font-size:12.5px;line-height:1.5;color:var(--text)"><span style="font-size:10px;color:var(--dim);letter-spacing:1.5px;display:block;margin-bottom:3px">NUANCE</span>${esc(w.note)}</div>` : ''}
     ${_buildInductionSkipControl(w)}
@@ -23282,7 +23314,7 @@ function _buildRenderRecall(step){
       <div class="bm-eyebrow">Say it in Japanese</div>
       <div class="build-big-en" style="font-size:17px;padding:2px 0">${esc(w.en)}</div>
       <div class="build-big-jp">${esc(w.jp)}</div>
-      <div class="build-romaji">${esc(w.r)}</div>
+      ${romajiWordLine(w.r)}
       ${_buildRenderHeard()}
       ${w.note ? `<div class="build-nuance"><b>${esc(w.jp)}</b> — ${esc(w.note)}</div>` : ''}
     `;
@@ -23309,7 +23341,7 @@ function _buildRenderRecallRev(step){
       <div class="bm-eyebrow">It means</div>
       <div class="build-big-en" style="font-size:30px;color:var(--text)">${esc(w.en)}</div>
       <div class="build-big-jp" style="font-size:28px;padding:6px 0">${esc(w.jp)}</div>
-      <div class="build-romaji">${esc(w.r)}</div>
+      ${romajiWordLine(w.r)}
       ${_buildRenderHeard()}
       ${w.note ? `<div class="build-nuance"><b>${esc(w.jp)}</b> — ${esc(w.note)}</div>` : ''}
     `;
@@ -23318,7 +23350,7 @@ function _buildRenderRecallRev(step){
     ${freshPill}
     <div class="bm-eyebrow">What does it mean?</div>
     <div class="build-big-jp">${esc(w.jp)}</div>
-    <div class="build-romaji">${esc(w.r)}</div>
+    ${romajiWordLine(w.r)}
     <div class="build-placeholder">say the English, then tap Reveal</div>
   `;
 }
@@ -23363,6 +23395,7 @@ function _buildRenderBuild(step){
     return `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
       <div class="build-big-jp">${esc(step.sentence_jp)}</div>
+      ${romajiSentLine(step.sentence_jp)}
       <div class="build-big-en">${esc(step.sentence_en)}</div>
       ${glossBlock}
       ${whyBlock}
@@ -23407,7 +23440,7 @@ function _buildRenderCallback(step){
       return banner + `
         <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct answer:</div>
         <div class="build-big-jp">${esc(w.jp)}</div>
-        <div class="build-romaji">${esc(w.r)}</div>
+        ${romajiWordLine(w.r)}
         <div class="build-big-en">${esc(w.en)}</div>
         ${_buildRenderHeard()}
       `;
@@ -23425,6 +23458,7 @@ function _buildRenderCallback(step){
     return banner + `
       <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Correct sentence:</div>
       <div class="build-big-jp">${esc(step.sentence_jp)}</div>
+      ${romajiSentLine(step.sentence_jp)}
       <div class="build-big-en">${esc(step.sentence_en)}</div>
     `;
   }
@@ -26372,6 +26406,7 @@ function renderSettings(){
     <div class="h8-section" style="margin:16px 4px 8px">Learning</div>
     <div class="card">
       ${row('👂 Listening steps', 'Newer words play the Japanese and you say the English — trains understanding, the other half of conversation.', chk('buildListenSteps', s.buildListenSteps!==false))}
+      ${row('🔤 Show romaji', 'English letters under the Japanese — training wheels while the kana sink in. Turn off when you can read without them.', chk('hideRomaji', s.hideRomaji !== true))}
       <div class="word-row"><div class="word-main"><div class="word-jp">Show kanji <span style="font-size:10px;font-weight:800;letter-spacing:.06em;color:#c9b3ff;background:rgba(157,92,255,.16);border:1px solid rgba(157,92,255,.3);padding:2px 7px;border-radius:8px;vertical-align:2px">COMING SOON</span></div><div class="word-en">Kanji are the characters borrowed from Chinese. For now everything stays in simple Japanese letters.</div></div><input type="checkbox" disabled></div>
     </div>
 
