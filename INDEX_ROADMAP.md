@@ -22,6 +22,7 @@ North-star metric: users reaching real spoken-conversation ability (Conversation
 
 ## Investigation backlog
 
+- **Scene moments (Paul Noble-style)** — post-launch content feature, owner-parked 2026-09-03: ~10 curated scenes (ramen shop, station, konbini…) played at ROUND END when 3+ batch words share the scene's theme — picture + 4–5 kana sentences spoken aloud, skippable. NOT per-word in-loop (that was the v8.31 induction, owner-disabled for slowness) and NOT theme-forced batches (fights SM-2 + sticky batch). Cost = curation inside the core vocab pool; scenes can double as Sentences-section content. Design explored in-session 2026-09-03.
 - **Japanese STT benchmark** (~$50, ~1wk): Whisper Large-v3 vs Deepgram Nova vs Google on learner audio — gates the Phase-1 transcribe-provider choice. **Owner call 2026-07-19: deferred until the backend scaffold exists.** → punch-list item 1.
 - **Hosted-TTS decision** (ElevenLabs / CosyVoice 2 vs device-only) — TTS warmth carries the judgment-free feel; weakest on non-Pixel. → punch-list item 6, folds into Phase 1/2.
 - ~~Vocab hard-lock vs coverage meter deep-dive~~ — **RESOLVED by Delve 8 (r1 synthesized 2026-07-19)**: rolling-frontier hard lock + sensei layer → `docs/delve-cycles/8-sensei-vocab.md`; ADR-012/ADR-013 pending signoff.

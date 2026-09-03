@@ -144,6 +144,15 @@ road screen → scroll it → back to Home. No tapping into menus.
 Incognito tab → **app.wordstick.app** → let the welcome screen sit for
 5 seconds → tap Sign up free → stop recording before typing anything.
 
+**Take 4 — Sentences (~1 min, record once) — NEW, added 3 Sep:**
+Home → tap **Sentences** → answer ONE Fill-the-gap question at your
+natural pace → back → build ONE Make-a-sentence (tap the chips into
+order until it checks green) → stop. It's in the video because
+Sentences ships in v1.
+
+**The full script is ready** — both cuts, every caption, timed:
+`docs/video-script-2026-09-03.md`. You just record the 4 takes.
+
 **Then:** copy the video files into
 `Documents\GitHub\japanese-trainer\video_raw\` (Claude keeps this folder
 out of the public code) and tell Claude — Claude plans both cuts and the
@@ -171,7 +180,7 @@ captions from your real footage.
 - [x] Conversion polish + phone-check (v8.81, 1 Sep)
 - [x] **Rename to WordStick** (v8.82) · **domain bought** · **Sticker W icon** (v8.85) — 2 Sep
 - [ ] **← YOU ARE HERE: Step 3, the big sitting** (domain → Google → email)
-- [ ] Video shoot (shot list ready above)
+- [ ] Video shoot (script + captions ready: `docs/video-script-2026-09-03.md`)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
 - [ ] **$150 Facebook ads test** (US$10/day × 14) — the anchor's finish line
 - Benched until subscribers exist: AI conversation relaunch + avatar (the big update)
