@@ -25,9 +25,9 @@
   app at its new address in Step 3 — no separate icon step needed.
 - Checkout is still **Stripe TEST mode** — nobody can be charged yet.
 
-What's left before the $150 ads test: **one sitting at the computer**
-(Step 3), a **2-min test** (Step 4), the **video shoot** (Step 5), then
-Stripe go-live and ads.
+What's left before the $150 ads test: the **video shoot** (Step 5),
+then Stripe go-live and ads. (Steps 3 + 4 — domain, Google, email,
+sign-in test — all done 5 Sep.)
 
 ---
 
@@ -79,6 +79,12 @@ minutes–hours); everything else about 3d is done.
 *(5 Sep, second sitting: still greyed — Claude also declared the 3 basic
 sign-in scopes on the Data Access page so the config is now maximally
 complete; just waiting on Google to catch up.)*
+*(5 Sep, third check after Step 4: STILL greyed even after a forced
+re-save of Branding. Google's own Project Checkup and Verification
+Center both say nothing is wrong — it's their console bug. If it's
+still stuck in 2–3 days, the next lever is adding privacy-policy +
+terms links to Branding — pages we need anyway for Stripe go-live and
+Facebook ads, so Claude will build them regardless.)*
 Original steps kept below for reference:
 First get a Google "OAuth client" (the ID card that lets your app use
 Google sign-in):
@@ -113,14 +119,16 @@ ads-ready volume. **Step 3 is complete** apart from the Google
 
 ---
 
-## 🟢 STEP 4 — One real sign-in test (2 min, after Step 3)
+## ✅ STEP 4 — One real sign-in test — **DONE (5 Sep)**
 
-Incognito tab → **https://app.wordstick.app** → welcome screen.
-1. **Set your password once:** Sign in → **Forgot your password?** →
-   your email → open the link → set a password.
-2. Sign in with email + password → you land inside the app.
-3. Try **Continue with Google** too.
-4. Tell Claude the results.
+All three checks passed: the reset email arrived in under a minute
+**from "WordStick <hello@wordstick.app>"** (your own domain — the
+whole Resend chain works), email+password sign-in landed inside the
+app, and **Continue with Google** worked too.
+*One cosmetic note:* the Google popup showed the backend's address
+(`hslibrbdovrzhaxhtevr.supabase.co`) instead of "WordStick" — that's
+normal while the Google app is unpublished; the pending "Publish app"
+click in 3d improves the branding shown.
 
 ---
 
@@ -187,8 +195,8 @@ captions from your real footage.
 - [x] Conversion polish + phone-check (v8.81, 1 Sep)
 - [x] **Rename to WordStick** (v8.82) · **domain bought** · **Sticker W icon** (v8.85) — 2 Sep
 - [x] **Step 3, the big sitting** (domain → Google → email) — 5 Sep (one Google "Publish app" click pending console lag)
-- [ ] **← YOU ARE HERE: Step 4, the 2-minute sign-in test** (then the video)
-- [ ] Video shoot (script + captions ready: `docs/video-script-2026-09-03.md`)
+- [x] **Step 4, the sign-in test** — 5 Sep: email from own domain ✓, both sign-ins ✓
+- [ ] **← YOU ARE HERE: the video shoot** (script + captions ready: `docs/video-script-2026-09-03.md`)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
 - [ ] **$150 Facebook ads test** (US$10/day × 14) — the anchor's finish line
 - Benched until subscribers exist: AI conversation relaunch + avatar (the big update)
