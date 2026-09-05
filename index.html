@@ -864,7 +864,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.89';
+const APP_VERSION = '8.90';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3130,6 +3130,152 @@ const N5_PACK = [
   {jp:"こうさてん",romaji:"kousaten",en:"intersection / crossing",pos:"n",theme:"travel",register:"neutral",jlpt:5,note:"Where streets cross: こうさてんを まっすぐ = go straight through the intersection."},
   {jp:"るす",romaji:"rusu",en:"away from home / not in",pos:"n",theme:"home",register:"neutral",jlpt:4,note:"The state of nobody being home. るすばん = minding the house while others are out."},
   {jp:"うそ",romaji:"uso",en:"lie / no way!",pos:"n",theme:"social",register:"casual",jlpt:5,note:"うそを つく = to tell a lie. As an exclamation うそ! = no way, you are kidding — extremely common, not an accusation."},
+
+  /* ===== v8.90 — Counting ladders (owner request 5 Sep): the combined
+     number+counter words you actually SAY — people, years, months, weeks,
+     hours, minutes, dates, ages, times, o'clock, price irregulars. The bare
+     counter units (にん, かげつ…) above are reference-only (hidden from
+     drills); these full forms ARE the drillable vocabulary. Irregular
+     readings verified against the standard JLPT N5 ladders. APPEND-ONLY. */
+
+  /* --- people ~にん --- */
+  {jp:"ひとり",romaji:"hitori",en:"one person",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular — NOT いちにん. Also the base of ひとりで = alone, by oneself.",ex:"こどもが ひとり います。",exEn:"There is one child."},
+  {jp:"ふたり",romaji:"futari",en:"two people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular — NOT ににん. From さんにん onward it is regular number + にん."},
+  {jp:"さんにん",romaji:"sannin",en:"three people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"First regular one in the people ladder: number + にん from here up."},
+  {jp:"よにん",romaji:"yonin",en:"four people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular — よにん, never よんにん or しにん (し is avoided: sounds like death)."},
+  {jp:"ごにん",romaji:"gonin",en:"five people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + にん. かぞくは ごにんです = we are a family of five."},
+  {jp:"ろくにん",romaji:"rokunin",en:"six people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ろく + にん. No sound change here (unlike ろっぷん for minutes)."},
+  {jp:"ななにん",romaji:"nananin",en:"seven people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"しちにん is equally correct (しちにんの さむらい = Seven Samurai); ななにん is clearer in speech."},
+  {jp:"はちにん",romaji:"hachinin",en:"eight people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: はち + にん."},
+  {jp:"きゅうにん",romaji:"kyuunin",en:"nine people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"きゅうにん is the everyday reading; くにん exists but is rare."},
+  {jp:"じゅうにん",romaji:"juunin",en:"ten people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. Beyond ten just keep stacking: じゅういちにん, にじゅうにん…"},
+  {jp:"なんにん",romaji:"nannin",en:"how many people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The question word of the ladder.",ex:"なんにん きますか。",exEn:"How many people are coming?"},
+
+  /* --- years ~ねん --- */
+  {jp:"いちねん",romaji:"ichinen",en:"one year",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Duration. Add かん to stress the span: いちねんかん = for one year. Also school year: いちねんせい = 1st-year student."},
+  {jp:"にねん",romaji:"ninen",en:"two years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: に + ねん. にねんかん べんきょうしました = I studied for two years."},
+  {jp:"さんねん",romaji:"sannen",en:"three years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. Proverb: いしのうえにも さんねん — three years even on a cold stone (persistence pays)."},
+  {jp:"よねん",romaji:"yonen",en:"four years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular — よねん, never よんねん. Same よ~ shortening as よにん and よじ."},
+  {jp:"ごねん",romaji:"gonen",en:"five years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + ねん."},
+  {jp:"ろくねん",romaji:"rokunen",en:"six years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ろく + ねん."},
+  {jp:"ななねん",romaji:"nananen",en:"seven years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"ななねん or しちねん — both heard; なな~ avoids mishearing."},
+  {jp:"はちねん",romaji:"hachinen",en:"eight years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: はち + ねん."},
+  {jp:"きゅうねん",romaji:"kyuunen",en:"nine years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: きゅう + ねん."},
+  {jp:"じゅうねん",romaji:"juunen",en:"ten years",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. じゅうねんかん = for a decade."},
+  {jp:"なんねん",romaji:"nannen",en:"how many years / what year",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Both how-long (なんねんかん) and which-year (なんねんに うまれましたか = what year were you born?)."},
+
+  /* --- months ~かげつ --- */
+  {jp:"いっかげつ",romaji:"ikkagetsu",en:"one month (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いち + かげつ contracts to いっ~. Duration only — calendar months use ~がつ (しがつ = April)."},
+  {jp:"にかげつ",romaji:"nikagetsu",en:"two months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: に + かげつ."},
+  {jp:"さんかげつ",romaji:"sankagetsu",en:"three months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. さんかげつ にほんごを べんきょうしています = I have studied Japanese for three months."},
+  {jp:"よんかげつ",romaji:"yonkagetsu",en:"four months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"よん~ here (unlike よにん / よねん / よじ — months keep the full よん)."},
+  {jp:"ごかげつ",romaji:"gokagetsu",en:"five months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + かげつ."},
+  {jp:"ろっかげつ",romaji:"rokkagetsu",en:"six months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"ろく contracts to ろっ~. はんとし (half a year) means the same and is very common."},
+  {jp:"ななかげつ",romaji:"nanakagetsu",en:"seven months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: なな + かげつ."},
+  {jp:"はっかげつ",romaji:"hakkagetsu",en:"eight months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"はち contracts to はっ~ (はちかげつ is also heard)."},
+  {jp:"きゅうかげつ",romaji:"kyuukagetsu",en:"nine months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: きゅう + かげつ."},
+  {jp:"じゅっかげつ",romaji:"jukkagetsu",en:"ten months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"じゅう contracts to じゅっ~ (formal spelling じっかげつ exists but じゅっ~ is what you hear)."},
+  {jp:"なんかげつ",romaji:"nankagetsu",en:"how many months",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The question word.",ex:"なんかげつ にほんに いますか。",exEn:"How many months will you be in Japan?"},
+
+  /* --- weeks ~しゅうかん --- */
+  {jp:"いっしゅうかん",romaji:"isshuukan",en:"one week",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いち + しゅうかん contracts to いっ~. いっしゅうかんに いっかい = once a week."},
+  {jp:"にしゅうかん",romaji:"nishuukan",en:"two weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: に + しゅうかん."},
+  {jp:"さんしゅうかん",romaji:"sanshuukan",en:"three weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: さん + しゅうかん."},
+  {jp:"よんしゅうかん",romaji:"yonshuukan",en:"four weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Full よん~ here. いっかげつ (one month) usually replaces it in real speech."},
+  {jp:"ごしゅうかん",romaji:"goshuukan",en:"five weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + しゅうかん."},
+  {jp:"ろくしゅうかん",romaji:"rokushuukan",en:"six weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular — no contraction (compare ろっかげつ)."},
+  {jp:"ななしゅうかん",romaji:"nanashuukan",en:"seven weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: なな + しゅうかん."},
+  {jp:"はっしゅうかん",romaji:"hasshuukan",en:"eight weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"はち contracts to はっ~."},
+  {jp:"きゅうしゅうかん",romaji:"kyuushuukan",en:"nine weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: きゅう + しゅうかん."},
+  {jp:"じゅっしゅうかん",romaji:"jusshuukan",en:"ten weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"じゅう contracts to じゅっ~."},
+  {jp:"なんしゅうかん",romaji:"nanshuukan",en:"how many weeks",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The question word of the week ladder."},
+
+  /* --- hours ~じかん --- */
+  {jp:"いちじかん",romaji:"ichijikan",en:"one hour",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Duration. Drop かん for the clock point: いちじ = 1 o'clock.",ex:"いちじかん まちました。",exEn:"I waited one hour."},
+  {jp:"にじかん",romaji:"nijikan",en:"two hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: に + じかん."},
+  {jp:"さんじかん",romaji:"sanjikan",en:"three hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: さん + じかん."},
+  {jp:"よじかん",romaji:"yojikan",en:"four hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular — よじかん, never よんじかん. Same よ~ family as よじ (4 o'clock)."},
+  {jp:"ごじかん",romaji:"gojikan",en:"five hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + じかん."},
+  {jp:"ろくじかん",romaji:"rokujikan",en:"six hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ろく + じかん."},
+  {jp:"しちじかん",romaji:"shichijikan",en:"seven hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"しちじかん or ななじかん — both fine; clock 7 is always しちじ."},
+  {jp:"はちじかん",romaji:"hachijikan",en:"eight hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. はちじかん ねました = I slept eight hours."},
+  {jp:"くじかん",romaji:"kujikan",en:"nine hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Textbook form くじかん (like くじ = 9 o'clock); きゅうじかん is also heard."},
+  {jp:"じゅうじかん",romaji:"juujikan",en:"ten hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: じゅう + じかん."},
+  {jp:"なんじかん",romaji:"nanjikan",en:"how many hours",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"How-long question; なんじ (no かん) asks what TIME it is."},
+
+  /* --- minutes ~ふん/ぷん --- */
+  {jp:"いっぷん",romaji:"ippun",en:"one minute",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いち + ふん → いっぷん. The minute ladder has the most sound changes — worth drilling hard."},
+  {jp:"にふん",romaji:"nifun",en:"two minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Plain ふん after に (no change)."},
+  {jp:"さんぷん",romaji:"sanpun",en:"three minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"ふん hardens to ぷん after さん (like the cup-noodle timer: さんぷん)."},
+  {jp:"よんぷん",romaji:"yonpun",en:"four minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"よんぷん — full よん + ぷん (minutes keep よん, unlike よじ)."},
+  {jp:"ごふん",romaji:"gofun",en:"five minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Plain ふん after ご. ごふん まって = wait five minutes.",ex:"えきまで ごふんです。",exEn:"It is five minutes to the station."},
+  {jp:"ろっぷん",romaji:"roppun",en:"six minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"ろく + ふん → ろっぷん."},
+  {jp:"ななふん",romaji:"nanafun",en:"seven minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Plain ふん after なな."},
+  {jp:"はっぷん",romaji:"happun",en:"eight minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"はち + ふん → はっぷん (はちふん also accepted)."},
+  {jp:"きゅうふん",romaji:"kyuufun",en:"nine minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Plain ふん after きゅう."},
+  {jp:"じゅっぷん",romaji:"juppun",en:"ten minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"じゅう + ふん → じゅっぷん. Times like 3:10 = さんじ じゅっぷん."},
+  {jp:"なんぷん",romaji:"nanpun",en:"how many minutes / what minute",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"なん hardens ふん to ぷん. いま なんぷん? = how many minutes past?"},
+
+  /* --- days of the month (also day-counts) --- */
+  {jp:"ついたち",romaji:"tsuitachi",en:"the 1st (of the month)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Date only. ONE DAY of duration is いちにち, not ついたち."},
+  {jp:"ふつか",romaji:"futsuka",en:"the 2nd / two days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Dates 2–10 double as day-counts: ふつか = the 2nd OR two days. Native-number family (ふた~)."},
+  {jp:"みっか",romaji:"mikka",en:"the 3rd / three days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"みっかぼうず = a three-day monk: someone who quits everything after three days."},
+  {jp:"よっか",romaji:"yokka",en:"the 4th / four days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Careful: よっか (4th) vs ようか (8th) — a classic listening trap."},
+  {jp:"いつか",romaji:"itsuka",en:"the 5th / five days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Same sound as いつか = someday. A date before it (ごがつ いつか = May 5th) means the 5th."},
+  {jp:"むいか",romaji:"muika",en:"the 6th / six days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"From む (native six — compare むっつ)."},
+  {jp:"なのか",romaji:"nanoka",en:"the 7th / seven days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"From なな. なのかかん = for seven days."},
+  {jp:"ようか",romaji:"youka",en:"the 8th / eight days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The other half of the trap: ようか (8th) vs よっか (4th). From や (native eight — compare やっつ)."},
+  {jp:"ここのか",romaji:"kokonoka",en:"the 9th / nine days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"From ここの (native nine — compare ここのつ)."},
+  {jp:"とおか",romaji:"tooka",en:"the 10th / ten days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"From とお (native ten). From the 11th, dates go regular: じゅういちにち…"},
+  {jp:"なんにち",romaji:"nannichi",en:"what day / how many days",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"きょうは なんにちですか = what is the date today? Also how-many-days."},
+
+  /* --- age ~さい --- */
+  {jp:"いっさい",romaji:"issai",en:"one year old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いち + さい → いっさい."},
+  {jp:"にさい",romaji:"nisai",en:"two years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: に + さい."},
+  {jp:"さんさい",romaji:"sansai",en:"three years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: さん + さい."},
+  {jp:"よんさい",romaji:"yonsai",en:"four years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Full よん~ (ages keep よん, unlike よにん)."},
+  {jp:"ごさい",romaji:"gosai",en:"five years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + さい."},
+  {jp:"ろくさい",romaji:"rokusai",en:"six years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ろく + さい."},
+  {jp:"ななさい",romaji:"nanasai",en:"seven years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"ななさい preferred in speech (しちさい exists)."},
+  {jp:"はっさい",romaji:"hassai",en:"eight years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"はち + さい → はっさい."},
+  {jp:"きゅうさい",romaji:"kyuusai",en:"nine years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: きゅう + さい."},
+  {jp:"じゅっさい",romaji:"jussai",en:"ten years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"じゅう + さい → じゅっさい."},
+  {jp:"はたち",romaji:"hatachi",en:"twenty years old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Fully irregular — the coming-of-age word. Every other 20+ age is regular (にじゅういっさい…)."},
+  {jp:"なんさい",romaji:"nansai",en:"how old",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Everyday form. おいくつですか is the polite version.",ex:"なんさいですか。",exEn:"How old are you?"},
+
+  /* --- times ~かい --- */
+  {jp:"いっかい",romaji:"ikkai",en:"once / one time",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いち + かい → いっかい. Also 1st floor! Context decides. いちど is a softer once."},
+  {jp:"にかい",romaji:"nikai",en:"twice / two times",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Also 2nd floor — same word. いっしゅうかんに にかい = twice a week."},
+  {jp:"さんかい",romaji:"sankai",en:"three times",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Three times. The FLOOR reading of 3 is irregular: さんがい."},
+  {jp:"なんかい",romaji:"nankai",en:"how many times",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"なんかいも = many times over.",ex:"なんかい いきましたか。",exEn:"How many times did you go?"},
+
+  /* --- clock ~じ (o'clock points) --- */
+  {jp:"いちじ",romaji:"ichiji",en:"one o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Clock POINT (with かん it becomes duration: いちじかん). に marks the time: いちじに あいましょう."},
+  {jp:"にじ",romaji:"niji",en:"two o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Same sound as にじ = rainbow — the じ after a number is always the clock."},
+  {jp:"さんじ",romaji:"sanji",en:"three o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"さんじの おやつ = the 3 o'clock snack — a fixed phrase in Japan."},
+  {jp:"よじ",romaji:"yoji",en:"four o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular #1 of the clock: よじ, never よんじ or しじ."},
+  {jp:"ごじ",romaji:"goji",en:"five o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ご + じ."},
+  {jp:"ろくじ",romaji:"rokuji",en:"six o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: ろく + じ."},
+  {jp:"しちじ",romaji:"shichiji",en:"seven o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular #2: always しちじ on the clock, never ななじ."},
+  {jp:"はちじ",romaji:"hachiji",en:"eight o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: はち + じ."},
+  {jp:"くじ",romaji:"kuji",en:"nine o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Irregular #3: always くじ, never きゅうじ. The three clock irregulars: よじ, しちじ, くじ."},
+  {jp:"じゅうじ",romaji:"juuji",en:"ten o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular: じゅう + じ."},
+  {jp:"じゅういちじ",romaji:"juuichiji",en:"eleven o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. AM/PM go in front: ごぜん じゅういちじ = 11 a.m."},
+  {jp:"じゅうにじ",romaji:"juuniji",en:"twelve o'clock",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Regular. ごご じゅうにじ = noon (also ひる)."},
+  {jp:"なんじ",romaji:"nanji",en:"what time",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"THE clock question.",ex:"いま なんじですか。",exEn:"What time is it now?"},
+  {jp:"はん",romaji:"han",en:"half past / and a half",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"After a time word: さんじはん = 3:30, いちじかんはん = an hour and a half."},
+
+  /* --- price / big-number sound changes --- */
+  {jp:"さんびゃく",romaji:"sanbyaku",en:"three hundred",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"ひゃく voices to びゃく after さん. さんびゃくえん = 300 yen."},
+  {jp:"ろっぴゃく",romaji:"roppyaku",en:"six hundred",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"ろく + ひゃく → ろっぴゃく."},
+  {jp:"はっぴゃく",romaji:"happyaku",en:"eight hundred",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"はち + ひゃく → はっぴゃく. The greengrocer やおや is written 800-shop!"},
+  {jp:"さんぜん",romaji:"sanzen",en:"three thousand",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"せん voices to ぜん after さん. さんぜんえん = 3,000 yen."},
+  {jp:"はっせん",romaji:"hassen",en:"eight thousand",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"はち + せん → はっせん. The only other thousand change is さんぜん."},
+  {jp:"いちまん",romaji:"ichiman",en:"ten thousand",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Japanese counts in units of 10,000: いちまんえん is THE banknote. Never bare まん for 10,000 itself."},
+
+  /* --- spans that replace a ladder --- */
+  {jp:"はんとし",romaji:"hantoshi",en:"half a year",pos:"n",theme:"counters",register:"neutral",jlpt:5,note:"= ろっかげつ, but はんとし is what people actually say. はん = half + とし = year."},
+  {jp:"なんようび",romaji:"nanyoubi",en:"what day of the week",pos:"num",theme:"time",register:"neutral",jlpt:5,note:"きょうは なんようびですか = what day is it today? Answers end in ~ようび."},
 ];
 
 /* ===================== ADVANCED PACK (N4/N3) =====================
