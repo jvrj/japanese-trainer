@@ -1,6 +1,6 @@
 # WordStick · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-09-02***
+*Last updated: **2026-09-05***
 
 > **2 Sep — three things locked:** the name is **WordStick** (domain
 > **wordstick.app** bought ✓), the app icon is the **Sticker W** (live in
@@ -53,7 +53,7 @@ redirects automatically; Stripe return addresses updated on the server.
 account sync) → Chrome ⋮ → **Add to Home screen** → remove the old
 icon. Fresh install, new Sticker W icon.
 
-### 3c. Tell Supabase the new addresses (you: 2 min)
+### ✅ 3c. Tell Supabase the new addresses — **DONE (5 Sep)**
 Dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
 *(If it says PAUSED, click Restore and wait ~2 min.)*
 1. **Authentication → URL Configuration**.
@@ -64,7 +64,22 @@ Dashboard: **https://supabase.com/dashboard/project/hslibrbdovrzhaxhtevr**
    - `http://localhost:8765/index.html`  *(lets Claude test sign-in locally)*
 4. Save.
 
-### 3d. Switch on "Continue with Google" (you: ~10 min, two dashboards)
+### ✅ 3d. Switch on "Continue with Google" — **DONE (5 Sep)**
+Consent screen created (project `wordstick-507606`), OAuth client
+`wordstick-web` created with the Supabase callback URI, ID + secret saved
+to `isshin-keys.txt`, and the Google provider is **Enabled** in Supabase.
+Branding also has home page `https://wordstick.app` + both authorized
+domains, and your Gmail is a **test user**, so YOUR Google sign-in works
+right now.
+**⏳ One leftover click:** Google's "Publish app" button (Audience page)
+was greyed out by a console lag ("configuration incomplete" even though
+it isn't). Until it's clicked, ONLY you can use Google sign-in —
+customers can't. Retry it next sitting (usually un-greys within
+minutes–hours); everything else about 3d is done.
+*(5 Sep, second sitting: still greyed — Claude also declared the 3 basic
+sign-in scopes on the Data Access page so the config is now maximally
+complete; just waiting on Google to catch up.)*
+Original steps kept below for reference:
 First get a Google "OAuth client" (the ID card that lets your app use
 Google sign-in):
 1. **https://console.cloud.google.com** (your normal Google account).
