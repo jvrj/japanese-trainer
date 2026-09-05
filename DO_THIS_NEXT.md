@@ -100,24 +100,16 @@ Google sign-in):
 7. Supabase → **Authentication → Sign In / Providers** → **Google** →
    Enable → paste both → Save.
 
-### 3e. Hook up Resend for sign-in emails (you: ~10 min)
-Right now sign-in emails go through Supabase's built-in sender — a few
-per hour, which would lock customers out the moment ads run.
-1. **https://resend.com** → sign up (free: 3,000 emails/month).
-2. **Domains → Add domain** → `wordstick.app` → it shows 3–4 DNS records.
-   Resend usually offers **"Sign in to Cloudflare to add automatically"**
-   — use it. Otherwise copy each record into Cloudflare → DNS. Wait for
-   **Verified** (minutes, occasionally an hour).
-3. **API Keys → Create API key** → name `wordstick-supabase`, permission
-   **Sending access** → copy into `isshin-keys.txt` as
-   `resend api key: ...` (shown once).
-4. Supabase → **Authentication → Emails → SMTP Settings** →
-   **Enable custom SMTP**:
-   - Sender email: `hello@wordstick.app` · Sender name: `WordStick`
-   - Host: `smtp.resend.com` · Port: `465`
-   - Username: `resend` · Password: *the Resend API key*
-   - Save.
-5. Same area → **Rate Limits** → raise **emails per hour** to `60`.
+### ✅ 3e. Hook up Resend for sign-in emails — **DONE (5 Sep)**
+You signed up + authorized Cloudflare; Claude drove the rest and
+verified every step: domain `wordstick.app` **Verified** on Resend
+(DNS auto-added via Cloudflare, ~4 min), API key `wordstick-supabase`
+(Sending access) saved to `isshin-keys.txt`, Supabase custom SMTP
+enabled (hello@wordstick.app / WordStick / smtp.resend.com:465 /
+user `resend`), and the email rate limit raised to **60/hour**
+(reload-verified). Sign-in emails now come from your own domain —
+ads-ready volume. **Step 3 is complete** apart from the Google
+"Publish app" console-lag click in 3d above.
 
 ---
 
@@ -194,7 +186,8 @@ captions from your real footage.
 - [x] Account sync (v8.80, 28 Aug) — progress follows the account
 - [x] Conversion polish + phone-check (v8.81, 1 Sep)
 - [x] **Rename to WordStick** (v8.82) · **domain bought** · **Sticker W icon** (v8.85) — 2 Sep
-- [ ] **← YOU ARE HERE: Step 3, the big sitting** (domain → Google → email)
+- [x] **Step 3, the big sitting** (domain → Google → email) — 5 Sep (one Google "Publish app" click pending console lag)
+- [ ] **← YOU ARE HERE: Step 4, the 2-minute sign-in test** (then the video)
 - [ ] Video shoot (script + captions ready: `docs/video-script-2026-09-03.md`)
 - [ ] Stripe go-live (live products/prices/webhook + account activation)
 - [ ] **$150 Facebook ads test** (US$10/day × 14) — the anchor's finish line
