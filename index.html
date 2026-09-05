@@ -864,7 +864,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.90';
+const APP_VERSION = '8.91';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -2180,26 +2180,26 @@ const N5_PACK = [
   {jp:"ここのつ",romaji:"kokonotsu",en:"nine (things)",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Native count."},
   {jp:"とお",romaji:"too",en:"ten (things)",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Native count tops out at とお; from 11 switch to じゅういち + a counter."},
   {jp:"いくつ",romaji:"ikutsu",en:"how many / how old",pos:"num",theme:"numbers",register:"neutral",jlpt:5,note:"Counts things, OR politely asks age (おいくつ ですか)."},
-  {jp:"つ",romaji:"tsu",en:"counter for things (general)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The safe fallback counter (ひとつ..とお) when you don't know the specific one.",ex:"みかんを みっつ ください。",exEn:"Three mandarins, please."},
-  {jp:"にん",romaji:"nin",en:"counter for people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"People counter. Irregular: ひとり (1), ふたり (2), then さんにん, よにん (NOT よんにん)."},
-  {jp:"まい",romaji:"mai",en:"counter for flat things (paper)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Paper, plates, shirts, tickets, stamps — anything flat."},
-  {jp:"ほん",romaji:"hon",en:"counter for long thin things (bottles, pencils)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぽん, にほん, さんぼん, ろっぽん, はっぽん. Also phone calls, films, train lines."},
-  {jp:"さつ",romaji:"satsu",en:"counter for books/magazines",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Books, magazines, notebooks. いっさつ, さんさつ."},
-  {jp:"だい",romaji:"dai",en:"counter for machines and cars",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Cars, computers, appliances, bikes."},
-  {jp:"ひき",romaji:"hiki",en:"counter for small animals",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぴき, にひき, さんびき. Big animals use ～とう instead."},
-  {jp:"とう",romaji:"tou",en:"counter for large animals",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Cows, horses, elephants. Small animals are ～ひき."},
-  {jp:"わ",romaji:"wa",en:"counter for birds and rabbits",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Birds — and rabbits, counted as birds for old historical reasons."},
-  {jp:"こ",romaji:"ko",en:"counter for small objects",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"General counter for small/round-ish items (apples, eggs, boxes)."},
-  {jp:"かい",romaji:"kai",en:"counter for times/floors",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Counts occurrences AND building floors. Floor 3 is irregular: さんがい.",ex:"えいがを にかい みました。",exEn:"I watched the movie twice."},
-  {jp:"ど",romaji:"do",en:"counter for times/degrees",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちど = once; also temperature/angle degrees.",ex:"いちど だけ あいました。",exEn:"I met them just once."},
-  {jp:"はい",romaji:"hai",en:"counter for cups and glasses",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぱい, にはい, さんばい. Drinks, bowls of rice.",ex:"おちゃを いっぱい のみます。",exEn:"I drink a cup of tea."},
-  {jp:"ばん",romaji:"ban",en:"number (in a series)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちばん = No.1 — and also 'the most' (いちばん おいしい = the tastiest)."},
-  {jp:"ばんめ",romaji:"banme",en:"the nth (position in order)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Ordinal: にばんめ = the 2nd one. ～め alone also makes ordinals."},
-  {jp:"じかん",romaji:"jikan",en:"counter for hours (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Duration. ～じ (without かん) is a clock point: さんじ = 3 o'clock."},
-  {jp:"ふん",romaji:"fun",en:"counter for minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぷん, よんぷん, ごふん. Clock and duration both.",ex:"ごふん まちました。",exEn:"I waited five minutes."},
-  {jp:"かげつ",romaji:"kagetsu",en:"counter for months (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いっかげつ = one month long. ～がつ (no か) is the calendar month: しがつ = April."},
-  {jp:"さい",romaji:"sai",en:"counter for age (years old)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Age. はたち = 20 (irregular). Sound: いっさい, はっさい, じゅっさい."},
-  {jp:"ばい",romaji:"bai",en:"counter for multiples (double, triple)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Multiplication: にばい = double, さんばい = triple.",ex:"きょうは にばい たべました。",exEn:"Today I ate twice as much."},
+  {jp:"つ",romaji:"tsu",en:"counter for things (general)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"The safe fallback counter (ひとつ..とお) when you don't know the specific one.",ex:"みかんを みっつ ください。",exEn:"Three mandarins, please.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"にん",romaji:"nin",en:"counter for people",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"People counter. Irregular: ひとり (1), ふたり (2), then さんにん, よにん (NOT よんにん).",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"まい",romaji:"mai",en:"counter for flat things (paper)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Paper, plates, shirts, tickets, stamps — anything flat.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ほん",romaji:"hon",en:"counter for long thin things (bottles, pencils)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぽん, にほん, さんぼん, ろっぽん, はっぽん. Also phone calls, films, train lines.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"さつ",romaji:"satsu",en:"counter for books/magazines",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Books, magazines, notebooks. いっさつ, さんさつ.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"だい",romaji:"dai",en:"counter for machines and cars",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Cars, computers, appliances, bikes.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ひき",romaji:"hiki",en:"counter for small animals",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぴき, にひき, さんびき. Big animals use ～とう instead.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"とう",romaji:"tou",en:"counter for large animals",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Cows, horses, elephants. Small animals are ～ひき.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"わ",romaji:"wa",en:"counter for birds and rabbits",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Birds — and rabbits, counted as birds for old historical reasons.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"こ",romaji:"ko",en:"counter for small objects",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"General counter for small/round-ish items (apples, eggs, boxes).",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"かい",romaji:"kai",en:"counter for times/floors",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Counts occurrences AND building floors. Floor 3 is irregular: さんがい.",ex:"えいがを にかい みました。",exEn:"I watched the movie twice.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ど",romaji:"do",en:"counter for times/degrees",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちど = once; also temperature/angle degrees.",ex:"いちど だけ あいました。",exEn:"I met them just once.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"はい",romaji:"hai",en:"counter for cups and glasses",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぱい, にはい, さんばい. Drinks, bowls of rice.",ex:"おちゃを いっぱい のみます。",exEn:"I drink a cup of tea.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ばん",romaji:"ban",en:"number (in a series)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いちばん = No.1 — and also 'the most' (いちばん おいしい = the tastiest).",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ばんめ",romaji:"banme",en:"the nth (position in order)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Ordinal: にばんめ = the 2nd one. ～め alone also makes ordinals.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"じかん",romaji:"jikan",en:"counter for hours (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Duration. ～じ (without かん) is a clock point: さんじ = 3 o'clock.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ふん",romaji:"fun",en:"counter for minutes",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Sound changes: いっぷん, よんぷん, ごふん. Clock and duration both.",ex:"ごふん まちました。",exEn:"I waited five minutes.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"かげつ",romaji:"kagetsu",en:"counter for months (duration)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"いっかげつ = one month long. ～がつ (no か) is the calendar month: しがつ = April.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"さい",romaji:"sai",en:"counter for age (years old)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Age. はたち = 20 (irregular). Sound: いっさい, はっさい, じゅっさい.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
+  {jp:"ばい",romaji:"bai",en:"counter for multiples (double, triple)",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Multiplication: にばい = double, さんばい = triple.",ex:"きょうは にばい たべました。",exEn:"Today I ate twice as much.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"パーセント",romaji:"paasento",en:"percent",pos:"num",theme:"counters",register:"neutral",jlpt:5,note:"Casual short form: パー. ごじゅっパーセント = 50%."},
 
   /* ===== Expansion: こそあど gaps + question words ===== */
@@ -2474,7 +2474,7 @@ const N5_PACK = [
   {jp:"おんせん",romaji:"onsen",en:"hot spring, spa",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"かえり",romaji:"kaeri",en:"return",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"おこさん",romaji:"okosan",en:"(someone else's) child",pos:"n",theme:"family",register:"neutral",jlpt:4},
-  {jp:"ごう",romaji:"gou",en:"number suffix (trains, typhoons)",pos:"n",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"ごう",romaji:"gou",en:"number suffix (trains, typhoons)",pos:"n",theme:"counters",register:"neutral",jlpt:4,retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"のほう",romaji:"no hou",en:"direction / side (comparisons)",pos:"expr",theme:"grammar",register:"neutral",jlpt:4,ex:"えきのほうへ あるきます。",exEn:"I walk toward the station."},
   {jp:"ずっと",romaji:"zutto",en:"the whole time",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"のこります",romaji:"nokorimasu",en:"remain, be left, stay behind",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
@@ -2600,7 +2600,7 @@ const N5_PACK = [
   {jp:"だい",romaji:"dai",en:"fee, charge (taxi fare, bill)",pos:"expr",theme:"shopping",register:"neutral",jlpt:4,ex:"でんきだいを はらいます。",exEn:"I pay the electricity bill."},
   {jp:"フロント",romaji:"furonto",en:"front desk, reception desk",pos:"n",theme:"places",register:"neutral",jlpt:4},
   {jp:"や",romaji:"ya",en:"shop suffix (bakery, bookstore)",pos:"expr",theme:"work",register:"neutral",jlpt:4,ex:"ほんやで ほんを かいます。",exEn:"I buy books at the bookstore."},
-  {jp:"ごうしつ",romaji:"goushitsu",en:"room number suffix (hotels)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"さんごうしつは あちらです。",exEn:"Room 3 is over there."},
+  {jp:"ごうしつ",romaji:"goushitsu",en:"room number suffix (hotels)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"さんごうしつは あちらです。",exEn:"Room 3 is over there.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"おおぜい",romaji:"oozei",en:"a great number (of people)",pos:"n",theme:"people",register:"neutral",jlpt:4},
   {jp:"おつかれさまでした",romaji:"otsukaresamadeshita",en:"thanks for your hard work (polite)",pos:"expr",theme:"greetings",register:"neutral",jlpt:4,ex:"きょうも おつかれさまでした。",exEn:"Thanks for your hard work again today."},
   {jp:"うかがいます",romaji:"ukagaimasu",en:"I will come/visit (humble)",pos:"expr",theme:"travel",register:"neutral",jlpt:4,note:"humble equivalent of いきます"},
@@ -2631,7 +2631,7 @@ const N5_PACK = [
   {jp:"おもさ",romaji:"omosa",en:"weight",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"たかさ",romaji:"takasa",en:"height",pos:"n",theme:"objects",register:"neutral",jlpt:4},
   {jp:"おおきさ",romaji:"ookisa",en:"size, scale",pos:"n",theme:"objects",register:"neutral",jlpt:4},
-  {jp:"びん",romaji:"bin",en:"flight (airline flight number)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"にびんに のります。",exEn:"I take flight 2."},
+  {jp:"びん",romaji:"bin",en:"flight (airline flight number)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"にびんに のります。",exEn:"I take flight 2.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"～こ",romaji:"ko",en:"~ (counter for small objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"りんごを さんこ かいます。",exEn:"I buy three apples.",retired:true},
   {jp:"～ほん、～ぽん、～ぼん",romaji:"honponbon",en:"(counter for long objects)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"ビールを にほん のみました。",exEn:"I drank two bottles of beer.",retired:true},
   {jp:"～はい、～ぱい、～ばい",romaji:"haipaibai",en:"~ cupfuls / glassfuls (counter)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,ex:"みずを いっぱい ください。",exEn:"A glass of water, please.",retired:true},
@@ -2701,7 +2701,7 @@ const N5_PACK = [
   {jp:"かかりいん",romaji:"kakariin",en:"person in charge, organiser",pos:"n",theme:"work",register:"neutral",jlpt:4},
   {jp:"コース",romaji:"koosu",en:"course, route",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"スタート",romaji:"sutaato",en:"start",pos:"n",theme:"sports",register:"neutral",jlpt:4},
-  {jp:"い",romaji:"i",en:"counter for rankings (first place)",pos:"expr",theme:"counters",register:"neutral",jlpt:4},
+  {jp:"い",romaji:"i",en:"counter for rankings (first place)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"ゆうしょうします",romaji:"yuushoushimasu",en:"win the championship, come first",pos:"v",theme:"sports",register:"neutral",jlpt:4},
   {jp:"なやみ",romaji:"nayami",en:"trouble, worry",pos:"n",theme:"feelings",register:"neutral",jlpt:4},
   {jp:"めざまし",romaji:"mezamashi",en:"alarm clock (short form)",pos:"n",theme:"objects",register:"neutral",jlpt:4,note:"［どけい］ optional"},
@@ -3101,10 +3101,10 @@ const N5_PACK = [
   {jp:"ごうけい",romaji:"goukei",en:"total / sum",pos:"n",theme:"numbers",register:"neutral",jlpt:4,note:"The added-up amount: ごうけいで せんえん = 1,000 yen in total. Printed on every receipt."},
   {jp:"たす",romaji:"tasu",en:"to add (numbers / more of)",pos:"v",theme:"numbers",register:"neutral",jlpt:4,note:"に たす さん は ご = 2 + 3 = 5. Also add more of something: さとうを たす = add sugar."},
   {jp:"りょうほう",romaji:"ryouhou",en:"both (things)",pos:"n",theme:"grammar",register:"neutral",jlpt:4,note:"Noun both of them: りょうほう ください = I will take both. どちらも is the same idea as a chooser word."},
-  {jp:"しゅうかん",romaji:"shuukan",en:"counter for weeks",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"にしゅうかん = two weeks. Same sound as しゅうかん (habit) — a number in front means weeks."},
+  {jp:"しゅうかん",romaji:"shuukan",en:"counter for weeks",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"にしゅうかん = two weeks. Same sound as しゅうかん (habit) — a number in front means weeks.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"ページ",romaji:"peeji",en:"page",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"ごページ = page 5 or five pages — both the page number and the count."},
   {jp:"キロ",romaji:"kiro",en:"kilo (kg or km)",pos:"expr",theme:"counters",register:"neutral",jlpt:5,note:"Short for キログラム AND キロメートル — weight or distance, context decides. ごキロ = 5 kg or 5 km."},
-  {jp:"にんまえ",romaji:"ninmae",en:"portions (of food)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,note:"Servings when ordering: すしを ににんまえ = two portions of sushi."},
+  {jp:"にんまえ",romaji:"ninmae",en:"portions (of food)",pos:"expr",theme:"counters",register:"neutral",jlpt:4,note:"Servings when ordering: すしを ににんまえ = two portions of sushi.",retired:true}, /* v8.91 abstract bare-counter cull (owner call 5 Sep) */
   {jp:"おまたせしました",romaji:"omatase shimashita",en:"sorry to keep you waiting",pos:"expr",theme:"greetings",register:"polite",jlpt:4,note:"Said when you arrive late or serve food. Casual clip: おまたせ!"},
   {jp:"ようこそ",romaji:"youkoso",en:"welcome!",pos:"expr",theme:"greetings",register:"neutral",jlpt:4,note:"Welcoming someone to a place: にほんへ ようこそ = welcome to Japan. On signs and doorways everywhere."},
   {jp:"おさきに",romaji:"osaki ni",en:"excuse me, I am leaving first",pos:"expr",theme:"greetings",register:"polite",jlpt:4,note:"Short for おさきに しつれいします — said when leaving work before others. The reply is おつかれさまでした."},
@@ -3276,6 +3276,10 @@ const N5_PACK = [
   /* --- spans that replace a ladder --- */
   {jp:"はんとし",romaji:"hantoshi",en:"half a year",pos:"n",theme:"counters",register:"neutral",jlpt:5,note:"= ろっかげつ, but はんとし is what people actually say. はん = half + とし = year."},
   {jp:"なんようび",romaji:"nanyoubi",en:"what day of the week",pos:"num",theme:"time",register:"neutral",jlpt:5,note:"きょうは なんようびですか = what day is it today? Answers end in ~ようび."},
+
+  /* ===== v8.91 — real words rescued from the retired bare-counter cull ===== */
+  {jp:"いちばん",romaji:"ichiban",en:"the most / number one",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5,note:"THE superlative: いちばん おいしい = the tastiest. Literally number one — also ranking No.1.",ex:"すしが いちばん すきです。",exEn:"I like sushi the most."},
+  {jp:"いちど",romaji:"ichido",en:"once / one time",pos:"adv",theme:"adverbs",register:"neutral",jlpt:5,note:"Softer than いっかい. もういちど = one more time — the classroom survival phrase.",ex:"もういちど いってください。",exEn:"Please say it one more time."},
 ];
 
 /* ===================== ADVANCED PACK (N4/N3) =====================
