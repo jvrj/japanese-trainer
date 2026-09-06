@@ -69,7 +69,7 @@ out loud, hands-free, in the dead minutes they already have.
 ### 2. The diagnosis (truth proves itself — their exact experience, no questions asked AT them)
 You've put in real hours. Maybe hundreds. You can *recognize* plenty of Japanese —
 when it's written in front of you, with four buttons to choose from.
-Then someone actually speaks to you, and your mind goes white.
+Then someone actually speaks to you — and you go blank.
 That gap has a name, and it isn't "bad at languages."
 
 ### 3. The why (not-your-fault + the mechanism in plain words — the aha is the sale)
@@ -169,7 +169,7 @@ Quitting was the accurate signal: my brain could tell the tapping wasn't going a
 The games drill you to recognize words on a screen. Speaking is the opposite skill —
 producing the word from memory, out loud — and I'd never practiced it once.
 Now my drive to work is the practice. An app that says the English, waits, and I say the
-Japanese out loud before it shows me anything. Hands-free, ten-odd minutes, no screen. The
+Japanese out loud before it shows me anything. Hands-free, ten minutes or so, no screen. The
 words I "learn" this way actually come out of my mouth later — which is the whole point.
 It's free for 7 days (no card), $8.99/mo after. If you've quit the apps before, this is
 built for exactly why you quit.
@@ -190,8 +190,8 @@ Try it on tomorrow's drive — free for 7 days, no card. $8.99/mo after, cancel 
 It's a shame that people put real months into the streak apps and still freeze when
 someone actually speaks Japanese to them.
 ⸻
-— when saying thirty-odd words out loud on the drive to work often does more for your
-mouth than a year of tapping. The difference isn't talent, and it isn't effort. The apps
+— when ten minutes of saying words out loud on the drive to work often puts more Japanese
+in your mouth than a year of tapping. The difference isn't talent, and it isn't effort. The apps
 drill recognition (tap the right answer); speaking is recall (produce the word from
 nothing). Two different muscles. Most people have only ever trained the first one.
 WordStick trains the second: it asks, you say the word out loud before you ever see it,
@@ -207,8 +207,8 @@ Streaks measure showing up. Sentences measure learning. If you've got a long str
 sentences, nothing is wrong with you — the games drill recognizing words, and speaking is
 the opposite skill: pulling the word out of your own head, out loud.
 That's the skill WordStick trains. It prompts you, you SAY the Japanese before you ever
-see it, hands-free on the drive to work. Ten-odd minutes of producing beats another year
-of tapping.
+see it, hands-free on the drive to work. Ten minutes of actually saying words beats
+another year of tapping.
 7 days free, no card. $8.99/mo after, cancel anytime. Keep the owl if you like it — just
 add the part that makes words come out of your mouth.
 
@@ -218,7 +218,7 @@ add the part that makes words come out of your mouth.
 | H1 | none (rates only) | "the apps" generic | 2nd-person cold (§10 caution) — that's WHY it's one of five, the test decides | ✅ ship |
 | H2 | none | Names **Duolingo** as first-person lived experience (factual "I quit it", no claims about the product's quality beyond the shared diagnosis) — the defensible form | ✅ ship |
 | H3 | none | none | none. Driving angle worded hands-free/eyes-on-road throughout — never shows or implies handling a phone while driving (ad + video cut must match) | ✅ ship |
-| H4 | "often does more" — softened comparative, no timeframe | "streak apps" generic | none | ✅ ship |
+| H4 | "often puts more" — softened comparative, no timeframe | "streak apps" generic | none | ✅ ship |
 | H5 | none | Green owl = implied competitor, no name, no factual claims about it ("feel productive" = about the user's feeling). Closer: "keep the owl" = additive, not disparaging | ⚠️ ship in slot 5, watch it: if rejected — never delete, edit to vanilla, approve, off, tag DNU |
 | All | "30 words a week that stay" style lines are RATE claims (kept per §11); no "fluent", no deadlines, no "you can do it too", softeners in place | | | |
 
