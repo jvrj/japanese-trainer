@@ -135,7 +135,20 @@ click in 3d improves the branding shown.
 
 ---
 
-## 🟢 STEP 5 — The video shoot (~20 min on the phone, after Step 3)
+## 🟢 STEP 5 — The video shoot — SIMPLIFIED 6 Sep: ONE recording, ~5 min
+
+> **Forget the 4 takes below (kept for reference only).** New plan: press
+> record ONCE and use the app naturally for five minutes, following the
+> order in the chat walkthrough (drill a round → check-in → scroll Home →
+> road screen → Sentences: one Fill-the-gap + one Make-a-sentence → stop).
+> Mistakes are GOOD — honest footage is the ad. If it goes wrong, just
+> record the whole 5 minutes again. Claude cuts everything, captures the
+> website shot himself, and builds both cuts. To record on the Pixel:
+> swipe down twice → **Screen record** → *Record entire screen* → audio =
+> **Device audio and microphone** → *Show touches* ON. Then upload the
+> file to Google Drive (or USB-copy into `video_raw\`) and tell Claude.
+
+*(Original 4-take plan below — superseded, reference only.)*
 
 **Decided 2 Sep: real phone screen recording** — one shoot, two cuts
 (15–30s Facebook ad + 30–60s "how it works" for the sales page). Shoot
