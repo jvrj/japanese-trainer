@@ -107,6 +107,8 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
 - [ ] **[YOU]** Final read + go/no-go on the launch card.
 
 ## G. Launch-day gates (all must be green before the campaign goes live)
+- [ ] **[BOTH]** App cleaning-up pass (owner 7 Sep: "right before we launch the first
+      ad set") — Julius to define the list when we schedule it; nothing launches before it.
 - [ ] Money chain proven live (B) · video cuts approved (C) · pixel firing (D) ·
       GA4 accruing (E) · compliance pass (F) · page loads fast on phone (Claude probes).
 - [ ] **[YOU]** Publish the campaign per the launch card (your hands on the Ads Manager —
