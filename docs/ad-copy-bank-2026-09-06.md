@@ -137,3 +137,115 @@ The dead minutes are getting spent either way. The only question is on what.
 - Compliance check done: no outcome+timeframe promises; "30 words a week" appears only as
   the mechanism's pace on the sub/ad, not as a guarantee; softeners ("plenty", "maybe")
   in place of absolutes.
+
+---
+
+## H. THE AD SET (v1, 6 Sep) — 5 primary texts for the dynamic-creative launch
+*One dynamic-creative ad: the video + these 5 primary texts + headlines 22/24. Five DISTINCT
+angles (not five rewordings), per the angle session: streak-shame · quitter-vindication ·
+driver-format · "it's a shame" commiseration · green-owl. Primary ingredients in every
+variant: (1) the app/recognition diagnosis (2) say-it-out-loud-before-you-see-it. The line
+above the ⸻ is the above-fold intro — draft-checked against ~2–3 mobile lines.*
+
+### H1 — "The streak" (2nd person; funnel-congruent with the page hero)
+You did the streak. You tapped the matching games on the bus. And when it mattered,
+nothing came out.
+⸻
+That's not a discipline problem — you kept a streak alive; that IS discipline. The apps
+drilled you to *recognize* Japanese, never to produce it. Recognizing is tapping the right
+answer. Speaking is pulling the word out of your own head with nothing on the screen — the
+opposite direction, and the apps never train it.
+WordStick trains that direction: it asks you for the word and you say it OUT LOUD, before
+you ever see it — hands-free, in the dead minutes you already have. Keep your job, your
+commute, your evenings: the drive to work becomes the lesson. No typing. No flashcards.
+No staring at a screen.
+Free for 7 days, no card. $8.99/mo after, cancel anytime.
+
+### H2 — "It wasn't me" (1st person; quitter-vindication)
+I quit Duolingo twice. Both times I decided I was lazy. Turns out nothing was sticking —
+and it wasn't me.
+⸻
+Quitting was the accurate signal: my brain could tell the tapping wasn't going anywhere.
+The games drill you to recognize words on a screen. Speaking is the opposite skill —
+producing the word from memory, out loud — and I'd never practiced it once.
+Now my drive to work is the practice. An app that says the English, waits, and I say the
+Japanese out loud before it shows me anything. Hands-free, ten-odd minutes, no screen. The
+words I "learn" this way actually come out of my mouth later — which is the whole point.
+It's free for 7 days (no card), $8.99/mo after. If you've quit the apps before, this is
+built for exactly why you quit.
+
+### H3 — "The only free hour" (keep-frame lead; the driver segment)
+Every language app needs your eyes and your thumbs. For a lot of us, the only truly free
+hour of the day is behind the wheel.
+⸻
+So the apps never fit — and podcasts just wash over you (listening is passive; the words
+don't come back out later). WordStick was built for that hour: it prompts you, you answer
+OUT LOUD, it moves on — fully hands-free, eyes on the road, like talking to a passenger
+who happens to be teaching you Japanese.
+Nothing new added to your life. No study hour, no flashcards, no screen time. The dead
+minutes you already lose every day, upgraded into real Japanese words that stick.
+Try it on tomorrow's drive — free for 7 days, no card. $8.99/mo after, cancel anytime.
+
+### H4 — "It's a shame" (3rd person commiseration; the injustice points at the APPS)
+It's a shame that people put real months into the streak apps and still freeze when
+someone actually speaks Japanese to them.
+⸻
+— when saying thirty-odd words out loud on the drive to work often does more for your
+mouth than a year of tapping. The difference isn't talent, and it isn't effort. The apps
+drill recognition (tap the right answer); speaking is recall (produce the word from
+nothing). Two different muscles. Most people have only ever trained the first one.
+WordStick trains the second: it asks, you say the word out loud before you ever see it,
+hands-free, in minutes you already have. That's the entire method — and it's the part the
+apps skipped.
+Free for 7 days, no card needed. $8.99/mo after. It's a shame more people don't know the
+direction was the problem.
+
+### H5 — "The green owl" (playful attack; ships ONLY per the audit note below)
+The green owl makes you feel productive. It doesn't make you able to speak.
+⸻
+Streaks measure showing up. Sentences measure learning. If you've got a long streak and no
+sentences, nothing is wrong with you — the games drill recognizing words, and speaking is
+the opposite skill: pulling the word out of your own head, out loud.
+That's the skill WordStick trains. It prompts you, you SAY the Japanese before you ever
+see it, hands-free on the drive to work. Ten-odd minutes of producing beats another year
+of tapping.
+7 days free, no card. $8.99/mo after, cancel anytime. Keep the owl if you like it — just
+add the part that makes words come out of your mouth.
+
+### H-audit — compliance pre-flight (playbook §11)
+| Variant | Outcome+timeframe | Brand risk | Voice risk | Verdict |
+|---|---|---|---|---|
+| H1 | none (rates only) | "the apps" generic | 2nd-person cold (§10 caution) — that's WHY it's one of five, the test decides | ✅ ship |
+| H2 | none | Names **Duolingo** as first-person lived experience (factual "I quit it", no claims about the product's quality beyond the shared diagnosis) — the defensible form | ✅ ship |
+| H3 | none | none | none. Driving angle worded hands-free/eyes-on-road throughout — never shows or implies handling a phone while driving (ad + video cut must match) | ✅ ship |
+| H4 | "often does more" — softened comparative, no timeframe | "streak apps" generic | none | ✅ ship |
+| H5 | none | Green owl = implied competitor, no name, no factual claims about it ("feel productive" = about the user's feeling). Closer: "keep the owl" = additive, not disparaging | ⚠️ ship in slot 5, watch it: if rejected — never delete, edit to vanilla, approve, off, tag DNU |
+| All | "30 words a week that stay" style lines are RATE claims (kept per §11); no "fluent", no deadlines, no "you can do it too", softeners in place | | | |
+
+Headlines to pair: **22** ("How to go from a dead streak to Japanese words that actually
+stick — a hands-free app") + **24** (price-in-ad filtration variant). Skip 23 for launch
+(outcome-rate is allowed but 22/24 read cleaner on a cold account; revisit at scale).
+
+---
+
+## I. Page warm-up posts (organic, pre-launch — post 2–3 over the days before ads)
+*Job: make the page look alive to FB + humans, lower CPM, start the engager audience.
+Tone: useful observation, zero selling until post 3.*
+
+**Post 1 (observation — no link):**
+Weird thing about language apps: they test whether you can recognize a word on a screen,
+then tell you you've "learned" it. But when someone speaks to you, there's no screen and
+no multiple choice — you either produce the word from memory or you freeze. Recognizing
+and producing are different muscles. Most apps only ever train the first one.
+
+**Post 2 (mini-story — no link):**
+Talked to someone who kept a 300-day streak alive and then couldn't order food on their
+trip. They'd decided they were "bad at languages." They weren't — 300 days is the
+opposite of lazy. They'd just spent 300 days practicing the wrong direction: tapping
+answers instead of saying words. Direction matters more than hours.
+
+**Post 3 (soft reveal + link):**
+We built WordStick around one idea: you should say the word out loud BEFORE you ever see
+it — hands-free, on the drive to work, in minutes you already lose. No streaks, no
+games, no screen-staring. There's a 7-day free trial (no card) if you want to try it on
+tomorrow's commute → wordstick.app
