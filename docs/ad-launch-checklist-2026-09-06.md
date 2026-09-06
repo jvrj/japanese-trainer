@@ -28,20 +28,42 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       are added to the OAuth Branding page — that's the documented next lever for the
       greyed button.
 
-## B. Stripe go-live (BOTH — one sitting ~30 min)
-- [ ] **[YOU]** Activate the Stripe account: business details + bank account (only you can).
-- [ ] **[CLAUDE]** Live products/prices ($8.99/mo · $59.99/yr · 7-day trial), live webhook,
-      live keys onto the server (into isshin-keys.txt flow, never chat).
-- [ ] **[YOU]** One real live-mode purchase with your own card → confirm entitlement unlocks →
-      cancel → confirm the cancel path. The only honest test of the money chain.
-- [ ] **[CLAUDE]** Headless verify of the full funnel post-switch (landing → sign-up → trial →
+## B. Stripe go-live — ✅ COMPLETE 6 Sep, full live E2E green
+- [x] **[YOU]** Account activated (real account, not sandbox; statement descriptor
+      WORDSTICK.APP; Radar Lite). 6 Sep.
+- [x] **[CLAUDE]** Live product **WordStick** + prices (lookup keys `wordstick_monthly`
+      $8.99 / `wordstick_yearly` $59.99 USD), live webhook `we_1UCWDVIFl6LDy9NQAR0XvfK4`,
+      all four server secrets swapped to live. IDs + secret in isshin-keys.txt.
+- [x] **[YOU]** REAL live purchase test (juliuswipe test acct): paid $8.99 → webhook wrote
+      entitlement in 7 s → refund succeeded → dashboard cancel → deletion webhook re-locked
+      the row automatically. Receipt email received. The whole money chain is proven.
+- [ ] **[YOU]** Cosmetic: Settings → Business details → Public business name → "WordStick"
+      (shows on receipt emails; currently still Isshin).
+- [ ] **[CLAUDE]** 🐛 **LAUNCH BUG found during the test:** a mid-trial user CANNOT buy —
+      the paywall screen probes entitlement and bounces any unlocked (= trialing) user
+      straight back to Home (index.html ~6644), and the only CTAs appear day 5-7 (nudge)
+      or post-trial. Fix: let the paywall render for trial users (bounce only paid ones)
+      + a visible "Plans" door (e.g. Home/Settings). Test bypass used: console
+      `paywallCheckout('monthly')`.
+- [ ] **[CLAUDE]** Headless verify of the full funnel post-fix (landing → sign-up → trial →
       plan picker) — the Playwright rule.
 
 ## C. The video (the ad IS this)
-- [ ] **[YOU]** Shoot the 4 takes per `docs/video-script-2026-09-03.md` (~20 min, phone,
-      Device audio ON) → drop files in `video_raw\` → tell Claude.
+- [x] **[YOU]** Footage shot 6 Sep — one 5-min take, credential-chopped → `video_raw/clean.mp4`
+      (4:38, 30fps CFR); front-door capture done by Claude.
 - [ ] **[CLAUDE]** Two cuts: FB ad cut (≤1:59, 4:5, hook = first 3 s, overlay lines = copy-bank
       openers, POSER proof-beat, show-the-landing-page beat) + landing "how it works" cut.
+      **v1 DONE 6 Sep (`video_raw/cutA_v1.mp4`, builder `video_raw/build_cutA.py`). Owner
+      review verdict: "not bad" but THREE fixes for v2: (1) voiceover must NOT talk over
+      the app's own speech — sidechain-duck app audio + retime VO into gaps; (2) add big
+      word-by-word speech captions synced to the narrator (edge-tts WordBoundary events
+      give exact timings; Arial Black/ariblk for style); (3) more OOMPH — push-in motion
+      per shot (zoompan), punchier shorter VO lines, harder text styling.**
+      **v2 DONE 6 Sep — rebuilt in Remotion (`video_raw/remotion/`, output
+      `video_raw/cutA_v2_final.mp4`, 21.6s, -14 LUFS): karaoke word captions, ①②③
+      story kickers, phone-in-device-frame + punch-ins, synthesized music bed + SFX
+      (all original → zero licensing risk), narrator retimed into gaps around the
+      app's own speech, music ducked under all speech. Awaiting owner review.**
 - [ ] **[YOU]** Approve the cuts (or request re-edits).
 
 ## D. Meta setup (BOTH — one sitting ~40 min, click-by-click from Claude)
