@@ -82,7 +82,8 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       (the optimization event — we optimize for trial-start, NEVER traffic, §7).
 - [ ] **[BOTH]** Verify wordstick.app in Meta (DNS TXT in Cloudflare — Claude drives).
 - [ ] **[YOU]** Warm the page (§11): post 2–3 organic posts over the days before launch
-      (Claude writes them from the copy bank), profile pic = Sticker W, cover, About filled.
+      (WRITTEN 6 Sep — copy bank **§I**, three ready-to-paste posts), profile pic =
+      Sticker W, cover, About filled.
 - [ ] **[CLAUDE]** Pixel test: confirm PageView + StartTrial events arrive in Events Manager.
 
 ## E. Free measurement plumbing (§12 — before the first ad, all $0)
@@ -94,15 +95,15 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       FB-visitor audience starts accruing for later retargeting from day one.
 
 ## F. Ad assets + compliance pre-flight (CLAUDE, you approve)
-- [ ] **[CLAUDE]** Pick 3–5 primary texts from the copy bank (mix of A/C/D voices —
-      1st vs 3rd person A/B per Loren) + 1–2 headlines; assemble the dynamic-creative set.
-- [ ] **[CLAUDE]** Compliance audit of every chosen variant + the final page (§11: no
-      outcome+deadline, personal-attributes rules, softeners, no brand disparagement —
-      the "green owl" line ships only if it survives this audit).
-- [ ] **[CLAUDE]** One-page launch card: campaign recipe (1 campaign / ABO / 1 ad set /
-      broad / dynamic creative / exclude warm / $40–50/day, start after midnight) + the
-      judge thresholds (link CTR ≥1%, CTR-all ≈2.5–3× link, judge on CPC ranking,
-      ~1500 impressions per variant) + the kill rules.
+- [x] **[CLAUDE]** Ad set DRAFTED 6 Sep (copy bank **§H**, `dab23ce`): 5 primary texts =
+      5 distinct angles (streak-shame 2nd-p · quitter-vindication 1st-p · driver/format
+      keep-frame · "it's a shame" commiseration 3rd-p · green-owl) + headlines 22/24.
+      Awaiting Julius's read.
+- [x] **[CLAUDE]** Compliance audit done per variant (copy bank §H-audit): all rate-claims
+      only, Duolingo named only as 1st-person lived experience (H2), green owl (H5)
+      watch-listed with the never-delete/whitewash procedure.
+- [x] **[CLAUDE]** One-page launch card: `docs/ad-launch-card.md` (recipe, thresholds,
+      kill/iterate rules, go/no-go gates).
 - [ ] **[YOU]** Final read + go/no-go on the launch card.
 
 ## G. Launch-day gates (all must be green before the campaign goes live)
