@@ -16,11 +16,13 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
 ## A. Site & legal pages (unblocks Stripe, Facebook, AND the stuck Google button)
 - [ ] **[CLAUDE]** Terms of Service + refund policy page on wordstick.app (`landing/terms.html`)
 - [x] Privacy policy page (`landing/privacy.html` — exists; refresh footer links)
-- [ ] **[CLAUDE]** Rewrite the sales page with copy bank §G (diagnose→solve→prescribe).
-      MUST remove the live compliance violations: "300 words in your first month"
-      (outcome+timeframe) and "free right now in early access" (stale — paywall is live).
-      Video slot above the fold (placeholder until the cut lands). Price shown as filter.
-- [ ] **[CLAUDE]** Footer links (privacy/terms/support) on landing + app.
+- [x] **[CLAUDE]** Rewrite the sales page with copy bank §G — DONE 6 Sep (`d1e56e3`):
+      full diagnose→solve→prescribe structure, all compliance violations removed
+      (no outcome+timeframe, no stale early-access framing, no competitor named),
+      CTAs repointed github.io → app.wordstick.app, video slot above the fold
+      (placeholder until Cut B), price as filter, 10/10 headless render probe.
+- [x] **[CLAUDE]** Footer links on landing (privacy/terms/contact) — done in the
+      rewrite. Contact stays gmail until hello@ can receive (Cloudflare sitting).
 - [ ] **[BOTH]** Inbound email: hello@wordstick.app must RECEIVE mail (Resend is send-only).
       Cloudflare Email Routing → Gmail, ~5 min. Required as the support contact for
       Stripe + Facebook + the app's own users.
@@ -39,14 +41,14 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       the row automatically. Receipt email received. The whole money chain is proven.
 - [ ] **[YOU]** Cosmetic: Settings → Business details → Public business name → "WordStick"
       (shows on receipt emails; currently still Isshin).
-- [ ] **[CLAUDE]** 🐛 **LAUNCH BUG found during the test:** a mid-trial user CANNOT buy —
-      the paywall screen probes entitlement and bounces any unlocked (= trialing) user
-      straight back to Home (index.html ~6644), and the only CTAs appear day 5-7 (nudge)
-      or post-trial. Fix: let the paywall render for trial users (bounce only paid ones)
-      + a visible "Plans" door (e.g. Home/Settings). Test bypass used: console
-      `paywallCheckout('monthly')`.
-- [ ] **[CLAUDE]** Headless verify of the full funnel post-fix (landing → sign-up → trial →
-      plan picker) — the Playwright rule.
+- [x] **[CLAUDE]** 🐛 **LAUNCH BUG fixed — v8.92, 6 Sep (`be07d98`):** the paywall heal
+      probe now bounces only PAYING users home; a mid-trial user stays and can buy.
+      Reason-aware paywall copy + a "Plans" row in Settings → Account for trial/free
+      users. Owner decision same day: keep the v8.79 free plan exactly as-is (3 new
+      words/day drip — "the carrot is the point"), no category model.
+- [x] **[CLAUDE]** Headless verify — 13/13 against the LIVE URL (trial stays + buy
+      buttons enabled, paid bounces, free keeps picker, Plans row per tier) +
+      independent code review clean (2 LOW self-healing cosmetics, noted in review).
 
 ## C. The video (the ad IS this)
 - [x] **[YOU]** Footage shot 6 Sep — one 5-min take, credential-chopped → `video_raw/clean.mp4`
