@@ -14,7 +14,13 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
 ---
 
 ## A. Site & legal pages (unblocks Stripe, Facebook, AND the stuck Google button)
-- [ ] **[CLAUDE]** Terms of Service + refund policy page on wordstick.app (`landing/terms.html`)
+- [x] **[CLAUDE]** Terms of Service + refund policy page on wordstick.app (`landing/terms.html`,
+      commit 32ad077; deployed to the apex 6 Sep — see the repo-split note below)
+- ⚠️ **NOTE (6 Sep): wordstick.app is served from the SEPARATE `wordstick-landing` repo**
+      (moved 2 Sep, commit e1e175b there). `japanese-trainer/landing/` is the WORKING COPY;
+      every landing edit must be synced across (icon paths `../icon-192.png` → `icon-192.png`)
+      and pushed in `wordstick-landing` or the apex keeps serving the old page. The 6 Sep
+      rewrite was synced in `wordstick-landing@f029e37`.
 - [x] Privacy policy page (`landing/privacy.html` — exists; refresh footer links)
 - [x] **[CLAUDE]** Rewrite the sales page with copy bank §G — DONE 6 Sep (`d1e56e3`):
       full diagnose→solve→prescribe structure, all compliance violations removed
