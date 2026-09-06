@@ -29,9 +29,9 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       (placeholder until Cut B), price as filter, 10/10 headless render probe.
 - [x] **[CLAUDE]** Footer links on landing (privacy/terms/contact) — done in the
       rewrite. Contact stays gmail until hello@ can receive (Cloudflare sitting).
-- [ ] **[BOTH]** Inbound email: hello@wordstick.app must RECEIVE mail (Resend is send-only).
-      Cloudflare Email Routing → Gmail, ~5 min. Required as the support contact for
-      Stripe + Facebook + the app's own users.
+- [x] **[BOTH]** Inbound email DONE 7 Sep: hello@wordstick.app → juliuspireh@gmail.com
+      via Cloudflare Email Routing (rule Active, DNS records added). Next: swap the
+      landing/app contact links from gmail to hello@ once a test mail arrives.
 - [ ] **[YOU]** Retry Google "Publish app" (wordstick-507606) AFTER the terms/privacy links
       are added to the OAuth Branding page — that's the documented next lever for the
       greyed button.
@@ -74,16 +74,27 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
       app's own speech, music ducked under all speech. Awaiting owner review.**
 - [ ] **[YOU]** Approve the cuts (or request re-edits).
 
-## D. Meta setup (BOTH — one sitting ~40 min, click-by-click from Claude)
-- [ ] **[YOU]** Create the WordStick Facebook Page (personal profile → Pages → Create).
-- [ ] **[YOU]** Meta Business portfolio + ad account + add your payment method (only you).
-- [ ] **[YOU]** Create the Meta Pixel (dataset) in Events Manager; ID → isshin-keys.txt.
-- [ ] **[CLAUDE]** Install the pixel on landing + app; fire `StartTrial` on real trial start
-      (the optimization event — we optimize for trial-start, NEVER traffic, §7).
-- [ ] **[BOTH]** Verify wordstick.app in Meta (DNS TXT in Cloudflare — Claude drives).
-- [ ] **[YOU]** Warm the page (§11): post 2–3 organic posts over the days before launch
-      (WRITTEN 6 Sep — copy bank **§I**, three ready-to-paste posts), profile pic =
-      Sticker W, cover, About filled.
+## D. Meta setup — sitting DONE 7 Sep (page, ad acct, pixel, domain, email all green)
+- [x] **[YOU]** WordStick Facebook Page created 7 Sep (ID 1237334189473229; Sticker-W
+      profile pic + branded cover + bio + wordstick.app; §I post 1 given to Julius with
+      an unbranded "Recognizing ≠ producing" card image, `video_raw/fb_post1.png`).
+- [x] **[YOU]** Business portfolio: used the EXISTING "A Grade Bathrooms" portfolio
+      (aged portfolio = less new-advertiser friction). New-portfolio ad-account cap
+      blocked a separate "WordStick Ads" account → decision: run from the existing ad
+      account 669924825172996 (Active, MasterCard ····7570, AUD). Ad account = wallet
+      only; separation that matters is page + pixel, both WordStick-owned. Create a
+      dedicated ad account in a few weeks when the cap lifts (optional).
+- [x] **[BOTH]** WordStick pixel/dataset created 7 Sep: **ID 1539713041242150**
+      (in isshin-keys.txt), connected to the ad account, fully separate from the
+      Agradebathrooms work dataset (zero data contamination either direction).
+- [x] **[CLAUDE]** Pixel installed on LANDING (both repos; wordstick-landing@62fb8ef,
+      live-verified on the apex). App install + `StartTrial` on real trial start = next.
+- [x] **[BOTH]** wordstick.app **Verified** in Meta 7 Sep — via meta-tag in the landing
+      head (same commit), not DNS TXT.
+- [x] **[BOTH]** hello@wordstick.app inbound email LIVE 7 Sep: Cloudflare Email Routing
+      → juliuspireh@gmail.com (rule Active, MX/SPF/DKIM records added by Cloudflare).
+- [ ] **[YOU]** Warm the page (§11): §I posts 2–3 over the days before launch.
+- [ ] **[CLAUDE]** Fire `StartTrial` in the app on real trial start (optimization event).
 - [ ] **[CLAUDE]** Pixel test: confirm PageView + StartTrial events arrive in Events Manager.
 
 ## E. Free measurement plumbing (§12 — before the first ad, all $0)

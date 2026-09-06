@@ -7,6 +7,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0a1a">
 <title>WordStick</title>
+<!-- Meta Pixel Code (WordStick dataset 1539713041242150; StartTrial fires in
+     _metaTrackStartTrialOnce on a brand-new account's first sign-in) -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1539713041242150');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -864,7 +882,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.92';
+const APP_VERSION = '8.93';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -5824,6 +5842,22 @@ function authClient(){
    created. A missing/broken client is a no-op here, never an error — this
    only keeps _authState.user current for the owner diagnostics line (and
    later, gating); it writes nothing to disk. */
+/* Meta ads optimization event: StartTrial, fired ONCE per device when a
+   BRAND-NEW account signs in (created_at < 10 min old = the account was just
+   created, so its 7-day trial clock just started — v8.74 trials are implicit,
+   there is no separate "start trial" call to hook). Guarded by localStorage so
+   re-logins never refire; old accounts (incl. owner) fail the age check.
+   Never throws — ads plumbing must not brick auth. */
+function _metaTrackStartTrialOnce(u){
+  try{
+    if(!u || !u.created_at || typeof window.fbq !== 'function') return;
+    if(localStorage.getItem('ws_fb_starttrial') === '1') return;
+    if((Date.now() - new Date(u.created_at).getTime()) > 10 * 60 * 1000) return;
+    window.fbq('track', 'StartTrial', { value: 8.99, currency: 'USD', predicted_ltv: 8.99 });
+    localStorage.setItem('ws_fb_starttrial', '1');
+  }catch(e){ /* best-effort only */ }
+}
+
 function _authWireAuthListener(){
   if(_authListenerWired) return;
   const c = _authClientSingleton;
@@ -5832,6 +5866,9 @@ function _authWireAuthListener(){
   try {
     c.auth.onAuthStateChange((_event, session) => {
       _authState.user = (session && session.user) || null;
+      /* Meta StartTrial — one choke point that sees EVERY sign-in path
+         (password, OAuth, confirm-link). Idempotent + age-guarded inside. */
+      if(_authState.user) _metaTrackStartTrialOnce(_authState.user);
       /* v8.78 — boot can decide the entitlement flag BEFORE supabase-js has
          hydrated the stored session (observed live: reload -> flag never
          set -> the next nav bounces an entitled trial user to paywall, even
