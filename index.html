@@ -864,7 +864,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.91';
+const APP_VERSION = '8.92';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -6636,12 +6636,15 @@ function renderPaywall(){
     const ui = _paywallUiEnsure();
     /* v8.78 self-heal — if this device landed here while a FRESH check says
        entitled (boot hydration race, stale flag), bounce home automatically.
-       One probe per paywall visit; a genuinely locked user stays put. */
+       One probe per paywall visit; a genuinely locked user stays put.
+       v8.92 — a TRIAL user is unlocked but is exactly who this screen sells
+       to (the day-5-7 nudge routes here), so only already-PAYING (or owner/
+       grace) visitors bounce; reason 'trial' stays and can buy mid-trial. */
     if(!ui._healProbe){
       ui._healProbe = true;
       isUnlocked().then(d => {
         state._entUnlocked = d.unlocked; state._entReason = d.reason;
-        if(d.unlocked && state.screen === 'paywall') nav('home');
+        if(d.unlocked && d.reason !== 'trial' && state.screen === 'paywall') nav('home');
       }).catch(()=>{});
     }
     const savePct = _paywallSavePct();
@@ -6654,11 +6657,17 @@ function renderPaywall(){
     let deckN = 0;
     try{ deckN = getActiveWords().length; }catch(e){ deckN = 0; }
     const deckLine = deckN > 0 ? `all ${deckN.toLocaleString()} words` : 'every word';
+    /* v8.92 — a mid-trial viewer isn't on the free plan yet; sell the
+       day-8 slowdown instead of describing a tier they're not on. */
+    const onTrial = state._entUnlocked === true && state._entReason === 'trial';
+    const subLine = onTrial
+      ? `You're on your free week — everything's unlocked. When it ends you drop to the free plan (${FREE_NEW_WORDS_PER_DAY} new words a day). Lock in full speed now and never slow down. Cancel anytime.`
+      : `You're on the free plan — reviews are unlimited, plus ${FREE_NEW_WORDS_PER_DAY} new words a day. Unlock ${deckLine} and learn at full speed. Cancel anytime.`;
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">📌</div>
         <div class="ob-title">Keep going with WordStick</div>
-        <div class="ob-sub">You're on the free plan — reviews are unlimited, plus ${FREE_NEW_WORDS_PER_DAY} new words a day. Unlock ${deckLine} and learn at full speed. Cancel anytime.</div>
+        <div class="ob-sub">${subLine}</div>
         <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">🎟️</div>
           <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
@@ -6670,7 +6679,7 @@ function renderPaywall(){
           <div class="ob-path-s">$${PAYWALL_PRICES.monthly.toFixed(2)} a month. Cancel anytime.</div>
         </button>
         ${msgRow}
-        <button class="ob-switch" onclick="nav('home')">Keep the free plan for now</button>
+        <button class="ob-switch" onclick="nav('home')">${onTrial ? 'Not now' : 'Keep the free plan for now'}</button>
         <button class="ob-switch" onclick="authDoSignOut()">Sign out</button>
       </div></div>`;
   } catch(e){
@@ -26585,6 +26594,9 @@ function renderSettings(){
       ${_authState.user
         ? row('👤 ' + esc(_authState.user.email || 'Signed in'), 'Signed in', `<button class="btn btn-secondary" style="font-size:12px" onclick="authDoSignOut()">Sign out</button>`)
         : row('👤 Sign in', 'Create an account or sign in with a link — no password needed.', `<button class="btn btn-secondary" style="font-size:12px" onclick="nav('auth')">Sign in</button>`)}
+      ${_authState.user && (state._entUnlocked !== true || state._entReason === 'trial')
+        ? row('🎟️ Plans', 'See what full speed costs. Cancel anytime.', `<button class="btn btn-secondary" style="font-size:12px" onclick="nav('paywall')">View</button>`)
+        : ''}
     </div>
 
     <div class="h8-section" style="margin:16px 4px 8px">App</div>
