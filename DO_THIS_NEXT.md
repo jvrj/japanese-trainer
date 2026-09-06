@@ -28,6 +28,9 @@
 What's left before the $150 ads test: the **video shoot** (Step 5),
 then Stripe go-live and ads. (Steps 3 + 4 — domain, Google, email,
 sign-in test — all done 5 Sep.)
+**The complete pre-ad checklist (every task, yours + Claude's, in
+order) now lives in `docs/ad-launch-checklist-2026-09-06.md`** — the
+map for everything below and after.
 
 ---
 
