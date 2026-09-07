@@ -886,7 +886,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.96';
+const APP_VERSION = '8.97';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -1318,8 +1318,8 @@ const N5_PACK = [
   {jp:"おぼえる",kj:"覚える",romaji:"oboeru",en:"to remember/memorize",pos:"v",theme:"school",register:"neutral",jlpt:5},
   {jp:"わすれる",kj:"忘れる",romaji:"wasureru",en:"to forget",pos:"v",theme:"school",register:"neutral",jlpt:5},
   {jp:"おきる",kj:"起きる",romaji:"okiru",en:"to wake up",pos:"v",theme:"dailylife",register:"neutral",jlpt:5},
-  {jp:"ねる",kj:"寝る",romaji:"neru",en:"to sleep/go to bed",pos:"v",theme:"body",register:"neutral",jlpt:5},
-  {jp:"やすむ",kj:"休む",romaji:"yasumu",en:"to rest/take a day off",pos:"v",theme:"body",register:"neutral",jlpt:5},
+  {jp:"ねる",kj:"寝る",romaji:"neru",en:"to sleep/go to bed",pos:"v",theme:"actions",register:"neutral",jlpt:5},
+  {jp:"やすむ",kj:"休む",romaji:"yasumu",en:"to rest/take a day off",pos:"v",theme:"actions",register:"neutral",jlpt:5},
   {jp:"はたらく",kj:"働く",romaji:"hataraku",en:"to work",pos:"v",theme:"work",register:"neutral",jlpt:5},
   {jp:"べんきょうする",kj:"勉強する",romaji:"benkyou suru",en:"to study",pos:"v",theme:"school",register:"neutral",jlpt:5},
   {jp:"おしえる",kj:"教える",romaji:"oshieru",en:"to teach",pos:"v",theme:"school",register:"neutral",jlpt:5},
@@ -1333,8 +1333,8 @@ const N5_PACK = [
   {jp:"あそぶ",kj:"遊ぶ",romaji:"asobu",en:"to play/hang out",pos:"v",theme:"social",register:"neutral",jlpt:5},
   {jp:"うたう",kj:"歌う",romaji:"utau",en:"to sing",pos:"v",theme:"hobbies",register:"neutral",jlpt:5},
   {jp:"およぐ",kj:"泳ぐ",romaji:"oyogu",en:"to swim",pos:"v",theme:"sports",register:"neutral",jlpt:5},
-  {jp:"とる",kj:"取る",romaji:"toru",en:"to take",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — とります is the polite version."},
-  {jp:"もつ",kj:"持つ",romaji:"motsu",en:"to hold/have",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — もちます is the polite version."},
+  {jp:"とる",kj:"取る",romaji:"toru",en:"to take",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — とります is the polite version."},
+  {jp:"もつ",kj:"持つ",romaji:"motsu",en:"to hold/have",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — もちます is the polite version."},
   {jp:"つかう",kj:"使う",romaji:"tsukau",en:"to use (plain form)",pos:"v",theme:"dailylife",register:"neutral",jlpt:5,note:"Plain form — つかいます is the polite version."},
   {jp:"あげる",romaji:"ageru",en:"to give",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5},
   {jp:"もらう",romaji:"morau",en:"to receive (be given)",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5},
@@ -1404,7 +1404,7 @@ const N5_PACK = [
   {jp:"わかい",kj:"若い",romaji:"wakai",en:"young",pos:"adj",theme:"people",register:"neutral",jlpt:5},
   {jp:"かわいい",romaji:"kawaii",en:"cute",pos:"adj",theme:"adjectives",register:"neutral",jlpt:5},
   {jp:"あぶない",kj:"危ない",romaji:"abunai",en:"dangerous",pos:"adj",theme:"adjectives",register:"neutral",jlpt:5},
-  {jp:"いたい",kj:"痛い",romaji:"itai",en:"painful/it hurts",pos:"adj",theme:"body",register:"neutral",jlpt:5},
+  {jp:"いたい",kj:"痛い",romaji:"itai",en:"painful/it hurts",pos:"adj",theme:"health",register:"neutral",jlpt:5},
   {jp:"おいしい",romaji:"oishii",en:"delicious",pos:"adj",theme:"food",register:"neutral",jlpt:5},
   {jp:"まずい",romaji:"mazui",en:"bad-tasting",pos:"adj",theme:"food",register:"neutral",jlpt:5},
   {jp:"あまい",kj:"甘い",romaji:"amai",en:"sweet",pos:"adj",theme:"food",register:"neutral",jlpt:5},
@@ -1537,7 +1537,7 @@ const N5_PACK = [
   {jp:"さがす",kj:"探す",romaji:"sagasu",en:"to search",pos:"v",theme:"school",register:"neutral",jlpt:5,note:"Plain form — さがします is the polite version."},
   {jp:"はらう",kj:"払う",romaji:"harau",en:"to pay",pos:"v",theme:"shopping",register:"neutral",jlpt:5},
   {jp:"すてる",kj:"捨てる",romaji:"suteru",en:"to throw away",pos:"v",theme:"home",register:"neutral",jlpt:5},
-  {jp:"ひろう",kj:"拾う",romaji:"hirou",en:"to pick up",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — ひろいます is the polite version."},
+  {jp:"ひろう",kj:"拾う",romaji:"hirou",en:"to pick up",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — ひろいます is the polite version."},
   {jp:"もどる",kj:"戻る",romaji:"modoru",en:"to return/go back",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"Plain form — もどります is the polite version."},
   {jp:"のぼる",kj:"登る",romaji:"noboru",en:"to climb",pos:"v",theme:"travel",register:"neutral",jlpt:5},
   {jp:"わたる",romaji:"wataru",en:"to cross",pos:"v",theme:"travel",register:"neutral",jlpt:5},
@@ -1553,10 +1553,10 @@ const N5_PACK = [
   {jp:"おくる",kj:"送る",romaji:"okuru",en:"to send",pos:"v",theme:"work",register:"neutral",jlpt:5},
   {jp:"うけとる",kj:"受け取る",romaji:"uketoru",en:"to receive / accept (take)",pos:"v",theme:"work",register:"neutral",jlpt:5},
   {jp:"たすける",kj:"助ける",romaji:"tasukeru",en:"to help/save",pos:"v",theme:"work",register:"neutral",jlpt:5},
-  {jp:"たつ",kj:"立つ",romaji:"tatsu",en:"to stand",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — たちます is the polite version."},
-  {jp:"すわる",kj:"座る",romaji:"suwaru",en:"to sit",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — すわります is the polite version."},
-  {jp:"とぶ",kj:"飛ぶ",romaji:"tobu",en:"to fly/jump",pos:"v",theme:"body",register:"neutral",jlpt:5},
-  {jp:"さわる",kj:"触る",romaji:"sawaru",en:"to touch",pos:"v",theme:"body",register:"neutral",jlpt:5},
+  {jp:"たつ",kj:"立つ",romaji:"tatsu",en:"to stand",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — たちます is the polite version."},
+  {jp:"すわる",kj:"座る",romaji:"suwaru",en:"to sit",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — すわります is the polite version."},
+  {jp:"とぶ",kj:"飛ぶ",romaji:"tobu",en:"to fly/jump",pos:"v",theme:"actions",register:"neutral",jlpt:5},
+  {jp:"さわる",kj:"触る",romaji:"sawaru",en:"to touch",pos:"v",theme:"actions",register:"neutral",jlpt:5},
   {jp:"なく",kj:"泣く",romaji:"naku",en:"to cry",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
   {jp:"わらう",kj:"笑う",romaji:"warau",en:"to laugh",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
   {jp:"おこる",kj:"怒る",romaji:"okoru",en:"to get angry",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
@@ -1565,7 +1565,7 @@ const N5_PACK = [
   {jp:"れんしゅうする",kj:"練習する",romaji:"renshuu suru",en:"to practice",pos:"v",theme:"school",register:"neutral",jlpt:5},
   {jp:"しらべる",kj:"調べる",romaji:"shiraberu",en:"to look up/check",pos:"v",theme:"school",register:"neutral",jlpt:5},
   {jp:"つかれる",kj:"疲れる",romaji:"tsukareru",en:"to get tired",pos:"v",theme:"feelings",register:"neutral",jlpt:5},
-  {jp:"いそぐ",kj:"急ぐ",romaji:"isogu",en:"to hurry",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — いそぎます is the polite version."},
+  {jp:"いそぐ",kj:"急ぐ",romaji:"isogu",en:"to hurry",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — いそぎます is the polite version."},
 
   /* v6.29 — verb expansion (+34 verbs). Form Drill rotation felt small
      because common verbs (たべる/のむ/いく) keep cycling through SM-2 due
@@ -1574,7 +1574,7 @@ const N5_PACK = [
      (ichidan/godan/する-compound/irregulars). */
   {jp:"ふく",kj:"拭く",romaji:"fuku",en:"to wipe",pos:"v",theme:"home",register:"neutral",jlpt:5},
   {jp:"なくす",romaji:"nakusu",en:"to lose",pos:"v",theme:"work",register:"neutral",jlpt:5},
-  {jp:"おとす",kj:"落とす",romaji:"otosu",en:"to drop",pos:"v",theme:"body",register:"neutral",jlpt:5},
+  {jp:"おとす",kj:"落とす",romaji:"otosu",en:"to drop",pos:"v",theme:"actions",register:"neutral",jlpt:5},
   {jp:"でかける",kj:"出掛ける",romaji:"dekakeru",en:"to go out",pos:"v",theme:"travel",register:"neutral",jlpt:5},
   {jp:"ひっこす",kj:"引っ越す",romaji:"hikkosu",en:"to move house",pos:"v",theme:"travel",register:"neutral",jlpt:5},
   {jp:"たのむ",kj:"頼む",romaji:"tanomu",en:"to ask/request",pos:"v",theme:"work",register:"neutral",jlpt:5},
@@ -1593,9 +1593,9 @@ const N5_PACK = [
   {jp:"うつる",romaji:"utsuru",en:"to move/be reflected",pos:"v",theme:"travel",register:"neutral",jlpt:5},
   {jp:"えらぶ",kj:"選ぶ",romaji:"erabu",en:"to choose",pos:"v",theme:"school",register:"neutral",jlpt:5,note:"Plain form — えらびます is the polite version."},
   {jp:"きまる",romaji:"kimaru",en:"to be decided",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5},
-  {jp:"つかまえる",kj:"捕まえる",romaji:"tsukamaeru",en:"to catch",pos:"v",theme:"body",register:"neutral",jlpt:5},
-  {jp:"かむ",kj:"噛む",romaji:"kamu",en:"to bite/chew",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Plain form — かみます is the polite version."},
-  {jp:"すう",kj:"吸う",romaji:"suu",en:"to inhale/smoke",pos:"v",theme:"body",register:"neutral",jlpt:5},
+  {jp:"つかまえる",kj:"捕まえる",romaji:"tsukamaeru",en:"to catch",pos:"v",theme:"actions",register:"neutral",jlpt:5},
+  {jp:"かむ",kj:"噛む",romaji:"kamu",en:"to bite/chew",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Plain form — かみます is the polite version."},
+  {jp:"すう",kj:"吸う",romaji:"suu",en:"to inhale/smoke",pos:"v",theme:"actions",register:"neutral",jlpt:5},
   {jp:"みえる",kj:"見える",romaji:"mieru",en:"to be visible",pos:"v",theme:"verbpairs",register:"neutral",jlpt:5},
   {jp:"にる",kj:"似る",romaji:"niru",en:"to resemble",pos:"v",theme:"people",register:"neutral",jlpt:5},
   {jp:"ふる",kj:"降る",romaji:"furu",en:"to fall – rain/snow (plain form)",pos:"v",theme:"weather",register:"neutral",jlpt:5,note:"Plain form — ふります is the polite version."},
@@ -2077,18 +2077,18 @@ const N5_PACK = [
   {jp:"あやまる",kj:"謝る",romaji:"ayamaru",en:"to apologize",pos:"v",theme:"people",register:"neutral",jlpt:5,note:"The act of apologizing. The actual words are ごめん / すみません."},
   {jp:"ほめる",kj:"褒める",romaji:"homeru",en:"to praise",pos:"v",theme:"people",register:"neutral",jlpt:5,note:"～を ほめる. Opposite is しかる (scold)."},
   {jp:"しかる",romaji:"shikaru",en:"to scold / tell off",pos:"v",theme:"people",register:"neutral",jlpt:5,note:"A senior scolds a junior. Not 'angry at' (that's おこる)."},
-  {jp:"なげる",kj:"投げる",romaji:"nageru",en:"to throw",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"～を なげる. ボール を なげる. Plain form — なげます is the polite version."},
-  {jp:"ける",kj:"蹴る",romaji:"keru",en:"to kick",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"～を ける."},
-  {jp:"おす",kj:"押す",romaji:"osu",en:"to push / press",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"ボタン を おす = press the button. Opposite of ひく (pull)."},
-  {jp:"ひく",kj:"引く",romaji:"hiku",en:"to pull (also catch a cold)",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Many senses: ドア を ひく (pull), かぜ を ひく (catch a cold), ギター を ひく (play). Context decides."},
-  {jp:"たたく",kj:"叩く",romaji:"tataku",en:"to hit/knock",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"ドア を たたく = knock; て を たたく = clap. Repeated light striking."},
+  {jp:"なげる",kj:"投げる",romaji:"nageru",en:"to throw",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"～を なげる. ボール を なげる. Plain form — なげます is the polite version."},
+  {jp:"ける",kj:"蹴る",romaji:"keru",en:"to kick",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"～を ける."},
+  {jp:"おす",kj:"押す",romaji:"osu",en:"to push / press",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"ボタン を おす = press the button. Opposite of ひく (pull)."},
+  {jp:"ひく",kj:"引く",romaji:"hiku",en:"to pull (also catch a cold)",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Many senses: ドア を ひく (pull), かぜ を ひく (catch a cold), ギター を ひく (play). Context decides."},
+  {jp:"たたく",kj:"叩く",romaji:"tataku",en:"to hit/knock",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"ドア を たたく = knock; て を たたく = clap. Repeated light striking."},
   {jp:"ぬる",kj:"塗る",romaji:"nuru",en:"to paint / spread on",pos:"v",theme:"home",register:"neutral",jlpt:5,note:"パン に バター を ぬる = spread butter on bread."},
   {jp:"ほす",kj:"干す",romaji:"hosu",en:"to hang out to dry",pos:"v",theme:"home",register:"neutral",jlpt:5,note:"せんたくもの を ほす. Transitive; the clothes getting dry is かわく."},
-  {jp:"かわく",kj:"乾く",romaji:"kawaku",en:"to get dry / get thirsty",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"のど が かわく = to be thirsty (lit. 'throat dries') — the standard way to say it."},
-  {jp:"ぬれる",kj:"濡れる",romaji:"nureru",en:"to get wet",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Intransitive: あめ で ぬれる. Opposite かわく."},
-  {jp:"すべる",romaji:"suberu",en:"to slip / slide",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Also student slang: 'fail an exam' (しけん に すべる) — bad luck word."},
-  {jp:"ころぶ",kj:"転ぶ",romaji:"korobu",en:"to fall over / trip",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"A person tumbling. おちる is something falling from a height."},
-  {jp:"ぶつかる",romaji:"butsukaru",en:"to bump into / collide",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"～に ぶつかる. Also 'clash' over opinions/schedules. Plain form — ぶつかります is the polite version."},
+  {jp:"かわく",kj:"乾く",romaji:"kawaku",en:"to get dry / get thirsty",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"のど が かわく = to be thirsty (lit. 'throat dries') — the standard way to say it."},
+  {jp:"ぬれる",kj:"濡れる",romaji:"nureru",en:"to get wet",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Intransitive: あめ で ぬれる. Opposite かわく."},
+  {jp:"すべる",romaji:"suberu",en:"to slip / slide",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Also student slang: 'fail an exam' (しけん に すべる) — bad luck word."},
+  {jp:"ころぶ",kj:"転ぶ",romaji:"korobu",en:"to fall over / trip",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"A person tumbling. おちる is something falling from a height."},
+  {jp:"ぶつかる",romaji:"butsukaru",en:"to bump into / collide",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"～に ぶつかる. Also 'clash' over opinions/schedules. Plain form — ぶつかります is the polite version."},
   {jp:"にげる",kj:"逃げる",romaji:"nigeru",en:"to escape / run away",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"～から にげる. Opposite おう (chase). Plain form — にげます is the polite version."},
   {jp:"まもる",kj:"守る",romaji:"mamoru",en:"to protect / keep (a rule)",pos:"v",theme:"work",register:"neutral",jlpt:5,note:"Both 'defend' AND やくそく/ルール を まもる = keep a promise/follow rules. Plain form — まもります is the polite version."},
   {jp:"かざる",kj:"飾る",romaji:"kazaru",en:"to decorate / display",pos:"v",theme:"home",register:"neutral",jlpt:5,note:"へや を かざる. Putting things out for show. Plain form — かざります is the polite version."},
@@ -2284,9 +2284,9 @@ const N5_PACK = [
   {jp:"ためる",kj:"貯める",romaji:"tameru",en:"to save up / accumulate",pos:"v",theme:"shopping",register:"neutral",jlpt:4,note:"おかね を ためる = save money. Intransitive partner たまる (it piles up)."},
   {jp:"すすめる",kj:"勧める",romaji:"susumeru",en:"to recommend / advance",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"おすすめ = a recommendation. Also 'move sth forward' (a project)."},
   {jp:"かんじる",kj:"感じる",romaji:"kanjiru",en:"to feel / sense",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"～を かんじる — perceive internally (cold, danger, kindness)."},
-  {jp:"ちから",kj:"力",romaji:"chikara",en:"strength / power",pos:"n",theme:"body",register:"neutral",jlpt:4,note:"Physical strength or influence/ability. ちから を いれる = put effort in."},
-  {jp:"おと",kj:"音",romaji:"oto",en:"sound / noise",pos:"n",theme:"body",register:"neutral",jlpt:5,note:"Any non-voice sound. おと が する = a sound occurs."},
-  {jp:"におい",kj:"匂い",romaji:"nioi",en:"smell / scent",pos:"n",theme:"body",register:"neutral",jlpt:5,note:"Neutral by itself: いい におい = nice smell. 'Stinks' is くさい."},
+  {jp:"ちから",kj:"力",romaji:"chikara",en:"strength / power",pos:"n",theme:"sports",register:"neutral",jlpt:4,note:"Physical strength or influence/ability. ちから を いれる = put effort in."},
+  {jp:"おと",kj:"音",romaji:"oto",en:"sound / noise",pos:"n",theme:"dailylife",register:"neutral",jlpt:5,note:"Any non-voice sound. おと が する = a sound occurs."},
+  {jp:"におい",kj:"匂い",romaji:"nioi",en:"smell / scent",pos:"n",theme:"dailylife",register:"neutral",jlpt:5,note:"Neutral by itself: いい におい = nice smell. 'Stinks' is くさい."},
   {jp:"あじ",kj:"味",romaji:"aji",en:"taste / flavor",pos:"n",theme:"food",register:"neutral",jlpt:5,note:"あじ が する = to have a taste. あじみ する = to taste-test."},
   {jp:"きぼう",kj:"希望",romaji:"kibou",en:"hope / wish",pos:"n",theme:"feelings",register:"neutral",jlpt:4,note:"Formal hope/request: きぼう する. のぞみ is a near-synonym."},
   {jp:"ふくしゅう",kj:"復習",romaji:"fukushuu",en:"review (studying)",pos:"n",theme:"school",register:"neutral",jlpt:4,note:"Re-studying what you learned. よしゅう = preview/prep before class."},
@@ -2352,10 +2352,10 @@ const N5_PACK = [
   {jp:"けします",kj:"消します",romaji:"keshimasu",en:"turn off",pos:"v",theme:"objects",register:"neutral",jlpt:5,note:"Polite ます form — けす is the plain version, same word."},
   {jp:"あけます",kj:"開けます",romaji:"akemasu",en:"open",pos:"v",theme:"objects",register:"neutral",jlpt:5,note:"Polite ます form — あける is the plain version, same word."},
   {jp:"しめます",kj:"閉めます",romaji:"shimemasu",en:"close, shut",pos:"v",theme:"objects",register:"neutral",jlpt:5,note:"Polite ます form — しめる is the plain version, same word."},
-  {jp:"いそぎます",kj:"急ぎます",romaji:"isogimasu",en:"hurry",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Polite ます form — いそぐ is the plain version, same word."},
+  {jp:"いそぎます",kj:"急ぎます",romaji:"isogimasu",en:"hurry",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Polite ます form — いそぐ is the plain version, same word."},
   {jp:"まちます",kj:"待ちます",romaji:"machimasu",en:"wait",pos:"v",theme:"dailylife",register:"neutral",jlpt:5,note:"Polite ます form — まつ is the plain version, same word."},
-  {jp:"もちます",kj:"持ちます",romaji:"mochimasu",en:"hold",pos:"v",theme:"objects",register:"neutral",jlpt:5,note:"Polite ます form — もつ is the plain version, same word."},
-  {jp:"とります",kj:"取ります",romaji:"torimasu",en:"take, pass",pos:"v",theme:"objects",register:"neutral",jlpt:5,note:"Polite ます form — とる is the plain version, same word."},
+  {jp:"もちます",kj:"持ちます",romaji:"mochimasu",en:"hold",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Polite ます form — もつ is the plain version, same word."},
+  {jp:"とります",kj:"取ります",romaji:"torimasu",en:"take, pass",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Polite ます form — とる is the plain version, same word."},
   {jp:"てつだいます",kj:"手伝います",romaji:"tetsudaimasu",en:"help (with a task)",pos:"v",theme:"work",register:"neutral",jlpt:5,note:"Polite ます form — てつだう is the plain version, same word."},
   {jp:"よびます",kj:"呼びます",romaji:"yobimasu",en:"call",pos:"v",theme:"people",register:"neutral",jlpt:5},
   {jp:"はなします",kj:"話します",romaji:"hanashimasu",en:"speak, talk",pos:"v",theme:"school",register:"neutral",jlpt:5,note:"Polite ます form — はなす is the plain version, same word."},
@@ -2363,8 +2363,8 @@ const N5_PACK = [
   {jp:"とめます",kj:"止めます",romaji:"tomemasu",en:"stop, park",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"Polite ます form — とめる is the plain version, same word."},
   {jp:"みせます",kj:"見せます",romaji:"misemasu",en:"show",pos:"v",theme:"people",register:"neutral",jlpt:5},
   {jp:"おしえます",kj:"教えます",romaji:"oshiemasu",en:"tell",pos:"v",theme:"school",register:"neutral",jlpt:5,note:"used with じゅうしょを～; an address"},
-  {jp:"すわります",kj:"座ります",romaji:"suwarimasu",en:"sit down",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Polite ます form — すわる is the plain version, same word."},
-  {jp:"たちます",kj:"立ちます",romaji:"tachimasu",en:"stand up",pos:"v",theme:"body",register:"neutral",jlpt:5,note:"Polite ます form — たつ is the plain version, same word."},
+  {jp:"すわります",kj:"座ります",romaji:"suwarimasu",en:"sit down",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Polite ます form — すわる is the plain version, same word."},
+  {jp:"たちます",kj:"立ちます",romaji:"tachimasu",en:"stand up",pos:"v",theme:"actions",register:"neutral",jlpt:5,note:"Polite ます form — たつ is the plain version, same word."},
   {jp:"はいります",kj:"入ります",romaji:"hairimasu",en:"enter",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"used with きっさてんに～; a café. Polite ます form — はいる is the plain version, same word."},
   {jp:"でます",kj:"出ます",romaji:"demasu",en:"go out",pos:"v",theme:"travel",register:"neutral",jlpt:5,note:"used with きっさてんを～; of a café"},
   {jp:"ふります",kj:"降ります",romaji:"furimasu",en:"to fall (rain/snow)",pos:"v",theme:"weather",register:"neutral",jlpt:5,note:"used with あめが～. Polite ます form — ふる is the plain version, same word."},
@@ -2383,7 +2383,7 @@ const N5_PACK = [
   {jp:"おつり",kj:"お釣り",romaji:"otsuri",en:"change (money)",pos:"n",theme:"shopping",register:"neutral",jlpt:5},
   {jp:"うれます",kj:"売れます",romaji:"uremasu",en:"sell, be sold",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"used with パンが～; bread"},
   {jp:"おどります",kj:"踊ります",romaji:"odorimasu",en:"to dance",pos:"v",theme:"hobbies",register:"neutral",jlpt:4},
-  {jp:"かみます",kj:"噛みます",romaji:"kamimasu",en:"chew, bite",pos:"v",theme:"food",register:"neutral",jlpt:4,note:"Polite ます form — かむ is the plain version, same word."},
+  {jp:"かみます",kj:"噛みます",romaji:"kamimasu",en:"chew, bite",pos:"v",theme:"actions",register:"neutral",jlpt:4,note:"Polite ます form — かむ is the plain version, same word."},
   {jp:"えらびます",kj:"選びます",romaji:"erabimasu",en:"choose",pos:"v",theme:"dailylife",register:"neutral",jlpt:4,note:"Polite ます form — えらぶ is the plain version, same word."},
   {jp:"かよいます",kj:"通います",romaji:"kayoimasu",en:"go to and from",pos:"v",theme:"travel",register:"neutral",jlpt:4,note:"used with だいがくに～; university"},
   {jp:"メモします",romaji:"memoshimasu",en:"take a memo",pos:"v",theme:"school",register:"neutral",jlpt:4},
@@ -2417,7 +2417,7 @@ const N5_PACK = [
   {jp:"おくれます",kj:"遅れます",romaji:"okuremasu",en:"be late",pos:"v",theme:"time",register:"neutral",jlpt:4,note:"Polite ます form — おくれる is the plain version, same word."},
   {jp:"まにあいます",kj:"間に合います",romaji:"maniaimasu",en:"be in time",pos:"v",theme:"time",register:"neutral",jlpt:4,note:"Polite ます form — まにあう is the plain version, same word."},
   {jp:"やります",romaji:"yarimasu",en:"do",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Polite ます form — やる is the plain version, same word."},
-  {jp:"ひろいます",kj:"拾います",romaji:"hiroimasu",en:"pick up",pos:"v",theme:"objects",register:"neutral",jlpt:4,note:"Polite ます form — ひろう is the plain version, same word."},
+  {jp:"ひろいます",kj:"拾います",romaji:"hiroimasu",en:"pick up",pos:"v",theme:"actions",register:"neutral",jlpt:4,note:"Polite ます form — ひろう is the plain version, same word."},
   {jp:"れんらくします",kj:"連絡します",romaji:"renrakushimasu",en:"contact, get in touch with",pos:"v",theme:"social",register:"neutral",jlpt:4},
   {jp:"きぶんがいい",kj:"気分がいい",romaji:"kibungaii",en:"feel well",pos:"n",theme:"health",register:"neutral",jlpt:4},
   {jp:"うんどうかい",kj:"運動会",romaji:"undoukai",en:"athletic meeting, sports day",pos:"n",theme:"sports",register:"neutral",jlpt:4},
@@ -2482,7 +2482,7 @@ const N5_PACK = [
   {jp:"みつけます",kj:"見つけます",romaji:"mitsukemasu",en:"find",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"Polite ます form — みつける is the plain version, same word."},
   {jp:"うけます",romaji:"ukemasu",en:"take",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"used with しけんを～; an examination"},
   {jp:"もうしこみます",kj:"申し込みます",romaji:"moushikomimasu",en:"apply for, enter for",pos:"v",theme:"work",register:"neutral",jlpt:4},
-  {jp:"きゅうけいします",kj:"休憩します",romaji:"kyuukeishimasu",en:"take a break, take a rest",pos:"v",theme:"body",register:"neutral",jlpt:4},
+  {jp:"きゅうけいします",kj:"休憩します",romaji:"kyuukeishimasu",en:"take a break, take a rest",pos:"v",theme:"actions",register:"neutral",jlpt:4},
   {jp:"れんきゅう",kj:"連休",romaji:"renkyuu",en:"consecutive holidays",pos:"n",theme:"time",register:"neutral",jlpt:4},
   {jp:"さくぶん",kj:"作文",romaji:"sakubun",en:"essay, composition",pos:"n",theme:"school",register:"neutral",jlpt:4},
   {jp:"はっぴょう",kj:"発表",romaji:"happyou",en:"announcement, presentation",pos:"n",theme:"work",register:"neutral",jlpt:4},
@@ -2512,7 +2512,7 @@ const N5_PACK = [
   {jp:"にげます",kj:"逃げます",romaji:"nigemasu",en:"run away",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"Polite ます form — にげる is the plain version, same word."},
   {jp:"さわぎます",kj:"騒ぎます",romaji:"sawagimasu",en:"make a noise",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4},
   {jp:"あきらめます",kj:"諦めます",romaji:"akiramemasu",en:"give up",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Polite ます form — あきらめる is the plain version, same word."},
-  {jp:"なげます",kj:"投げます",romaji:"nagemasu",en:"throw",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"Polite ます form — なげる is the plain version, same word."},
+  {jp:"なげます",kj:"投げます",romaji:"nagemasu",en:"throw",pos:"v",theme:"actions",register:"neutral",jlpt:4,note:"Polite ます form — なげる is the plain version, same word."},
   {jp:"まもります",kj:"守ります",romaji:"mamorimasu",en:"keep, follow, obey",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"Polite ます form — まもる is the plain version, same word."},
   {jp:"はじまります",kj:"始まります",romaji:"hajimarimasu",en:"begin, start",pos:"v",theme:"verbpairs",register:"neutral",jlpt:4,note:"used with しきが～; a ceremony. Polite ます form — はじまる is the plain version, same word."},
   {jp:"しゅっせきします",kj:"出席します",romaji:"shussekishimasu",en:"attend",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"used with かいぎに～; a meeting"},
@@ -2603,9 +2603,9 @@ const N5_PACK = [
   {jp:"はこびます",kj:"運びます",romaji:"hakobimasu",en:"carry, transport",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"りようします",kj:"利用します",romaji:"riyoushimasu",en:"to use / make use of (a service)",pos:"v",theme:"work",register:"neutral",jlpt:4,note:"Polite ます form — りようする is the plain version, same word."},
   {jp:"こたえます",kj:"答えます",romaji:"kotaemasu",en:"to answer",pos:"v",theme:"school",register:"neutral",jlpt:4,note:"used with しつもんに～; a question"},
-  {jp:"たおれます",kj:"倒れます",romaji:"taoremasu",en:"fall down",pos:"v",theme:"body",register:"neutral",jlpt:4,note:"used with ビルが～; a building"},
+  {jp:"たおれます",kj:"倒れます",romaji:"taoremasu",en:"fall down",pos:"v",theme:"actions",register:"neutral",jlpt:4,note:"used with ビルが～; a building"},
   {jp:"とおります",kj:"通ります",romaji:"toorimasu",en:"to pass through (a place)",pos:"v",theme:"travel",register:"neutral",jlpt:4,note:"used with みちを～; along a street. Polite ます form — とおる is the plain version, same word."},
-  {jp:"しにます",kj:"死にます",romaji:"shinimasu",en:"die",pos:"v",theme:"body",register:"neutral",jlpt:4},
+  {jp:"しにます",kj:"死にます",romaji:"shinimasu",en:"die",pos:"v",theme:"actions",register:"neutral",jlpt:4},
   {jp:"びっくりします",romaji:"bikkurishimasu",en:"be surprised",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Polite ます form — びっくりする is the plain version, same word."},
   {jp:"がっかりします",romaji:"gakkarishimasu",en:"be disappointed",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Polite ます form — がっかりする is the plain version, same word."},
   {jp:"あんしんします",kj:"安心します",romaji:"anshinshimasu",en:"be relieved",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Polite ます form — あんしんする is the plain version, same word."},
@@ -2628,13 +2628,13 @@ const N5_PACK = [
   {jp:"うかがいます",kj:"伺います",romaji:"ukagaimasu",en:"I will come/visit (humble)",pos:"expr",theme:"travel",register:"neutral",jlpt:4,note:"humble equivalent of いきます"},
   {jp:"とちゅうで",kj:"途中で",romaji:"tochuude",en:"on the way, in the midst of",pos:"n",theme:"travel",register:"neutral",jlpt:4},
   {jp:"トラック",romaji:"torakku",en:"truck",pos:"n",theme:"travel",register:"neutral",jlpt:4},
-  {jp:"ぶつかります",romaji:"butsukarimasu",en:"bump, collide",pos:"v",theme:"travel",register:"neutral",jlpt:4,note:"Polite ます form — ぶつかる is the plain version, same word."},
+  {jp:"ぶつかります",romaji:"butsukarimasu",en:"bump, collide",pos:"v",theme:"actions",register:"neutral",jlpt:4,note:"Polite ます form — ぶつかる is the plain version, same word."},
   {jp:"かぞえます",kj:"数えます",romaji:"kazoemasu",en:"count",pos:"v",theme:"numbers",register:"neutral",jlpt:4,note:"Polite ます form — かぞえる is the plain version, same word."},
   {jp:"はかります",kj:"測ります",romaji:"hakarimasu",en:"measure, weigh",pos:"v",theme:"objects",register:"neutral",jlpt:4},
   {jp:"たしかめます",kj:"確かめます",romaji:"tashikamemasu",en:"confirm, make sure",pos:"v",theme:"feelings",register:"neutral",jlpt:4,note:"Polite ます form — たしかめる is the plain version, same word."},
   {jp:"しゅっぱつします",kj:"出発します",romaji:"shuppatsushimasu",en:"depart",pos:"v",theme:"travel",register:"neutral",jlpt:4},
   {jp:"とうちゃくします",kj:"到着します",romaji:"touchakushimasu",en:"arrive",pos:"v",theme:"travel",register:"neutral",jlpt:4},
-  {jp:"よいます",kj:"酔います",romaji:"yoimasu",en:"get drunk",pos:"v",theme:"body",register:"neutral",jlpt:4},
+  {jp:"よいます",kj:"酔います",romaji:"yoimasu",en:"get drunk",pos:"v",theme:"actions",register:"neutral",jlpt:4},
   {jp:"うまく いきます",romaji:"umaku ikimasu",en:"go well",pos:"expr",theme:"phrases",register:"neutral",jlpt:4},
   {jp:"そうだんします",kj:"相談します",romaji:"soudanshimasu",en:"consult, discuss",pos:"v",theme:"work",register:"neutral",jlpt:4},
   {jp:"てんきよほう",kj:"天気予報",romaji:"tenkiyohou",en:"weather forecast",pos:"n",theme:"weather",register:"neutral",jlpt:4},
@@ -9638,6 +9638,7 @@ const VOCAB_SECTIONS = [
   { id:'travel',   name:'Travel',             emoji:'🚆', themes:['travel'] },
   { id:'shopping', name:'Shopping & money',   emoji:'🛒', themes:['shopping'] },
   { id:'sports',   name:'Sports & exercise',  emoji:'⚽', themes:['sports'] },
+  { id:'actions',  name:'Actions',            emoji:'🏃', themes:['actions'] },
   { id:'hobbies',  name:'Hobbies & music',    emoji:'🎸', themes:['hobbies'] },
   /* v8.45 — Nature & animals split into true-to-name topics; hidden themes
      (health, counters, phrases, onomatope, adjectives/adverbs, verbpairs,
@@ -25457,8 +25458,11 @@ function obfHear(){
 }
 window.obfHear = obfHear;
 
-/* Step order for back navigation + the progress bar. */
-const _OBF_ORDER = ['w1','w2','w3','w4','w5','w6','mic'];
+/* Step order for back navigation + the progress bar. v8.97 — funnel trimmed
+   to welcome -> word check -> mic (owner call 7 Sep: the why/level/when/plan
+   question screens were aggravating filler; w2/w3/w4/w6 renderers kept below
+   but unreachable). */
+const _OBF_ORDER = ['w1','w5','mic'];
 function obfBack(){
   const ob = _obEnsure();
   const i = _OBF_ORDER.indexOf(ob.step);
@@ -25466,8 +25470,9 @@ function obfBack(){
 }
 window.obfBack = obfBack;
 
-/* w6 CTA — commit the funnel's answers (real pass) or exit untouched
-   (preview), then hand off to the mic ask -> micro-drill. */
+/* Word-check CTA (v8.97 — was w6's) — commit the funnel's answers (real pass)
+   or exit untouched (preview), then hand off to the mic ask -> micro-drill.
+   why/level/when are null on the trimmed path; every consumer tolerates it. */
 function obfFinish(){
   const ob = _obEnsure();
   if(ob.preview){
@@ -25640,8 +25645,8 @@ function _obfW1(){
       <div><b>4 min</b><span>a day</span></div>
       <div><b>0</b><span>typing</span></div>
     </div>`;
-  const foot = `<button class="obf-cta" onclick="obGoto('w2')">Get started${_OBF_ARROW}</button>
-    <div class="obf-hint">2 minutes to your first spoken words — no account needed</div>`;
+  const foot = `<button class="obf-cta" onclick="obGoto('w5')">Get started${_OBF_ARROW}</button>
+    <div class="obf-hint">About a minute to your first spoken words</div>`;
   return _obfShell('w1', 0, inner, foot);
 }
 function _obfW2(){
@@ -25703,9 +25708,9 @@ function _obfW5(){
     <h1 class="obf-h1" style="font-size:34px">Tap any words you<br>already know</h1>
     <div class="obf-sub">None is a perfectly good answer — it just means we start at word one.</div>
     <div class="obf-grid">${cells}</div>`;
-  const foot = `<button class="obf-cta" onclick="obGoto('w6')">Continue${n ? ` — ${n} known` : ''}${_OBF_ARROW}</button>
+  const foot = `<button class="obf-cta" onclick="obfFinish()">Continue${n ? ` — ${n} known` : ''}${_OBF_ARROW}</button>
     <div class="obf-hint">These count as a head start, not a test score</div>`;
-  return _obfShell('w5', 80, inner, foot);
+  return _obfShell('w5', 60, inner, foot);
 }
 function _obfW6(){
   const ob = _obEnsure();
