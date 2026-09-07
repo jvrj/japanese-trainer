@@ -886,7 +886,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.97';
+const APP_VERSION = '8.98';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -25571,43 +25571,15 @@ function startOnboardMicroDrill(){
   state.settings.onboard.path = 'funnel';
   state.settings.onboard.placedStage = (typeof ob.placedStage === 'number') ? ob.placedStage : (state.settings.onboard.placedStage ?? null);
   _obLog('micro_drill_start', {placedStage:state.settings.onboard.placedStage, voice: state.settings.buildVoiceMode === true});
-  /* v8.64 — words the funnel's word check head-started are already known;
-     the first drill must teach NEW words, not re-teach those. */
-  const knownSet = new Set(ob.knownIds || []);
   state.onboard = null;
-  const deck = state.words || [];
-  const suspendedSet = new Set(state.settings.suspendedWords || []);
-  const picks = OB_STARTER_WORDS
-    .map(t => deck.find(w => w.jp === t.jp && w.en === t.en && !suspendedSet.has(w.id) && !knownSet.has(w.id)))
-    .filter(Boolean);
-  /* Deck drifted / starter word head-started? Top up from the active deck. */
-  if(picks.length < OB_STARTER_WORDS.length){
-    const seen = new Set(picks.map(w => w.id));
-    for(const w of getActiveWords()){
-      if(picks.length >= OB_STARTER_WORDS.length) break;
-      if(!seen.has(w.id) && !knownSet.has(w.id) && w.pos === 'n' && _isVocabDrillSurface(w)){ picks.push(w); seen.add(w.id); }
-    }
-  }
-  if(picks.length < 1){ save(); nav('home'); return; }
-  const steps = picks.reduce((acc, w) => {
-    acc.push(..._buildInductionStepsFor(w));
-    acc.push({ type:'recall', word_id: w.id });
-    return acc;
-  }, []);
-  const lesson = {
-    id: 'Gob_' + Date.now().toString(36),
-    title: 'Your first words',
-    duration_mins: 2,
-    new_words: picks.map(w => ({id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note})),
-    carryover_words: [],
-    cycles: [{ id:'ob', name:'First words', steps }],
-    _meta: { mode:'onboardMicro', real_word_ids: picks.map(w => w.id) }
-  };
-  state.buildMode = buildMakeSession(lesson);
-  state.buildMode._origin = 'home';
   save();
-  _buildWakeLockSync();
-  nav('buildMode');
+  /* v8.98 — the bespoke 3-word induction micro-drill is GONE (owner: "it was
+     just a fuckfest"). A new user's first round IS the real product: the
+     standard Vocab Spam loop, which already paces brand-new words with the
+     NEW-WORD pill + listening steps. Word-check head starts (obfFinish) have
+     already seeded SM-2, so the batch picker naturally skips known words. */
+  try{ startBuildModeVocabSpam(); }
+  catch(e){ log('onboard_spam_start_err', {err:String(e)}); nav('home'); }
 }
 window.startOnboardMicroDrill = startOnboardMicroDrill;
 
@@ -25769,9 +25741,8 @@ function _obfMic(){
   return _obfShell('mic', 100, inner, foot);
 }
 
-/* The first-win card lives in Build Mode — renderBuildModeComplete's
-   'onboardMicro' branch — so completion celebrates the actual drilled words
-   and hands off to Home via the normal buildExit() path. */
+/* v8.98 — onboarding hands off to the standard Vocab Spam round (see
+   startOnboardMicroDrill); completion is the normal round-end flow. */
 function renderOnboard(){
   const ob = _obEnsure();
   const body = ({
