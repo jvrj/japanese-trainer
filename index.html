@@ -886,7 +886,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.95';
+const APP_VERSION = '8.96';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20118,13 +20118,14 @@ function buildWordById(id){
   const ref = b.lesson.new_words.find(w => w.id === id)
       || (b.lesson.carryover_words || []).find(w => w.id === id);
   if(!ref) return ref;
-  /* Lesson word-refs are slim {id,jp,en,r} — they drop `note`. Enrich from
-     the master deck (by id, then kana) so the usage-nuance note can surface
-     on the teaching card without touching every ref-builder. */
-  if(ref.note === undefined && Array.isArray(state.words)){
+  /* Lesson word-refs are slim {id,jp,en,r} — they drop `note` and `kj`. Enrich
+     from the master deck (by id, then kana) so the usage-nuance note and the
+     kanji+furigana display can surface without touching every ref-builder. */
+  if((ref.note === undefined || ref.kj === undefined) && Array.isArray(state.words)){
     const src = state.words.find(w => w.id === ref.id)
              || state.words.find(w => w.jp === ref.jp);
-    if(src && src.note) ref.note = src.note;
+    if(src && src.note && ref.note === undefined) ref.note = src.note;
+    if(src && src.kj && ref.kj === undefined) ref.kj = src.kj;
   }
   return ref;
 }
