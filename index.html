@@ -771,6 +771,21 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 .bm-stage-body{flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center}
 .bm-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;color:var(--grape2,#b97bff);
   text-transform:uppercase;text-align:center;margin-bottom:10px}
+/* v8.99 — first-round pathway. Coach strip = once-ever contextual hints on the
+   real drill card; coach intro = the one spoken sentence before card 1. */
+.coach-strip{display:flex;gap:9px;align-items:flex-start;text-align:left;margin:0 auto 14px;max-width:340px;
+  background:rgba(255,209,102,.10);border:1px solid rgba(255,209,102,.35);border-radius:12px;padding:10px 12px;
+  font-size:12.5px;line-height:1.45;color:var(--text);animation:coachIn .45s ease-out both}
+.coach-strip b{color:#ffd166}
+@keyframes coachIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.coach-ring{width:84px;height:84px;border-radius:50%;margin:0 auto 20px;position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:30px;
+  background:rgba(157,92,255,.12);border:1px solid rgba(157,92,255,.4)}
+.coach-ring::before,.coach-ring::after{content:"";position:absolute;inset:-1px;border-radius:50%;
+  border:1px solid rgba(157,92,255,.45);animation:coachRing 2.2s ease-out infinite}
+.coach-ring::after{animation-delay:1.1s}
+@keyframes coachRing{from{transform:scale(1);opacity:.7}to{transform:scale(1.55);opacity:0}}
+@media (prefers-reduced-motion:reduce){.coach-strip{animation:none}.coach-ring::before,.coach-ring::after{animation:none}}
 .build-nuance{margin:14px auto 0;max-width:330px;border-radius:14px;padding:13px 16px;
   background:rgba(255,255,255,.05);border:1px solid var(--border);
   font-size:12.5px;font-weight:500;color:var(--dim,#a99fc7);line-height:1.55;text-align:left}
@@ -886,7 +901,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.98';
+const APP_VERSION = '8.99';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -3621,7 +3636,8 @@ const DEFAULT_SETTINGS = {
   recastPeeked:false,         // F2 (Delve 7 §3.4, QA-4) — one-time flag: the first recast a learner ever receives auto-opens the peek sheet with the friendly explainer; never repeats.
   newWordInduction:false,     // v8.31 — OPT-IN: walk new words through meet→hear→say before the fast drill. Default OFF so the quick say-word→next loop stays default (owner field report 2026-07-21: induction-in-the-main-loop felt slow).
   vocabLock:false,            // S3 (ADR-012, amended v8.35) — rolling-frontier vocab lock is OPT-IN, default OFF (owner field verdict 2026-07-22: full deck in the practice area). "Vocab focus lock" row in Settings turns it on.
-  unlockedExtra:[]            // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
+  unlockedExtra:[],           // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
+  coach:{ intro:false, card:false, reveal:false, fresh:false, end:false }  // v8.99 — first-round pathway (owner call 7 Sep). Each flag = a once-ever guidance beat: intro = the one spoken sentence before card 1; card/reveal/fresh = first-time captions on the real drill card; end = the first round-complete line. Boot backfill seals all flags for existing users so only true first-timers ever see them.
 };
 
 /* =========================================================================
@@ -4288,6 +4304,22 @@ function load(){
       state.settings.onboard.done = true;
     }
   }catch(e){ log('onboard_backfill_err',{err:String(e)}); }
+  try{
+    /* v8.99 — coach boot backfill. The first-round pathway (spoken intro +
+       once-ever captions) is for true first-timers only. An existing user
+       upgrading into v8.99 has NO coach flags fired yet, so without this
+       they'd get the beginner walkthrough on their next round. Same
+       existing-user signal as the onboard backfill above. The all-flags-false
+       guard protects a genuine new user who quit mid-first-round (some flags
+       already fired) — their remaining beats still play. Only ever flips
+       false->true. */
+    if(!state.settings.coach) state.settings.coach = {intro:false, card:false, reveal:false, fresh:false, end:false};
+    const _cf = state.settings.coach;
+    const _cfNoneFired = !_cf.intro && !_cf.card && !_cf.reveal && !_cf.fresh && !_cf.end;
+    if(_cfNoneFired && (Object.keys(state.stats).length > 0 || (state.settings.convoXp || 0) > 0)){
+      _cf.intro = _cf.card = _cf.reveal = _cf.fresh = _cf.end = true;
+    }
+  }catch(e){ log('coach_backfill_err',{err:String(e)}); }
   try{
     /* v8.65 — owner-mode boot backfill. The slim customer Settings page is
        the new default; devices that hold a relay secret or API key are the
@@ -19856,11 +19888,16 @@ function startBuildModeVocabSpam(){
     const lesson = buildGenerateVocabSpamLesson();
     state.buildMode = buildMakeSession(lesson);
     state.buildMode._origin = 'home';
+    /* v8.99 — first-ever round: hold the round behind the one spoken intro
+       sentence (coach.intro), and keep the freshMix toast quiet — "20 review ·
+       10 new" is jargon to someone with nothing to review yet. */
+    const firstEver = !!(state.settings.coach && !state.settings.coach.intro);
+    if(firstEver) state.buildMode._introHold = true;
     _buildWakeLockSync();
     nav('buildMode');
     /* v8.51 — surface the freshMix so batch progression is visible, not silent */
     const m = lesson._meta || {};
-    if(typeof m.freshCount === 'number'){
+    if(!firstEver && typeof m.freshCount === 'number'){
       const total = (m.real_word_ids || []).length;
       showToast(m.freshCount > 0
         ? `${total} words — ${m.reviewCount} review · ${m.freshCount} new`
@@ -22856,8 +22893,85 @@ function renderBuildModeStart(){
   `;
 }
 
+/* ===================== v8.99 — FIRST-ROUND PATHWAY (owner call 7 Sep) =====================
+   Two beats, both once-ever, both INSIDE the real round (never a screen before it —
+   the question-screens/special-first-drill ban stands):
+   B) spoken intro — before card 1 of the first-ever round the app SAYS its one rule
+      ("just repeat what you hear, out loud"), then the round starts itself.
+   A) coach captions — a small strip on the real card the first time each mechanic
+      appears (first card / first auto-reveal / first ✦ NEW WORD / first round end).
+   Flags persist in state.settings.coach; the boot backfill seals them for existing
+   users, so only a true first-timer ever sees any of this. */
+const COACH_INTRO_LINE = "Just repeat what you hear — out loud. I'll handle the rest.";
+
+function buildCoachIntroDone(){
+  const b = state.buildMode;
+  if(!b || !b._introHold) return;            /* idempotent — TTS onDone + failsafe + tap can all land */
+  b._introHold = false;
+  if(b._introFailsafe){ clearTimeout(b._introFailsafe); b._introFailsafe = null; }
+  if(state.settings.coach) state.settings.coach.intro = true;
+  save();
+  render();                                   /* normal step render arms autoplay from here */
+}
+window.buildCoachIntroDone = buildCoachIntroDone;
+
+function _buildRenderCoachIntro(b){
+  if(!b._introSpoke){
+    b._introSpoke = true;
+    /* Speak after the DOM lands; force=true — this one sentence is the whole
+       point even when EN TTS is off. 7s failsafe so a stalled/missing TTS
+       engine can never strand the round behind the intro. */
+    setTimeout(() => {
+      const cur = state.buildMode;
+      if(!cur || !cur._introHold) return;
+      cur._introFailsafe = setTimeout(() => buildCoachIntroDone(), 7000);
+      try{ _buildSpeakEN(COACH_INTRO_LINE, true, () => setTimeout(buildCoachIntroDone, 600)); }
+      catch(e){ buildCoachIntroDone(); }
+    }, 250);
+  }
+  return `
+    <div class="bm-head">
+      <button class="bm-x" onclick="buildExit()" title="Exit lesson">✕</button>
+      <div class="build-progress"><div class="build-progress-fill" style="width:0%"></div></div>
+      <div class="bm-count">— / ${b.steps.length}</div>
+    </div>
+    <div class="card bm-stage"><div class="bm-stage-body">
+      <div class="coach-ring">🔊</div>
+      <div style="font-size:17px;font-weight:700;line-height:1.5;text-align:center;max-width:240px;margin:0 auto">“${COACH_INTRO_LINE}”</div>
+      <div class="muted" style="font-size:11px;text-align:center;margin-top:16px;letter-spacing:.06em">STARTING…</div>
+      <button class="btn btn-ghost" style="margin-top:10px" onclick="buildCoachIntroDone()">Start now →</button>
+    </div></div>`;
+}
+
+/* At most ONE caption per (card, phase). Fires the flag when first shown, then
+   pins the caption to that phase via b._coachCur so the many re-renders within
+   a single card (save(), voice toggles, post-reveal…) don't flicker it away. */
+function _coachCaptionHTML(b, step){
+  const c = state.settings.coach;
+  if(!c || !step) return '';
+  const pk = b.stepIdx + ':' + (b.revealed ? 1 : 0);
+  if(b._coachCur && b._coachCur.pk === pk) return b._coachCur.html;
+  let txt = null;
+  if(!c.card && !b.revealed){
+    c.card = true;
+    txt = `🎧 You'll hear Japanese. <b>Say it out loud</b> — that's the whole game. It runs itself.`;
+  } else if(!c.reveal && b.revealed){
+    c.reveal = true;
+    txt = `Answers show themselves — no tapping needed.`;
+  } else if(!c.fresh && !b.revealed && step.fresh){
+    c.fresh = true;
+    txt = `<b>✦</b> means brand new — just listen and repeat.`;
+  }
+  if(!txt) return '';
+  save();
+  const html = `<div class="coach-strip"><div style="flex-shrink:0">💡</div><div>${txt}</div></div>`;
+  b._coachCur = { pk, html };
+  return html;
+}
+
 function renderBuildModeStep(){
   const b = state.buildMode;
+  if(b._introHold) return _buildRenderCoachIntro(b);
   const step = b.steps[b.stepIdx];
   const total = b.steps.length;
   const pct = Math.round(100 * b.stepIdx / total);
@@ -22939,7 +23053,7 @@ function renderBuildModeStep(){
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
-      <div class="bm-stage-body">${body}</div>
+      <div class="bm-stage-body">${_coachCaptionHTML(b, step)}${body}</div>
       ${countdown}
     </div>
 
@@ -23972,8 +24086,21 @@ function renderBuildModeComplete(){
   const keepGoingBtn = (modeChainable && !dailyActive)
     ? `<button class="btn btn-blue" style="width:100%;margin-bottom:8px" onclick="buildChainKeepGoing()">▶ Keep going — fresh ${esc(mode)} lesson</button>`
     : '';
+  /* v8.99 — final first-round pathway beat: a once-ever line on the first
+     round-complete screen. Pinned via the session flag so the complete
+     screen's re-renders keep showing it after the flag persists. */
+  let coachEnd = '';
+  if(state.buildMode._coachEndShown || (state.settings.coach && !state.settings.coach.end)){
+    if(!state.buildMode._coachEndShown){
+      state.settings.coach.end = true;
+      state.buildMode._coachEndShown = true;
+      save();
+    }
+    coachEnd = `<div class="coach-strip" style="margin-bottom:16px"><div style="flex-shrink:0">💡</div><div>That's one round — <b>do one whenever you like</b>. Short and often beats long and rare.</div></div>`;
+  }
   return `
     <div class="card" style="text-align:center;padding:30px 20px">
+      ${coachEnd}
       <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
       <h2 style="margin:0 0 8px 0">${chainIdx > 1 ? 'Chain complete' : 'Lesson complete'}</h2>
       <div class="muted" style="font-size:14px;margin-bottom:20px">
