@@ -901,7 +901,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.00';
+const APP_VERSION = '9.01';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4351,6 +4351,19 @@ function load(){
       state.settings.voiceMusicReset = true;
     }
   }catch(e){ log('voice_music_reset_err',{err:String(e)}); }
+  try{
+    /* v9.01 — mic mode is owner-only (owner call 2026-09-12). Every
+       customer-facing toggle for buildVoiceMode was removed (the default
+       drill loop is already hands-free without an open mic, and the STT mic
+       pauses background music). Force it off on non-owner devices so any
+       tester who flipped it on while the buttons existed is cured — with no
+       button left, they'd otherwise be stranded in mic mode. Owner devices
+       keep whatever they set. */
+    if(state.settings.ownerMode !== true && state.settings.buildVoiceMode === true){
+      state.settings.buildVoiceMode = false;
+      log('voice_owner_only_reset', {});
+    }
+  }catch(e){ log('voice_owner_only_reset_err',{err:String(e)}); }
   state.notes = _lsArr(lsGet(LS.notes, []));
   state.logs = _lsArr(lsGet(LS.logs, []));
   state.streak = {...state.streak, ..._lsObj(lsGet(LS.streak, {}))};
@@ -10420,7 +10433,8 @@ function renderBlitz(){
   const _circ = 119.38;                 // 2πr, r=19
   const _off = (_circ * (1 - _done / _denom)).toFixed(1);
 
-  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:6px 10px;font-size:12px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="blitzToggleVoiceMode()" title="Hands-free voice mode — listens for your spoken answer. The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
+  /* v9.01 — in-drill 🎙 Voice pill removed (mic mode is owner-only). */
+  const voicePill = '';
   const head = `<div class="card blitz-head">
     <div class="bring">
       <svg class="bring-svg" viewBox="0 0 44 44">
@@ -11326,7 +11340,8 @@ function renderFormDrill(){
   const dirNow = d.currentDir || resolveFormDrillDir(dirRaw);
   const dirLabel = dirRaw === 'mixed' ? `mixed (${dirNow})` : dirRaw;
   const dirChip = `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="formDrillToggleDir()" title="Cycle direction: jp-en → en-jp → mixed">↔ ${esc(dirLabel)}</button>`;
-  const voicePill = voiceSupported() ? `<button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="formDrillToggleVoiceMode()" title="Hands-free voice mode — speak the answer. The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : '';
+  /* v9.01 — in-drill 🎙 Voice pill removed (mic mode is owner-only). */
+  const voicePill = '';
 
   const head = `<div class="card" style="padding:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
@@ -23050,7 +23065,6 @@ function renderBuildModeStep(){
         <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildListenSteps !== false ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleListenSteps()" title="Flip drill direction — 👂 EN: newer words play in Japanese and you say the English · 🗣 JP: every card shows English and you speak the Japanese">${state.settings.buildListenSteps !== false ? '👂 EN' : '🗣 JP'}</button>
-          ${voiceSupported() ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildVoiceMode ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleVoiceMode()" title="Hands-free voice mode — speak the answer and it advances (never graded). The open mic pauses background music while on">${state.settings.buildVoiceMode ? '🎙️ Voice ON' : '🎙 Voice'}</button>` : ''}
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
         </div>
       </div>
@@ -25278,10 +25292,10 @@ function renderHome(){
     ? `${reviewsLabel} review · ${newsLabel} new · about ${est} minutes`
     : `All caught up — a fresh round is ready whenever you are`;
 
-  const voiceOn = state.settings.buildVoiceMode === true && voiceSupported();
-  const handsfree = voiceSupported()
-    ? `<button class="hv9-pill ${voiceOn?'on':''}" onclick="homeToggleVoiceMode()">🎙 ${voiceOn ? 'Hands-free is ON — just listen and speak' : 'Hands-free is OFF — tap to turn on'}</button>`
-    : '';
+  /* v9.01 — the "Hands-free" pill is GONE (owner call 2026-09-12). The default
+     drill loop is already hands-free (TTS + auto-advance) with no open mic;
+     the pill actually toggled STT mic mode, whose open mic pauses background
+     music. Mic mode is now owner-only (owner Settings page). */
   const wave = `<div class="hv9-wave">` + [8,16,24,12,20,26,10,18,24,8,14,22].map(x=>`<i style="height:${x}px"></i>`).join('') + `</div>`;
 
   const heroCard = `
@@ -25292,7 +25306,6 @@ function renderHome(){
       <div class="hv9-meta">${esc(heroMeta)}</div>
       ${wave}
       <button class="h8-hero-cta" style="margin-top:12px" onclick="startBuildModeVocabSpam()">▶ Start drilling</button>
-      ${handsfree}
     </div>`;
 
   /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
@@ -26102,14 +26115,9 @@ function renderPractice(){
       <div style="font-size:12px;color:var(--dim);text-align:left">You're in <b>Mastered Review</b> (only ★mastered words). Pool is small.</div>
       <button class="btn btn-primary" style="font-size:12px;padding:6px 12px;white-space:nowrap" onclick="setVocabSection('all')">← Full session</button>
     </div>` : '';
-  /* Voice Mode toggle — big and unmissable. Sits between the hero meta and
-     the CTA so the driver sees it before tapping start. */
-  const voiceModeOn = state.settings.buildVoiceMode === true && voiceSupported();
-  const voiceToggle = voiceSupported() ? `
-    <button onclick="homeToggleVoiceMode()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;padding:14px 16px;border-radius:16px;font-size:14px;font-weight:700;border:2px solid rgba(255,255,255,${voiceModeOn ? '0.95' : '0.45'});background:rgba(255,255,255,${voiceModeOn ? '0.24' : '0.12'});color:#fff;cursor:pointer">
-      <span style="font-size:18px">${voiceModeOn ? '🎙️' : '🎙'}</span>
-      <span>${voiceModeOn ? 'Voice Mode ON · hands-free drills' : 'Voice Mode OFF · tap for hands-free'}</span>
-    </button>` : '';
+  /* v9.01 — the Voice Mode toggle is GONE (owner call 2026-09-12): the default
+     loop is already hands-free without the open mic, and STT mic mode pauses
+     background music. Owner-only via the owner Settings page. */
   const heroCard = `
     ${exitBanner}
     <div class="h8-hero">
@@ -26118,7 +26126,6 @@ function renderPractice(){
       <div class="h8-hero-title">${esc(heroTitle)}</div>
       <div class="h8-hero-meta">${esc(heroMeta)}</div>
       <button class="h8-hero-cta" ${heroDis} ${heroAct}>${esc(heroCta)}</button>
-      ${voiceToggle}
     </div>`;
 
   /* Up Next — alternative sessions, dynamic based on what has content */
@@ -26728,9 +26735,9 @@ function renderSettings(){
     <label class="word-row"><div class="word-main"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</label>`;
   const chk = (key, on) => `<input type="checkbox" ${on?'checked':''} onchange="toggleSetting('${key}')">`;
 
-  const soundRows = voiceSupported()
-    ? row('🎙️ Hands-free mode', 'Drills listen for your answer and move on for you — made for earbuds and driving.', chk('buildVoiceMode', s.buildVoiceMode===true))
-    : `<div class="word-row"><div class="word-main"><div class="word-jp">🎙️ Hands-free mode</div><div class="word-en">Not supported in this browser — drills auto-advance instead.</div></div></div>`;
+  /* v9.01 — the "Hands-free mode" row is GONE from the customer page (owner
+     call 2026-09-12): drills are already hands-free by default, and the STT
+     mic mode this toggled pauses background music. Owner-only now. */
 
   /* Topics — advisory bias only (settings.topicBias orders which UNSEEN words
      come first; it NEVER filters the deck — the module-lock empty-pool bug
@@ -26744,11 +26751,6 @@ function renderSettings(){
 
   return `
     <div class="settings-v2">
-    <div class="h8-section" style="margin:16px 4px 8px">Sound &amp; voice</div>
-    <div class="card">
-      ${soundRows}
-    </div>
-
     <div class="h8-section" style="margin:16px 4px 8px">Learning</div>
     <div class="card">
       ${row('👂 Listening steps', 'Newer words play the Japanese and you say the English — trains understanding, the other half of conversation.', chk('buildListenSteps', s.buildListenSteps!==false))}
