@@ -901,7 +901,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '8.99';
+const APP_VERSION = '9.00';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20176,9 +20176,10 @@ function _buildSpeakEN(text, force, onDone){
     _ssPrep(ss);
     if(ss.speaking || ss.pending) ss.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    // Faster default — the previous 0.9 felt sluggish in spam-mode loops where
-    // every step plays an EN gloss. User-tunable via buildEnTtsRate.
-    u.rate = (state.settings && state.settings.buildEnTtsRate) || 1.15;
+    // 1.0 = normal speaking pace. Tester feedback: 1.15 sounded rushed to
+    // first-time users on non-Pixel voices — habituated-owner speed is not
+    // beginner speed. Owner can still tune via buildEnTtsRate.
+    u.rate = (state.settings && state.settings.buildEnTtsRate) || 1.0;
     const v = (typeof _pickEnVoice === 'function') ? _pickEnVoice() : null;
     if(v){ u.voice = v; u.lang = v.lang || 'en-US'; } else { u.lang = 'en-US'; }
     if(onDone) _ttsFireGuard(u, onDone, text, u.rate);
