@@ -735,6 +735,41 @@ body[data-screen="auth"] .notes-fab,
 body[data-screen="auth"] .ask-fab,
 body[data-screen="auth"] .back-fab{display:none !important}
 
+/* v9.02 — morning cold check owns the viewport the same way: no header, no
+   bottom nav, no floating controls while the five words are being proved. */
+body[data-screen="cold"] .header,
+body[data-screen="cold"] .bottom-nav,
+body[data-screen="cold"] .notes-fab,
+body[data-screen="cold"] .ask-fab,
+body[data-screen="cold"] .back-fab{display:none !important}
+.cold-wrap{max-width:520px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 4px 40px}
+.cold-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:0 0 6px}
+.cold-h{font-size:24px;font-weight:800;margin:0 0 6px;line-height:1.2;text-wrap:balance}
+.cold-sub{color:var(--dim);font-size:14px;margin:0 0 16px;line-height:1.5}
+.cold-dots{display:flex;gap:6px;margin:0 0 14px}
+.cold-dots span{flex:1;height:5px;border-radius:99px;background:var(--card2)}
+.cold-dots span.pass{background:var(--green)}.cold-dots span.fail{background:var(--faint)}.cold-dots span.now{background:var(--blue)}
+.cold-meaning{font-size:34px;font-weight:800;margin:6px 0 2px;line-height:1.1}
+.cold-hint{color:var(--faint);font-size:13px;margin:0 0 14px}
+.cold-row{display:flex;gap:8px}
+.cold-row .input{flex:1;min-width:0;font-size:18px;font-weight:700;letter-spacing:.04em}
+.cold-res{border-radius:12px;padding:14px;margin:12px 0 0;font-size:15px;line-height:1.5}
+.cold-res.ok{background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4)}
+.cold-res.miss{background:rgba(139,123,255,.12);border:1px solid rgba(139,123,255,.4)}
+.cold-res .jp{font-family:'Noto Sans JP',sans-serif;font-size:26px;font-weight:700;display:block;margin:2px 0 6px}
+.cold-tick{font-size:13px;color:var(--dim);margin-top:8px}
+.cold-tick b{color:var(--green)}
+.cold-bign{font-size:44px;font-weight:800;line-height:1;margin:4px 0 6px}
+.cold-bign em{font-style:normal;color:var(--green)}
+.cold-pill{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:12.5px;color:var(--dim);margin:0 6px 6px 0}
+.cold-pill.g{color:var(--green);border-color:rgba(52,211,153,.4)}
+.cold-tiny{font-size:12.5px;color:var(--faint);line-height:1.5;margin:10px 0 0}
+.cold-later{display:block;width:100%;background:none;border:none;color:var(--faint);font-size:13px;padding:12px;margin-top:6px;text-decoration:underline;cursor:pointer}
+.hv9-cold{display:block;font-size:13px;color:var(--dim);margin-top:4px}
+.hv9-cold b{color:var(--green)}
+.hv9-cold-door{display:block;width:100%;text-align:left;background:var(--card);border:1px solid rgba(52,211,153,.35);border-radius:14px;padding:12px 14px;margin:10px 0 0;color:var(--text);font-family:inherit;cursor:pointer}
+.hv9-cold-door small{display:block;color:var(--faint);font-size:12px;margin-top:2px}
+
 /* v8.72 — paywall screen (paywall-screen sprint) draws its own full-screen
    ob-* card, same "own the viewport" treatment as auth/onboarding. */
 body[data-screen="paywall"] .header,
@@ -901,7 +936,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.01';
+const APP_VERSION = '9.02';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -21470,23 +21505,36 @@ window.buildRestart = buildRestart;
    to the back), then rebuild, which tops the batch up unseen-first.
    Graduated words stay in SRS and resurface in Random Drill's due-first
    whole-deck pull; rotation only frees their batch seats. */
-function buildRotateBatch(){
+function buildRotateBatch(n){
+  /* v9.02 — rotation proper is now AUTOMATIC: a word that passes the morning
+     cold check graduates out of the batch (_coldGraduate) and the seat tops
+     up. These manual swaps stay for the impatient, worded honestly on the
+     button ("anyway" = un-proven words leave; they stay in the spaced
+     schedule and will still be asked cold later). n = 10 | 20 | 'all'. */
   const sec = activeVocabSection();
   const key = sec.id || 'all';
   const batch = (state.settings.stickyBatch || {})[key];
   if(!Array.isArray(batch) || !batch.length){ startBuildModeVocabSpam(); return; }
+  if(n === 'all'){
+    delete state.settings.stickyBatch[key];
+    try{ save(); }catch(e){}
+    startBuildModeVocabSpam();
+    showToast('Fresh batch — 30 new seats, filled from your reviews and new words.', {tone:'info', duration:4000});
+    return;
+  }
+  const want = typeof n === 'number' && n > 0 ? n : 10;
   const scored = batch.map(id => {
     const st = state.stats[id];
     return { id, next: (st && st.smNext) || 0 };
   }).sort((a, b) => b.next - a.next);
-  const dropN = Math.min(10, Math.max(0, batch.length - 10));
+  const dropN = Math.min(want, Math.max(0, batch.length - 10));
   const drop = new Set(scored.slice(0, dropN).map(x => x.id));
   state.settings.stickyBatch[key] = batch.filter(id => !drop.has(id));
   try{ save(); }catch(e){}
   startBuildModeVocabSpam();
   if(dropN > 0){
     const fc = state.buildMode?.lesson?._meta?.freshCount;
-    showToast(`${dropN} best-known words graduated 🎓${typeof fc === 'number' && fc > 0 ? ` — ${fc} new in` : ' — topped up from your reviews'}.`, {tone:'info', duration:4000});
+    showToast(`${dropN} words swapped out${typeof fc === 'number' && fc > 0 ? ` — ${fc} new in` : ' — topped up from your reviews'}. They’ll still be asked cold later.`, {tone:'info', duration:4000});
   }
 }
 window.buildRotateBatch = buildRotateBatch;
@@ -24042,7 +24090,23 @@ function _buildRoundRecap(){
       }
     }
   }catch(e){ drilled = 0; stuck = 0; warming = 0; }
-  return `<div style="font-size:12.5px;font-weight:700;color:#9fe9cf;margin-bottom:12px">${drilled} word${drilled === 1 ? '' : 's'} drilled · ${stuck} newly stuck · +${warming} warming</div>`;
+  /* v9.02 — three numbers, never a zero on the first screen a tester sees:
+     what this round did, what is warming toward tomorrow's cold check, and
+     the earned total. Stuck only moves in the morning check. */
+  let totalStuck = 0, totalWarm = 0, grads = 0;
+  try{ const r = wordsThatStick(); totalStuck = r.N; totalWarm = r.W; }catch(e){}
+  try{ const s = state.settings.coldCheck; if(s && s.date === _coldDayKey() && s.results) grads = Object.values(s.results).filter(Boolean).length; }catch(e){}
+  const missed = (state.buildMode && state.buildMode._missed && state.buildMode._missed.size) || 0;
+  const recalled = Math.max(0, drilled - missed);
+  return `<div style="margin-bottom:12px">
+    ${grads > 0 ? `<div style="font-size:12.5px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:8px 10px;margin-bottom:8px">🎓 <b>${grads} word${grads === 1 ? '' : 's'} graduated</b> this morning — proven cold, so they left the batch and new words took their seats.</div>` : ''}
+    <div style="display:flex;gap:6px;text-align:center">
+      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800">${recalled}</div><div style="font-size:11px;color:var(--faint)">recalled this round</div></div>
+      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--purple)">${totalWarm}</div><div style="font-size:11px;color:var(--faint)">warming up</div></div>
+      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--green)">${totalStuck}</div><div style="font-size:11px;color:var(--faint)">stick with you</div></div>
+    </div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.45">"Stick" only moves in the morning check — a word has to come out cold, on a later day. The warming words are tomorrow’s candidates.</div>
+  </div>`;
 }
 
 function renderBuildModeComplete(){
@@ -24143,7 +24207,13 @@ function renderBuildModeComplete(){
       ${keepGoingBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
       ${l._meta?.mode === 'vocabSpam' ? `<div style="height:8px"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch()">🎓 Swap my 10 best for 10 new</button>` : ''}
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-secondary" style="flex:1" onclick="buildRotateBatch(10)">Swap 10 anyway</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="buildRotateBatch(20)">Swap 20 anyway</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch('all')">Fresh 30 — start a new batch</button>
+      <div class="muted" style="font-size:11.5px;margin-top:6px;line-height:1.45">Proven words leave the batch on their own each morning. "Anyway" swaps un-proven words out early — they stay in your reviews and will still be asked cold later.</div>` : ''}
       <div style="height:8px"></div>
       <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
     </div>
@@ -24182,7 +24252,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in', cold:'Morning check'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -24459,13 +24529,21 @@ function _wtsCorrectDayCount(st){
 }
 
 function wtsStuck(w){
+  /* v9.02 — EARNED, not assumed (owner call 2026-09-12). The hands-free
+     loop has no ear: it credits a recall as correct unless "Missed it" is
+     tapped, so the old rule (solid + two days) was an honour system wearing
+     a guarantee's clothes. A word now counts as stuck only when the learner
+     PRODUCED it cold in a morning check (typed romaji, no options on
+     screen) — st.certLevel > 0, set by _coldApply(). A later cold miss
+     un-graduates it (certLevel back to 0), so the number can go down,
+     which is what makes it believable. ★mastered (explicit "I know this")
+     still counts; suspended never does. */
   if(!w) return false;
   const status = libraryWordStatus(w);
-  if(status === 'mature' || status === 'mastered') return true;
-  if(status !== 'learning') return false;
+  if(status === 'mastered') return true;
+  if(status === 'suspended') return false;
   const st = (state.stats && state.stats[w.id]) || null;
-  if(!progIsSolid(st)) return false;
-  return _wtsCorrectDayCount(st) >= 2;
+  return !!(st && (st.certLevel || 0) > 0);
 }
 
 function wtsWarming(w){
@@ -24511,6 +24589,302 @@ function wtsBarHtml(info){
   return `<div style="position:relative;height:10px;border-radius:999px;background:rgba(255,255,255,0.08);overflow:hidden">
     <div class="wts-bar-warm" style="position:absolute;top:0;left:0;bottom:0;width:${warmPct}%;background:rgba(157,92,255,0.35);border-radius:999px"></div>
     <div class="wts-bar-solid" style="position:absolute;top:0;left:0;bottom:0;width:${solidPct}%;background:var(--blue,#3b82f6);border-radius:999px"></div>
+  </div>`;
+}
+
+/* =========================================================================
+   COLD CHECK — v9.02 (owner call 2026-09-12: "no mic, the user can type,
+   it appears as they open the app, that's the first thing").
+
+   The one place a word can PROVE it stuck. Runs once a day at app open,
+   before the hands-free loop, only when there is something to prove:
+     · up to COLD_N words the learner said back on a PREVIOUS day (≥2
+       correct recalls, at least one not today) and hasn't certified yet,
+     · plus certified words whose re-test gap (COLD_GAPS_DAYS by level)
+       has elapsed — at most two per morning so new proofs dominate.
+   Meaning shown, learner types the romaji. coldRomajiNorm() makes the
+   comparison forgiving about spelling systems (shi/si, tsu/tu, long
+   vowels) but never about the sound itself. Pass → certLevel+1, longer
+   re-test gap, word GRADUATES out of the sticky batch (a new word takes
+   the seat — that is the rotation). Miss → certLevel 0, back into the
+   batch at the front, no penalty, not asked again today.
+   Skipping is allowed ("Not now") and re-offered from a Home door.
+   State: state.settings.coldCheck = {date, ids, idx, results, pending,
+   done, skipped} — one day's session, rebuilt on the first open of a new
+   local day. Per-word: st.certLevel / certAt / certFirstAt / certNext /
+   coldFailAt / coldFails.
+   ========================================================================= */
+const COLD_N = 5;
+const COLD_GAPS_DAYS = [3, 7, 14, 30, 60, 120, 240];
+const COLD_DAY_MS = 24 * 60 * 60 * 1000;
+function _coldDayKey(ts){ return new Date(ts || now()).toDateString(); }
+function _coldSess(){
+  if(!state.settings.coldCheck || typeof state.settings.coldCheck !== 'object') state.settings.coldCheck = {};
+  return state.settings.coldCheck;
+}
+function coldRomajiNorm(s){
+  let t = String(s || '').toLowerCase();
+  t = t.replace(/ā/g, 'a').replace(/ī/g, 'i').replace(/ū/g, 'u').replace(/ē/g, 'e').replace(/ō/g, 'o');
+  t = t.replace(/[^a-z]/g, '');
+  /* Hepburn ⇄ kunrei — protect the Hepburn digraphs, map kunrei onto them. */
+  t = t.replace(/sh/g, 'S').replace(/ch/g, 'C').replace(/ts/g, 'T');
+  t = t.replace(/si/g, 'Si').replace(/ti/g, 'Ci').replace(/tu/g, 'Tu').replace(/hu/g, 'fu')
+       .replace(/zi/g, 'ji').replace(/sy/g, 'S').replace(/ty/g, 'C').replace(/zy/g, 'j').replace(/jy/g, 'j')
+       .replace(/dz/g, 'z').replace(/du/g, 'zu');
+  t = t.replace(/S/g, 'sh').replace(/C/g, 'ch').replace(/T/g, 'ts');
+  /* Long vowels: ou/oo/ō all collapse to o, ii→i, etc. Consonant doubles stay. */
+  t = t.replace(/ou/g, 'o').replace(/([aeiou])\1+/g, '$1');
+  return t;
+}
+function _coldEligible(w, t){
+  const st = state.stats && state.stats[w.id];
+  if(!st || !Array.isArray(st.attempts) || !st.attempts.length) return null;
+  if(!w.romaji || !coldRomajiNorm(w.romaji)) return null;
+  const status = libraryWordStatus(w);
+  if(status === 'suspended' || status === 'mastered') return null;
+  const today = _coldDayKey(t);
+  if((st.certLevel || 0) > 0){
+    return (st.certNext && st.certNext <= t) ? { id: w.id, kind: 'retest', pri: st.certNext } : null;
+  }
+  if(st.coldFailAt && _coldDayKey(st.coldFailAt) === today) return null;
+  let correct = 0, priorDay = false;
+  for(const a of st.attempts){
+    if(!a || !a.correct || !a.ts) continue;
+    correct++;
+    if(_coldDayKey(a.ts) !== today) priorDay = true;
+  }
+  if(correct < 2 || !priorDay) return null;
+  return { id: w.id, kind: 'new', pri: correct * 1000 + Math.min(999, st.hears || 0) };
+}
+function _coldCandidates(t){
+  t = t || now();
+  const out = [];
+  try{ for(const w of getActiveWords()){ const c = _coldEligible(w, t); if(c) out.push(c); } }catch(e){ return []; }
+  const re = out.filter(c => c.kind === 'retest').sort((a, b) => a.pri - b.pri);
+  const nw = out.filter(c => c.kind === 'new').sort((a, b) => b.pri - a.pri);
+  let pick = [...re.slice(0, 2), ...nw].slice(0, COLD_N);
+  if(pick.length < COLD_N) pick = [...pick, ...re.slice(2)].slice(0, COLD_N);
+  return pick.map(c => c.id);
+}
+function _coldEnsure(){
+  const s = _coldSess();
+  const today = _coldDayKey();
+  if(s.date !== today){
+    s.date = today; s.ids = _coldCandidates(); s.idx = 0; s.results = {};
+    s.pending = null; s.done = false; s.skipped = false;
+  }
+  if(!Array.isArray(s.ids)) s.ids = [];
+  if(!s.results || typeof s.results !== 'object') s.results = {};
+  if(typeof s.idx !== 'number') s.idx = 0;
+  return s;
+}
+/* Due = a session exists (or can be built) for today and it is neither
+   finished nor skipped. Called at boot (init) and by the Home door. */
+function coldCheckDue(){
+  try{
+    if(!state.settings.onboard || !state.settings.onboard.done) return false;
+    const s = _coldEnsure();
+    if(s.done || s.skipped) return false;
+    return s.ids.length > 0;
+  }catch(e){ return false; }
+}
+function coldPendingCount(){
+  try{ const s = _coldEnsure(); return (s.done || s.skipped) ? 0 : Math.max(0, s.ids.length - s.idx); }catch(e){ return 0; }
+}
+function coldStuckThisWeek(){
+  let n = 0;
+  try{
+    const cut = now() - 7 * COLD_DAY_MS;
+    for(const w of getActiveWords()){
+      const st = state.stats[w.id];
+      if(st && (st.certLevel || 0) > 0 && st.certFirstAt && st.certFirstAt > cut) n++;
+    }
+  }catch(e){}
+  return n;
+}
+function _coldGraduate(id){
+  const sb = state.settings.stickyBatch;
+  if(!sb || typeof sb !== 'object') return;
+  for(const k of Object.keys(sb)){ if(Array.isArray(sb[k])) sb[k] = sb[k].filter(x => x !== id); }
+}
+function _coldReseat(id){
+  const sb = state.settings.stickyBatch;
+  if(!sb || typeof sb !== 'object') return;
+  for(const k of Object.keys(sb)){ if(Array.isArray(sb[k]) && !sb[k].includes(id)) sb[k].unshift(id); }
+}
+function _coldApply(w, pass){
+  const st = smStatFor(w.id);
+  const t = now();
+  const was = st.certLevel || 0;
+  if(pass){
+    st.certLevel = was + 1;
+    st.certAt = t;
+    if(was === 0) st.certFirstAt = t;
+    const gap = COLD_GAPS_DAYS[Math.min(st.certLevel - 1, COLD_GAPS_DAYS.length - 1)];
+    st.certNext = t + gap * COLD_DAY_MS;
+    try{ smGrade(st, 'easy'); }catch(e){}
+    try{ recordAttempt(w.id, true, 'cold'); }catch(e){}
+    _coldGraduate(w.id);
+    try{ updateStreak(true); }catch(e){}
+  } else {
+    st.certLevel = 0;
+    st.certNext = null;
+    st.coldFailAt = t;
+    st.coldFails = (st.coldFails || 0) + 1;
+    try{ smGrade(st, 'again'); }catch(e){}
+    try{ recordAttempt(w.id, false, 'cold'); }catch(e){}
+    _coldReseat(w.id);
+  }
+  log('cold_check', { id: w.id, pass, level: st.certLevel, was });
+}
+function coldCheckAnswer(){
+  const s = _coldEnsure();
+  if(s.pending) return;
+  const inp = document.getElementById('ansInput');
+  const typed = inp ? inp.value : '';
+  const id = s.ids[s.idx];
+  const w = id && state.words.find(x => x && x.id === id);
+  if(!w){ s.idx++; if(s.idx >= s.ids.length) s.done = true; save(); render(); return; }
+  const norm = coldRomajiNorm(typed);
+  const pass = norm !== '' && norm === coldRomajiNorm(w.romaji);
+  _coldApply(w, pass);
+  s.results[id] = pass;
+  s.pending = { id, pass, typed: String(typed || '').slice(0, 40) };
+  save(); render();
+}
+function coldCheckSkipWord(){
+  const s = _coldEnsure();
+  if(s.pending) return;
+  const id = s.ids[s.idx];
+  const w = id && state.words.find(x => x && x.id === id);
+  if(w){ _coldApply(w, false); s.results[id] = false; s.pending = { id, pass: false, typed: '' }; }
+  else { s.idx++; if(s.idx >= s.ids.length) s.done = true; }
+  save(); render();
+}
+function coldCheckNext(){
+  const s = _coldEnsure();
+  s.pending = null;
+  s.idx++;
+  if(s.idx >= s.ids.length) s.done = true;
+  save(); render();
+}
+function coldCheckLater(){
+  const s = _coldEnsure();
+  s.skipped = true; s.pending = null;
+  save();
+  log('cold_check_skip', { left: s.ids.length - s.idx });
+  nav('home');
+}
+function coldCheckStart(){
+  const s = _coldEnsure();
+  s.skipped = false;
+  save();
+  if(!s.ids.length || s.done){ nav('home'); return; }
+  nav('cold');
+}
+function coldCheckFinish(){
+  const s = _coldEnsure();
+  s.done = true; s.pending = null;
+  save();
+  nav('home');
+}
+window.coldCheckAnswer = coldCheckAnswer; window.coldCheckSkipWord = coldCheckSkipWord;
+window.coldCheckNext = coldCheckNext; window.coldCheckLater = coldCheckLater;
+window.coldCheckStart = coldCheckStart; window.coldCheckFinish = coldCheckFinish;
+
+const COLD_PASS_LINES = [
+  'That came out of YOUR memory — not off the screen.',
+  'Cold, from nothing on the screen. That one is yours.',
+  'No options, no hint. You pulled it out of your own head.',
+  'A day later and it still came out. That is what sticking means.'
+];
+function renderColdCheck(){
+  const s = _coldEnsure();
+  const total = s.ids.length;
+  const { N } = wordsThatStick();
+  const dots = s.ids.map((id, k) => {
+    const r = s.results[id];
+    const cls = r === true ? 'pass' : r === false ? 'fail' : (k === s.idx ? 'now' : '');
+    return `<span class="${cls}"></span>`;
+  }).join('');
+  const _h = new Date().getHours();
+  const greet = _h < 5 ? 'Good evening' : _h < 12 ? 'Good morning' : _h < 18 ? 'Good afternoon' : 'Good evening';
+
+  if(!total){
+    return `<div class="cold-wrap"><div class="card" style="padding:24px 18px">
+      <p class="cold-eyebrow">${greet}</p>
+      <h2 class="cold-h">Nothing to prove yet.</h2>
+      <p class="cold-sub">Words you say back today will be here tomorrow morning.</p>
+      <button class="btn btn-primary" style="width:100%" onclick="nav('home')">Continue →</button>
+    </div></div>`;
+  }
+
+  if(s.done || s.idx >= total){
+    const n = s.ids.filter(id => s.results[id] === true).length;
+    const week = coldStuckThisWeek();
+    const pills = s.ids.map(id => {
+      const w = state.words.find(x => x && x.id === id);
+      if(!w) return '';
+      const ok = s.results[id] === true;
+      return `<span class="cold-pill${ok ? ' g' : ''}">${ok ? '✓' : '↻'} <span style="font-family:'Noto Sans JP'">${esc(w.jp)}</span> ${esc(w.en)}</span>`;
+    }).join('');
+    const line = n > 0
+      ? `<b>${N} word${N === 1 ? '' : 's'}</b> stick with you · +${week} this week`
+      : `Nothing lost — they go back into today's round. Tomorrow morning, again.`;
+    return `<div class="cold-wrap">
+      <div class="card" style="padding:22px 18px">
+        <p class="cold-eyebrow">${total === 1 ? 'Today’s check' : 'Today’s check'}</p>
+        <div class="cold-bign"><em>${n}</em> <span style="font-size:20px;color:var(--dim)">of ${total} came out cold</span></div>
+        <p class="cold-tick">${line}</p>
+        <div style="margin-top:12px">${pills}</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="coldCheckFinish()">▶ Start drilling</button>
+      <p class="cold-tiny">${n < total ? 'The ones that didn’t come out are back in today’s round — that is exactly what the round is for.' : 'All five graduated out of your batch. Five new words take their seats in today’s round.'}</p>
+    </div>`;
+  }
+
+  const id = s.ids[s.idx];
+  const w = state.words.find(x => x && x.id === id);
+  if(!w){ setTimeout(coldCheckNext, 0); return `<div class="cold-wrap"></div>`; }
+
+  if(s.pending && s.pending.id === id){
+    const p = s.pending;
+    const last = s.idx + 1 >= total;
+    const praise = COLD_PASS_LINES[(s.idx + N) % COLD_PASS_LINES.length];
+    const body = p.pass
+      ? `<div class="cold-res ok">✓ ${esc(praise)}<span class="jp">${jpDisplay(w)}</span><span style="color:var(--dim)">${esc(w.en)}</span>
+           <div class="cold-tick"><b>${N} word${N === 1 ? '' : 's'}</b> stick with you</div></div>`
+      : `<div class="cold-res miss">Not yet — it’s<span class="jp">${jpDisplay(w)}</span><span style="color:var(--dim)">${esc(w.romaji || '')} · ${esc(w.en)}</span>
+           <div class="cold-tick">Back in today’s round, no penalty. You’ll hear it in a minute.</div></div>`;
+    return `<div class="cold-wrap">
+      <p class="cold-eyebrow">${greet} · before we start</p>
+      <h2 class="cold-h">Prove ${total === 1 ? 'a word' : total + ' words'}.</h2>
+      <div class="cold-dots">${dots}</div>
+      <div class="card" style="padding:18px 16px">
+        <p class="cold-eyebrow">Word ${s.idx + 1} of ${total}</p>
+        <p class="cold-meaning">${esc(w.en)}</p>
+        ${body}
+        <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="coldCheckNext()">${last ? 'See today’s result →' : 'Next →'}</button>
+      </div>
+    </div>`;
+  }
+
+  return `<div class="cold-wrap">
+    <p class="cold-eyebrow">${greet} · before we start</p>
+    <h2 class="cold-h">Prove ${total === 1 ? 'a word' : total + ' words'}.</h2>
+    <p class="cold-sub">You said these on another day. If they come out of your head now, cold, they’re yours. Type the sound in English letters — <b>mizu</b>, not みず.</p>
+    <div class="cold-dots">${dots}</div>
+    <div class="card" style="padding:18px 16px">
+      <p class="cold-eyebrow">Word ${s.idx + 1} of ${total}</p>
+      <p class="cold-meaning">${esc(w.en)}</p>
+      <p class="cold-hint">Say it in Japanese, then type what you said.</p>
+      <div class="cold-row">
+        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type the sound…" aria-label="Type the Japanese word in romaji" onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
+        <button class="btn btn-primary" onclick="coldCheckAnswer()">Check</button>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="coldCheckSkipWord()">Didn’t come out — next</button>
+    </div>
+    <button class="cold-later" onclick="coldCheckLater()">Not now — go to the app</button>
   </div>`;
 }
 
@@ -25013,7 +25387,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -25281,6 +25655,19 @@ function renderHome(){
       ? `<em>${N} word${N===1?'':'s'}</em> stick with you`
       : `Let's make your first words <em>stick</em>`;
   }catch(e){ stickLine = `Learn Japanese <em>by ear</em>`; }
+  /* v9.02 — the headline number is now EARNED (see wtsStuck). Under it: the
+     weekly delta, and — when today's cold check was skipped or is still
+     open — a door back into it. Nothing is forced; the door just says what
+     the number is waiting on. */
+  let coldLine = '';
+  try{
+    const week = coldStuckThisWeek();
+    const left = coldPendingCount();
+    const { N: _n } = wordsThatStick();
+    if(_n > 0 || week > 0) coldLine += `<span class="hv9-cold"><b>+${week}</b> this week · proven cold, not tapped</span>`;
+    if(left > 0) coldLine += `<button class="hv9-cold-door" onclick="coldCheckStart()"><b>Prove ${left} word${left === 1 ? '' : 's'}</b> — 30 seconds<small>That is how the counter moves. No mic, just type the sound.</small></button>`;
+    else if(_n === 0 && week === 0) coldLine += `<span class="hv9-cold">Words you say back today are yours to prove tomorrow morning.</span>`;
+  }catch(e){ coldLine = ''; }
 
   const bc = blitzCounts();
   const reviewsLabel = Math.min(bc.due, state.settings.blitzReviews || 20);
@@ -25371,6 +25758,7 @@ function renderHome(){
       <div class="hv9-hello">
         <div class="hv9-hi">${greet}</div>
         <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
+        ${coldLine}
       </div>
       ${freeBanner}
       ${resumeChip}
@@ -27742,6 +28130,16 @@ async function init(){
     try{ save(); }catch(e){}
     state.screen = 'paywall';
     try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
+  } else if(state.screen === 'home' && state.settings.onboard.done && coldCheckDue()){
+    /* v9.02 — the morning cold check is the FIRST thing an onboarded,
+       signed-in learner meets when there is something to prove (words said
+       back on a previous day, or a certified word whose re-test is due).
+       Sits after every gate above (auth, checkout, free-plan intro) and
+       before the first-run redirect, so a brand-new profile never sees it
+       and a gated device never reaches it. Boot only: a skipped check is
+       re-offered from the Home door, never forced mid-session. */
+    state.screen = 'cold';
+    try{ history.replaceState({screen:'cold'}, '', '#cold'); }catch(e){}
   } else if(state.screen === 'home' && !state.settings.onboard.done){
     /* Stage B (v8.08) — first-run redirect for the very first render. Boot-
        time backfill in load() already marked existing users done:true, so
