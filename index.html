@@ -952,7 +952,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.06';
+const APP_VERSION = '9.07';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20684,12 +20684,37 @@ window.startBuildModeFormMix = startBuildModeFormMix;
    (settings.topicBias, e.g. travel themes for "a trip to Japan"), UNSEEN
    words from those themes are introduced first. Advisory only: it orders
    fresh picks, never filters the deck, and review scheduling is untouched. */
+/* v9.07 — new words are served in ROAD order (Greetings → Everyday phrases →
+   Food → …), shuffled only within a stop. Before this, a profile with no
+   topic bias got a pure shuffle of the whole deck, so a stranger's first 30
+   words were "soup ladle", "streaming", "waterfall" while the road screen
+   claimed they were at Greetings. The road is now literally the order words
+   arrive in; the onboarding "why" bias (if any) still jumps its stops ahead. */
+function _roadThemeRank(){
+  const m = new Map();
+  try{
+    for(const s of VOCAB_SECTIONS){
+      if(!Array.isArray(s.themes)) continue;
+      const i = ROAD_ORDER.indexOf(s.id);
+      for(const t of s.themes) if(!m.has(t)) m.set(t, i < 0 ? 900 : i);
+    }
+  }catch(e){}
+  return m;
+}
 function _obfBiasFresh(unseen, need){
-  const bias = state.settings.topicBias;
-  if(!Array.isArray(bias) || !bias.length) return shuffleFY(unseen.slice()).slice(0, need);
-  const pref = [], rest = [];
-  for(const w of unseen) (bias.includes(w.theme) ? pref : rest).push(w);
-  return [...shuffleFY(pref), ...shuffleFY(rest)].slice(0, need);
+  const bias = Array.isArray(state.settings.topicBias) ? state.settings.topicBias : [];
+  const rank = _roadThemeRank();
+  const buckets = new Map();
+  for(const w of unseen){
+    const k = bias.includes(w.theme) ? -1 : (rank.has(w.theme) ? rank.get(w.theme) : 999);
+    if(!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(w);
+  }
+  const out = [];
+  for(const k of [...buckets.keys()].sort((a, b) => a - b)){
+    for(const w of shuffleFY(buckets.get(k))){ if(out.length >= need) return out; out.push(w); }
+  }
+  return out;
 }
 function _buildSpamPick(arr, n, opts){
   /* v8.79 free plan — after the free week, unseen words beyond today's
@@ -20838,6 +20863,23 @@ function buildGenerateVocabSpamLesson(opts){
       const need = wantN - batchWords.length;
       if(need > 0) batchWords = [...batchWords, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id)), need)];
       else batchWords = batchWords.slice(0, wantN);
+    } else if(state._nextBatchNew){
+      /* v9.07 — "Next 30 — new words" (round-end button): the relentless
+         learner wants MORE words, not a reshuffle. Unseen words along the
+         road first, never the batch just finished; seen words fill any
+         seats left (free plan caps unseen at its daily allowance). */
+      const avoid = state._nextBatchNew.avoid || new Set();
+      state._nextBatchNew = null;
+      const unseen = sectionPool.filter(w => { const st = state.stats[w.id]; return !(st && st.attempts && st.attempts.length) && !avoid.has(w.id); });
+      batchWords = _obfBiasFresh(_freeTierCapPool(unseen), wantN);
+      if(batchWords.length < wantN){
+        const have = new Set(batchWords.map(w => w.id));
+        batchWords = [...batchWords, ..._stickyTopUp(sectionPool.filter(w => !have.has(w.id) && !avoid.has(w.id)), wantN - batchWords.length)];
+      }
+      if(batchWords.length < wantN){
+        const have = new Set(batchWords.map(w => w.id));
+        batchWords = [...batchWords, ..._buildSpamPick(sectionPool.filter(w => !have.has(w.id)), wantN - batchWords.length, {freshMix:true})];
+      }
     } else {
       batchWords = _buildSpamPick(sectionPool, wantN, {freshMix:true});
     }
@@ -20901,7 +20943,7 @@ function buildGenerateVocabSpamLesson(opts){
     duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
     new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note })),
     carryover_words: [],
-    cycles: [{ id:'spam', name:`Vocab · ${scopeName}`, steps }],
+    cycles: [{ id:'spam', name: sec.id === 'all' ? 'Your words' : `Vocab · ${scopeName}`, steps }],
     _meta: { mode:'vocabSpam', sectionId: sec.id, real_word_ids: pool.map(w => w.id),
              freshCount, reviewCount: pool.length - freshCount }
   };
@@ -20937,8 +20979,8 @@ function startBuildModeVocabSpam(){
     if(!firstEver && typeof m.freshCount === 'number'){
       const total = (m.real_word_ids || []).length;
       showToast(m.freshCount > 0
-        ? `${total} words — ${m.reviewCount} review · ${m.freshCount} new`
-        : `${total} words — all review (section fully explored ✓)`, {tone:'info', duration:3500});
+        ? `${total} words · ${m.freshCount} new to you`
+        : `${total} words · all ones you have met`, {tone:'info', duration:3500});
     }
   } catch(e){ showToast("Can't start Vocab Spam — " + e.message, {tone:'warn', duration:5000}); }
 }
@@ -21767,7 +21809,7 @@ function _buildSetPhase(phase, durMs){
     label.textContent = phase === 'prompt' ? '🔊 listen…'
                       : phase === 'answer' ? '🔊 answer…'
                       : phase === 'think' ? 'your turn — say it aloud'
-                      : phase === 'linger' ? 'next step incoming…'
+                      : phase === 'linger' ? 'next word…'
                       : phase === 'listen' ? listenLabel
                       : phase === 'aithink' ? '🤖 Claude is replying…'
                       : '';
@@ -21905,9 +21947,12 @@ function buildAutoplayStep(step){
     const w = buildWordById(step.word_id);
     if(w) _buildSpeakEN(w.en, false, onEnDone);
   } else if(step.type === 'recall_rev'){
-    /* v8.58 — listening direction: the PROMPT is the Japanese itself */
+    /* v8.58 — listening direction: the PROMPT is the Japanese itself.
+       v9.07 — a never-met word also gets its meaning spoken (JP then EN),
+       matching the card that now shows both. */
     const w = buildWordById(step.word_id);
-    if(w) _buildSpeakJP(w.jp, onEnDone);
+    if(w && step.fresh) _buildSpeakJPThenEN(w.jp, w.en, onEnDone);
+    else if(w) _buildSpeakJP(w.jp, onEnDone);
   } else if(step.type === 'callback'){
     if(step.word_id){
       const w = buildWordById(step.word_id);
@@ -22419,6 +22464,7 @@ function buildNextStep(){
   b._writeAttempt = null;  /* v6.25 — clear write-mode feedback between steps */
   b._similarPick = null;   /* v6.26 — clear similar-step pick between steps */
   b._lastVoice = null;     /* clear voice "you said X" feedback between steps */
+  b._gradeOpen = false;    /* v9.07 — grade panel closes with the card */
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
@@ -22427,6 +22473,8 @@ function buildNextStep(){
   render();
 }
 window.buildNextStep = buildNextStep;
+function buildToggleGradeOpen(){ const b = state.buildMode; if(!b) return; b._gradeOpen = !b._gradeOpen; render(); }
+window.buildToggleGradeOpen = buildToggleGradeOpen;
 
 function buildPrevStep(){
   const b = state.buildMode;
@@ -22503,10 +22551,11 @@ function buildRotateBatch(n){
   const batch = (state.settings.stickyBatch || {})[key];
   if(!Array.isArray(batch) || !batch.length){ startBuildModeVocabSpam(); return; }
   if(n === 'all'){
+    state._nextBatchNew = { avoid: new Set(batch) };
     delete state.settings.stickyBatch[key];
     try{ save(); }catch(e){}
     startBuildModeVocabSpam();
-    showToast('Fresh batch — 30 new seats, filled from your reviews and new words.', {tone:'info', duration:4000});
+    showToast('Next 30 — new words. The last 30 stay in your reviews and tomorrow’s check.', {tone:'info', duration:4000});
     return;
   }
   const want = typeof n === 'number' && n > 0 ? n : 10;
@@ -24116,7 +24165,7 @@ function renderBuildModeStep(){
             ? `<span class="bm-wait">tap a choice</span>`
             : (_buildWriteApplies(step)
                 ? `<button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="buildRevealStep()">Skip → reveal</button>`
-                : `<button class="bm-cta" onclick="buildRevealStep()">Reveal</button>`))
+                : `<button class="bm-cta" onclick="buildRevealStep()">${step.fresh && step.type === 'recall_rev' ? 'Got it ›' : 'Reveal'}</button>`))
       }
     </div>
 
@@ -24132,6 +24181,12 @@ function renderBuildModeStep(){
          "Focus", and "Master" are meaningless jargon on a stranger's first
          three cards, and mis-taps there write real scheduling state. */
       if(b.lesson?._meta?.mode === 'onboardMicro') return '';
+      /* v9.07 — a hands-free card should not shout "HOW WELL DO YOU KNOW THIS
+         WORD?" with two big buttons on every reveal. Folded behind one small
+         link; opens for the card, closes on the next word. */
+      if(!b._gradeOpen && !(b._missed && b._missed.has(wid))){
+        return `<div style="text-align:center;margin-top:10px"><button onclick="buildToggleGradeOpen()" style="background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;padding:6px 10px">Mark this word ▾</button></div>`;
+      }
       /* v8.55 — consumer-legible self-grade. "Missed it" read as an admission
          of failure and never told a stranger what tapping it DOES; the rename
          + always-visible hint make the one signal the scheduler has
@@ -24353,7 +24408,7 @@ function _buildRenderPhrase(step){
   return banner + `
     <div class="muted" style="text-align:center;font-size:14px;margin-bottom:4px">Say this phrase in Japanese</div>
     <div class="build-big-en">${esc(step.en)}</div>
-    <div class="build-placeholder">say it out loud, then tap Reveal</div>
+    <div class="build-placeholder">say it in Japanese — out loud</div>
   `;
 }
 
@@ -24730,7 +24785,7 @@ function _buildRenderRecall(step){
     ${freshPill}
     <div class="bm-eyebrow">Say it in Japanese</div>
     <div class="build-big-en" style="font-size:26px;color:var(--text)">${esc(w.en)}</div>
-    <div class="build-placeholder">say it out loud, then tap Reveal</div>
+    <div class="build-placeholder">say it in Japanese — out loud</div>
   `;
 }
 
@@ -24753,12 +24808,25 @@ function _buildRenderRecallRev(step){
       ${w.note ? `<div class="build-nuance"><b>${jpDisplay(w)}</b> — ${esc(w.note)}</div>` : ''}
     `;
   }
+  if(step.fresh){
+    /* v9.07 — first meeting: Japanese + meaning together, "listen, then say it
+       back". The old card asked "WHAT DOES IT MEAN?" of a word the learner had
+       never heard, while the coach line said "just repeat what you hear". */
+    return `
+      ${freshPill}
+      <div class="bm-eyebrow">Listen, then say it back</div>
+      <div class="build-big-jp">${jpDisplay(w)}</div>
+      ${romajiWordLine(w.r)}
+      <div class="build-big-en" style="font-size:22px;color:var(--text);padding:4px 0">${esc(w.en)}</div>
+      <div class="build-placeholder">say the Japanese — out loud</div>
+    `;
+  }
   return `
     ${freshPill}
     <div class="bm-eyebrow">What does it mean?</div>
     <div class="build-big-jp">${jpDisplay(w)}</div>
     ${romajiWordLine(w.r)}
-    <div class="build-placeholder">say the English, then tap Reveal</div>
+    <div class="build-placeholder">say the English — out loud</div>
   `;
 }
 
@@ -25088,11 +25156,10 @@ function _buildRoundRecap(){
   return `<div style="margin-bottom:12px">
     ${grads > 0 ? `<div style="font-size:12.5px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.35);border-radius:10px;padding:8px 10px;margin-bottom:8px">🎓 <b>${grads} word${grads === 1 ? '' : 's'} graduated</b> this morning — proven cold, so they left the batch and new words took their seats.</div>` : ''}
     <div style="display:flex;gap:6px;text-align:center">
-      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800">${recalled}</div><div style="font-size:11px;color:var(--faint)">recalled this round</div></div>
+      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800">${recalled}</div><div style="font-size:11px;color:var(--faint)">words this round</div></div>
       <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--purple)">${totalWarm}</div><div style="font-size:11px;color:var(--faint)">warming up</div></div>
       <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--green)">${totalStuck}</div><div style="font-size:11px;color:var(--faint)">stick with you</div></div>
     </div>
-    <div style="font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.45">"Stick" only moves in the morning check — a word has to come out cold, on a later day. The warming words are tomorrow’s candidates.</div>
   </div>`;
 }
 
@@ -25164,13 +25231,20 @@ function renderBuildModeComplete(){
     }
     coachEnd = `<div class="coach-strip" style="margin-bottom:16px"><div style="flex-shrink:0">💡</div><div>That's one round — <b>do one whenever you like</b>. Short and often beats long and rare.</div></div>`;
   }
+  /* v9.07 — owner call 13 Sep: the round end must serve BOTH the casual
+     learner (why is "stick" still 0? → the morning check) and the relentless
+     one (30 words ten times, same or different). Two plain buttons; the
+     "Swap N anyway" pair is owner-page only now; "Build Mode" never named. */
+  const isSpam = l?._meta?.mode === 'vocabSpam';
+  const spamN = (l?._meta?.real_word_ids || []).length || 30;
   return `
     <div class="card" style="text-align:center;padding:30px 20px">
       ${coachEnd}
       <div style="font-size:64px;color:var(--green);margin-bottom:12px">✓</div>
-      <h2 style="margin:0 0 8px 0">${chainIdx > 1 ? 'Chain complete' : 'Lesson complete'}</h2>
+      <h2 style="margin:0 0 8px 0">${chainIdx > 1 ? 'Chain complete' : (isSpam ? `That’s ${spamN} words in your ears.` : 'Lesson complete')}</h2>
       <div class="muted" style="font-size:14px;margin-bottom:20px">
         ${(() => {
+          if(isSpam) return 'Tomorrow morning I’ll ask for them cold. The ones that come out are the ones that stick.';
           const missedCount = (state.buildMode?._missed?.size) || 0;
           const summaryHead = l._meta?.mode === 'hard'
             ? `${l.cycles[0].steps.length} sentences · ${(l.carryover_words||[]).length} unique words.`
@@ -25192,17 +25266,16 @@ function renderBuildModeComplete(){
       ${chainSummary}
       ${chainBtn}
       ${keepGoingBtn}
-      <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">↻ Run it again</button>
-      ${l._meta?.mode === 'vocabSpam' ? `<div style="height:8px"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">${isSpam ? `↻ Again — same ${spamN}` : '↻ Run it again'}</button>
+      ${isSpam ? `<div style="height:8px"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch('all')">Next 30 — new words</button>
+      ${state.settings.ownerMode === true ? `<div style="height:8px"></div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-secondary" style="flex:1" onclick="buildRotateBatch(10)">Swap 10 anyway</button>
         <button class="btn btn-secondary" style="flex:1" onclick="buildRotateBatch(20)">Swap 20 anyway</button>
-      </div>
+      </div>` : ''}` : ''}
       <div style="height:8px"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch('all')">Fresh 30 — start a new batch</button>
-      <div class="muted" style="font-size:11.5px;margin-top:6px;line-height:1.45">Proven words leave the batch on their own each morning. "Anyway" swaps un-proven words out early — they stay in your reviews and will still be asked cold later.</div>` : ''}
-      <div style="height:8px"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Back to Build Mode</button>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Home</button>
     </div>
   `;
 }
@@ -26314,7 +26387,7 @@ function renderProgress(){
     sinceCard = `
       <div class="card">
         <h3 style="margin-top:0">📈 Since you started</h3>
-        <div class="muted" style="font-size:11px;margin-bottom:6px">Reconstructed from your actual practice history (${weeksSpan} week${weeksSpan===1?'':'s'} of data, ${totalAttempts} attempts logged).</div>
+        <div class="muted" style="font-size:11px;margin-bottom:6px">From your practice so far — ${totalAttempts} answers over ${weeksSpan} week${weeksSpan===1?'':'s'}.</div>
         ${compare('Words encountered', back.cumWords, nowWk.cumWords, '')}
         ${compare('First practiced', first.label, nowWk.label, '')}
       </div>`;
@@ -26354,7 +26427,6 @@ function renderProgress(){
           .map(([lab,v,col]) => `<div style="flex:1;min-width:54px;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
       </div>
       <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words in your deck.</div>
-      <div class="muted" style="font-size:11px;margin-top:4px">Solid = 3+ correct in a row (counts toward producible before SRS-mature).</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0">🔥 Consistency</h3>
@@ -26549,7 +26621,13 @@ function updateBackFab(){
      screen with anywhere valid to "go back" to (a back-FAB tap would only
      bounce off the gate's own nav() normalization anyway, but hiding it
      avoids offering a dead-end control). */
-  fab.classList.toggle('show', state.screen !== 'home' && state.screen !== 'onboard' && state.screen !== 'auth');
+  /* v9.07 — customers get ONE back arrow (the topbar's); the floating back
+     bubble, the 💭 quick-note bubble and the header version label are owner
+     tools now. */
+  const owner = !!(state.settings && state.settings.ownerMode === true);
+  fab.classList.toggle('show', owner && state.screen !== 'home' && state.screen !== 'onboard' && state.screen !== 'auth');
+  try{ const nf = document.getElementById('notesFab'); if(nf) nf.style.display = owner ? '' : 'none'; }catch(e){}
+  try{ const vl = document.getElementById('appVersionLabel'); if(vl) vl.textContent = owner ? 'WordStick · v' + APP_VERSION : ''; }catch(e){}
 }
 function updateNav(){
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.screen === state.screen));
@@ -26639,7 +26717,15 @@ function curatedTopicTiles(active, excludeId){
     else { const set = new Set(s.themes); count = active.filter(w => set.has(w.theme)).length; }
     return { id:s.id, emoji:s.emoji, name:s.name, count, isAll: s.id === 'all', isMastered: s.mode === 'mastered' };
   }).filter(r => r.id !== excludeId && !(r.isMastered && r.count === 0));
-  rows.sort((a,b) => (b.isAll - a.isAll) || (b.count - a.count));
+  /* v9.07 — tiles in ROAD order (was: biggest tile first, so Clothing led
+     the quick picks). Reference tiles (Grammar bits, Verb pairs, Sound
+     words, Mastered review) stay off the wall until 20 words stick. */
+  const rank = id => { const i = ROAD_ORDER.indexOf(id); return i < 0 ? 900 : i; };
+  rows.sort((a,b) => (b.isAll - a.isAll) || (rank(a.id) - rank(b.id)) || (b.count - a.count));
+  if(state.settings.ownerMode !== true){
+    let stuck = 0; try{ stuck = wordsThatStick().N; }catch(e){}
+    if(stuck < 20){ const REF = new Set(['grammar','verbpairs','onomatope']); return rows.filter(r => !REF.has(r.id) && !r.isMastered); }
+  }
   return rows;
 }
 
@@ -26748,10 +26834,13 @@ function renderHome(){
   const reviewsLabel = Math.min(bc.due, state.settings.blitzReviews || 20);
   /* v8.79 free plan — the "N new" promise must never exceed what the daily
      cap will actually serve (budget is Infinity on trial/paid/owner). */
-  const newsLabel = Math.min(bc.unseen, state.settings.blitzNew || 10, _freeTierNewBudget());
-  const est = Math.max(2, Math.round((reviewsLabel + newsLabel) * 5 / 60));
-  const heroMeta = (reviewsLabel + newsLabel) > 0
-    ? `${reviewsLabel} review · ${newsLabel} new · about ${est} minutes`
+  /* v9.07 — the round is the 30-word batch and a word takes ~10 s, so say
+     "30 words · about 5 minutes" (was "0 review · 10 new · about 2 minutes"). */
+  const newsLabel = Math.min(bc.unseen, _freeTierNewBudget());
+  const roundN = Math.min(30, bc.due + newsLabel);
+  const est = Math.max(2, Math.round(roundN * 10 / 60));
+  const heroMeta = roundN > 0
+    ? `${roundN} words · about ${est} minutes`
     : `All caught up — a fresh round is ready whenever you are`;
 
   /* v9.01 — the "Hands-free" pill is GONE (owner call 2026-09-12). The default
@@ -26925,10 +27014,15 @@ function renderRoad(){
         <div class="muted" style="font-size:13px;line-height:1.5;margin-top:6px">Finish a stop and its words stay with you — they keep coming back right before you'd forget.</div>
       </div>
       <div class="road-list">${rows.join('')}${more}</div>
-      ${cur ? `<button class="h8-hero-cta" style="margin:18px 0 6px;width:100%;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 10px 30px rgba(157,92,255,.28)" onclick="startTopicHandsFree('${jsEsc(cur.sec.id)}')">▶ Continue — ${esc(cur.sec.name)}</button>` : ''}
+      ${cur ? `<button class="h8-hero-cta" style="margin:18px 0 6px;width:100%;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 10px 30px rgba(157,92,255,.28)" onclick="roadContinue()">▶ Continue — ${esc(cur.sec.name)}</button>` : ''}
       <button class="btn btn-ghost" style="width:100%;font-size:13px" onclick="nav('progress')">Full progress details ›</button>
     </div>`;
 }
+
+/* v9.07 — the road and Home drive ONE batch: words arrive in road order, so
+   "Continue — Greetings" is the same round as "Start drilling". */
+function roadContinue(){ state.settings.vocabSection = 'all'; try{ save(); }catch(e){} startBuildModeVocabSpam(); }
+window.roadContinue = roadContinue;
 
 /* =========================================================================
    ONBOARDING — v8.49 rebuild (was Stage B v8.08's Misaki scripted exchange).
@@ -27218,7 +27312,7 @@ function _obfW1(){
     </button>
     <div class="obf-stats">
       <div><b>90%</b><span>of everyday speech</span></div>
-      <div><b>4 min</b><span>a day</span></div>
+      <div><b>5 min</b><span>a day</span></div>
       <div><b>0</b><span>typing</span></div>
     </div>`;
   const foot = `<button class="obf-cta" onclick="obGoto('w5')">Get started${_OBF_ARROW}</button>
@@ -27840,7 +27934,7 @@ function renderPractice(){
   const _cvs = vocabAccessStats();
   const _cvUnlockedPct = _cvs.total > 0 ? Math.round(_cvs.unlocked / _cvs.total * 100) : 0;
   const _cvStartedPct = _cvs.total > 0 ? Math.round(_cvs.started / _cvs.total * 100) : 0;
-  const coverageMeterHtml = state.settings.showCoverageMeter ? `
+  const coverageMeterHtml = (state.settings.showCoverageMeter && state.settings.ownerMode === true) ? `
     <div class="coverage-meter" style="margin:0 2px 10px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;opacity:.7">Vocabulary unlocked</div>
@@ -29176,7 +29270,7 @@ async function init(){
   });
   /* keep header version label in sync with APP_VERSION so it never goes stale */
   const _vLabel = document.getElementById('appVersionLabel');
-  if(_vLabel) _vLabel.textContent = 'WordStick · v' + APP_VERSION;
+  if(_vLabel) _vLabel.textContent = (state.settings && state.settings.ownerMode === true) ? 'WordStick · v' + APP_VERSION : '';
   /* Account gate (v8.71) — first-render redirect, mirroring the Stage-B
      pattern right below it: decide state.screen BEFORE the first render()
      call so the very first paint is already correct, no flash of home/
