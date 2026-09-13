@@ -952,7 +952,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.04';
+const APP_VERSION = '9.05';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -25623,7 +25623,13 @@ function coldRomajiNorm(s){
   t = t.replace(/ou/g, 'o').replace(/([aeiou])\1+/g, '$1');
   return t;
 }
-function _coldEligible(w, t){
+/* v9.05 — RELEVANCE. The first picker ranked "new" candidates by how many
+   times they had ever been said back, so week-old greetings out-ranked the
+   words drilled yesterday (owner, 13 Sep: "not relevant to what I've been
+   learning today and yesterday"). Now: words in the current sticky batch
+   first, then by the most recent prior-day correct answer — yesterday's
+   words come up this morning. Retests (certified, due) keep their two seats. */
+function _coldEligible(w, t, batchSet){
   const st = state.stats && state.stats[w.id];
   if(!st || !Array.isArray(st.attempts) || !st.attempts.length) return null;
   if(!w.romaji || !coldRomajiNorm(w.romaji)) return null;
@@ -25634,19 +25640,26 @@ function _coldEligible(w, t){
     return (st.certNext && st.certNext <= t) ? { id: w.id, kind: 'retest', pri: st.certNext } : null;
   }
   if(st.coldFailAt && _coldDayKey(st.coldFailAt) === today) return null;
-  let correct = 0, priorDay = false;
+  let correct = 0, lastPrior = 0;
   for(const a of st.attempts){
     if(!a || !a.correct || !a.ts) continue;
     correct++;
-    if(_coldDayKey(a.ts) !== today) priorDay = true;
+    if(_coldDayKey(a.ts) !== today && a.ts > lastPrior) lastPrior = a.ts;
   }
-  if(correct < 2 || !priorDay) return null;
-  return { id: w.id, kind: 'new', pri: correct * 1000 + Math.min(999, st.hears || 0) };
+  if(correct < 2 || !lastPrior) return null;
+  const inBatch = batchSet ? batchSet.has(w.id) : false;
+  return { id: w.id, kind: 'new', pri: lastPrior + (inBatch ? 1e13 : 0) };
+}
+function _coldBatchSet(){
+  const set = new Set();
+  try{ const sb = state.settings.stickyBatch; if(sb && typeof sb === 'object') for(const k of Object.keys(sb)){ if(Array.isArray(sb[k])) for(const id of sb[k]) set.add(id); } }catch(e){}
+  return set;
 }
 function _coldCandidates(t){
   t = t || now();
   const out = [];
-  try{ for(const w of getActiveWords()){ const c = _coldEligible(w, t); if(c) out.push(c); } }catch(e){ return []; }
+  const batchSet = _coldBatchSet();
+  try{ for(const w of getActiveWords()){ const c = _coldEligible(w, t, batchSet); if(c) out.push(c); } }catch(e){ return []; }
   const re = out.filter(c => c.kind === 'retest').sort((a, b) => a.pri - b.pri);
   const nw = out.filter(c => c.kind === 'new').sort((a, b) => b.pri - a.pri);
   let pick = [...re.slice(0, 2), ...nw].slice(0, COLD_N);
@@ -25663,12 +25676,10 @@ function _coldCandidates(t){
 function coldPreviewStart(){
   let ids = [];
   try{
-    const s = _coldSess();
-    if(Array.isArray(s.ids) && s.ids.length) ids = s.ids.slice(0, COLD_N);
-    if(!ids.length) ids = _coldCandidates();
+    ids = _coldCandidates();
     if(!ids.length){
-      const seen = getActiveWords().filter(w => w.romaji && state.stats[w.id] && (state.stats[w.id].hears || 0) > 0)
-        .sort((a, b) => (state.stats[b.id].hears || 0) - (state.stats[a.id].hears || 0));
+      const seen = getActiveWords().filter(w => w.romaji && state.stats[w.id] && (state.stats[w.id].lastSeen || 0) > 0)
+        .sort((a, b) => (state.stats[b.id].lastSeen || 0) - (state.stats[a.id].lastSeen || 0));
       ids = seen.slice(0, COLD_N).map(w => w.id);
     }
     if(!ids.length) ids = getActiveWords().filter(w => w.romaji).slice(0, COLD_N).map(w => w.id);
@@ -25823,6 +25834,7 @@ function coldCheckLater(){
   clearTimeout(window._coldAdvT); window._coldAdvFor = null;
   if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.skipped = true; s.pending = null;
+  state.settings.coldIntroSeen = true;
   save();
   log('cold_check_skip', { left: s.ids.length - s.idx });
   nav('home');
@@ -25840,6 +25852,7 @@ function coldCheckFinish(){
   clearTimeout(window._coldAdvT); window._coldAdvFor = null;
   if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.done = true; s.pending = null;
+  state.settings.coldIntroSeen = true;
   save();
   nav('home');
 }
@@ -25848,10 +25861,10 @@ window.coldCheckNext = coldCheckNext; window.coldCheckLater = coldCheckLater;
 window.coldCheckStart = coldCheckStart; window.coldCheckFinish = coldCheckFinish;
 
 const COLD_PASS_LINES = [
-  'That came out of YOUR memory — not off the screen.',
-  'Cold, from nothing on the screen. That one is yours.',
-  'No options, no hint. You pulled it out of your own head.',
-  'A day later and it still came out. That is what sticking means.'
+  'out of your own head. That one’s yours.',
+  'nothing on the screen, and it still came out. Stuck.',
+  'no hints, no options. Yours.',
+  'a day later and still there. That’s what sticking means.'
 ];
 function renderColdCheck(){
   const s = _coldEnsure();
@@ -25865,11 +25878,18 @@ function renderColdCheck(){
   const _h = new Date().getHours();
   const greet = _h < 5 ? 'Good evening' : _h < 12 ? 'Good morning' : _h < 18 ? 'Good afternoon' : 'Good evening';
 
+  /* v9.05 — the copy was cut to what a person needs and turned to face them
+     (owner, 13 Sep: "how can we make it look ENCOURAGING... that's the whole
+     point"). The how-to line shows once, ever. No "prove", no "penalty",
+     no "cold" — the number that matters is the one that went up. */
+  const intro = state.settings.coldIntroSeen ? '' : `<p class="cold-sub">Type the sound in English letters — <b>mizu</b>, not みず.</p>`;
+  const badge = s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : '';
+
   if(!total){
     return `<div class="cold-wrap"><div class="card" style="padding:24px 18px">
       <p class="cold-eyebrow">${greet}</p>
-      <h2 class="cold-h">Nothing to prove yet.</h2>
-      <p class="cold-sub">Words you say back today will be here tomorrow morning.</p>
+      <h2 class="cold-h">Nothing to check yet.</h2>
+      <p class="cold-sub">Words you say back today show up here tomorrow.</p>
       <button class="btn btn-primary" style="width:100%" onclick="nav('home')">Continue →</button>
     </div></div>`;
   }
@@ -25885,19 +25905,24 @@ function renderColdCheck(){
     }).join('');
     const before = s.preview ? N : Math.max(0, N - n);
     const after = s.preview ? N + n : N;
-    const line = n > 0
-      ? `Counter: ${before} → <b>${after} word${after === 1 ? '' : 's'}</b> stick with you · +${s.preview ? week + n : week} this week`
-      : `Counter stays at ${N} today — nothing lost, they just need another day in the round.`;
+    const wk = s.preview ? week + n : week;
+    const head = n > 0
+      ? `<div class="cold-bign"><em>${n}</em> <span style="font-size:20px;color:var(--dim)">word${n === 1 ? '' : 's'} stuck today</span></div>
+         <p class="cold-tick">${before} → <b>${after} word${after === 1 ? '' : 's'}</b> stick with you${wk > 0 ? ` · +${wk} this week` : ''}</p>`
+      : `<h2 class="cold-h" style="margin-top:4px">They’re close.</h2>
+         <p class="cold-tick">Nothing lost — all ${total} come around again today. Tomorrow morning, one more try.</p>`;
+    const tail = n === 0 ? '' : n < total
+      ? 'The rest come around again in today’s round — they’re close.'
+      : `All ${total} graduated out of your batch. ${total} new words step in today.`;
     return `<div class="cold-wrap">
-      ${s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : ''}
+      ${badge}
       <div class="card" style="padding:22px 18px">
-        <p class="cold-eyebrow">Today’s check</p>
-        <div class="cold-bign"><em>${n}</em> <span style="font-size:20px;color:var(--dim)">of ${total} came out cold</span></div>
-        <p class="cold-tick">${line}</p>
+        <p class="cold-eyebrow">${greet}</p>
+        ${head}
         <div style="margin-top:12px">${pills}</div>
       </div>
-      <button class="btn btn-primary" style="width:100%" onclick="coldCheckFinish()">▶ Start drilling</button>
-      <p class="cold-tiny">${n < total ? 'The ones that didn’t come out are back in today’s round — that is exactly what the round is for.' : 'All five graduated out of your batch. Five new words take their seats in today’s round.'}</p>
+      <button class="btn btn-primary" style="width:100%" onclick="coldCheckFinish()">▶ ${n > 0 ? 'Keep it going' : 'Let’s get them'}</button>
+      ${tail ? `<p class="cold-tiny">${tail}</p>` : ''}
     </div>`;
   }
 
@@ -25909,30 +25934,27 @@ function renderColdCheck(){
      the result slides in under it, and the next word arrives on its own. */
   const p = (s.pending && s.pending.id === id) ? s.pending : null;
   if(p) _coldScheduleNext(id, !!p.pass);
-  const nStick = s.preview ? N : N; /* preview never applied, live N already counts this pass */
   const praise = COLD_PASS_LINES[(s.idx + N) % COLD_PASS_LINES.length];
   const body = !p ? '' : p.pass
-    ? `<div class="cold-res ok">✓ <b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> — came out cold. <b>That one’s stuck.</b>
-         <div class="cold-tick">${esc(praise)}${s.preview ? '' : ` · <b>${nStick} word${nStick === 1 ? '' : 's'}</b> stick with you`}</div></div>`
-    : `<div class="cold-res miss">Not yet — it’s <b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> <span style="color:var(--dim)">(${esc(w.romaji || '')})</span>. Back in today’s round, no penalty — you’ll hear it in a minute.</div>`;
+    ? `<div class="cold-res ok">✓ <b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> — ${esc(praise)}</div>`
+    : `<div class="cold-res miss"><b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> <span style="color:var(--dim)">(${esc(w.romaji || '')})</span> — nearly. You’ll hear it again in a minute.</div>`;
   return `<div class="cold-wrap">
-    ${s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : ''}
-    <p class="cold-eyebrow">${greet} · before we start</p>
-    <h2 class="cold-h">Prove ${total === 1 ? 'a word' : total + ' words'}.</h2>
-    <p class="cold-sub">You said these on another day. If they come out of your head now, cold, they’re yours. Type the sound in English letters — <b>mizu</b>, not みず.</p>
+    ${badge}
+    <p class="cold-eyebrow">${greet}</p>
+    <h2 class="cold-h">Let’s see what stuck.</h2>
+    ${intro}
     <div class="cold-dots">${dots}</div>
     <div class="card" style="padding:18px 16px">
-      <p class="cold-eyebrow">Word ${s.idx + 1} of ${total}</p>
+      <p class="cold-eyebrow">${s.idx + 1} of ${total}</p>
       <p class="cold-meaning">${esc(w.en)}</p>
-      <p class="cold-hint">Say it in Japanese, then type what you said.</p>
-      <div class="cold-row">
-        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type the sound…" aria-label="Type the Japanese word in romaji" value="${p ? esc(p.typed || '') : ''}"${p ? ' disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
+      <div class="cold-row" style="margin-top:12px">
+        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="say it, then type it…" aria-label="Type the Japanese word in romaji" value="${p ? esc(p.typed || '') : ''}"${p ? ' disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
         <button class="btn btn-primary" onclick="coldCheckAnswer()"${p ? ' disabled' : ''}>Check</button>
       </div>
-      ${p ? '' : `<button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="coldCheckSkipWord()">Didn’t come out — next</button>`}
+      ${p ? '' : `<button class="cold-later" style="margin-top:4px;padding:10px" onclick="coldCheckSkipWord()">Skip this one</button>`}
       ${body}
     </div>
-    ${p ? '' : `<button class="cold-later" onclick="coldCheckLater()">Not now — go to the app</button>`}
+    ${p ? '' : `<button class="cold-later" onclick="coldCheckLater()">Not now</button>`}
   </div>`;
 }
 
