@@ -905,7 +905,19 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 .hv9-eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:#b97bff}
 .hv9-title{margin:8px 0 5px;font-size:26px;font-weight:800;letter-spacing:-.03em}
 .hv9-meta{font-size:13.5px;font-weight:600;color:var(--dim,#a99fc7)}
-.hv9-catday-btn{flex:1;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(185,123,255,.28);color:inherit;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.cd-wm{position:absolute;right:-22px;top:-14px;font-size:160px;line-height:1;opacity:.09;transform:rotate(14deg);pointer-events:none}
+.cd-emoji{display:inline-block;font-size:68px;line-height:1;margin:16px 0 10px;animation:cdBob 3.2s ease-in-out infinite;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35))}
+.cd-hero.spin .cd-emoji{animation:cdSpin .7s cubic-bezier(.3,1.5,.5,1) 1, cdBob 3.2s ease-in-out .7s infinite}
+.cd-hero.spin .cd-name{animation:cdPop .5s ease-out 1}
+@keyframes cdBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}
+@keyframes cdSpin{0%{transform:scale(.2) rotate(-260deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes cdPop{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}
+.cd-name{font-size:30px}
+.cd-links{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
+.cd-link{background:none;border:none;color:#d6c2ff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:6px 2px}
+.cd-dot{color:var(--faint)}
+.cd-new{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--faint)}
+@media (prefers-reduced-motion: reduce){.cd-emoji,.cd-hero.spin .cd-emoji,.cd-hero.spin .cd-name{animation:none}}
 .hv9-wave{display:flex;align-items:center;gap:4px;height:26px;margin:14px 0 2px}
 .hv9-wave i{width:4px;border-radius:99px;background:linear-gradient(180deg,#b97bff,#ff5d9e);opacity:.75}
 .hv9-pill{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;padding:13px 14px;
@@ -972,7 +984,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.11';
+const APP_VERSION = '9.12';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -26974,6 +26986,7 @@ function catOfDayShuffle(){
   if(!rest.length) return;
   const pick = rest[Math.floor(Math.random() * rest.length)];
   state.settings.catDay = { d: _catDayKey(), id: pick.id };
+  state._cdSpin = true;
   save(); render();
 }
 window.catOfDayShuffle = catOfDayShuffle;
@@ -26989,24 +27002,27 @@ function buildChangeCategory(){
 }
 window.buildChangeCategory = buildChangeCategory;
 function _catDayCard(){
+  /* v9.12 — owner: "not as a second option, as THE option, make it a fun
+     thing". The category of the day IS the Home hero: big bobbing emoji,
+     one Let's go, dice shuffle that spins the new pick in. */
   try{
     const c = catOfDay();
     if(!c) return '';
     const n = _topicWords(c).length;
+    const spin = !!state._cdSpin; state._cdSpin = false;
     return `
-    <div class="hv9-hero" style="padding:16px 16px 14px">
-      <div class="hv9-eyebrow">CATEGORY OF THE DAY</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
-        <div style="width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:rgba(185,123,255,.16);flex-shrink:0">${esc(c.emoji || '')}</div>
-        <div style="flex:1;min-width:0">
-          <div class="hv9-title" style="font-size:19px;margin:0">${esc(c.name)}</div>
-          <div class="hv9-meta" style="margin-top:2px">${n} words · a new one tomorrow</div>
-        </div>
-        <button class="cont-go" onclick="startTopicHandsFree('${jsEsc(c.id)}')" aria-label="Start ${esc(c.name)}">▶</button>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="hv9-catday-btn" onclick="catOfDayShuffle()">🔀 Shuffle</button>
-        <button class="hv9-catday-btn" onclick="nav('practice')">All categories</button>
+    <div class="hv9-hero cd-hero${spin ? ' spin' : ''}">
+      <div class="cd-wm" aria-hidden="true">${esc(c.emoji || '')}</div>
+      <div class="hv9-eyebrow">✨ CATEGORY OF THE DAY</div>
+      <div class="cd-emoji">${esc(c.emoji || '')}</div>
+      <div class="hv9-title cd-name">${esc(c.name)}</div>
+      <div class="hv9-meta">${n} words · hands-free · 30 at a time</div>
+      <button class="h8-hero-cta" style="margin-top:16px" onclick="startTopicHandsFree('${jsEsc(c.id)}')">▶ Let's go</button>
+      <div class="cd-links">
+        <button class="cd-link" onclick="catOfDayShuffle()">🎲 Shuffle</button>
+        <span class="cd-dot">·</span>
+        <button class="cd-link" onclick="nav('practice')">All categories</button>
+        <span class="cd-new">New one tomorrow</span>
       </div>
     </div>`;
   }catch(e){ return ''; }
@@ -27126,8 +27142,7 @@ function renderHome(){
       </div>
       ${freeBanner}
       ${resumeChip}
-      ${heroCard}
-      ${_catDayCard()}
+      ${_catDayCard() || heroCard}
     </div>`;
 }
 
