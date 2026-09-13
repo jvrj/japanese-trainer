@@ -763,12 +763,12 @@ body[data-screen="cold"] .back-fab{display:none !important}
 .cold-row .input:disabled{opacity:.6}
 .cold-row .btn{flex:0 0 auto;width:auto;padding:13px 18px;font-size:15px;white-space:nowrap}
 .cold-preview{display:inline-block;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.45);color:var(--yellow,#fbbf24);border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px}
-@keyframes coldRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+/* v9.06 — no entrance: the check simply appears (owner turned down every
+   entrance design, 13 Sep). Only the per-word meaning pop stays, so the eye
+   finds the next word after an auto-advance. */
 @keyframes coldPop{0%{opacity:0;transform:scale(.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:none}}
-.cold-wrap{animation:coldRise .55s cubic-bezier(.2,.8,.2,1) both}
-.cold-wrap .card{animation:coldRise .6s .1s cubic-bezier(.2,.8,.2,1) both}
 .cold-meaning{animation:coldPop .5s .22s cubic-bezier(.2,.8,.2,1) both}
-@media (prefers-reduced-motion:reduce){.cold-wrap,.cold-wrap .card,.cold-meaning{animation:none}}
+@media (prefers-reduced-motion:reduce){.cold-meaning{animation:none}}
 .cold-res{border-radius:12px;padding:14px;margin:12px 0 0;font-size:15px;line-height:1.5}
 .cold-res.ok{background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4)}
 .cold-res.miss{background:rgba(139,123,255,.12);border:1px solid rgba(139,123,255,.4)}
@@ -952,7 +952,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.05';
+const APP_VERSION = '9.06';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -25252,7 +25252,8 @@ function renderTopbar(){
   /* v8.70 — the auth screen reuses the same ob-screen chrome and draws its
      own in-flow "Sign in"/"Create account" switch link, so it gets the same
      no-generic-topbar treatment. */
-  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth') return '';
+  /* v9.06 — the morning check draws no topbar (owner: match the mock; "Not now" is the exit). */
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'cold') return '';
   /* v8.67 — the drill draws its own header (✕ + progress + counter); the
      generic back topbar would be a second, redundant exit above it. */
   if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
@@ -25601,7 +25602,9 @@ function wtsBarHtml(info){
    local day. Per-word: st.certLevel / certAt / certFirstAt / certNext /
    coldFailAt / coldFails.
    ========================================================================= */
-const COLD_N = 5;
+/* v9.06 — owner call (13 Sep): ten, not five. Only words that pass this
+   check graduate out of the batch, so the count IS the graduation rate. */
+const COLD_N = 10;
 const COLD_GAPS_DAYS = [3, 7, 14, 30, 60, 120, 240];
 const COLD_DAY_MS = 24 * 60 * 60 * 1000;
 function _coldDayKey(ts){ return new Date(ts || now()).toDateString(); }
