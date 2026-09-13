@@ -905,6 +905,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 .hv9-eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:#b97bff}
 .hv9-title{margin:8px 0 5px;font-size:26px;font-weight:800;letter-spacing:-.03em}
 .hv9-meta{font-size:13.5px;font-weight:600;color:var(--dim,#a99fc7)}
+.hv9-catday-btn{flex:1;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(185,123,255,.28);color:inherit;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .hv9-wave{display:flex;align-items:center;gap:4px;height:26px;margin:14px 0 2px}
 .hv9-wave i{width:4px;border-radius:99px;background:linear-gradient(180deg,#b97bff,#ff5d9e);opacity:.75}
 .hv9-pill{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:11px;padding:13px 14px;
@@ -971,7 +972,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.10';
+const APP_VERSION = '9.11';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -22117,7 +22118,6 @@ function buildAutoNext(){
   _buildCreditStep(b, b.steps[b.stepIdx]);
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
-    if(_nsIsVocab(b) && !b._stopped && _nsContinue(b)) return;
     b.done = true;
   } else {
     b.revealed = false;
@@ -22501,7 +22501,6 @@ function buildNextStep(){
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   if(b.stepIdx >= b.steps.length - 1){
     if(!b.done) buildOnComplete();
-    if(_nsIsVocab(b) && !b._stopped && _nsContinue(b)) return;
     b.done = true;
   } else { b.stepIdx++; }
   render();
@@ -22611,6 +22610,10 @@ function buildRotateBatch(n){
 }
 window.buildRotateBatch = buildRotateBatch;
 
+/* v9.11 — owner reversed the endless roll ("otherwise its infinite words.
+   pointless"): a round stops at 30 again and its end screen offers Keep going
+   (same 30, then Mix, alternating), Change category and Home. The session
+   totals below still run across rounds. */
 /* v9.10 — plays until you stop (owner 13 Sep: "if they're paying monthly they
    should be on for more than 5 minutes"). A vocab round no longer ends on a
    screen: each batch plays twice, then Mix (the hardest stay, new words come
@@ -22679,6 +22682,8 @@ function buildStopSession(){
 window.buildStopSession = buildStopSession;
 function buildKeepGoing(){
   const b = state.buildMode;
+  /* v9.11 — Keep going alternates: the same 30 again, then Mix. */
+  if(_nsIsVocab(b)){ try{ if(_nsContinue(b)) return; }catch(e){} }
   const origin = b && b._origin;
   state._quietStartToast = true;
   startBuildModeVocabSpam();
@@ -25371,15 +25376,23 @@ function renderBuildModeComplete(){
     const _s = _nsSession();
     _nsAbsorb(state.buildMode);
     const _mins = Math.max(1, Math.round((Date.now() - _s.t0) / 60000));
+    /* v9.11 — a round ends at 30 again; ✕ mid-round still gives "Nice session". */
+    const _stopped = !!state.buildMode._stopped;
+    const _sec = activeVocabSection();
+    const _secLine = _sec && _sec.id !== 'all' ? `${esc(_sec.emoji || '')} ${esc(_sec.name)} · ` : '';
+    const _nextMix = (_s.plays % 2) === 1;
     return `
     <div class="card" style="text-align:center;padding:30px 20px">
       <div style="font-size:48px;color:var(--green);margin-bottom:8px">✓</div>
-      <h2 style="margin:0 0 8px 0">Nice session · ${_mins} minute${_mins === 1 ? '' : 's'}</h2>
+      <h2 style="margin:0 0 8px 0">${_stopped ? `Nice session · ${_mins} minute${_mins === 1 ? '' : 's'}` : `That’s ${spamN} words`}</h2>
+      ${_stopped ? '' : `<div style="font-size:13px;font-weight:700;color:var(--faint);margin:-2px 0 12px">${_secLine}${_mins} min this session</div>`}
       <div class="muted" style="font-size:14px;margin-bottom:20px">Tomorrow morning I’ll ask for them cold. The ones that come out are the ones that stick.</div>
       ${_buildRoundRecap(_s.ids)}
       ${_buildRatePanel()}
       ${_trialNudgeCard()}
       <button class="btn btn-primary" style="width:100%" onclick="buildKeepGoing()">▶ Keep going</button>
+      <div class="muted" style="font-size:12px;margin:6px 0 12px">Next: ${_nextMix ? 'Mix' : `the same ${spamN} again`}</div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildChangeCategory()">🔀 Change category</button>
       <div style="height:8px"></div>
       <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Home</button>
     </div>`;
@@ -26933,6 +26946,72 @@ function _pathLadderHtml(dp){
    (former renderHome, still one tap away via the Practice tab). Verb forms
    + Learn Kana stay reachable via the folded extras row below the ladder,
    same as the old Today tab. */
+/* v9.11 — category of the day (owner 13 Sep: "todays category of the DAY ...
+   shuffle it"). One topic per day picked from the date, so it holds all day and
+   changes tomorrow; 🔀 swaps it for today. ▶ uses the same hands-free launch as
+   the topic tiles. Home's own Start goes back to all words. */
+function _catDayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _catDayPool(){
+  return VOCAB_SECTIONS.filter(x => Array.isArray(x.themes) && x.themes.length && _topicWords(x).length >= 10);
+}
+function catOfDay(){
+  const pool = _catDayPool();
+  if(!pool.length) return null;
+  const key = _catDayKey();
+  const saved = state.settings.catDay;
+  if(saved && saved.d === key){ const hit = pool.find(x => x.id === saved.id); if(hit) return hit; }
+  let h = 5381;
+  for(const ch of key) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
+}
+function catOfDayShuffle(){
+  const pool = _catDayPool();
+  const cur = catOfDay();
+  const rest = pool.filter(x => !cur || x.id !== cur.id);
+  if(!rest.length) return;
+  const pick = rest[Math.floor(Math.random() * rest.length)];
+  state.settings.catDay = { d: _catDayKey(), id: pick.id };
+  save(); render();
+}
+window.catOfDayShuffle = catOfDayShuffle;
+function homeStartAll(){
+  state.settings.vocabSection = 'all';
+  save();
+  startBuildModeVocabSpam();
+}
+window.homeStartAll = homeStartAll;
+function buildChangeCategory(){
+  buildExit();
+  nav('practice');
+}
+window.buildChangeCategory = buildChangeCategory;
+function _catDayCard(){
+  try{
+    const c = catOfDay();
+    if(!c) return '';
+    const n = _topicWords(c).length;
+    return `
+    <div class="hv9-hero" style="padding:16px 16px 14px">
+      <div class="hv9-eyebrow">CATEGORY OF THE DAY</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+        <div style="width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;background:rgba(185,123,255,.16);flex-shrink:0">${esc(c.emoji || '')}</div>
+        <div style="flex:1;min-width:0">
+          <div class="hv9-title" style="font-size:19px;margin:0">${esc(c.name)}</div>
+          <div class="hv9-meta" style="margin-top:2px">${n} words · a new one tomorrow</div>
+        </div>
+        <button class="cont-go" onclick="startTopicHandsFree('${jsEsc(c.id)}')" aria-label="Start ${esc(c.name)}">▶</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="hv9-catday-btn" onclick="catOfDayShuffle()">🔀 Shuffle</button>
+        <button class="hv9-catday-btn" onclick="nav('practice')">All categories</button>
+      </div>
+    </div>`;
+  }catch(e){ return ''; }
+}
+
 function renderHome(){
   const bm = state.buildMode;
   const hasResume = !!(bm && bm.lesson && !bm.done);
@@ -27003,9 +27082,9 @@ function renderHome(){
       <div class="hv9-wm jp-font">聴</div>
       <div class="hv9-eyebrow">TODAY'S DRILL</div>
       <div class="hv9-title">Today's words</div>
-      <div class="hv9-meta">Hands-free · plays until you stop</div>
+      <div class="hv9-meta">Hands-free · 30 words, then you choose</div>
       ${wave}
-      <button class="h8-hero-cta" style="margin-top:12px" onclick="startBuildModeVocabSpam()">▶ Start</button>
+      <button class="h8-hero-cta" style="margin-top:12px" onclick="homeStartAll()">▶ Start</button>
     </div>`;
 
   /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
@@ -27048,6 +27127,7 @@ function renderHome(){
       ${freeBanner}
       ${resumeChip}
       ${heroCard}
+      ${_catDayCard()}
     </div>`;
 }
 
