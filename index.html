@@ -751,14 +751,18 @@ body[data-screen="cold"] .back-fab{display:none !important}
 .cold-dots span.pass{background:var(--green)}.cold-dots span.fail{background:var(--faint)}.cold-dots span.now{background:var(--blue)}
 .cold-meaning{font-size:34px;font-weight:800;margin:6px 0 2px;line-height:1.1}
 .cold-hint{color:var(--faint);font-size:13px;margin:0 0 14px}
-/* v9.03 — owner 13 Sep: the box "should be horizontally wider" and the screen
-   should "come UP" on its own. Input now takes the full row (Check sits under
-   it), and the whole screen rises in — a first-thing-in-the-morning entrance,
-   not a form. Reduced-motion users get the static layout. */
-.cold-row{display:flex;flex-direction:column;gap:10px}
-.cold-row .input{width:100%;min-width:0;font-size:24px;font-weight:800;letter-spacing:.06em;text-align:center;padding:18px 16px;border-width:2px}
-.cold-row .input:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(52,211,153,.18)}
-.cold-row .btn{width:100%;padding:15px;font-size:17px}
+/* v9.04 — the live screen now matches the mock the owner approved on 12 Sep
+   (wordstick-cold-check-mock.html): ONE row, the box is the flexible item and
+   fills it, Check sits beside it; the answer appears INLINE under the row and
+   the next word arrives by itself (no "Next" tap). v9.03 had stacked the box
+   above the button and kept a Next button — "it wasn't the same" (13 Sep).
+   The screen still rises in; reduced-motion users get the static layout. */
+.cold-row{display:flex;flex-direction:row;gap:8px;align-items:stretch}
+.cold-row .input{flex:1 1 auto;width:auto;min-width:0;font-size:19px;font-weight:700;letter-spacing:.04em;text-align:left;padding:14px 14px;border-width:2px}
+.cold-row .input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(139,123,255,.22)}
+.cold-row .input:disabled{opacity:.6}
+.cold-row .btn{flex:0 0 auto;width:auto;padding:13px 18px;font-size:15px;white-space:nowrap}
+.cold-preview{display:inline-block;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.45);color:var(--yellow,#fbbf24);border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:0 0 10px}
 @keyframes coldRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes coldPop{0%{opacity:0;transform:scale(.7)}60%{transform:scale(1.06)}100%{opacity:1;transform:none}}
 .cold-wrap{animation:coldRise .55s cubic-bezier(.2,.8,.2,1) both}
@@ -948,7 +952,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.03';
+const APP_VERSION = '9.04';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -25649,7 +25653,39 @@ function _coldCandidates(t){
   if(pick.length < COLD_N) pick = [...pick, ...re.slice(2)].slice(0, COLD_N);
   return pick.map(c => c.id);
 }
+/* v9.04 — PREVIEW. The check is once a day, so once it has run (or been
+   skipped) there is no way to look at it again until tomorrow — the owner
+   could not re-open what he had seen that morning (13 Sep). coldPreviewStart()
+   builds a throw-away session on window (never saved) over today’s words; the
+   whole screen runs as normal but _coldApply() is a no-op, so nothing is
+   scored, certified, graduated or logged. Entered from the owner page or by
+   opening the app with ?cold=preview. Cleared by Finish / Not now. */
+function coldPreviewStart(){
+  let ids = [];
+  try{
+    const s = _coldSess();
+    if(Array.isArray(s.ids) && s.ids.length) ids = s.ids.slice(0, COLD_N);
+    if(!ids.length) ids = _coldCandidates();
+    if(!ids.length){
+      const seen = getActiveWords().filter(w => w.romaji && state.stats[w.id] && (state.stats[w.id].hears || 0) > 0)
+        .sort((a, b) => (state.stats[b.id].hears || 0) - (state.stats[a.id].hears || 0));
+      ids = seen.slice(0, COLD_N).map(w => w.id);
+    }
+    if(!ids.length) ids = getActiveWords().filter(w => w.romaji).slice(0, COLD_N).map(w => w.id);
+  }catch(e){ ids = []; }
+  window._coldPreview = { preview: true, date: _coldDayKey(), ids, idx: 0, results: {}, pending: null, done: false, skipped: false };
+  try{ log('cold_preview', { n: ids.length }); }catch(e){}
+  nav('cold');
+}
+function _coldPreviewParam(){
+  try{ return new URLSearchParams(window.location.search || '').get('cold') === 'preview'; }catch(e){ return false; }
+}
+function _coldPreviewStripParam(){
+  try{ const url = new URL(window.location.href); url.searchParams.delete('cold'); history.replaceState(history.state, '', url.toString()); }catch(e){}
+}
+window.coldPreviewStart = coldPreviewStart;
 function _coldEnsure(){
+  if(window._coldPreview) return window._coldPreview;
   const s = _coldSess();
   const today = _coldDayKey();
   if(s.date !== today){
@@ -25714,6 +25750,7 @@ function _coldReseat(id){
   for(const k of Object.keys(sb)){ if(Array.isArray(sb[k]) && !sb[k].includes(id)) sb[k].unshift(id); }
 }
 function _coldApply(w, pass){
+  if(window._coldPreview) return;
   const st = smStatFor(w.id);
   const t = now();
   const was = st.certLevel || 0;
@@ -25762,8 +25799,20 @@ function coldCheckSkipWord(){
   else { s.idx++; if(s.idx >= s.ids.length) s.done = true; }
   save(); render();
 }
+/* v9.04 — the next word arrives by itself (mock: 900 ms after the answer).
+   A miss shows the word, so it gets a little longer to be read. */
+function _coldScheduleNext(id, pass){
+  if(window._coldAdvFor === id) return;
+  clearTimeout(window._coldAdvT);
+  window._coldAdvFor = id;
+  window._coldAdvT = setTimeout(() => {
+    window._coldAdvFor = null;
+    try{ const s = _coldEnsure(); if(state.screen === 'cold' && s.pending && s.pending.id === id) coldCheckNext(); }catch(e){}
+  }, pass ? 900 : 1500);
+}
 function coldCheckNext(){
   const s = _coldEnsure();
+  clearTimeout(window._coldAdvT); window._coldAdvFor = null;
   s.pending = null;
   s.idx++;
   if(s.idx >= s.ids.length) s.done = true;
@@ -25771,12 +25820,15 @@ function coldCheckNext(){
 }
 function coldCheckLater(){
   const s = _coldEnsure();
+  clearTimeout(window._coldAdvT); window._coldAdvFor = null;
+  if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.skipped = true; s.pending = null;
   save();
   log('cold_check_skip', { left: s.ids.length - s.idx });
   nav('home');
 }
 function coldCheckStart(){
+  window._coldPreview = null;
   const s = _coldEnsure();
   s.skipped = false;
   save();
@@ -25785,6 +25837,8 @@ function coldCheckStart(){
 }
 function coldCheckFinish(){
   const s = _coldEnsure();
+  clearTimeout(window._coldAdvT); window._coldAdvFor = null;
+  if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.done = true; s.pending = null;
   save();
   nav('home');
@@ -25829,12 +25883,15 @@ function renderColdCheck(){
       const ok = s.results[id] === true;
       return `<span class="cold-pill${ok ? ' g' : ''}">${ok ? '✓' : '↻'} <span style="font-family:'Noto Sans JP'">${esc(w.jp)}</span> ${esc(w.en)}</span>`;
     }).join('');
+    const before = s.preview ? N : Math.max(0, N - n);
+    const after = s.preview ? N + n : N;
     const line = n > 0
-      ? `<b>${N} word${N === 1 ? '' : 's'}</b> stick with you · +${week} this week`
-      : `Nothing lost — they go back into today's round. Tomorrow morning, again.`;
+      ? `Counter: ${before} → <b>${after} word${after === 1 ? '' : 's'}</b> stick with you · +${s.preview ? week + n : week} this week`
+      : `Counter stays at ${N} today — nothing lost, they just need another day in the round.`;
     return `<div class="cold-wrap">
+      ${s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : ''}
       <div class="card" style="padding:22px 18px">
-        <p class="cold-eyebrow">${total === 1 ? 'Today’s check' : 'Today’s check'}</p>
+        <p class="cold-eyebrow">Today’s check</p>
         <div class="cold-bign"><em>${n}</em> <span style="font-size:20px;color:var(--dim)">of ${total} came out cold</span></div>
         <p class="cold-tick">${line}</p>
         <div style="margin-top:12px">${pills}</div>
@@ -25848,29 +25905,18 @@ function renderColdCheck(){
   const w = state.words.find(x => x && x.id === id);
   if(!w){ setTimeout(coldCheckNext, 0); return `<div class="cold-wrap"></div>`; }
 
-  if(s.pending && s.pending.id === id){
-    const p = s.pending;
-    const last = s.idx + 1 >= total;
-    const praise = COLD_PASS_LINES[(s.idx + N) % COLD_PASS_LINES.length];
-    const body = p.pass
-      ? `<div class="cold-res ok">✓ ${esc(praise)}<span class="jp">${jpDisplay(w)}</span><span style="color:var(--dim)">${esc(w.en)}</span>
-           <div class="cold-tick"><b>${N} word${N === 1 ? '' : 's'}</b> stick with you</div></div>`
-      : `<div class="cold-res miss">Not yet — it’s<span class="jp">${jpDisplay(w)}</span><span style="color:var(--dim)">${esc(w.romaji || '')} · ${esc(w.en)}</span>
-           <div class="cold-tick">Back in today’s round, no penalty. You’ll hear it in a minute.</div></div>`;
-    return `<div class="cold-wrap">
-      <p class="cold-eyebrow">${greet} · before we start</p>
-      <h2 class="cold-h">Prove ${total === 1 ? 'a word' : total + ' words'}.</h2>
-      <div class="cold-dots">${dots}</div>
-      <div class="card" style="padding:18px 16px">
-        <p class="cold-eyebrow">Word ${s.idx + 1} of ${total}</p>
-        <p class="cold-meaning">${esc(w.en)}</p>
-        ${body}
-        <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="coldCheckNext()">${last ? 'See today’s result →' : 'Next →'}</button>
-      </div>
-    </div>`;
-  }
-
+  /* v9.04 — one screen for ask + answer (the mock): the row stays, locked,
+     the result slides in under it, and the next word arrives on its own. */
+  const p = (s.pending && s.pending.id === id) ? s.pending : null;
+  if(p) _coldScheduleNext(id, !!p.pass);
+  const nStick = s.preview ? N : N; /* preview never applied, live N already counts this pass */
+  const praise = COLD_PASS_LINES[(s.idx + N) % COLD_PASS_LINES.length];
+  const body = !p ? '' : p.pass
+    ? `<div class="cold-res ok">✓ <b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> — came out cold. <b>That one’s stuck.</b>
+         <div class="cold-tick">${esc(praise)}${s.preview ? '' : ` · <b>${nStick} word${nStick === 1 ? '' : 's'}</b> stick with you`}</div></div>`
+    : `<div class="cold-res miss">Not yet — it’s <b class="jp" style="display:inline;font-size:20px;margin:0 4px">${jpDisplay(w)}</b> <span style="color:var(--dim)">(${esc(w.romaji || '')})</span>. Back in today’s round, no penalty — you’ll hear it in a minute.</div>`;
   return `<div class="cold-wrap">
+    ${s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : ''}
     <p class="cold-eyebrow">${greet} · before we start</p>
     <h2 class="cold-h">Prove ${total === 1 ? 'a word' : total + ' words'}.</h2>
     <p class="cold-sub">You said these on another day. If they come out of your head now, cold, they’re yours. Type the sound in English letters — <b>mizu</b>, not みず.</p>
@@ -25880,12 +25926,13 @@ function renderColdCheck(){
       <p class="cold-meaning">${esc(w.en)}</p>
       <p class="cold-hint">Say it in Japanese, then type what you said.</p>
       <div class="cold-row">
-        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type the sound…" aria-label="Type the Japanese word in romaji" onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
-        <button class="btn btn-primary" onclick="coldCheckAnswer()">Check</button>
+        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="type the sound…" aria-label="Type the Japanese word in romaji" value="${p ? esc(p.typed || '') : ''}"${p ? ' disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
+        <button class="btn btn-primary" onclick="coldCheckAnswer()"${p ? ' disabled' : ''}>Check</button>
       </div>
-      <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="coldCheckSkipWord()">Didn’t come out — next</button>
+      ${p ? '' : `<button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="coldCheckSkipWord()">Didn’t come out — next</button>`}
+      ${body}
     </div>
-    <button class="cold-later" onclick="coldCheckLater()">Not now — go to the app</button>
+    ${p ? '' : `<button class="cold-later" onclick="coldCheckLater()">Not now — go to the app</button>`}
   </div>`;
 }
 
@@ -28391,6 +28438,13 @@ function _renderSettingsOwner(){
       }).join('') : '<div class="muted">None.</div>'}
     </div>
 
+    ${groupHeader('Morning check')}
+    <div class="card" style="border:1px solid rgba(52,211,153,.35)">
+      <h3>🌅 Morning check</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">The check runs once a day. Preview shows the real screen again, with your own words — nothing is scored or saved. Also reachable by opening the app at <b>app.wordstick.app/?cold=preview</b>.</div>
+      <button class="btn btn-primary" onclick="coldPreviewStart()">▶ Preview the morning check</button>
+    </div>
+
     ${groupHeader('Data')}
     <div class="card">
       <h3>Data</h3>
@@ -29176,6 +29230,12 @@ async function init(){
   render();
   updateBackFab();
   log('init',{v:APP_VERSION, words:state.words.length});
+  /* v9.04 — ?cold=preview opens the morning check as a throw-away preview
+     (after every boot gate has had its say; nav() still enforces auth/paywall). */
+  if(_coldPreviewParam()){
+    _coldPreviewStripParam();
+    setTimeout(() => { try{ if(_authGateOpen()) coldPreviewStart(); }catch(e){} }, 400);
+  }
 }
 
 window.addEventListener('DOMContentLoaded', init);
