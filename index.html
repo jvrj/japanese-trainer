@@ -971,7 +971,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.08';
+const APP_VERSION = '9.09';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -26888,11 +26888,7 @@ function renderHome(){
   const newsLabel = Math.min(bc.unseen, _freeTierNewBudget());
   const roundN = Math.min(30, bc.due + newsLabel);
   const est = Math.max(2, Math.round(roundN * 10 / 60));
-  let _doneToday = 0;
-  try{ const _tk = _todayKey(); for(const id in state.stats){ const at = state.stats[id] && state.stats[id].attempts; if(at && at.length && new Date(at[at.length - 1].ts).toISOString().slice(0,10) === _tk) _doneToday++; } }catch(e){ _doneToday = 0; }
-  const heroMeta = _doneToday > 0
-    ? `✓ ${_doneToday} words done today · another round is ready`
-    : roundN > 0
+  const heroMeta = roundN > 0
     ? `${roundN} words · about ${est} minutes`
     : `All caught up — a fresh round is ready whenever you are`;
 
@@ -26902,60 +26898,48 @@ function renderHome(){
      music. Mic mode is now owner-only (owner Settings page). */
   const wave = `<div class="hv9-wave">` + [8,16,24,12,20,26,10,18,24,8,14,22].map(x=>`<i style="height:${x}px"></i>`).join('') + `</div>`;
 
-  /* proposal — "Your 30" Home (owner 13 Sep: "currently it serves NO PURPOSE").
-     Three wants on one screen: drill in one tap, see what I'm learning, see it
-     working. The batch is the sticky 'all' batch the drill itself uses. */
-  const _batchIds = ((state.settings.stickyBatch || {}).all || []).slice();
-  const _wState = w => {
-    try{
-      if(wtsStuck(w)) return 'stick';
-      const st = state.stats[w.id];
-      const at = st && st.attempts;
-      if(!at || !at.length) return 'new';
-      if(at[at.length - 1].correct === false) return 'work';
-      return 'warm';
-    }catch(e){ return 'new'; }
-  };
-  const _order = { work: 0, warm: 1, new: 2, stick: 3 };
-  const _tiles = _batchIds.map(id => state.words.find(x => x && x.id === id)).filter(Boolean)
-    .map(w => ({ w, st: _wState(w) }))
-    .sort((a, b) => _order[a.st] - _order[b.st]);
-  const _cnt = { work: 0, warm: 0, new: 0, stick: 0 };
-  _tiles.forEach(t => _cnt[t.st]++);
-  const _seenAny = _tiles.some(t => t.st !== 'new');
-  let _stop = null;
-  try{ const r = _roadStops(); _stop = r.ordered[r.curIdx]; }catch(e){}
-
   const heroCard = `
     <div class="hv9-hero">
       <div class="hv9-wm jp-font">聴</div>
-      <div class="hv9-eyebrow">YOUR 30${_stop ? ' · ' + esc(_stop.sec.name).toUpperCase() : ''}</div>
-      <div class="hv9-title">${_doneToday > 0 ? 'Nice work today' : (_seenAny ? 'Your 30 words' : 'Your first 30 words')}</div>
+      <div class="hv9-eyebrow">TODAY'S DRILL</div>
+      <div class="hv9-title">Today's words</div>
       <div class="hv9-meta">${esc(heroMeta)}</div>
-      <button class="h8-hero-cta y30-play" onclick="startBuildModeVocabSpam()">▶ ${_doneToday > 0 ? 'Play them again' : 'Play your 30'}</button>
-      ${_seenAny ? `<div class="y30-mix">
-        <button onclick="buildRotateBatch(15)">🔀 Mix<small>15 hardest + 15 new</small></button>
-        <button onclick="buildRotateBatch('all')">✦ 30 new<small>all fresh words</small></button>
-      </div>` : ''}
+      ${wave}
+      <button class="h8-hero-cta" style="margin-top:12px" onclick="startBuildModeVocabSpam()">▶ Start drilling</button>
     </div>`;
 
-  const tiles = _tiles.length ? `
-    <div class="y30-head"><b>TAP A WORD TO HEAR IT</b>
-      <span class="y30-legend">
-        ${_cnt.work ? `<span><i class="y30-dot work"></i>${_cnt.work} need work</span>` : ''}
-        ${_cnt.warm ? `<span><i class="y30-dot warm"></i>${_cnt.warm} warming</span>` : ''}
-        ${_cnt.new ? `<span><i class="y30-dot new"></i>${_cnt.new} new</span>` : ''}
-        ${_cnt.stick ? `<span><i class="y30-dot stick"></i>${_cnt.stick} stick</span>` : ''}
-      </span>
-    </div>
-    <div class="y30-grid">${_tiles.map(t => `<button class="y30-tile ${t.st}" onclick="speakJP('${jsEsc(t.w.jp)}')" title="${esc(t.w.en)}"><i class="y30-dot ${t.st}"></i><span class="k jp-font">${esc(t.w.jp)}</span><span class="e">${esc(t.w.en)}</span></button>`).join('')}</div>` : '';
-
-  const roadStrip = _stop ? `
-    <button class="y30-road" onclick="nav('road')">
-      <div style="font-size:22px">${esc(_stop.sec.emoji || '🪜')}</div>
-      <div class="t">Your road: ${esc(_stop.sec.name)}<small>${_stop.heard} of ${_stop.total} words heard · ${_stop.stuck} stick · next stop at ${_stop.need}</small></div>
-      <div class="h8-row-arrow">›</div>
-    </button>` : '';
+  /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
+     GONE from Home (owner: "i dont need a pathway like that — SIMPLE,
+     attractive and neat"). Talk/AI conversation is benched until a subscriber
+     base exists; the ladder routed strangers into keyed AI modes and the
+     retired Sentence Coach. _pathLadderHtml/pathGo stay in the file unused. */
+  const extras = `
+    <div class="h8-list" style="margin-top:18px">
+      <button class="h8-row" onclick="nav('sentences')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ffb35c,#f2653f);box-shadow:0 8px 22px rgba(242,101,63,.40),0 0 24px rgba(255,179,92,.30);flex-shrink:0">🧩</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Sentences</div>
+          <div class="h8-row-meta">Fill the gap · Count it · Make a sentence</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+      <button class="h8-row" onclick="startFormsLadder()">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Verb forms</div>
+          <div class="h8-row-meta">One verb · every form · tap to recall</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+      <button class="h8-row" onclick="startKanaBlitz('all')">
+        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
+        <div class="h8-row-body">
+          <div class="h8-row-title">Japanese letters</div>
+          <div class="h8-row-meta">Learn to read hiragana &amp; katakana</div>
+        </div>
+        <div class="h8-row-arrow">›</div>
+      </button>
+    </div>`;
 
   /* v8.79 free plan — unlock banner. Only once the session is hydrated AND
      the free week is genuinely over for THIS account (guards below), so a
@@ -26986,14 +26970,13 @@ function renderHome(){
       ${_homeTopBar()}
       <div class="hv9-hello">
         <div class="hv9-hi">${greet}</div>
-        <div class="hv9-stick" style="cursor:default">${stickLine}</div>
+        <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
         ${coldLine}
       </div>
       ${freeBanner}
       ${resumeChip}
       ${heroCard}
-      ${tiles}
-      ${roadStrip}
+      ${extras}
     </div>`;
 }
 
@@ -27990,12 +27973,6 @@ function renderPractice(){
     + groupHtml('Quick picks', quickGrid)
     + groupHtml('Your topics', restGrid)
     + groupHtml('Collections', colGrid)
-    + `<div class="cat-group"><div class="cat-group-label">More ways to practise</div>
-      <div class="h8-list">
-        <button class="h8-row" onclick="nav('sentences')"><div class="h8-row-emoji">🧩</div><div class="h8-row-body"><div class="h8-row-title">Sentences</div><div class="h8-row-meta">Fill the gap · Count it · Make a sentence</div></div><div class="h8-row-arrow">›</div></button>
-        <button class="h8-row" onclick="startFormsLadder()"><div class="h8-row-emoji">🪜</div><div class="h8-row-body"><div class="h8-row-title">Verb forms</div><div class="h8-row-meta">One verb · every form · tap to recall</div></div><div class="h8-row-arrow">›</div></button>
-        <button class="h8-row" onclick="startKanaBlitz('all')"><div class="h8-row-emoji">あ</div><div class="h8-row-body"><div class="h8-row-title">Japanese letters</div><div class="h8-row-meta">Learn to read hiragana &amp; katakana</div></div><div class="h8-row-arrow">›</div></button>
-      </div></div>`
     + `</div>`;
 
   /* S3 (ADR-012) — re-labeled to unlocked/total (was started/total): the
