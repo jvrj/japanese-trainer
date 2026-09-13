@@ -883,6 +883,25 @@ body[data-screen="buildMode"] .ask-fab{display:none}
   background:linear-gradient(160deg,rgba(157,92,255,.22),rgba(255,93,158,.10)),rgba(255,255,255,.05);
   border:1px solid rgba(157,92,255,.32)}
 .hv9-wm{position:absolute;right:-8px;top:-14px;font-family:'Noto Sans JP',sans-serif;font-size:110px;font-weight:700;color:rgba(255,255,255,.045);pointer-events:none;line-height:1}
+.y30-play{width:100%;justify-content:center;margin-top:14px;font-size:16px;padding:16px}
+.y30-mix{display:flex;gap:8px;margin-top:10px}
+.y30-mix button{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--text);border-radius:12px;padding:10px 6px;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;line-height:1.25}
+.y30-mix button small{display:block;font-weight:500;font-size:11px;color:var(--dim,#a99fc7);margin-top:2px}
+.y30-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:22px 4px 10px;flex-wrap:wrap}
+.y30-head b{font-size:11px;letter-spacing:.16em;color:var(--faint);font-weight:800}
+.y30-legend{font-size:11px;color:var(--faint);display:flex;gap:10px;flex-wrap:wrap}
+.y30-legend i{position:static;display:inline-block;margin-right:4px;vertical-align:middle}
+.y30-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.y30-tile{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 9px 9px;text-align:left;font-family:inherit;color:var(--text);cursor:pointer;min-width:0}
+.y30-tile:active{transform:scale(.97)}
+.y30-tile .k{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;padding-right:10px}
+.y30-tile .e{font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;margin-top:2px}
+.y30-dot{position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%}
+.y30-dot.work{background:#fbbf24}.y30-dot.warm{background:#b97bff}.y30-dot.stick{background:#34d399}.y30-dot.new{background:rgba(255,255,255,.28)}
+.y30-tile.work{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.06)}
+.y30-road{display:flex;align-items:center;gap:12px;width:100%;margin-top:14px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px 16px;font-family:inherit;color:var(--text);text-align:left;cursor:pointer}
+.y30-road .t{flex:1;min-width:0;font-size:14px;font-weight:700}
+.y30-road small{display:block;color:var(--faint);font-weight:500;font-size:12px;margin-top:2px}
 .hv9-eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;color:#b97bff}
 .hv9-title{margin:8px 0 5px;font-size:26px;font-weight:800;letter-spacing:-.03em}
 .hv9-meta{font-size:13.5px;font-weight:600;color:var(--dim,#a99fc7)}
@@ -952,7 +971,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.07';
+const APP_VERSION = '9.08';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -20704,6 +20723,11 @@ function _roadThemeRank(){
 function _obfBiasFresh(unseen, need){
   const bias = Array.isArray(state.settings.topicBias) ? state.settings.topicBias : [];
   const rank = _roadThemeRank();
+  /* Themes the user has already heard any word from. Easiest-first is only for
+     a first visit to a category; after that the unseen words come shuffled so
+     every set isn't the same "next easiest" slice (owner 13 Sep). */
+  const heardThemes = new Set();
+  try{ for(const w of state.words){ const st = w && state.stats[w.id]; if(st && st.attempts && st.attempts.length) heardThemes.add(w.theme); } }catch(e){}
   const buckets = new Map();
   for(const w of unseen){
     const k = bias.includes(w.theme) ? -1 : (rank.has(w.theme) ? rank.get(w.theme) : 999);
@@ -20712,7 +20736,14 @@ function _obfBiasFresh(unseen, need){
   }
   const out = [];
   for(const k of [...buckets.keys()].sort((a, b) => a - b)){
-    for(const w of shuffleFY(buckets.get(k))){ if(out.length >= need) return out; out.push(w); }
+    /* proposal — easiest first inside a stop: JLPT 5 before 4 before 3, then
+       the curated deck order (こんにちは, おはよう… come first). A pure shuffle
+       put "thank you for calling" on a beginner's first card. */
+    const bucket = buckets.get(k);
+    const easy = bucket.some(w => heardThemes.has(w.theme))
+      ? shuffleFY(bucket.slice())
+      : bucket.map((w, i) => ({ w, i })).sort((a, b) => ((b.w.jlpt || 3) - (a.w.jlpt || 3)) || (a.i - b.i)).map(x => x.w);
+    for(const w of easy){ if(out.length >= need) return out; out.push(w); }
   }
   return out;
 }
@@ -20976,7 +21007,8 @@ function startBuildModeVocabSpam(){
     nav('buildMode');
     /* v8.51 — surface the freshMix so batch progression is visible, not silent */
     const m = lesson._meta || {};
-    if(!firstEver && typeof m.freshCount === 'number'){
+    const _quiet = !!state._quietStartToast; state._quietStartToast = false;
+    if(!firstEver && !_quiet && typeof m.freshCount === 'number'){
       const total = (m.real_word_ids || []).length;
       showToast(m.freshCount > 0
         ? `${total} words · ${m.freshCount} new to you`
@@ -22554,8 +22586,9 @@ function buildRotateBatch(n){
     state._nextBatchNew = { avoid: new Set(batch) };
     delete state.settings.stickyBatch[key];
     try{ save(); }catch(e){}
+    state._quietStartToast = true;
     startBuildModeVocabSpam();
-    showToast('Next 30 — new words. The last 30 stay in your reviews and tomorrow’s check.', {tone:'info', duration:4000});
+    showToast('30 new words. The last 30 come back in your reviews and tomorrow’s check.', {tone:'info', duration:3500});
     return;
   }
   const want = typeof n === 'number' && n > 0 ? n : 10;
@@ -22567,10 +22600,11 @@ function buildRotateBatch(n){
   const drop = new Set(scored.slice(0, dropN).map(x => x.id));
   state.settings.stickyBatch[key] = batch.filter(id => !drop.has(id));
   try{ save(); }catch(e){}
+  state._quietStartToast = true;
   startBuildModeVocabSpam();
   if(dropN > 0){
     const fc = state.buildMode?.lesson?._meta?.freshCount;
-    showToast(`${dropN} words swapped out${typeof fc === 'number' && fc > 0 ? ` — ${fc} new in` : ' — topped up from your reviews'}. They’ll still be asked cold later.`, {tone:'info', duration:4000});
+    showToast(`Kept your ${Math.max(0, batch.length - dropN)} hardest${typeof fc === 'number' && fc > 0 ? ` · ${fc} new words in` : ''}. The rest stay in your reviews.`, {tone:'info', duration:3500});
   }
 }
 window.buildRotateBatch = buildRotateBatch;
@@ -22633,7 +22667,7 @@ function buildOnComplete(){
       }
       if(realIds.length) save();
       if(missedCount > 0){
-        showToast(`${missedCount} word${missedCount === 1 ? '' : 's'} marked missed — will resurface in Vocab Blitz soon.`, {tone:'info', duration:3500});
+        showToast(`${missedCount} word${missedCount === 1 ? '' : 's'} will come back sooner.`, {tone:'info', duration:3500});
       }
     }catch(e){ log('build_sm2_credit_err', {err:String(e)}); }
     /* v6.29 — record any form_drill steps the lesson contained as recently
@@ -22795,6 +22829,7 @@ window.buildMasterCurrentWord = buildMasterCurrentWord;
 
 function buildExit(){
   _buildClearTimer();
+  try{ const th = document.getElementById('toast-host'); if(th) th.innerHTML = ''; }catch(e){}
   try{ window.speechSynthesis?.cancel(); }catch(e){}
   /* v6.21 — if the lesson was launched from a specific origin (e.g., the
      Forms picker for Form Spam), route back there instead of leaving the
@@ -24146,7 +24181,7 @@ function renderBuildModeStep(){
 
     <div class="card bm-stage">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:6px">
-        <span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>
+        ${state.settings.ownerMode === true ? `<span class="build-chip build-chip-${_buildChipClass(step)}">${_buildChipLabel(step)}</span>` : '<span></span>'}
         <div style="display:flex;gap:6px">
           <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;${state.settings.buildListenSteps !== false ? 'color:var(--blue);border-color:var(--blue)' : 'color:var(--muted)'}" onclick="buildToggleListenSteps()" title="Flip drill direction — 👂 EN: newer words play in Japanese and you say the English · 🗣 JP: every card shows English and you speak the Japanese">${state.settings.buildListenSteps !== false ? '👂 EN' : '🗣 JP'}</button>
           <button class="btn" style="font-size:12px;padding:5px 12px;background:${paused ? 'var(--blue)' : 'rgba(255,255,255,0.06)'};color:${paused ? '#fff' : 'var(--text)'};border:1px solid ${paused ? 'var(--blue)' : 'var(--border)'}" onclick="buildTogglePause()" title="Pause the drill so you can read the notes at your own pace">${paused ? '▶ Resume' : '⏸ Pause'}</button>
@@ -24797,6 +24832,19 @@ function _buildRenderRecallRev(step){
   const freshPill = step.fresh
     ? `<div style="text-align:center;margin-bottom:6px"><span style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);border:1px solid currentColor;border-radius:999px;padding:2px 9px">✦ NEW WORD</span></div>`
     : '';
+  if(b.revealed && step.fresh){
+    /* proposal — a new word already showed its meaning; revealing only adds
+       the usage note. Same order, nothing jumps. */
+    return `
+      ${freshPill}
+      <div class="bm-eyebrow">Listen, then say it back</div>
+      <div class="build-big-jp">${jpDisplay(w)}</div>
+      ${romajiWordLine(w.r)}
+      <div class="build-big-en" style="font-size:22px;color:var(--text);padding:4px 0">${esc(w.en)}</div>
+      ${_buildRenderHeard()}
+      ${w.note ? `<div class="build-nuance"><b>${jpDisplay(w)}</b> — ${esc(w.note)}</div>` : ''}
+    `;
+  }
   if(b.revealed){
     return `
       ${freshPill}
@@ -24818,7 +24866,6 @@ function _buildRenderRecallRev(step){
       <div class="build-big-jp">${jpDisplay(w)}</div>
       ${romajiWordLine(w.r)}
       <div class="build-big-en" style="font-size:22px;color:var(--text);padding:4px 0">${esc(w.en)}</div>
-      <div class="build-placeholder">say the Japanese — out loud</div>
     `;
   }
   return `
@@ -25158,7 +25205,7 @@ function _buildRoundRecap(){
     <div style="display:flex;gap:6px;text-align:center">
       <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800">${recalled}</div><div style="font-size:11px;color:var(--faint)">words this round</div></div>
       <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--purple)">${totalWarm}</div><div style="font-size:11px;color:var(--faint)">warming up</div></div>
-      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px"><div style="font-size:20px;font-weight:800;color:var(--green)">${totalStuck}</div><div style="font-size:11px;color:var(--faint)">stick with you</div></div>
+      <div style="flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 4px">${totalStuck > 0 ? `<div style="font-size:20px;font-weight:800;color:var(--green)">${totalStuck}</div><div style="font-size:11px;color:var(--faint)">stick with you</div>` : `<div style="font-size:20px;font-weight:800;color:var(--green)">☀</div><div style="font-size:11px;color:var(--faint)">first check tomorrow</div>`}</div>
     </div>
   </div>`;
 }
@@ -25229,7 +25276,7 @@ function renderBuildModeComplete(){
       state.buildMode._coachEndShown = true;
       save();
     }
-    coachEnd = `<div class="coach-strip" style="margin-bottom:16px"><div style="flex-shrink:0">💡</div><div>That's one round — <b>do one whenever you like</b>. Short and often beats long and rare.</div></div>`;
+    coachEnd = `<div class="coach-strip" style="margin-bottom:16px"><div style="flex-shrink:0">💡</div><div>That's one round. <b>Go again while it's fresh, or take 30 new ones</b> — as many rounds as you like.</div></div>`;
   }
   /* v9.07 — owner call 13 Sep: the round end must serve BOTH the casual
      learner (why is "stick" still 0? → the morning check) and the relentless
@@ -25268,7 +25315,9 @@ function renderBuildModeComplete(){
       ${keepGoingBtn}
       <button class="btn btn-primary" style="width:100%" onclick="buildRestart()">${isSpam ? `↻ Again — same ${spamN}` : '↻ Run it again'}</button>
       ${isSpam ? `<div style="height:8px"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch('all')">Next 30 — new words</button>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch(15)">🔀 Mix — keep 15 hardest, add 15 new</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" style="width:100%" onclick="buildRotateBatch('all')">✦ Next 30 — all new</button>
       ${state.settings.ownerMode === true ? `<div style="height:8px"></div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-secondary" style="flex:1" onclick="buildRotateBatch(10)">Swap 10 anyway</button>
@@ -26839,7 +26888,11 @@ function renderHome(){
   const newsLabel = Math.min(bc.unseen, _freeTierNewBudget());
   const roundN = Math.min(30, bc.due + newsLabel);
   const est = Math.max(2, Math.round(roundN * 10 / 60));
-  const heroMeta = roundN > 0
+  let _doneToday = 0;
+  try{ const _tk = _todayKey(); for(const id in state.stats){ const at = state.stats[id] && state.stats[id].attempts; if(at && at.length && new Date(at[at.length - 1].ts).toISOString().slice(0,10) === _tk) _doneToday++; } }catch(e){ _doneToday = 0; }
+  const heroMeta = _doneToday > 0
+    ? `✓ ${_doneToday} words done today · another round is ready`
+    : roundN > 0
     ? `${roundN} words · about ${est} minutes`
     : `All caught up — a fresh round is ready whenever you are`;
 
@@ -26849,48 +26902,60 @@ function renderHome(){
      music. Mic mode is now owner-only (owner Settings page). */
   const wave = `<div class="hv9-wave">` + [8,16,24,12,20,26,10,18,24,8,14,22].map(x=>`<i style="height:${x}px"></i>`).join('') + `</div>`;
 
+  /* proposal — "Your 30" Home (owner 13 Sep: "currently it serves NO PURPOSE").
+     Three wants on one screen: drill in one tap, see what I'm learning, see it
+     working. The batch is the sticky 'all' batch the drill itself uses. */
+  const _batchIds = ((state.settings.stickyBatch || {}).all || []).slice();
+  const _wState = w => {
+    try{
+      if(wtsStuck(w)) return 'stick';
+      const st = state.stats[w.id];
+      const at = st && st.attempts;
+      if(!at || !at.length) return 'new';
+      if(at[at.length - 1].correct === false) return 'work';
+      return 'warm';
+    }catch(e){ return 'new'; }
+  };
+  const _order = { work: 0, warm: 1, new: 2, stick: 3 };
+  const _tiles = _batchIds.map(id => state.words.find(x => x && x.id === id)).filter(Boolean)
+    .map(w => ({ w, st: _wState(w) }))
+    .sort((a, b) => _order[a.st] - _order[b.st]);
+  const _cnt = { work: 0, warm: 0, new: 0, stick: 0 };
+  _tiles.forEach(t => _cnt[t.st]++);
+  const _seenAny = _tiles.some(t => t.st !== 'new');
+  let _stop = null;
+  try{ const r = _roadStops(); _stop = r.ordered[r.curIdx]; }catch(e){}
+
   const heroCard = `
     <div class="hv9-hero">
       <div class="hv9-wm jp-font">聴</div>
-      <div class="hv9-eyebrow">TODAY'S DRILL</div>
-      <div class="hv9-title">Today's words</div>
+      <div class="hv9-eyebrow">YOUR 30${_stop ? ' · ' + esc(_stop.sec.name).toUpperCase() : ''}</div>
+      <div class="hv9-title">${_doneToday > 0 ? 'Nice work today' : (_seenAny ? 'Your 30 words' : 'Your first 30 words')}</div>
       <div class="hv9-meta">${esc(heroMeta)}</div>
-      ${wave}
-      <button class="h8-hero-cta" style="margin-top:12px" onclick="startBuildModeVocabSpam()">▶ Start drilling</button>
+      <button class="h8-hero-cta y30-play" onclick="startBuildModeVocabSpam()">▶ ${_doneToday > 0 ? 'Play them again' : 'Play your 30'}</button>
+      ${_seenAny ? `<div class="y30-mix">
+        <button onclick="buildRotateBatch(15)">🔀 Mix<small>15 hardest + 15 new</small></button>
+        <button onclick="buildRotateBatch('all')">✦ 30 new<small>all fresh words</small></button>
+      </div>` : ''}
     </div>`;
 
-  /* v8.60 market tidy — the 6-node "Today's path" ladder and the Talk row are
-     GONE from Home (owner: "i dont need a pathway like that — SIMPLE,
-     attractive and neat"). Talk/AI conversation is benched until a subscriber
-     base exists; the ladder routed strangers into keyed AI modes and the
-     retired Sentence Coach. _pathLadderHtml/pathGo stay in the file unused. */
-  const extras = `
-    <div class="h8-list" style="margin-top:18px">
-      <button class="h8-row" onclick="nav('sentences')">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#ffb35c,#f2653f);box-shadow:0 8px 22px rgba(242,101,63,.40),0 0 24px rgba(255,179,92,.30);flex-shrink:0">🧩</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Sentences</div>
-          <div class="h8-row-meta">Fill the gap · Count it · Make a sentence</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-      <button class="h8-row" onclick="startFormsLadder()">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;background:linear-gradient(150deg,#b97bff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.40),0 0 24px rgba(185,123,255,.30);flex-shrink:0">🪜</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Verb forms</div>
-          <div class="h8-row-meta">One verb · every form · tap to recall</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-      <button class="h8-row" onclick="startKanaBlitz('all')">
-        <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:26px;color:#fff;background:linear-gradient(150deg,#9d5cff,#7b3ff2);box-shadow:0 8px 22px rgba(123,63,242,.45),0 0 24px rgba(157,92,255,.40);flex-shrink:0">あ</div>
-        <div class="h8-row-body">
-          <div class="h8-row-title">Japanese letters</div>
-          <div class="h8-row-meta">Learn to read hiragana &amp; katakana</div>
-        </div>
-        <div class="h8-row-arrow">›</div>
-      </button>
-    </div>`;
+  const tiles = _tiles.length ? `
+    <div class="y30-head"><b>TAP A WORD TO HEAR IT</b>
+      <span class="y30-legend">
+        ${_cnt.work ? `<span><i class="y30-dot work"></i>${_cnt.work} need work</span>` : ''}
+        ${_cnt.warm ? `<span><i class="y30-dot warm"></i>${_cnt.warm} warming</span>` : ''}
+        ${_cnt.new ? `<span><i class="y30-dot new"></i>${_cnt.new} new</span>` : ''}
+        ${_cnt.stick ? `<span><i class="y30-dot stick"></i>${_cnt.stick} stick</span>` : ''}
+      </span>
+    </div>
+    <div class="y30-grid">${_tiles.map(t => `<button class="y30-tile ${t.st}" onclick="speakJP('${jsEsc(t.w.jp)}')" title="${esc(t.w.en)}"><i class="y30-dot ${t.st}"></i><span class="k jp-font">${esc(t.w.jp)}</span><span class="e">${esc(t.w.en)}</span></button>`).join('')}</div>` : '';
+
+  const roadStrip = _stop ? `
+    <button class="y30-road" onclick="nav('road')">
+      <div style="font-size:22px">${esc(_stop.sec.emoji || '🪜')}</div>
+      <div class="t">Your road: ${esc(_stop.sec.name)}<small>${_stop.heard} of ${_stop.total} words heard · ${_stop.stuck} stick · next stop at ${_stop.need}</small></div>
+      <div class="h8-row-arrow">›</div>
+    </button>` : '';
 
   /* v8.79 free plan — unlock banner. Only once the session is hydrated AND
      the free week is genuinely over for THIS account (guards below), so a
@@ -26921,13 +26986,14 @@ function renderHome(){
       ${_homeTopBar()}
       <div class="hv9-hello">
         <div class="hv9-hi">${greet}</div>
-        <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
+        <div class="hv9-stick" style="cursor:default">${stickLine}</div>
         ${coldLine}
       </div>
       ${freeBanner}
       ${resumeChip}
       ${heroCard}
-      ${extras}
+      ${tiles}
+      ${roadStrip}
     </div>`;
 }
 
@@ -26959,10 +27025,10 @@ function _roadStops(){
     const set = new Set(sec.themes);
     const words = active.filter(w => set.has(w.theme));
     if(!words.length) continue;
-    let stuck = 0;
-    for(const w of words){ try{ if(wtsStuck(w)) stuck++; }catch(e){} }
+    let stuck = 0, heard = 0;
+    for(const w of words){ try{ if(wtsStuck(w)) stuck++; const st = state.stats[w.id]; if(st && st.attempts && st.attempts.length) heard++; }catch(e){} }
     const need = Math.min(20, words.length);
-    stops.push({ sec, total: words.length, stuck, need, done: stuck >= need,
+    stops.push({ sec, total: words.length, stuck, heard, need, done: stuck >= need,
       biased: sec.themes.some(t => bias.includes(t)) });
   }
   /* Stable partition: your interests first, then the standard order. */
@@ -26991,8 +27057,9 @@ function renderRoad(){
         <div class="road-body">
           <b style="font-size:17px;color:#fff">${esc(s.sec.name)} ${kana}</b><small>You are here</small>
           <div class="road-here">
-            <div style="font-size:13px;font-weight:700">${s.stuck} of ${s.need} words stick so far</div>
-            <div class="road-bar"><i style="width:${Math.max(3, Math.min(100, Math.round(s.stuck * 100 / s.need)))}%"></i></div>
+            <div style="font-size:13px;font-weight:700">${s.heard} of ${s.total} words heard · ${s.stuck} stick so far</div>
+            <div class="road-bar"><i style="width:${Math.max(3, Math.min(100, Math.round(s.heard * 100 / Math.max(1, s.total))))}%"></i></div>
+            <div style="font-size:11.5px;opacity:.7;margin-top:6px">Next stop opens when ${s.need} of them stick.</div>
           </div>
         </div>
       </div>`);
@@ -27905,7 +27972,7 @@ function renderPractice(){
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.85);text-transform:uppercase">Continuing · hands-free</div>
         <div style="font-weight:800;font-size:18px;color:#fff;margin-top:1px">${esc(_sec.name)}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,.85);margin-top:2px">${_learned}/${_secWords.length} learned · ${_due} ready</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.85);margin-top:2px">${_learned} of ${_secWords.length} heard</div>
       </div>
       <button class="cont-go" ${_contNo ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(_sec.id)}')" aria-label="Start hands-free: ${esc(_sec.name)}">▶</button>
     </div>`;
@@ -27923,6 +27990,12 @@ function renderPractice(){
     + groupHtml('Quick picks', quickGrid)
     + groupHtml('Your topics', restGrid)
     + groupHtml('Collections', colGrid)
+    + `<div class="cat-group"><div class="cat-group-label">More ways to practise</div>
+      <div class="h8-list">
+        <button class="h8-row" onclick="nav('sentences')"><div class="h8-row-emoji">🧩</div><div class="h8-row-body"><div class="h8-row-title">Sentences</div><div class="h8-row-meta">Fill the gap · Count it · Make a sentence</div></div><div class="h8-row-arrow">›</div></button>
+        <button class="h8-row" onclick="startFormsLadder()"><div class="h8-row-emoji">🪜</div><div class="h8-row-body"><div class="h8-row-title">Verb forms</div><div class="h8-row-meta">One verb · every form · tap to recall</div></div><div class="h8-row-arrow">›</div></button>
+        <button class="h8-row" onclick="startKanaBlitz('all')"><div class="h8-row-emoji">あ</div><div class="h8-row-body"><div class="h8-row-title">Japanese letters</div><div class="h8-row-meta">Learn to read hiragana &amp; katakana</div></div><div class="h8-row-arrow">›</div></button>
+      </div></div>`
     + `</div>`;
 
   /* S3 (ADR-012) — re-labeled to unlocked/total (was started/total): the
