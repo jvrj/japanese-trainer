@@ -34,6 +34,7 @@ src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
 /* v7.73 — Nunito as the Latin UI typeface (rounded, premium-friendly; pairs with
    the Grape theme). Japanese glyphs fall back to Noto Sans JP automatically. */
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
   /* v7.77 — Dark Aurora theme. Deep indigo-black canvas, glassy translucent
@@ -913,6 +914,121 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 @keyframes cdSpin{0%{transform:scale(.2) rotate(-260deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
 @keyframes cdPop{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:none}}
 .cd-name{font-size:30px}
+/* v9.13 — stickers (owner-approved Claude Design screens). Sizes scale off --s. */
+.stk{width:var(--s);height:var(--s);flex:none;position:relative;border-radius:50%}
+.stk-ring{width:100%;height:100%;border-radius:50%;padding:calc(var(--s)*.05);box-sizing:border-box}
+.stk-gap{width:100%;height:100%;border-radius:50%;background:#1d1235;padding:calc(var(--s)*.016);box-sizing:border-box}
+.stk-rim{width:100%;height:100%;border-radius:50%;box-sizing:border-box;padding:calc(var(--s)*.045)}
+.stk-rim.t-none{padding:0}
+.stk-rim.t-paper{background:linear-gradient(140deg,#8e86a6,#4a4260)}
+.stk-rim.t-bronze{background:linear-gradient(140deg,#f0aa6c,#a35a24)}
+.stk-rim.t-silver{background:linear-gradient(140deg,#f3f3fa,#a9a9bd)}
+.stk-rim.t-gold{background:linear-gradient(140deg,#ffe082,#d99b06)}
+.stk-rim.t-holo{background:conic-gradient(#ff8fc7,#ffe066,#7ef0c0,#7ec4ff,#c79aff,#ff8fc7);box-shadow:0 0 calc(var(--s)*.16) rgba(255,143,199,.4)}
+.stk-disc{width:100%;height:100%;border-radius:50%;border:calc(var(--s)*.05) solid #fff;box-sizing:border-box;display:grid;place-items:center;position:relative;overflow:hidden;box-shadow:0 calc(var(--s)*.05) calc(var(--s)*.14) rgba(0,0,0,.42)}
+.stk-disc img{width:64%;height:64%;object-fit:contain;display:block;filter:drop-shadow(0 calc(var(--s)*.02) calc(var(--s)*.03) rgba(0,0,0,.28));-webkit-user-drag:none;user-select:none;pointer-events:none}
+.stk-shine{position:absolute;top:0;bottom:0;left:0;width:28%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:wsShine 3.2s .8s infinite;pointer-events:none}
+.stk.faded .stk-disc{border:2px dashed rgba(255,255,255,.26);box-shadow:none}
+.stk.faded img{opacity:.32;filter:grayscale(1)}
+.stk.float{animation:wsFloat 5s ease-in-out infinite}
+.stk.pop{animation:wsPop .65s cubic-bezier(.2,1.4,.4,1) both,wsFloat 5s ease-in-out .65s infinite}
+.stk.spin{animation:cdSpin .7s cubic-bezier(.3,1.5,.5,1) 1,wsFloat 5s ease-in-out .7s infinite}
+@keyframes wsShine{0%{transform:translateX(-120%) rotate(18deg)}55%,100%{transform:translateX(420%) rotate(18deg)}}
+@keyframes wsFloat{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-7px) rotate(-2deg)}}
+@keyframes wsPop{0%{transform:scale(.3) rotate(-24deg);opacity:0}60%{transform:scale(1.12) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(-5deg);opacity:1}}
+@keyframes wsConf{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(-58px) rotate(220deg);opacity:0}}
+@keyframes wsWiggle{0%,80%,100%{transform:rotate(-5deg)}85%{transform:rotate(-9deg)}90%{transform:rotate(-1deg)}95%{transform:rotate(-7deg)}}
+@keyframes wsRays{to{transform:translate(-50%,-50%) rotate(360deg)}}
+/* Home hero: 1a mystery → 1b revealed */
+.stk-hero{text-align:center}
+.stk-hero .hv9-eyebrow{text-align:left}
+.stk-peelrow{display:flex;align-items:center;gap:16px;margin-top:18px;text-align:left}
+.stk-mystery{width:150px;height:150px;flex:none;border-radius:50%;border:9px solid #fff;box-sizing:border-box;background:repeating-linear-gradient(45deg,#4b3271 0 14px,#5c3f88 14px 28px);box-shadow:0 14px 34px rgba(0,0,0,.5);display:grid;place-items:center;position:relative;transform:rotate(-5deg);cursor:pointer;padding:0;font-family:inherit;animation:wsWiggle 2.8s ease-in-out infinite}
+.stk-mystery span{font-size:64px;font-weight:900;color:rgba(255,255,255,.5);line-height:1}
+.stk-mystery i{position:absolute;right:6px;top:4px;width:40px;height:40px;background:linear-gradient(225deg,#fff,#cfc4e6);border-radius:4px 36px 4px 36px;box-shadow:-4px 6px 12px rgba(0,0,0,.45);transform:rotate(14deg)}
+.stk-note{font-family:'Caveat','Nunito',cursive;font-size:26px;font-weight:700;color:#ffe066;line-height:1.1;transform:rotate(-5deg)}
+.stk-center{display:grid;place-items:center;width:max-content;margin:16px auto 4px;background:none;border:none;padding:0;cursor:pointer;position:relative;font-family:inherit}
+.stk-center::before{content:'';position:absolute;inset:-18%;border-radius:50%;background:radial-gradient(circle,rgba(255,224,138,.3),transparent 66%);pointer-events:none}
+.stk-chip{display:inline-block;margin-top:10px;padding:5px 12px;border-radius:99px;font-size:11.5px;font-weight:900;letter-spacing:.08em;background:rgba(255,255,255,.1);color:#e0d8f5}
+.stk-chip.t-paper{background:linear-gradient(140deg,#8e86a6,#4a4260);color:#fff}
+.stk-chip.t-bronze{background:linear-gradient(140deg,#f0aa6c,#a35a24);color:#fff}
+.stk-chip.t-silver{background:linear-gradient(140deg,#f3f3fa,#a9a9bd);color:#2a1748}
+.stk-chip.t-gold{background:linear-gradient(140deg,#ffe082,#d99b06);color:#2a1748}
+.stk-chip.t-holo{background:conic-gradient(#ff8fc7,#ffe066,#7ef0c0,#7ec4ff,#c79aff,#ff8fc7);color:#2a1030}
+.stk-album{display:flex;align-items:center;gap:14px;width:100%;margin-top:12px;padding:14px 16px;border-radius:20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);font-family:inherit;color:var(--text);text-align:left;cursor:pointer}
+.stk-stack{display:flex;flex:none}
+.stk-stack .stk+.stk{margin-left:-12px}
+.stk-stack .stk:nth-child(1){transform:rotate(-8deg)}
+.stk-stack .stk:nth-child(2){transform:rotate(6deg)}
+.stk-stack .stk:nth-child(3){transform:rotate(-4deg)}
+.stk-album-t{flex:1;min-width:0}
+.stk-album-t b{display:block;font-size:14.5px;font-weight:900}
+.stk-album-t span{display:block;font-size:12.5px;font-weight:700;color:var(--dim,#bdb2da)}
+.stk-arr{font-size:18px;color:var(--dim,#bdb2da)}
+/* Practice: 3c */
+.stk-ph{margin:14px 4px 12px}
+.stk-ph b{display:block;font-size:26px;font-weight:900;letter-spacing:-.025em}
+.stk-ph span{font-size:13px;font-weight:700;color:var(--dim,#bdb2da)}
+.stk-pick{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:14px 16px;border-radius:22px;background:linear-gradient(160deg,rgba(157,92,255,.34),rgba(255,93,158,.14)),rgba(255,255,255,.07);border:1px solid rgba(185,123,255,.45);cursor:pointer}
+.stk-pick .stk{transform:rotate(-6deg)}
+.stk-pick-t{flex:1;min-width:0}
+.stk-pick-t small{display:block;font-size:10.5px;font-weight:900;letter-spacing:.16em;color:#e3c9ff}
+.stk-pick-t b{display:block;font-size:20px;font-weight:900;margin-top:2px}
+.stk-pick-t span{display:block;font-size:12.5px;font-weight:700;color:#e0d8f5}
+.stk-go{width:42px;height:42px;flex:none;border-radius:50%;border:none;background:linear-gradient(100deg,#9d5cff,#ff5d9e);color:#fff;font-size:14px;cursor:pointer;padding:0 0 0 3px;font-family:inherit}
+.stk-go.sm{width:34px;height:34px;font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#ff5d9e}
+.stk-go:disabled{opacity:.3;cursor:not-allowed}
+.stk-list{display:flex;flex-direction:column;gap:9px}
+.cat-tile.stk-row{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:20px;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+.cat-tile.stk-row.fresh{background:rgba(255,255,255,.035);border-style:dashed}
+.cat-tile.stk-row.active{border-color:rgba(157,92,255,.55)}
+.stk-row .stk{transform:rotate(4deg)}
+.stk-row-t{flex:1;min-width:0}
+.stk-row-t b{display:block;font-size:15.5px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stk-row-t span{display:block;font-size:12.5px;font-weight:700;margin-top:1px}
+.stk-surprise{width:100%;margin:4px 0 16px;padding:15px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:var(--text);font-family:inherit;font-size:15px;font-weight:900;cursor:pointer}
+/* Round end: 2b burst */
+.stk-burst{position:relative;overflow:hidden;border-radius:28px;padding:28px 20px 22px;text-align:center;color:#fff;background:radial-gradient(circle at 50% 38%,#5b2f8f,#2a1748 46%,#130c22);margin-bottom:14px}
+.stk-rays{position:absolute;left:50%;top:44%;width:900px;height:900px;transform:translate(-50%,-50%);background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,.08) 0deg 9deg,transparent 9deg 18deg);animation:wsRays 60s linear infinite;pointer-events:none}
+.stk-burst>*:not(.stk-rays){position:relative}
+.stk-eyebrow{font-size:12.5px;font-weight:900;letter-spacing:.2em;color:#ffd77a}
+.stk-bh{margin:8px 0 0;font-size:36px;font-weight:900;letter-spacing:-.025em;line-height:1.05;color:#fff}
+.stk-bsub{font-size:13.5px;font-weight:700;color:rgba(255,255,255,.75);margin-top:6px}
+.stk-bart{display:grid;place-items:center;margin:22px auto 0;width:max-content;position:relative}
+.stk-bart::before{content:'';position:absolute;inset:-16%;border-radius:50%;background:radial-gradient(circle,rgba(255,215,122,.36),transparent 65%);pointer-events:none}
+.stk-cf{position:absolute;width:11px;height:11px;border-radius:3px;animation:wsConf 2.3s infinite}
+.stk-cf.a{left:-10px;top:10px;background:#ff5d9e;animation-delay:.1s}
+.stk-cf.b{right:-6px;top:34px;background:#34d399;animation-delay:.5s}
+.stk-cf.c{left:10px;bottom:14px;background:#8b7bff;animation-delay:.3s}
+.stk-cf.d{right:14px;bottom:30px;background:#fbbf24;animation-delay:.7s}
+.stk-bpct{font-size:21px;font-weight:900;margin-top:18px}
+.stk-stats{display:flex;justify-content:center;gap:22px;margin-top:14px}
+.stk-stats div{text-align:center}
+.stk-stats b{display:block;font-size:21px;font-weight:900}
+.stk-stats span{font-size:11px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.65)}
+.stk-stats i{width:1px;background:rgba(255,255,255,.2)}
+.stk-keep{width:100%;margin-top:22px;border:none;font-family:inherit;padding:18px;border-radius:99px;background:#fff;color:#2a1748;font-size:17px;font-weight:900;box-shadow:0 12px 34px rgba(255,255,255,.22);cursor:pointer}
+.stk-next{font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-top:7px}
+.stk-links{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:10px}
+.stk-links button{background:none;border:none;font-family:inherit;font-size:14px;font-weight:800;color:rgba(255,255,255,.85);cursor:pointer;padding:6px}
+.stk-links span{opacity:.4}
+/* Sticker detail: 3f + 3g legend */
+.stk-page{text-align:center}
+.stk-back{display:block;background:none;border:none;font-family:inherit;font-size:15px;font-weight:800;color:var(--dim,#cfc7e6);padding:14px 4px 4px;cursor:pointer;text-align:left}
+.stk-dname{font-size:30px;font-weight:900;letter-spacing:-.025em;margin-top:16px}
+.stk-dline{font-size:13.5px;font-weight:700;color:var(--dim,#e0d8f5);margin:10px auto 16px;max-width:320px;line-height:1.45}
+.stk-share{background:none;border:none;font-family:inherit;font-size:13.5px;font-weight:800;color:var(--dim,#bdb2da);margin-top:8px;cursor:pointer;padding:6px}
+.stk-legend{margin:14px 0 0;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);text-align:left;font-size:12.5px;font-weight:700;color:var(--dim,#cfc7e6);display:flex;flex-direction:column;gap:7px}
+.stk-legend div{display:flex;align-items:center;gap:9px}
+.stk-legend i{width:13px;height:13px;border-radius:4px;flex:none}
+.stk-words{margin:14px 0 20px;padding:14px 16px;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);text-align:left}
+.stk-wh{font-size:11px;font-weight:900;letter-spacing:.16em;color:#a99fc7;margin-bottom:4px}
+.stk-w{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.stk-w:last-child{border-bottom:none}
+.stk-w .j{font-family:'Noto Sans JP',Nunito,sans-serif;font-size:18px;font-weight:800;min-width:0}
+.stk-w .e{font-size:13px;font-weight:700;color:var(--dim,#bdb2da);flex-basis:100%;order:3}
+.stk-w .n{font-size:12px;font-weight:900;white-space:nowrap;margin-left:auto}
+@media (prefers-reduced-motion:reduce){.stk,.stk-shine,.stk-rays,.stk-cf,.stk-mystery{animation:none!important}}
 .cd-links{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
 .cd-link{background:none;border:none;color:#d6c2ff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;padding:6px 2px}
 .cd-dot{color:var(--faint)}
@@ -984,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.12';
+const APP_VERSION = '9.13';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -25393,6 +25509,8 @@ function renderBuildModeComplete(){
     const _sec = activeVocabSection();
     const _secLine = _sec && _sec.id !== 'all' ? `${esc(_sec.emoji || '')} ${esc(_sec.name)} · ` : '';
     const _nextMix = (_s.plays % 2) === 1;
+    /* v9.13 — a finished category round ends on its sticker (2b). */
+    if(!_stopped && _sec && _stkIs(_sec.id)) return _stkBurst(_sec, { n: spamN, mins: _mins, nextMix: _nextMix, ids: _s.ids });
     return `
     <div class="card" style="text-align:center;padding:30px 20px">
       <div style="font-size:48px;color:var(--green);margin-bottom:8px">✓</div>
@@ -26706,7 +26824,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -26868,6 +26986,8 @@ function _topicWords(sec){
 /* One tile — used for the curated grid AND the grouped lists.
    Tap tile = select scope (Ship 1 setVocabSection); ▶ = hands-free (Ship 1 startTopicHandsFree). */
 function topicTile(id, emoji, name, count, isActive){
+  /* v9.13 — built-in categories render as sticker rows (3c); collections keep tiles. */
+  if(VOCAB_SECTIONS.some(s => s.id === id)) return _stkRow(id, name, count, isActive);
   const noWords = count === 0;
   /* v7.95 — tapping a topic JUMPS straight into its hands-free drill (no
      select-then-render flash). The ▶ corner is the same action, kept as a
@@ -27001,22 +27121,121 @@ function buildChangeCategory(){
   nav('practice');
 }
 window.buildChangeCategory = buildChangeCategory;
+/* v9.13 — sticker system (owner approved the Claude Design screens 14 Sep:
+   1a/1b peel, 2b burst round end, 3c category list, 3d first sticker,
+   3f sticker detail, 3g ring/rim). Every themed category is a sticker.
+   RIM = lifetime tier from the share of its words heard (Paper, Bronze 25%,
+   Silver 50%, Gold 75%, Holo 100%). Outer RING = today only (words heard
+   today, of 30), so the daily ring can never take anything away. A sticker
+   is COLLECTED once 30 of its words (or all, if fewer) have been heard.
+   Art = self-hosted Fluent 3D WebPs in stickers/ (phone emoji render flat). */
+const STK_COLORS = {
+  all:'#9d5cff', mastered:'#fbbf24', greetings:'#fbbf24', phrases:'#60a5fa', food:'#fb923c', numbers:'#a855f7',
+  time:'#f87171', family:'#fb7185', places:'#38bdf8', travel:'#8b7bff', transport:'#facc15', directions:'#2dd4bf',
+  shopping:'#34d399', feelings:'#f472b6', dailylife:'#fdba74', home:'#a3e635', cleaning:'#67e8f9', objects:'#d6a36b',
+  animals:'#34d399', weather:'#2dd4bf', nature:'#4ade80', clothing:'#c084fc', body:'#fb7185', health:'#60a5fa',
+  emergency:'#ef4444', social:'#e879f9', hobbies:'#f97316', sports:'#22c55e', school:'#818cf8', work:'#a78bfa',
+  tech:'#38bdf8', cooking:'#fb923c', kitchen:'#94a3b8', counters:'#eab308', calendar:'#f43f5e', describing:'#f9a8d4',
+  verbpairs:'#3b82f6', onomatope:'#f97316', grammar:'#84cc16'
+};
+const STK_TIER_NAME = {none:'Not started', paper:'Paper', bronze:'Bronze', silver:'Silver', gold:'Gold', holo:'Holo'};
+const STK_TIER_INK = {none:'#8a80a8', paper:'#b9b0d0', bronze:'#e09a5f', silver:'#e6e6f0', gold:'#ffd77a', holo:'#ff9ac6'};
+function _stkIs(id){ const s = VOCAB_SECTIONS.find(x => x.id === id); return !!(s && Array.isArray(s.themes) && s.themes.length); }
+function _stkAll(){ return VOCAB_SECTIONS.filter(x => Array.isArray(x.themes) && x.themes.length); }
+function _stkMix(hex, toWhite, t){
+  const n = parseInt(hex.slice(1), 16), T = toWhite ? 255 : 0;
+  const f = c => Math.round(c + (T - c) * t);
+  return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+}
+function _stkGrad(id){
+  const c = STK_COLORS[id] || '#9d5cff';
+  return `radial-gradient(circle at 34% 24%,${_stkMix(c, 1, .72)},${c} 58%,${_stkMix(c, 0, .28)})`;
+}
+function stkProgress(id){
+  const sec = VOCAB_SECTIONS.find(x => x.id === id);
+  const words = sec ? _topicWords(sec) : [];
+  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const day = t0.getTime();
+  let heard = 0, today = 0;
+  for(const w of words){
+    const at = state.stats[w.id] && state.stats[w.id].attempts;
+    if(at && at.length){ heard++; if(at.some(a => a && a.ts >= day)) today++; }
+  }
+  const total = words.length;
+  const pct = total ? Math.floor(heard * 100 / total) : 0;
+  const tier = heard === 0 ? 'none' : pct >= 100 ? 'holo' : pct >= 75 ? 'gold' : pct >= 50 ? 'silver' : pct >= 25 ? 'bronze' : 'paper';
+  const need = Math.min(30, total);
+  return { total, heard, today, pct, tier, need, collected: total > 0 && heard >= need };
+}
+function _stkArt(id, px, o){
+  o = o || {};
+  const tier = o.tier || 'none';
+  const cls = 'stk' + (o.faded ? ' faded' : '') + (o.anim ? ' ' + o.anim : '');
+  const disc = `<div class="stk-disc" style="background:${o.faded ? 'rgba(255,255,255,.05)' : _stkGrad(id)}"><img src="stickers/${esc(id)}.webp" alt="" draggable="false">${o.shine ? '<i class="stk-shine"></i>' : ''}</div>`;
+  let el = `<div class="stk-rim t-${tier}">${disc}</div>`;
+  if(o.ring != null){
+    const p = Math.max(0, Math.min(100, Math.round(o.ring * 100)));
+    el = `<div class="stk-ring" style="background:conic-gradient(${o.ringColor || '#ff5d9e'} 0 ${p}%,rgba(255,255,255,.14) ${p}% 100%)"><div class="stk-gap">${el}</div></div>`;
+  }
+  return `<div class="${cls}" style="--s:${px}px">${el}</div>`;
+}
+function stkPeel(){
+  state.settings.stkPeel = _catDayKey();
+  state._stkPop = true;
+  save(); render();
+}
+window.stkPeel = stkPeel;
+function stkOpen(id){ state.stkId = id; nav('sticker'); }
+window.stkOpen = stkOpen;
+function stkSurprise(){
+  const pool = _catDayPool();
+  if(!pool.length) return;
+  startTopicHandsFree(pool[Math.floor(Math.random() * pool.length)].id);
+}
+window.stkSurprise = stkSurprise;
+function stkShare(id){
+  try{
+    const sec = VOCAB_SECTIONS.find(x => x.id === id); const p = stkProgress(id);
+    navigator.share({ title:'WordStick', text:`My ${sec.name} sticker on WordStick: ${STK_TIER_NAME[p.tier]}, ${p.pct}% of the words heard.`, url: location.origin + location.pathname }).catch(() => {});
+  }catch(e){}
+}
+window.stkShare = stkShare;
+function _stkFirstId(){
+  for(const id of ROAD_ORDER){ if(_stkIs(id) && !stkProgress(id).collected) return id; }
+  return 'greetings';
+}
+
 function _catDayCard(){
-  /* v9.12 — owner: "not as a second option, as THE option, make it a fun
-     thing". The category of the day IS the Home hero: big bobbing emoji,
-     one Let's go, dice shuffle that spins the new pick in. */
+  /* v9.12 — the category of the day IS the Home hero. v9.13 — it starts the
+     day as a mystery sticker (1a); one tap peels it (1b). The ring round the
+     revealed sticker is today's words, the rim its lifetime tier (3g). */
   try{
     const c = catOfDay();
     if(!c) return '';
+    if(state.settings.stkPeel !== _catDayKey()){
+      return `
+    <div class="hv9-hero cd-hero stk-hero">
+      <div class="hv9-eyebrow">✨ CATEGORY OF THE DAY</div>
+      <div class="stk-peelrow">
+        <button class="stk-mystery" onclick="stkPeel()" aria-label="Peel today's sticker"><span>?</span><i></i></button>
+        <div class="stk-note">tap to peel<br>today's sticker ↖</div>
+      </div>
+      <div class="hv9-meta" style="margin-top:16px">A new sticker every day · 30 words at a time</div>
+    </div>`;
+    }
     const n = _topicWords(c).length;
     const spin = !!state._cdSpin; state._cdSpin = false;
+    const pop = !!state._stkPop; state._stkPop = false;
+    const p = stkProgress(c.id);
+    const ring = Math.min(1, p.today / Math.max(1, p.need));
+    const chip = p.tier === 'none' ? 'NEW STICKER' : `${STK_TIER_NAME[p.tier].toUpperCase()} · ${p.pct}% HEARD`;
     return `
-    <div class="hv9-hero cd-hero${spin ? ' spin' : ''}">
-      <div class="cd-wm" aria-hidden="true">${esc(c.emoji || '')}</div>
+    <div class="hv9-hero cd-hero stk-hero${spin ? ' spin' : ''}">
       <div class="hv9-eyebrow">✨ CATEGORY OF THE DAY</div>
-      <div class="cd-emoji">${esc(c.emoji || '')}</div>
+      <button class="stk-center" onclick="stkOpen('${jsEsc(c.id)}')" aria-label="Open the ${esc(c.name)} sticker">${_stkArt(c.id, 188, { tier:p.tier, ring, shine:true, anim: pop ? 'pop' : (spin ? 'spin' : 'float') })}</button>
       <div class="hv9-title cd-name">${esc(c.name)}</div>
       <div class="hv9-meta">${n} words · hands-free · 30 at a time</div>
+      <div><span class="stk-chip t-${p.tier}">${chip}${p.today ? ` · ${p.today} TODAY` : ''}</span></div>
       <button class="h8-hero-cta" style="margin-top:16px" onclick="startTopicHandsFree('${jsEsc(c.id)}')">▶ Let's go</button>
       <div class="cd-links">
         <button class="cd-link" onclick="catOfDayShuffle()">🎲 Shuffle</button>
@@ -27026,6 +27245,150 @@ function _catDayCard(){
       </div>
     </div>`;
   }catch(e){ return ''; }
+}
+
+/* Home strip under the hero: the stickers collected so far → the category list. */
+function _stkAlbumStrip(){
+  try{
+    const all = _stkAll();
+    const got = all.map(s => ({ s, p: stkProgress(s.id) })).filter(x => x.p.collected);
+    let stack, line;
+    if(got.length){
+      const order = state.settings.stkGot || {};
+      got.sort((a, b) => String(order[b.s.id] || '').localeCompare(String(order[a.s.id] || '')));
+      stack = got.slice(0, 3).map(x => _stkArt(x.s.id, 46, { tier:x.p.tier })).join('');
+      line = `${got.length} of ${all.length} collected`;
+    } else {
+      const c = catOfDay();
+      stack = c ? _stkArt(c.id, 46, { faded:true }) : '';
+      line = `0 of ${all.length} · hear 30 words to earn one`;
+    }
+    return `
+      <button class="stk-album" onclick="nav('practice')">
+        <div class="stk-stack">${stack}</div>
+        <div class="stk-album-t"><b>Your stickers</b><span>${line}</span></div>
+        <span class="stk-arr">›</span>
+      </button>`;
+  }catch(e){ return ''; }
+}
+
+/* Practice (3c): today's pick card, one sticker row per category. */
+function _stkTodayPick(){
+  try{
+    const c = catOfDay();
+    if(!c) return '';
+    const p = stkProgress(c.id);
+    return `
+    <div class="stk-pick" onclick="stkOpen('${jsEsc(c.id)}')">
+      ${_stkArt(c.id, 78, { tier:p.tier })}
+      <div class="stk-pick-t"><small>TODAY'S PICK</small><b>${esc(c.name)}</b><span>${p.total} words · ${p.tier === 'none' ? 'new sticker' : STK_TIER_NAME[p.tier] + ' rim'}</span></div>
+      <button class="stk-go" onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(c.id)}')" aria-label="Start hands-free: ${esc(c.name)}">▶</button>
+    </div>`;
+  }catch(e){ return ''; }
+}
+function _stkRow(id, name, count, isActive){
+  const themed = _stkIs(id);
+  const p = themed ? stkProgress(id) : null;
+  const noWords = count === 0;
+  const open = noWords ? '' : (themed ? `stkOpen('${jsEsc(id)}')` : `startTopicHandsFree('${jsEsc(id)}')`);
+  const meta = themed
+    ? (p.tier === 'none' ? `${count} words · not started` : `${count} words · ${STK_TIER_NAME[p.tier]} · ${p.pct}%`)
+    : `${count} words · ${id === 'all' ? 'everything mixed' : 'your best words'}`;
+  const fresh = themed && p.tier === 'none';
+  return `<div class="cat-tile stk-row${isActive ? ' active' : ''}${noWords ? ' empty' : ''}${fresh ? ' fresh' : ''}" data-name="${esc(String(name).toLowerCase())}" ${open ? `onclick="${open}"` : ''}>`
+    + _stkArt(id, 58, { tier: p ? p.tier : 'none', faded: fresh })
+    + `<div class="stk-row-t"><b>${esc(name)}</b><span style="color:${themed ? STK_TIER_INK[p.tier] : '#bdb2da'}">${esc(meta)}</span></div>`
+    + `<button class="stk-go sm" ${noWords ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(id)}')" aria-label="Start hands-free: ${esc(name)}">▶</button>`
+    + `</div>`;
+}
+
+/* Round end (2b) for a category round: the sticker is the screen. */
+function _stkBurst(sec, o){
+  const bm = state.buildMode;
+  const p = stkProgress(sec.id);
+  if(p.collected){
+    state.settings.stkGot = state.settings.stkGot || {};
+    if(!state.settings.stkGot[sec.id]){ state.settings.stkGot[sec.id] = _catDayKey(); bm._stkNew = sec.id; save(); }
+  }
+  const isNew = bm._stkNew === sec.id;
+  const ring = Math.min(1, p.today / Math.max(1, p.need));
+  const eyebrow = isNew ? '+1 STICKER'
+    : p.collected ? `${STK_TIER_NAME[p.tier].toUpperCase()} STICKER`
+    : `${p.heard} OF ${p.need} TO COLLECT`;
+  const streak = (state.streak && state.streak.current) || 0;
+  return `
+    <div class="stk-burst">
+      <div class="stk-rays"></div>
+      <div class="stk-eyebrow">${eyebrow}</div>
+      <h2 class="stk-bh">That’s ${o.n} words</h2>
+      <div class="stk-bsub">Nice one. ${esc(sec.name)} · ${o.mins} min this session</div>
+      <div class="stk-bart">${_stkArt(sec.id, 220, { tier:p.tier, ring, ringColor:'#ffd77a', shine:true, anim: isNew ? 'pop' : 'float' })}<i class="stk-cf a"></i><i class="stk-cf b"></i><i class="stk-cf c"></i><i class="stk-cf d"></i></div>
+      <div class="stk-bpct">${p.pct}% of ${esc(sec.name)} heard</div>
+      <div class="stk-stats">
+        <div><b>${o.n}</b><span>WORDS</span></div><i></i>
+        <div><b>${o.mins}</b><span>MINUTES</span></div><i></i>
+        <div><b>🔥 ${streak}</b><span>STREAK</span></div>
+      </div>
+      <button class="stk-keep" onclick="buildKeepGoing()">▶ Keep going</button>
+      <div class="stk-next">Next: ${o.nextMix ? 'Mix' : `the same ${o.n} again`}</div>
+      <div class="stk-links"><button onclick="buildChangeCategory()">Change category</button><span>·</span><button onclick="buildExit()">Home</button></div>
+    </div>
+    <div class="muted" style="font-size:13.5px;text-align:center;margin:0 8px 14px">Tomorrow morning I’ll ask for them cold. The ones that come out are the ones that stick.</div>
+    ${_buildRatePanel()}
+    ${_trialNudgeCard()}
+    ${_buildRoundRecap(o.ids)}`;
+}
+
+/* Sticker detail (3f) with the ring/rim legend (3g). */
+function renderSticker(){
+  const id = (state.stkId && _stkIs(state.stkId)) ? state.stkId : ((catOfDay() || {}).id || 'greetings');
+  const sec = VOCAB_SECTIONS.find(x => x.id === id);
+  if(!sec){ setTimeout(() => nav('practice'), 0); return ''; }
+  const p = stkProgress(id);
+  const ring = Math.min(1, p.today / Math.max(1, p.need));
+  const rows = _topicWords(sec)
+    .map(w => { const st = state.stats[w.id]; return { w, n: (st && (st.hears || (st.attempts || []).length)) || 0 }; })
+    .sort((a, b) => b.n - a.n)
+    .map(({ w, n }) => `
+      <div class="stk-w"><div class="j">${jpDisplay(w)}</div><div class="e">${esc(w.en)}</div>
+        <div class="n" style="color:${n >= 5 ? '#34d399' : n > 0 ? '#ffb35c' : '#8a80a8'}">${n > 0 ? `heard ${n}×` : 'new'}</div></div>`).join('');
+  const line = p.tier === 'holo' ? `All ${p.total} words heard. Nothing left to unlock — just keep it warm.`
+    : p.collected ? `It's yours. ${p.total - p.heard} more words to go Holo.`
+    : p.heard ? `${p.need - p.heard} more words and it's yours for good.`
+    : `Hear ${p.need} words and it's yours for good.`;
+  const chip = p.tier === 'none' ? 'NOT STARTED' : `${STK_TIER_NAME[p.tier].toUpperCase()} · ${p.pct}% HEARD`;
+  const share = (p.heard && typeof navigator !== 'undefined' && navigator.share) ? `<button class="stk-share" onclick="stkShare('${jsEsc(id)}')">Share this sticker</button>` : '';
+  return `
+    <div class="home-v8 stk-page">
+      <button class="stk-back" onclick="nav('practice')">‹ All categories</button>
+      <div class="stk-center">${_stkArt(id, 176, { tier:p.tier, ring, shine:true, anim:'float' })}</div>
+      <div class="stk-dname">${esc(sec.name)}</div>
+      <div class="stk-chip t-${p.tier}">${chip}</div>
+      <div class="stk-dline">${line}</div>
+      <button class="h8-hero-cta" onclick="startTopicHandsFree('${jsEsc(id)}')">▶ Practice ${esc(sec.name)}</button>
+      ${share}
+      <div class="stk-legend">
+        <div><i style="background:#ff5d9e"></i><span><b style="color:#ff5d9e">Outer ring</b> = today · ${Math.min(p.today, p.need)} of ${p.need} words</span></div>
+        <div><i class="stk-rim t-${p.tier === 'none' ? 'paper' : p.tier}" style="padding:0"></i><span><b style="color:${STK_TIER_INK[p.tier === 'none' ? 'paper' : p.tier]}">Rim</b> = ${p.tier === 'none' ? 'your tier, from Paper up to Holo' : `${STK_TIER_NAME[p.tier]}, yours for good`}</span></div>
+      </div>
+      <div class="stk-words"><div class="stk-wh">YOUR WORDS · ${p.heard} OF ${p.total} HEARD</div>${rows}</div>
+    </div>`;
+}
+function _obfSticker(){
+  /* v9.13 — onboarding 3d: one sticker beat right before the first round. */
+  const id = _stkFirstId();
+  const sec = VOCAB_SECTIONS.find(x => x.id === id) || { name:'Greetings' };
+  const p = stkProgress(id);
+  const inner = `
+    <div style="text-align:center">
+      <div class="stk-eyebrow" style="margin-top:18px">YOUR FIRST STICKER</div>
+      <h1 class="obf-h1" style="font-size:34px;margin-top:10px">Here's your<br>first <em>sticker</em></h1>
+      <div class="obf-sub">Hear ${p.need} ${esc(sec.name)} words — hands-free — and it's yours for good.</div>
+      <div class="stk-bart">${_stkArt(id, 210, { shine:true, anim:'pop' })}</div>
+      <div class="stk-dname" style="margin-top:22px">${esc(sec.name)}</div>
+      <div class="obf-sub" style="margin-top:4px">${p.total} words · about 5 minutes to your first one</div>
+    </div>`;
+  return _obfShell('sticker', 100, inner, `<button class="obf-cta" onclick="obGoto('drill')">▶ Let's go</button>`);
 }
 
 function renderHome(){
@@ -27143,6 +27506,7 @@ function renderHome(){
       ${freeBanner}
       ${resumeChip}
       ${_catDayCard() || heroCard}
+      ${_stkAlbumStrip()}
     </div>`;
 }
 
@@ -27339,7 +27703,10 @@ function obGoto(step){
       step = 'drill';
     }
   }
-  if(step === 'drill'){ startOnboardMicroDrill(); return; }
+  if(step === 'drill'){
+    /* v9.13 — one "here's your first sticker" beat before the first round (3d). */
+    startOnboardMicroDrill(); return;
+  }
   ob.step = step;
   _obLog('step_' + step, {});
   render();
@@ -27479,6 +27846,8 @@ window.obMicDecline = obMicDecline;
    falls back to static ex / a canned kana frame without it. */
 function startOnboardMicroDrill(){
   const ob = state.onboard || {};
+  /* v9.13 — one "here's your first sticker" beat before the first round (3d). Every path in (mic allow/decline, no-mic skip) lands here. */
+  if(state.onboard && !ob.stkShown && !ob.preview){ ob.stkShown = true; ob.step = 'sticker'; _obLog('step_sticker', {}); state.screen = 'onboard'; render(); return; }
   /* Mark onboarded BEFORE launching — bailing out of the drill must land on
      normal Home, never back in a half-run onboarding pass. */
   state.settings.onboard.done = true;
@@ -27661,7 +28030,7 @@ function renderOnboard(){
   const ob = _obEnsure();
   const body = ({
     w1:_obfW1, w2:_obfW2, w3:_obfW3, w4:_obfW4, w5:_obfW5, w6:_obfW6,
-    mic:_obfMic
+    mic:_obfMic, sticker:_obfSticker
   }[ob.step] || _obfW1)();
   return body;
 }
@@ -28126,7 +28495,7 @@ function renderPractice(){
       <button class="cont-go" ${_contNo ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(_sec.id)}')" aria-label="Start hands-free: ${esc(_sec.name)}">▶</button>
     </div>`;
   /* Curated quick-pick grid (8) + grouped full list (all searchable) */
-  const _curated = curatedTopicTiles(active, _sec.id);
+  const _curated = curatedTopicTiles(active, (catOfDay() || {}).id);
   const _quick = _curated.slice(0, 8);
   const _restTopics = _curated.slice(8);
   const _vSec = state.settings.vocabSection || 'all';
@@ -28134,7 +28503,7 @@ function renderPractice(){
   const restGrid = _restTopics.map(r => topicTile(r.id, r.emoji, r.name, r.count, _vSec === r.id)).join('');
   const _userCols = getCollections();
   const colGrid = _userCols.map(c => topicTile(c.id, c.emoji, c.name, (c.wordIds || []).length, _vSec === c.id)).join('');
-  const groupHtml = (label, grid) => grid ? `<div class="cat-group"><div class="cat-group-label">${esc(label)}</div><div class="cat-grid">${grid}</div></div>` : '';
+  const groupHtml = (label, grid, list) => grid ? `<div class="cat-group"><div class="cat-group-label">${esc(label)}</div><div class="${list ? 'stk-list' : 'cat-grid'}">${grid}</div></div>` : '';
   /* v9.10 — Sentences, Verb forms and Japanese letters moved here from Home
      (owner 13 Sep: the front is the drill; these live with the rest of practice). */
   const _pmTile = (onclick, glyph, grad, glow, name, sub, jp) => `<button onclick="${onclick}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 6px 11px;border-radius:16px;background:var(--card);border:1px solid var(--border);font-family:inherit;color:var(--text);cursor:pointer;text-align:center">
@@ -28149,8 +28518,8 @@ function renderPractice(){
       ${_pmTile("startKanaBlitz('all')", 'あ', 'linear-gradient(150deg,#9d5cff,#7b3ff2)', 'rgba(123,63,242,.45)', 'Letters', 'Read hiragana &amp; katakana', true)}
     </div></div>`;
   const results = `<div id="topicResults">`
-    + groupHtml('Quick picks', quickGrid)
-    + groupHtml('Your topics', restGrid)
+    + groupHtml('Start here', quickGrid, true)
+    + groupHtml('More stickers', restGrid, true)
     + groupHtml('Collections', colGrid)
     + `</div>`;
 
@@ -28179,11 +28548,13 @@ function renderPractice(){
     <div class="home-v8">
       ${topBar}
       ${pathStrip}
+      <div class="stk-ph"><b>Pick a sticker</b><span>${_stkAll().length} categories · 30 words a round</span></div>
       ${searchBox}
       ${coverageMeterHtml}
-      ${contCard}
+      ${_stkTodayPick()}
       ${moreWays}
       ${results}
+      <button class="stk-surprise" onclick="stkSurprise()">🎲 Surprise me</button>
       ${statsRow}
     </div>
   `;
