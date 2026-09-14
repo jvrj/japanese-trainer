@@ -878,7 +878,7 @@ body[data-screen="buildMode"] .bottom-nav{display:none !important}
 body[data-screen="buildMode"] .app{padding-bottom:12px}
 /* v9.21 — full-screen drill card (Claude Design 8a–8e) */
 .bm2{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - max(10px,env(safe-area-inset-top)) - 14px);color:#f5f2ff;font-family:Nunito,system-ui,sans-serif;overflow-x:clip}
-.bm2>*:not(.bm2-glow):not(.bm2-ghost){position:relative;z-index:1}
+.bm2>*:not(.bm2-glow):not(.bm2-ghost):not(.bm2-tint){position:relative;z-index:1}
 .bm2-glow{position:absolute;left:50%;top:110px;width:520px;height:520px;max-width:150vw;transform:translateX(-50%);background:radial-gradient(circle,rgba(157,92,255,.22),transparent 62%);pointer-events:none;z-index:0}
 .bm2.say .bm2-glow{background:radial-gradient(circle,rgba(255,93,158,.18),transparent 62%)}
 .bm2.last .bm2-glow{background:radial-gradient(circle,rgba(251,191,36,.16),transparent 62%)}
@@ -938,6 +938,21 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .bm2-orb i{width:6px;border-radius:99px;background:#fff}
 .bm2-chip{margin-top:24px;padding:12px 20px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);font-size:14px;font-weight:800;color:#cfc7e6}
 .bm2-hint{text-align:center;font-size:14px;font-weight:800;color:#8a80a8}
+/* v9.23 — the answer moment gets colour: a warm purple-pink bloom behind the word */
+.bm2-tint{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0;background:radial-gradient(120% 68% at 50% 34%,rgba(255,93,158,.30),rgba(157,92,255,.22) 42%,rgba(157,92,255,.06) 70%,transparent 88%);transition:opacity .35s ease}
+.bm2.last .bm2-tint{background:radial-gradient(120% 68% at 50% 34%,rgba(251,191,36,.26),rgba(255,93,158,.20) 42%,rgba(157,92,255,.06) 70%,transparent 88%)}
+.bm2.rev .bm2-tint{opacity:1}
+.bm2.bloom .bm2-tint{animation:bm2Bloom .8s cubic-bezier(.2,.8,.3,1) both}
+.bm2.rev .bm2-jp{text-shadow:0 0 34px rgba(255,93,158,.38)}
+.bm2.rev .bm2-mean{color:#fff}
+.bm2.bloom .bm2-jp{animation:bm2Pop .5s cubic-bezier(.2,1.3,.4,1) both}
+.bm2-mark{text-align:center}
+.bm2-mark>div{margin-top:0!important}
+.bm2-mark button{font-size:11.5px!important;color:#6f6690!important;font-weight:700;letter-spacing:.02em}
+@keyframes bm2Bloom{0%{opacity:0;transform:scale(.9)}55%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes bm2Pop{0%{transform:scale(.94)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.bm2.bloom .bm2-tint,.bm2.bloom .bm2-jp{animation:none}}
+.stk-okmark{width:84px;height:84px;margin:2px auto 16px;border-radius:50%;display:grid;place-items:center;font-size:40px;font-weight:900;color:#fff;background:linear-gradient(150deg,#9d5cff,#ff5d9e);box-shadow:0 0 0 14px rgba(157,92,255,.12),0 14px 36px rgba(157,92,255,.4)}
 @keyframes bm2Wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
 @keyframes bm2In{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.bm2-wave.run i,.bm2-reveal{animation:none}}
@@ -1242,7 +1257,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.22';
+const APP_VERSION = '9.23';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -24540,10 +24555,15 @@ function _bm2Step(b, step, total, paused, auto){
   const cta = b.revealed
     ? `<button class="bm2-cta" onclick="buildNextStep()">Got it</button>`
     : `<button class="bm2-cta" onclick="buildRevealStep()">Got it</button>`;
-  return `<div class="bm2${rev ? '' : ' say'}${last ? ' last' : ''}"><div class="bm2-glow"></div>
+  /* v9.23 — bloom plays once per reveal; later re-renders of the same card keep the colour without replaying it. */
+  if(!b.revealed && b._bloomKey === b.stepIdx) b._bloomKey = null;
+  const bloom = b.revealed && b._bloomKey !== b.stepIdx;
+  if(b.revealed) b._bloomKey = b.stepIdx;
+  return `<div class="bm2${rev ? '' : ' say'}${last ? ' last' : ''}${b.revealed ? ' rev' : ''}${bloom ? ' bloom' : ''}"><div class="bm2-tint"></div><div class="bm2-glow"></div>
     ${_bm2Head(b, total, false)}
     <div class="bm2-sub"><button class="bm2-en" onclick="buildToggleListenSteps()" aria-pressed="${on}" title="On: newer words play in Japanese and you say the English. Off: every card shows English and you say the Japanese.">${on ? '👂' : '🗣'}<span>${on ? 'EN' : 'JP'}</span><i class="${on ? 'on' : ''}"><b></b></i></button></div>
-    <div class="bm2-stage">${_coachCaptionHTML(b, step)}${card}${extra}${_bmGradeHtml()}</div>
+    <div class="bm2-stage">${_coachCaptionHTML(b, step)}${card}${extra}</div>
+    <div class="bm2-mark">${_bmGradeHtml()}</div>
     <div class="bm2-ctl">
       <button class="bm2-circ" onclick="buildPrevStep()" ${b.stepIdx === 0 ? 'disabled' : ''} aria-label="Previous word">‹</button>
       <button class="bm2-circ" onclick="buildReplayAudio()" aria-label="Hear it again">↺</button>
@@ -25773,21 +25793,20 @@ function renderBuildModeComplete(){
     const _nextMix = (_s.plays % 2) === 1;
     /* v9.13 — a finished category round ends on its sticker (2b). */
     if(!_stopped && _sec && _stkIs(_sec.id)) return _stkBurst(_sec, { n: spamN, mins: _mins, nextMix: _nextMix, ids: _s.ids });
+    /* v9.23 — same tidy layout as the sticker round end (7f), without the sticker. */
+    const _nm = _firstName();
     return `
-    <div class="card" style="text-align:center;padding:30px 20px">
-      <div style="font-size:48px;color:var(--green);margin-bottom:8px">✓</div>
-      <h2 style="margin:0 0 8px 0">${_stopped ? `Nice session · ${_mins} minute${_mins === 1 ? '' : 's'}` : `That’s ${spamN} words`}</h2>
-      ${_stopped ? '' : `<div style="font-size:13px;font-weight:700;color:var(--faint);margin:-2px 0 12px">${_secLine}${_mins} min this session</div>`}
-      <div class="muted" style="font-size:14px;margin-bottom:20px">Tomorrow morning I’ll ask for them cold. The ones that come out are the ones that stick.</div>
-      ${_buildRoundRecap(_s.ids)}
-      ${_buildRatePanel()}
-      ${_trialNudgeCard()}
-      <button class="btn btn-primary" style="width:100%" onclick="buildKeepGoing()">▶ Keep going</button>
-      <div class="muted" style="font-size:12px;margin:6px 0 12px">Next: ${_nextMix ? 'Mix' : `the same ${spamN} again`}</div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildChangeCategory()">🔀 Change category</button>
-      <div style="height:8px"></div>
-      <button class="btn btn-secondary" style="width:100%" onclick="buildExit()">Home</button>
-    </div>`;
+    <div class="stk-burst stk-b2 stk-plain">
+      <div class="stk-okmark" aria-hidden="true">✓</div>
+      <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
+      <div class="stk-bsub">${_secLine}${_mins} min this session</div>
+      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>
+      <button class="stk-keep" onclick="buildKeepGoing()">▶ Keep going</button>
+      <div class="stk-next">Next: ${_nextMix ? 'Mix' : `the same ${spamN} again`}</div>
+      <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
+    </div>
+    ${_buildRatePanel()}
+    ${_trialNudgeCard()}`;
   }
   return `
     <div class="card" style="text-align:center;padding:30px 20px">
