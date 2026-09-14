@@ -8,7 +8,7 @@ const STRIPE_API = 'https://api.stripe.com'
 export async function stripeFetch(
   path: string,
   params?: Record<string, string>,
-  method: 'POST' | 'GET' = params ? 'POST' : 'GET',
+  method: 'POST' | 'GET' | 'DELETE' = params ? 'POST' : 'GET',
 ): Promise<{ status: number; body: any }> {
   const key = Deno.env.get('STRIPE_SECRET_KEY') ?? ''
   const init: RequestInit = {

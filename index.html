@@ -1100,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.14';
+const APP_VERSION = '9.15';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -28870,6 +28870,90 @@ function clearNextTimer(){ if(_nextTimer){ clearTimeout(_nextTimer); _nextTimer 
    ownerMode:true on devices that hold a relay secret / API key (the owner's
    own phones), so nothing moves for him; a customer install starts slim.
    ========================================================================= */
+/* v9.15 — Settings rebuilt for the app as it is now (owner call 14 Sep):
+   Account (plan status, manage subscription, sign out), Learning (romaji),
+   Help (contact, privacy, terms), Delete account. Topics, replay intro,
+   listening steps, add-a-word, backup/restore and force-update left the
+   customer page: progress syncs to the account, stickers pick topics, and
+   the app updates itself. */
+const PORTAL_URL = SUPA_URL + '/functions/v1/portal';
+const DELETE_ACCOUNT_URL = SUPA_URL + '/functions/v1/delete-account';
+const SUPPORT_EMAIL = 'juliuspireh@gmail.com';
+let _setUi = { plan:null, planFor:null, planAt:0, planBusy:false, busy:'', msg:'', delAsk:false };
+async function _settingsPlanLoad(){
+  const u = _authState && _authState.user;
+  if(!u || _setUi.planBusy) return;
+  _setUi.planBusy = true; _setUi.planFor = u.id; _setUi.planAt = Date.now();
+  try{
+    const c = authClient();
+    if(c && typeof c.from === 'function'){
+      const { data, error } = await c.from('entitlements').select('active, product, expires_at, stripe_customer_id').eq('user_id', u.id).maybeSingle();
+      if(!error) _setUi.plan = data || {};
+    }
+  }catch(e){}
+  _setUi.planBusy = false;
+  if(state.screen === 'settings') render();
+}
+function _settingsPlanLine(){
+  const u = _authState.user;
+  if(_entOwnerAccount(u)) return { line:'Owner account · full access', manage:false, plans:false };
+  const p = _setUi.plan;
+  const manage = !!(p && p.stripe_customer_id);
+  if(p && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())){
+    const yearly = /year/i.test(p.product || '');
+    const until = p.expires_at ? new Date(p.expires_at).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) : '';
+    return { line:`${yearly ? 'Yearly' : 'Monthly'} plan${until ? ' · paid through ' + until : ''}`, manage, plans:false };
+  }
+  if(_entTrialGood(u)){
+    const left = Math.max(1, Math.ceil((new Date(u.created_at).getTime() + ENT_FREE_TRIAL_MS - Date.now()) / 86400000));
+    return { line:`Free trial · ${left} day${left === 1 ? '' : 's'} left`, manage, plans:true };
+  }
+  return { line: p ? 'Free plan' : 'Checking your plan…', manage, plans:true };
+}
+async function _settingsPost(url, body){
+  const token = await authToken();
+  if(!token) return { status:401, body:{} };
+  const res = await fetch(url, { method:'POST', headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + token }, body: JSON.stringify(body || {}) });
+  let j = {}; try{ j = await res.json(); }catch(e){}
+  return { status:res.status, body:j };
+}
+async function settingsManageSub(){
+  if(_setUi.busy) return;
+  _setUi.busy = 'portal'; _setUi.msg = ''; render();
+  try{
+    const r = await _settingsPost(PORTAL_URL, {});
+    if(r.status === 401){ _setUi.busy = ''; nav('auth'); return; }
+    let stripe = false; try{ stripe = new URL(r.body.url).origin === 'https://billing.stripe.com'; }catch(e){}
+    if(r.status === 200 && stripe){ window.location.href = r.body.url; return; }
+    _setUi.msg = r.status === 404 ? "There's no subscription on this account yet." : "Couldn't open your subscription — try again.";
+  }catch(e){ _setUi.msg = "Couldn't reach the subscription page — try again."; }
+  _setUi.busy = ''; render();
+}
+window.settingsManageSub = settingsManageSub;
+function settingsDeleteAsk(on){ if(_setUi.busy) return; _setUi.delAsk = !!on; _setUi.msg = ''; render(); }
+window.settingsDeleteAsk = settingsDeleteAsk;
+async function settingsDeleteAccount(){
+  if(_setUi.busy) return;
+  _setUi.busy = 'delete'; _setUi.msg = ''; render();
+  try{
+    const r = await _settingsPost(DELETE_ACCOUNT_URL, { confirm:'DELETE' });
+    if(r.status === 401){ _setUi.busy = ''; nav('auth'); return; }
+    if(r.status === 200){
+      try{ await authSignOut(); }catch(e){}
+      /* Empty this device's copy too, so the deleted account's progress can't
+         be adopted into the next account signed in here. */
+      try{ _syncApplyCloud({}); save(); }catch(e){}
+      _setUi = { plan:null, planFor:null, planAt:0, planBusy:false, busy:'', msg:'', delAsk:false };
+      try{ showToast('Your account has been deleted.'); }catch(e){}
+      nav('auth');
+      return;
+    }
+    _setUi.msg = "Couldn't delete your account just now — nothing was changed. Try again, or email us.";
+  }catch(e){ _setUi.msg = "Couldn't reach the server — nothing was changed. Try again."; }
+  _setUi.busy = ''; render();
+}
+window.settingsDeleteAccount = settingsDeleteAccount;
+
 function renderSettings(){
   const s = state.settings;
   if(s.ownerMode === true){
@@ -28888,70 +28972,56 @@ function renderSettings(){
       ${_renderSettingsOwner()}`;
   }
 
+  const chk = (key, on) => `<input type="checkbox" ${on?'checked':''} onchange="toggleSetting('${key}')">`;
   const row = (title, sub, ctrl) => `
     <label class="word-row"><div class="word-main"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</label>`;
-  const chk = (key, on) => `<input type="checkbox" ${on?'checked':''} onchange="toggleSetting('${key}')">`;
+  /* Rows holding a button are plain divs: a <label> forwards a tap anywhere on
+     the row to the first button inside it. */
+  const brow = (title, sub, ctrl) => `
+    <div class="word-row"><div class="word-main"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</div>`;
+  const busy = !!_setUi.busy;
+  const btn = (label, onclick, key) => `<button class="btn btn-secondary" style="font-size:12px;white-space:nowrap" onclick="${onclick}" ${busy ? 'disabled' : ''}>${_setUi.busy === key ? 'One moment…' : label}</button>`;
+  const link = (label, href) => `<a class="btn btn-secondary" style="font-size:12px;white-space:nowrap;text-decoration:none" href="${href}"${href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
 
-  /* v9.01 — the "Hands-free mode" row is GONE from the customer page (owner
-     call 2026-09-12): drills are already hands-free by default, and the STT
-     mic mode this toggled pauses background music. Owner-only now. */
-
-  /* Topics — advisory bias only (settings.topicBias orders which UNSEEN words
-     come first; it NEVER filters the deck — the module-lock empty-pool bug
-     class stays impossible). Chips mirror the onboarding "why" wiring. */
-  const bias = Array.isArray(s.topicBias) ? s.topicBias : [];
-  const topicSecs = VOCAB_SECTIONS.filter(x => x.themes && x.themes.length);
-  const topicChips = topicSecs.map(x => {
-    const on = x.themes.some(t => bias.includes(t));
-    return `<button class="tag ${on?'active':''}" onclick="custToggleTopic('${jsEsc(x.id)}')">${x.emoji} ${esc(x.name)}</button>`;
-  }).join('');
+  const u = _authState.user;
+  let account;
+  if(u){
+    if(!_setUi.planBusy && (_setUi.planFor !== u.id || Date.now() - _setUi.planAt > 60000)) setTimeout(_settingsPlanLoad, 0);
+    const pl = _settingsPlanLine();
+    account = brow('👤 ' + esc(u.email || 'Signed in'), 'Signed in — your progress is saved to this account.', btn('Sign out', 'authDoSignOut()', 'signout'))
+      + brow('🎟️ Your plan', esc(pl.line), pl.manage ? btn('Manage', 'settingsManageSub()', 'portal') : (pl.plans ? btn('See plans', "nav('paywall')", 'plans') : ''));
+  } else {
+    account = brow('👤 Sign in', 'Sign in to keep your progress on every device.', btn('Sign in', "nav('auth')", 'signin'));
+  }
+  const msg = _setUi.msg ? `<div style="text-align:center;font-size:13px;margin:10px 4px 0;color:#fca5a5">${esc(_setUi.msg)}</div>` : '';
+  const del = !u ? '' : _setUi.delAsk ? `
+    <div class="card" style="margin-top:22px;border:1px solid rgba(248,113,113,.45);background:rgba(248,113,113,.07)">
+      <div class="word-jp">Delete your account?</div>
+      <div class="word-en" style="margin-top:4px">This deletes your account and all your progress on every device, and cancels any subscription. It can't be undone.</div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary" style="flex:1" onclick="settingsDeleteAsk(false)" ${busy ? 'disabled' : ''}>Keep my account</button>
+        <button class="btn" style="flex:1;background:#dc2626;color:#fff;border:none" onclick="settingsDeleteAccount()" ${busy ? 'disabled' : ''}>${_setUi.busy === 'delete' ? 'Deleting…' : 'Yes, delete it'}</button>
+      </div>
+    </div>` : `<button style="display:block;margin:22px auto 0;background:none;border:none;font-family:inherit;font-size:13.5px;font-weight:700;color:#f87171;cursor:pointer;padding:8px" onclick="settingsDeleteAsk(true)">Delete my account</button>`;
 
   return `
     <div class="settings-v2">
+    <div class="h8-section" style="margin:16px 4px 8px">Account</div>
+    <div class="card">${account}</div>
+    ${msg}
+
     <div class="h8-section" style="margin:16px 4px 8px">Learning</div>
     <div class="card">
-      ${row('👂 Listening steps', 'Newer words play the Japanese and you say the English — trains understanding, the other half of conversation.', chk('buildListenSteps', s.buildListenSteps!==false))}
-      ${row('🔤 Show romaji', 'English letters under the Japanese — training wheels while the kana sink in. Turn off when you can read without them.', chk('hideRomaji', s.hideRomaji !== true))}
+      ${row('🔤 Show romaji', 'English letters under the Japanese. Turn it off once you can read without them.', chk('hideRomaji', s.hideRomaji !== true))}
     </div>
 
-    <div class="h8-section" style="margin:16px 4px 8px">My words</div>
+    <div class="h8-section" style="margin:16px 4px 8px">Help</div>
     <div class="card">
-      <details>
-        <summary style="cursor:pointer;list-style:none"><div class="word-row" style="border:none"><div class="word-main"><div class="word-jp">Topics</div><div class="word-en">${bias.length ? 'Your picks come up first — nothing is ever locked out.' : 'Pick what interests you — those words come up first.'}</div></div><span class="muted">›</span></div></summary>
-        <div class="tags" style="margin-top:8px">${topicChips}</div>
-      </details>
+      ${brow('✉️ Contact us', 'Questions, problems or refunds — we reply by email.', link('Email', `mailto:${SUPPORT_EMAIL}?subject=WordStick%20help`))}
+      ${brow('🔒 Privacy policy', '', link('Open', 'https://wordstick.app/privacy.html'))}
+      ${brow('📄 Terms', '', link('Open', 'https://wordstick.app/terms.html'))}
     </div>
-    <div class="card">
-      <details>
-        <summary style="cursor:pointer;list-style:none"><div class="word-row" style="border:none"><div class="word-main"><div class="word-jp">Add your own word</div><div class="word-en">Anything you want to remember — it joins your drills.</div></div><span class="muted">›</span></div></summary>
-        <div style="margin-top:8px">
-          <input class="input" id="addJP" placeholder="the Japanese word (e.g. たべる)">
-          <div class="spacer"></div>
-          <input class="input" id="addEN" placeholder="what it means in English">
-          <div class="spacer"></div>
-          <button class="btn btn-primary" onclick="addWord()">Add word</button>
-        </div>
-      </details>
-    </div>
-
-    <div class="h8-section" style="margin:16px 4px 8px">Account</div>
-    <div class="card">
-      ${_authState.user
-        ? row('👤 ' + esc(_authState.user.email || 'Signed in'), 'Signed in', `<button class="btn btn-secondary" style="font-size:12px" onclick="authDoSignOut()">Sign out</button>`)
-        : row('👤 Sign in', 'Create an account or sign in with a link — no password needed.', `<button class="btn btn-secondary" style="font-size:12px" onclick="nav('auth')">Sign in</button>`)}
-      ${_authState.user && (state._entUnlocked !== true || state._entReason === 'trial')
-        ? row('🎟️ Plans', 'See what full speed costs. Cancel anytime.', `<button class="btn btn-secondary" style="font-size:12px" onclick="nav('paywall')">View</button>`)
-        : ''}
-    </div>
-
-    <div class="h8-section" style="margin:16px 4px 8px">App</div>
-    <div class="card">
-      ${row('▶ Replay the intro', 'See the welcome tour again — nothing about your progress changes.', `<button class="btn btn-secondary" style="font-size:12px" onclick="obReplayIntro()">Replay</button>`)}
-      ${row('⬇ Back up my progress', 'Saves a file you can bring to a new phone.', `<button class="btn btn-secondary" style="font-size:12px" onclick="exportJSON()">Save</button>`)}
-      ${row('⬆ Restore a backup', 'Load a backup file you saved earlier.', `<button class="btn btn-secondary" style="font-size:12px" onclick="importJSON()">Load</button>`)}
-      <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
-      ${row('🔄 Get the latest version', 'If the app feels stale, this fetches the newest version. Your progress is untouched.', `<button class="btn btn-secondary" style="font-size:12px" onclick="forceUpdate()">Update</button>`)}
-    </div>
+    ${del}
     <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 6px;user-select:none;cursor:default" onclick="_verTap()">WordStick · version ${APP_VERSION}</div>
     </div>`;
 }
