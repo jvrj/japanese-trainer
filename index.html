@@ -919,7 +919,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 .stk-ring{width:100%;height:100%;border-radius:50%;padding:calc(var(--s)*.05);box-sizing:border-box}
 .stk-gap{width:100%;height:100%;border-radius:50%;background:#1d1235;padding:calc(var(--s)*.016);box-sizing:border-box}
 .stk-rim{width:100%;height:100%;border-radius:50%;box-sizing:border-box;padding:calc(var(--s)*.045)}
-.stk-rim.t-none{padding:0}
+.stk-rim.t-none{padding:calc(var(--s)*.04);background:repeating-conic-gradient(rgba(255,255,255,.34) 0 7deg,transparent 7deg 14deg)}
 .stk-rim.t-paper{background:linear-gradient(140deg,#8e86a6,#4a4260)}
 .stk-rim.t-bronze{background:linear-gradient(140deg,#f0aa6c,#a35a24)}
 .stk-rim.t-silver{background:linear-gradient(140deg,#f3f3fa,#a9a9bd)}
@@ -1100,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.13';
+const APP_VERSION = '9.14';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -27260,7 +27260,7 @@ function _stkAlbumStrip(){
       line = `${got.length} of ${all.length} collected`;
     } else {
       const c = catOfDay();
-      stack = c ? _stkArt(c.id, 46, { faded:true }) : '';
+      stack = c ? _stkArt(c.id, 46) : '';
       line = `0 of ${all.length} · hear 30 words to earn one`;
     }
     return `
@@ -27294,9 +27294,8 @@ function _stkRow(id, name, count, isActive){
   const meta = themed
     ? (p.tier === 'none' ? `${count} words · not started` : `${count} words · ${STK_TIER_NAME[p.tier]} · ${p.pct}%`)
     : `${count} words · ${id === 'all' ? 'everything mixed' : 'your best words'}`;
-  const fresh = themed && p.tier === 'none';
-  return `<div class="cat-tile stk-row${isActive ? ' active' : ''}${noWords ? ' empty' : ''}${fresh ? ' fresh' : ''}" data-name="${esc(String(name).toLowerCase())}" ${open ? `onclick="${open}"` : ''}>`
-    + _stkArt(id, 58, { tier: p ? p.tier : 'none', faded: fresh })
+  return `<div class="cat-tile stk-row${isActive ? ' active' : ''}${noWords ? ' empty' : ''}" data-name="${esc(String(name).toLowerCase())}" ${open ? `onclick="${open}"` : ''}>`
+    + _stkArt(id, 58, { tier: p ? p.tier : 'none' })
     + `<div class="stk-row-t"><b>${esc(name)}</b><span style="color:${themed ? STK_TIER_INK[p.tier] : '#bdb2da'}">${esc(meta)}</span></div>`
     + `<button class="stk-go sm" ${noWords ? 'disabled' : ''} onclick="event.stopPropagation();startTopicHandsFree('${jsEsc(id)}')" aria-label="Start hands-free: ${esc(name)}">▶</button>`
     + `</div>`;
