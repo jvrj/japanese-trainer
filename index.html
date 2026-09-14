@@ -899,7 +899,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .bm2-en i{width:26px;height:16px;border-radius:99px;background:rgba(255,255,255,.18);padding:2px;box-sizing:border-box;display:flex}
 .bm2-en i.on{background:linear-gradient(90deg,#9d5cff,#ff5d9e);justify-content:flex-end}
 .bm2-en b{width:12px;height:12px;border-radius:50%;background:#fff}
-.bm2-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 6px}
+.bm2-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px 6px 18vh}
 .bm2-tag{padding:6px 14px;border-radius:99px;background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.42);font-size:11.5px;font-weight:900;letter-spacing:.16em;color:#fbbf24;margin-bottom:24px}
 .bm2-jp{font-family:'Noto Sans JP',Nunito,sans-serif;font-weight:900;line-height:1.2;overflow-wrap:anywhere;max-width:100%}
 .bm2-jp rt{font-size:.26em;font-weight:700;color:#a99fc7;letter-spacing:.2em}
@@ -1242,7 +1242,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.21';
+const APP_VERSION = '9.22';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -24526,17 +24526,19 @@ function _bm2Step(b, step, total, paused, auto){
   if(rev){
     if(step.fresh){
       const showMean = b.revealed || b._meanOpen === b.stepIdx;
-      card = `${tag}${big(84)}${r}${live}${showMean ? `<div class="bm2-mean">“${esc(w.en)}”</div>` : `<button class="bm2-peek" onclick="buildMeanToggle()">Tap to see the meaning</button>`}`;
+      card = `${tag}${big(84)}${r}${showMean ? `<div class="bm2-mean">“${esc(w.en)}”</div>` : `<button class="bm2-peek" onclick="buildMeanToggle()">Tap to see the meaning</button>`}${live}`;
     } else {
-      card = `${tag || '<div class="bm2-q bm2-qtop">WHAT DOES IT MEAN?</div>'}${big(84)}${r}${live}${b.revealed ? `<div class="bm2-reveal"><div class="bm2-rl">IT MEANS</div><div class="bm2-qen" style="font-size:30px;margin-top:8px">“${esc(w.en)}”</div></div>` : ''}`;
+      card = `${tag || (b.revealed ? '' : '<div class="bm2-q bm2-qtop">WHAT DOES IT MEAN?</div>')}${big(84)}${r}${b.revealed ? `<div class="bm2-mean">“${esc(w.en)}”</div>` : ''}${live}`;
     }
   } else {
-    card = `${tag}<div class="bm2-q">HOW DO YOU SAY</div><div class="bm2-qen">“${esc(w.en)}”</div>${live}${b.revealed ? `<div class="bm2-reveal"><div class="bm2-rl">IT WAS</div>${big(76)}${r}</div>` : ''}`;
+    card = b.revealed
+      ? `${tag}${big(84)}${r}<div class="bm2-mean">“${esc(w.en)}”</div>${live}`
+      : `${tag}<div class="bm2-q">HOW DO YOU SAY</div><div class="bm2-qen">“${esc(w.en)}”</div>${live}`;
   }
   const extra = b.revealed ? `${_buildRenderHeard()}${w.note ? `<div class="build-nuance"><b>${jpDisplay(w)}</b> — ${esc(w.note)}</div>` : ''}` : '';
   const on = state.settings.buildListenSteps !== false;
   const cta = b.revealed
-    ? `<button class="bm2-cta${last ? ' gold' : ''}" onclick="buildNextStep()">${last ? 'Finish the round' : 'Got it'}</button>`
+    ? `<button class="bm2-cta" onclick="buildNextStep()">Got it</button>`
     : `<button class="bm2-cta" onclick="buildRevealStep()">Got it</button>`;
   return `<div class="bm2${rev ? '' : ' say'}${last ? ' last' : ''}"><div class="bm2-glow"></div>
     ${_bm2Head(b, total, false)}
