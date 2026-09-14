@@ -1072,9 +1072,9 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 </div>
 
 <nav class="bottom-nav">
-  <button class="nav-btn" data-screen="home"><span class="nav-ico">💬</span>Home</button>
+  <button class="nav-btn" data-screen="home"><span class="nav-ico">🏠</span>Home</button>
   <button class="nav-btn" data-screen="practice"><span class="nav-ico">🗂️</span>Practice</button>
-  <button class="nav-gear" id="navGearBtn" onclick="nav('settings')" title="Settings" aria-label="Settings"><span class="nav-ico">⚙️</span></button>
+  <button class="nav-btn" data-screen="settings" id="navGearBtn" title="Settings" aria-label="Settings"><span class="nav-ico">⚙️</span>Settings</button>
 </nav>
 
 <button class="back-fab" id="backFab" title="Back">←</button>
@@ -1100,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.17';
+const APP_VERSION = '9.18';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -10842,7 +10842,7 @@ const VOCAB_SECTIONS = [
   /* v7.71 — oversized bundles split into single-subject topics (user: ~100
      words per topic, good for rotation). Home/Objects, School/Work/Tech and
      Greetings/Feelings are now separate chips. 'daily' dropped (0 words). */
-  { id:'home',     name:'Home',               emoji:'🏠', themes:['home'] },
+  { id:'home',     name:'Around the house',               emoji:'🏠', themes:['home'] },
   { id:'cleaning', name:'Bathroom & cleaning', emoji:'🧼', themes:['cleaning'] },
   { id:'objects',  name:'Objects',            emoji:'📦', themes:['objects'] },
   { id:'places',   name:'Places',             emoji:'🏪', themes:['places'] },
@@ -11227,7 +11227,7 @@ function startBlitz(){
   const poolTarget = (state.settings.blitzPoolLearning ?? 8) + (state.settings.blitzPoolMature ?? 4);
   const pool = buildBlitzPool();
   if(!pool.length){
-    showToast('No words ready or available — add words or enable the N5 pack in Settings.', {tone:'warn'});
+    showToast("No words ready right now — try another sticker.", {tone:'warn'});
     return;
   }
   const direction = state.settings.blitzDirection || 'jp-en';
@@ -11724,9 +11724,9 @@ function renderBlitz(){
     <div style="font-size:15px;margin-top:6px"><span class="muted">Correct:</span> <b>${esc(answer)}</b>${w.romaji?` <span class="muted">${esc(w.romaji)}</span>`:''}</div>
     ${registerCounterpartChip(w)}
     ${exampleStrip(w)}
-    <div style="text-align:center;margin-top:8px">
+    ${state.settings.ownerMode === true ? `<div style="text-align:center;margin-top:8px">
       <button class="btn btn-ghost" style="font-size:11px;padding:4px 12px;color:var(--muted)" onclick="focusAddCurrentBlitz()" title="Add to Focus — practice building sentences with it">⭐ Work on this in sentences</button>
-    </div>
+    </div>` : ''}
     <div class="spacer"></div>
     ${continueCtl}
   </div>`;
@@ -11932,8 +11932,8 @@ function renderForms(){
   const available = verbs.length;
   if(!available){
     return `<div class="card">
-      <h3 style="margin-top:0">No verbs in your deck</h3>
-      <div class="muted">Add a verb or enable the N5 pack in Settings and form drills will populate here.</div>
+      <h3 style="margin-top:0">No verbs yet</h3>
+      <div class="muted">Learn a few verbs in your rounds and verb forms will show up here.</div>
     </div>`;
   }
   const totalPairs = available * FORMS.length;
@@ -11957,7 +11957,7 @@ function renderForms(){
       <button class="btn btn-secondary" style="font-size:12px;padding:8px 4px" onclick="startBuildModeFormMix({tiers:[5]})" title="Voices, imperatives, must, stem mods">T5</button>
     </div>
     <div style="height:8px"></div>
-    <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startFormBlitz()">⌨ Typed Mixed Form Blitz · ${totalPairs} pairs</button>
+    <button class="btn btn-secondary" style="width:100%;font-size:13px;padding:8px" onclick="startFormBlitz()">⌨ Type mixed verb forms · ${totalPairs} pairs</button>
   </div>`;
   /* v6.15 — pick a deck verb to use as the worked example. Prefer a regular
      ichidan/godan with a short dictionary form so the example reads cleanly. */
@@ -12053,7 +12053,7 @@ function renderForms(){
   </div>`;
 
   return `${sectionRow}${blitzCard}<div class="card">
-    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} graduated in Vocab Blitz — available for form drilling. Pick a single form below for focused self-graded practice.</div>
+    <div class="muted" style="font-size:13px"><b>${available}</b> verb${available===1?'':'s'} learned in your rounds — ready for verb forms. Pick a single form below for focused self-graded practice.</div>
   </div>${cards}`;
 }
 
@@ -12694,7 +12694,7 @@ function formBlitzRefillIfNeeded(){
 function startFormBlitz(){
   const pairs = eligibleFormPairs();
   if(!pairs.length){
-    showToast('Your deck has no verbs yet — add a verb or enable the N5 pack in Settings.', {tone:'warn'});
+    showToast('No verbs yet — learn a few in your rounds first.', {tone:'warn'});
     return;
   }
   const poolTarget = FORM_BLITZ_POOL_LEARNING + FORM_BLITZ_POOL_MATURE;
@@ -12926,13 +12926,13 @@ window.formBlitzEnd = formBlitzEnd;
 
 function renderFormBlitz(){
   const b = state.formBlitz;
-  if(!b) return `<div class="card"><div class="muted">No active Form Blitz session.</div>
+  if(!b) return `<div class="card"><div class="muted">No verb forms round running.</div>
     <button class="btn btn-primary" style="margin-top:12px" onclick="startFormBlitz()">Start</button></div>`;
 
   if(b.complete){
     const t = b.tally;
     return `<div class="card">
-      <h2 style="margin-top:0">Form deck clear</h2>
+      <h2 style="margin-top:0">All verb forms done</h2>
       <div class="muted" style="font-size:13px;margin-bottom:8px">Every pair graduated or the well ran dry. Come back later when reviews come due.</div>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${t.graduated}</div><div class="stat-label">Graduated</div></div>
@@ -16117,7 +16117,7 @@ function startRecall(){
     try { fallback = (typeof getDrillableWords === 'function' ? getDrillableWords() : getActiveWords()).slice(); } catch(e){ fallback = getActiveWords().slice(); }
     words = (typeof shuffleFY === 'function' ? shuffleFY(fallback) : fallback);
   }
-  if(!words.length){ showToast('No words available — add words or enable the N5 pack in Settings.', {tone:'warn'}); return; }
+  if(!words.length){ showToast("No words ready right now — try another sticker.", {tone:'warn'}); return; }
   words = words.slice(0, 12);
   state.recall = { words, i:0, phase:'recall', input:'', listening:false, interim:'', sttError:null, heard:null, via:null, pass:null, lastInterval:null, tally:{got:0, missed:0} };
   nav('recall');
@@ -16651,7 +16651,7 @@ function _ladderVerbs(){
 }
 function startFormsLadder(){
   const verbs = _ladderVerbs();
-  if(!verbs.length){ showToast('No verbs in your deck yet — learn some words first', { tone:'warn' }); return; }
+  if(!verbs.length){ showToast('No verbs yet — learn a few in your rounds first', { tone:'warn' }); return; }
   const pref = verbs.find(v => v.jp === 'たべる') || verbs[0];
   state.formsLadder = { verbId: pref.id, reveal: {} };
   nav('formsLadder');
@@ -17456,7 +17456,7 @@ window.kanaBlitzEnd = kanaBlitzEnd;
 function renderKanaBlitz(){
   const kb = state.kanaBlitz;
   if(!kb){
-    return `<div class="card"><div class="muted">No active Kana Blitz.</div>
+    return `<div class="card"><div class="muted">No letters round running.</div>
       <button class="btn btn-primary" style="margin-top:12px" onclick="nav('home')">Back home</button></div>`;
   }
   if(kb.complete){
@@ -17464,7 +17464,7 @@ function renderKanaBlitz(){
     const attempts = t.correct + t.wrong;
     const pct = attempts ? Math.round(100*t.correct/attempts) : 0;
     return `<div class="card">
-      <h2 style="margin-top:0">Kana Blitz complete</h2>
+      <h2 style="margin-top:0">Letters round done</h2>
       <div class="stats-row">
         <div class="stat-box"><div class="stat-num">${attempts}</div><div class="stat-label">Seen</div></div>
         <div class="stat-box"><div class="stat-num">${t.retired}</div><div class="stat-label">Retired</div></div>
@@ -20611,7 +20611,7 @@ function startBuildModeGenerated(mode){
   );
   if(introducedNouns.length < 6){
     showToast(
-      `Build Mode needs at least ~6 usable nouns in your active deck — it found ${introducedNouns.length}. Enable the N5 pack (or fewer suspended/mastered words) in Settings.`,
+      `Not enough words for this round yet — try another sticker.`,
       {tone:'warn', duration:6500}
     );
     return;
@@ -20635,7 +20635,7 @@ function startBuildModeGenerated(mode){
       {tone:'info', duration:4500}
     );
   } catch(e){
-    showToast("Can't generate lesson — " + e.message + ". Try enabling more themes/modules, or unsuspend some words in Settings.", {tone:'warn', duration:6500});
+    showToast("Couldn't start that round — try another sticker.", {tone:'warn', duration:6500});
   }
 }
 window.startBuildModeGenerated = startBuildModeGenerated;
@@ -20649,7 +20649,7 @@ function buildGenerateFormSpamLesson(formId, opts){
   const f = FORMS.find(x => x.id === formId);
   if(!f) throw new Error('Unknown grammar pattern: ' + formId);
   const verbs = formEligibleVerbs();
-  if(verbs.length < 1) throw new Error('No verbs in your deck — enable the N5 pack in Settings.');
+  if(verbs.length < 1) throw new Error('No verbs yet — learn a few in your rounds first.');
   /* v6.30 — bumped default 8 → 25. v6.31 — 25 → 50. Form Spam doesn't
      auto-chain like Simple/Complex/Hard lessons (it's a single-shot per
      tap), so the per-session count IS the total. With 140 eligible verbs
@@ -20784,7 +20784,7 @@ function buildGenerateFormMixLesson(opts){
   if(steps.length < 1) throw new Error('Form Mix could not generate any steps.');
   return {
     id: 'Gfm_' + Date.now().toString(36),
-    title: 'Form Mix',
+    title: 'Verb forms',
     duration_mins: Math.max(3, Math.round(steps.length * 0.5)),
     new_words: [],
     carryover_words: [],
@@ -20796,7 +20796,7 @@ function startBuildModeFormMix(opts){
   try {
     const lesson = buildGenerateFormMixLesson(opts);
     if(opts && Array.isArray(opts.tiers) && opts.tiers.length){
-      lesson.title = 'Form Mix — Tier ' + opts.tiers.join(',');
+      lesson.title = 'Verb forms';
     }
     state.buildMode = buildMakeSession(lesson);
     state.buildMode._origin = 'forms';
@@ -20988,7 +20988,7 @@ function buildGenerateVocabSpamLesson(opts){
     widenedAt = i;
     if(sectionPool.length >= minViable) break;
   }
-  if(sectionPool.length < 1) throw new Error('No words available — enable the N5 pack in Settings.');
+  if(sectionPool.length < 1) throw new Error('No words in this sticker yet — try another one.');
   if(widenedAt > 0){
     const why = ['', 'including ★mastered', 'ignoring section filter', 'using whole deck'][widenedAt];
     log('vocab_spam_widen', {widenedAt, poolSize: sectionPool.length, why});
@@ -21099,7 +21099,7 @@ function buildGenerateVocabSpamLesson(opts){
   }, []);
   return {
     id: 'Gv_' + Date.now().toString(36),
-    title: `Vocab Spam — ${scopeName}`,
+    title: sec.id === 'all' ? 'Your words' : `${scopeName} words`,
     duration_mins: Math.max(3, Math.round(pool.length * 0.4)),
     new_words: pool.map(w => ({ id:w.id, jp:w.jp, en:w.en, r:w.romaji, note:w.note })),
     carryover_words: [],
@@ -21143,7 +21143,7 @@ function startBuildModeVocabSpam(){
         ? `${total} words · ${m.freshCount} new to you`
         : `${total} words · all ones you have met`, {tone:'info', duration:3500});
     }
-  } catch(e){ showToast("Can't start Vocab Spam — " + e.message, {tone:'warn', duration:5000}); }
+  } catch(e){ showToast("Couldn't start that round — " + e.message, {tone:'warn', duration:5000}); }
 }
 window.startBuildModeVocabSpam = startBuildModeVocabSpam;
 
@@ -21166,7 +21166,7 @@ function startRandomDrill(opts){
         .map(id => registry.find(w => w.id === id))
         .filter(Boolean);
       if(pool.length < 1){
-        showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
+        showToast('No words ready right now — try another sticker.', {tone:'warn', duration:5000});
         return;
       }
     } else {
@@ -21181,7 +21181,7 @@ function startRandomDrill(opts){
          alone (those words were already drilled, i.e. already seen). */
       pool = _freeTierCapPool(pool);
       if(pool.length < 1){
-        showToast('No active words — enable the N5 pack in Settings.', {tone:'warn', duration:5000});
+        showToast('No words ready right now — try another sticker.', {tone:'warn', duration:5000});
         return;
       }
     }
@@ -23013,14 +23013,14 @@ window.buildToggleMissed = buildToggleMissed;
 function buildMasterCurrentWord(){
   const wid = _buildCurrentStepWordId();
   if(!wid){
-    if(typeof showToast === 'function') showToast("No deck word here to master.", {tone:'warn', duration:3000});
+    if(typeof showToast === 'function') showToast("No word here to mark as known.", {tone:'warn', duration:3000});
     return;
   }
   const lessonWord = buildWordById(wid);
   if(!lessonWord) return;
   const w = (state.words || []).find(d => d.jp === lessonWord.jp && d.en === lessonWord.en);
   if(!w){
-    if(typeof showToast === 'function') showToast("Couldn't find that word in your deck.", {tone:'warn', duration:3000});
+    if(typeof showToast === 'function') showToast("Couldn't find that word in your list.", {tone:'warn', duration:3000});
     return;
   }
   const s = state.settings;
@@ -24116,7 +24116,7 @@ function renderBuildModeStart(){
     ? 'First roll — callbacks filled with fresh deck picks.'
     : `${seqLen} prior generation${seqLen === 1 ? '' : 's'} — cold callbacks drawn from coldest.`;
   const hasFood = (state.words || []).some(w => w.pos==='n' && w.theme==='food' && !hasKatakana(w.jp));
-  const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> no hiragana food nouns in your deck. Enable the N5 pack in Settings, or dice rolls will come up empty.</div></div>` : '';
+  const warnDeck = !hasFood ? `<div class="card" style="border-color:var(--orange);background:#2a1810"><div class="muted" style="font-size:13px;color:var(--orange)"><b>Heads up:</b> this round is short on food words, so a few rolls may come up empty.</div></div>` : '';
 
   /* v6.12.14 — surface lesson history so the user can see what the app
      remembers. New lesson generation already biases callbacks toward words
@@ -25604,7 +25604,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Vocab Blitz', forms:'Form drills', formDrill:'Form drill', formBlitz:'Form Blitz', kanaBlitz:'Kana Blitz', buildMode:'Drill', sentenceBlitz:'Sentence Blitz', phrases:'Phrases', phraseBlitz:'Phrase Blitz', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in', cold:'Morning check'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Your words', forms:'Form drills', formDrill:'Form drill', formBlitz:'Verb forms', kanaBlitz:'Letters', buildMode:'Drill', sentenceBlitz:'Sentences', phrases:'Phrases', phraseBlitz:'Phrases', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in', cold:'Morning check', paywall:'Plans', road:'Your progress', checkoutReturn:'Checkout'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -25618,7 +25618,7 @@ function renderTopbar(){
      own in-flow "Sign in"/"Create account" switch link, so it gets the same
      no-generic-topbar treatment. */
   /* v9.06 — the morning check draws no topbar (owner: match the mock; "Not now" is the exit). */
-  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'cold') return '';
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'cold' || state.screen === 'sticker') return '';
   /* v8.67 — the drill draws its own header (✕ + progress + counter); the
      generic back topbar would be a second, redundant exit above it. */
   if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
@@ -26713,18 +26713,18 @@ function renderProgress(){
   const vf = core.vf;
   const statusCard = `
     <div class="card">
-      <h3 style="margin-top:0">Where the deck stands</h3>
+      <h3 style="margin-top:0">Where your words stand</h3>
       <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
         ${[['new',c.new,'#64748b'],['learning',c.learning,'#f59e0b'],['solid',c.solid,'#a78bfa'],['mature',c.mature,'#3b82f6'],['mastered',c.mastered,'#22c55e']]
           .map(([lab,v,col]) => `<div style="flex:1;min-width:54px;text-align:center"><div style="font-size:20px;font-weight:800;color:${col}">${v}</div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:0.04em">${lab}</div></div>`).join('')}
       </div>
-      <div class="muted" style="font-size:11px;margin-top:8px">${c.total} active words in your deck.</div>
+      <div class="muted" style="font-size:11px;margin-top:8px">${c.total.toLocaleString()} words in your list.</div>
     </div>
     <div class="card">
       <h3 style="margin-top:0">🔥 Consistency</h3>
       <div style="display:flex;gap:6px">
         ${state.settings.hideStreak ? '' : `
-        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">DAYS TOGETHER</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${vals.streak}</div><div class="muted" style="font-size:10px">DAY STREAK</div></div>
         <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${longest}</div><div class="muted" style="font-size:10px">LONGEST</div></div>`}
         <div style="flex:1;text-align:center"><div style="font-size:20px;font-weight:800">${curWeek.att}</div><div class="muted" style="font-size:10px">REVIEWS THIS WK</div></div>
       </div>
@@ -27215,7 +27215,7 @@ function _catDayCard(){
     if(state.settings.stkPeel !== _catDayKey()){
       return `
     <div class="hv9-hero cd-hero stk-hero">
-      <div class="hv9-eyebrow">✨ CATEGORY OF THE DAY</div>
+      <div class="hv9-eyebrow">✨ STICKER OF THE DAY</div>
       <div class="stk-peelrow">
         <button class="stk-mystery" onclick="stkPeel()" aria-label="Peel today's sticker"><span>?</span><i></i></button>
         <div class="stk-note">tap to peel<br>today's sticker ↖</div>
@@ -27231,7 +27231,7 @@ function _catDayCard(){
     const chip = p.tier === 'none' ? 'NEW STICKER' : `${STK_TIER_NAME[p.tier].toUpperCase()} · ${p.pct}% HEARD`;
     return `
     <div class="hv9-hero cd-hero stk-hero${spin ? ' spin' : ''}">
-      <div class="hv9-eyebrow">✨ CATEGORY OF THE DAY</div>
+      <div class="hv9-eyebrow">✨ STICKER OF THE DAY</div>
       <button class="stk-center" onclick="stkOpen('${jsEsc(c.id)}')" aria-label="Open the ${esc(c.name)} sticker">${_stkArt(c.id, 188, { tier:p.tier, ring, shine:true, anim: pop ? 'pop' : (spin ? 'spin' : 'float') })}</button>
       <div class="hv9-title cd-name">${esc(c.name)}</div>
       <div class="hv9-meta">${n} words · hands-free · 30 at a time</div>
@@ -27326,7 +27326,7 @@ function _stkBurst(sec, o){
       <div class="stk-stats">
         <div><b>${o.n}</b><span>WORDS</span></div><i></i>
         <div><b>${o.mins}</b><span>MINUTES</span></div><i></i>
-        <div><b>🔥 ${streak}</b><span>STREAK</span></div>
+        <div><b>🔥 ${streak}</b><span>DAY STREAK</span></div>
       </div>
       <button class="stk-keep" onclick="buildKeepGoing()">▶ Keep going</button>
       <div class="stk-next">Next: ${o.nextMix ? 'Mix' : `the same ${o.n} again`}</div>
@@ -27499,7 +27499,7 @@ function renderHome(){
       ${_homeTopBar()}
       <div class="hv9-hello">
         <div class="hv9-hi">${greet}</div>
-        <button class="hv9-stick" onclick="nav('road')">${stickLine} <span class="hv9-arr">›</span></button>
+        <button class="hv9-stick" onclick="nav('road')">${stickLine}&nbsp;<span class="hv9-arr" style="white-space:nowrap">›</span></button>
         ${coldLine}
       </div>
       ${freeBanner}
@@ -27745,6 +27745,9 @@ window.obfHear = obfHear;
 const _OBF_ORDER = ['w1','w5','mic'];
 function obfBack(){
   const ob = _obEnsure();
+  /* The sticker beat sits after the mic ask: back re-opens the mic screen
+     (without re-running the word check, which would double its head starts). */
+  if(ob.step === 'sticker'){ ob.stkShown = false; ob.micAsked = false; ob.step = 'mic'; _obLog('step_mic', { back:true }); render(); return; }
   const i = _OBF_ORDER.indexOf(ob.step);
   if(i > 0) obGoto(_OBF_ORDER[i - 1]);
 }
@@ -28193,7 +28196,7 @@ function renderPractice(){
     const est = Math.max(1, Math.round(bc.due * 4 / 60));
     heroEyebrow = 'TODAY · SPRINT';
     heroTitle = 'Mastered review';
-    heroMeta = `${bc.due} ready · boom-boom-boom recall · ~${est} min`;
+    heroMeta = `${bc.due} ready · quick recall · ~${est} min`;
     heroDeco = '極';
     heroCta = '🏆 Begin sprint';
     heroAction = 'startBlitz()';
@@ -28207,7 +28210,7 @@ function renderPractice(){
        module label so tapping a collection chip visibly takes effect. */
     heroTitle = sec.isCollection
       ? `${sec.emoji} ${sec.name}`
-      : (cur ? `Module ${moduleDisplayNum(cur.id) || ''} · ${cur.name}` : (sec.id === 'all' ? 'Vocab Blitz' : `${sec.emoji} ${sec.name}`));
+      : (cur ? `Module ${moduleDisplayNum(cur.id) || ''} · ${cur.name}` : (sec.id === 'all' ? 'Your words' : `${sec.emoji} ${sec.name}`));
     /* v8.62 — no debt vocabulary anywhere: the hero shows the CAPPED session
        composition ("ready"), never a backlog count. The scheduler absorbs any
        excess invisibly — surfacing "+N overdue" was the review-debt UI the
@@ -28440,7 +28443,7 @@ function renderPractice(){
         <div class="h8-stat-label">Reviews</div>
       </div>
       <div class="h8-stat">
-        <div class="h8-stat-num accent">${active.length}</div>
+        <div class="h8-stat-num accent">${active.length.toLocaleString()}</div>
         <div class="h8-stat-label">Words</div>
       </div>
     </div>`;
@@ -28547,7 +28550,7 @@ function renderPractice(){
     <div class="home-v8">
       ${topBar}
       ${pathStrip}
-      <div class="stk-ph"><b>Pick a sticker</b><span>${_stkAll().length} categories · 30 words a round</span></div>
+      <div class="stk-ph"><b>Pick a sticker</b><span>${_stkAll().length} stickers · ${(_freeTierActive() && _authState.user && !_entTrialGood(_authState.user) && !_entOwnerAccount(_authState.user)) ? FREE_NEW_WORDS_PER_DAY + ' new words a day' : '30 words a round'}</span></div>
       ${searchBox}
       ${coverageMeterHtml}
       ${_stkTodayPick()}
@@ -28932,7 +28935,8 @@ async function settingsManageSub(){
   _setUi.busy = ''; render();
 }
 window.settingsManageSub = settingsManageSub;
-function settingsDeleteAsk(on){ if(_setUi.busy) return; _setUi.delAsk = !!on; _setUi.msg = ''; render(); }
+function settingsDeleteAsk(on){ if(_setUi.busy) return; _setUi.delAsk = !!on; _setUi.msg = ''; render();
+  if(on) setTimeout(() => { try{ const b = [...document.querySelectorAll('.settings-v2 button')].find(x => /Yes, delete it/.test(x.textContent)); if(b) b.scrollIntoView({ block:'center', behavior:'smooth' }); }catch(e){} }, 30); }
 window.settingsDeleteAsk = settingsDeleteAsk;
 async function settingsDeleteAccount(){
   if(_setUi.busy) return;
@@ -29024,7 +29028,7 @@ function renderSettings(){
       ${brow('📄 Terms', '', link('Open', 'https://wordstick.app/terms.html'))}
     </div>
     ${del}
-    <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 6px;user-select:none;cursor:default" onclick="_verTap()">WordStick · version ${APP_VERSION}</div>
+    <div class="muted" style="text-align:center;font-size:12px;margin:18px 0 90px;user-select:none;cursor:default" onclick="_verTap()">WordStick · version ${APP_VERSION}</div>
     </div>`;
 }
 
