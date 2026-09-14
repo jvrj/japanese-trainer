@@ -868,12 +868,79 @@ body[data-screen="checkoutReturn"] .back-fab{display:none !important}
 
 /* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
 /* The drill owns its own header (X + progress + counter) — hide the app
-   chrome above it, same pattern as the home screen. Bottom nav stays. */
+   chrome above it, same pattern as the home screen. v9.21: the bottom nav hides too. */
 body[data-screen="buildMode"] .header{display:none}
 body[data-screen="buildMode"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 body[data-screen="buildMode"] .back-fab,
 body[data-screen="buildMode"] .notes-fab,
 body[data-screen="buildMode"] .ask-fab{display:none}
+body[data-screen="buildMode"] .bottom-nav{display:none !important}
+body[data-screen="buildMode"] .app{padding-bottom:12px}
+/* v9.21 — full-screen drill card (Claude Design 8a–8e) */
+.bm2{position:relative;display:flex;flex-direction:column;min-height:calc(100dvh - max(10px,env(safe-area-inset-top)) - 14px);color:#f5f2ff;font-family:Nunito,system-ui,sans-serif;overflow-x:clip}
+.bm2>*:not(.bm2-glow):not(.bm2-ghost){position:relative;z-index:1}
+.bm2-glow{position:absolute;left:50%;top:110px;width:520px;height:520px;max-width:150vw;transform:translateX(-50%);background:radial-gradient(circle,rgba(157,92,255,.22),transparent 62%);pointer-events:none;z-index:0}
+.bm2.say .bm2-glow{background:radial-gradient(circle,rgba(255,93,158,.18),transparent 62%)}
+.bm2.last .bm2-glow{background:radial-gradient(circle,rgba(251,191,36,.16),transparent 62%)}
+.bm2-head{display:flex;align-items:center;gap:14px;padding-top:6px}
+.bm2-circ{width:44px;height:44px;flex:none;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);display:grid;place-items:center;font-size:15px;font-weight:900;color:#f5f2ff;cursor:pointer;font-family:inherit;padding:0;line-height:1}
+.bm2-circ.x{color:#a99fc7;font-size:17px}
+.bm2-circ.go{background:linear-gradient(140deg,#9d5cff,#ff5d9e);border-color:transparent;color:#fff}
+.bm2-circ:disabled{opacity:.35;cursor:default}
+.bm2-prog{flex:1;min-width:0}
+.bm2-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.bm2-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#9d5cff,#ff5d9e);transition:width .3s}
+.bm2-paused .bm2-bar i{background:rgba(255,255,255,.4)}
+.bm2-count{font-size:12.5px;font-weight:900;letter-spacing:.04em;color:#8a80a8;margin-top:7px}
+.bm2.last .bm2-count{color:#f5f2ff}
+.bm2-meta{margin-left:auto;font-size:12.5px;font-weight:900;color:#8a80a8}
+.bm2-sub{display:flex;justify-content:flex-end;margin-top:12px}
+.bm2-en{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font:900 12px Nunito,system-ui,sans-serif;color:#f5f2ff;cursor:pointer}
+.bm2-en i{width:26px;height:16px;border-radius:99px;background:rgba(255,255,255,.18);padding:2px;box-sizing:border-box;display:flex}
+.bm2-en i.on{background:linear-gradient(90deg,#9d5cff,#ff5d9e);justify-content:flex-end}
+.bm2-en b{width:12px;height:12px;border-radius:50%;background:#fff}
+.bm2-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 6px}
+.bm2-tag{padding:6px 14px;border-radius:99px;background:rgba(251,191,36,.16);border:1px solid rgba(251,191,36,.42);font-size:11.5px;font-weight:900;letter-spacing:.16em;color:#fbbf24;margin-bottom:24px}
+.bm2-jp{font-family:'Noto Sans JP',Nunito,sans-serif;font-weight:900;line-height:1.2;overflow-wrap:anywhere;max-width:100%}
+.bm2-jp rt{font-size:.26em;font-weight:700;color:#a99fc7;letter-spacing:.2em}
+.bm2-r{font-size:24px;font-weight:800;color:#e0d8f5;margin-top:8px}
+.bm2-mean{font-size:20px;font-weight:800;color:#cfc7e6;margin-top:18px;text-wrap:balance}
+.bm2-q{font-size:11.5px;font-weight:900;letter-spacing:.18em;color:#8a80a8}
+.bm2-qtop{margin-bottom:22px}
+.bm2-qen{font-size:38px;font-weight:900;letter-spacing:-.02em;margin-top:10px;line-height:1.1;text-wrap:balance}
+.bm2-wave{display:flex;align-items:center;gap:5px;height:30px;margin-top:24px}
+.bm2-wave i{width:5px;border-radius:99px;background:linear-gradient(#b97bff,#ff5d9e);transform-origin:center}
+.bm2-wave.run i{animation:bm2Wave .9s ease-in-out infinite alternate}
+.bm2 .build-phase-label.bm2-status{font-size:19px;font-weight:900;color:#b97bff;margin:14px 0 0;letter-spacing:0;text-transform:none;min-height:26px}
+.bm2.say .build-phase-label.bm2-status{color:#ff8fc0}
+.bm2 .build-countdown{display:none}
+.bm2-peek{margin-top:20px;padding:13px 22px;border-radius:99px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.22);font:800 15px Nunito,system-ui,sans-serif;color:#a99fc7;cursor:pointer}
+.bm2-reveal{width:100%;max-width:360px;box-sizing:border-box;margin-top:22px;padding:22px 18px;border-radius:26px;background:linear-gradient(160deg,rgba(157,92,255,.2),rgba(255,93,158,.1)),rgba(255,255,255,.05);border:1px solid rgba(185,123,255,.36);animation:bm2In .45s cubic-bezier(.2,.9,.3,1) both}
+.bm2-rl{font-size:11px;font-weight:900;letter-spacing:.16em;color:#c9c2e6}
+.bm2-reveal .bm2-jp{margin-top:6px}
+.bm2 .coach-strip{margin-bottom:18px}
+.bm2 .build-nuance{margin-top:18px}
+.bm2 .grade-wrap{width:100%}
+.bm2-ctl{display:flex;align-items:center;gap:12px;padding:8px 2px calc(16px + env(safe-area-inset-bottom))}
+.bm2-ctl .bm2-circ{width:60px;height:60px;font-size:21px;color:#cfc7e6}
+.bm2-cta{flex:1;border:none;font:900 18px Nunito,system-ui,sans-serif;padding:20px;border-radius:99px;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 12px 32px rgba(157,92,255,.44);cursor:pointer}
+.bm2-cta.gold{background:linear-gradient(95deg,#fbbf24,#ff5d9e);color:#2b1400;box-shadow:0 12px 32px rgba(251,191,36,.36)}
+.bm2-cta:active,.bm2-circ:active,.bm2-sec:active{transform:scale(.97)}
+.bm2 button:focus-visible{outline:2px solid #b97bff;outline-offset:3px}
+.bm2-stack{display:flex;flex-direction:column;gap:12px;padding:8px 4px calc(16px + env(safe-area-inset-bottom))}
+.bm2-sec{font:900 16px Nunito,system-ui,sans-serif;padding:18px;border-radius:99px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);color:#f5f2ff;cursor:pointer}
+.bm2-ghost{position:absolute;left:0;right:0;top:80px;text-align:center;opacity:.16;filter:blur(5px);pointer-events:none;z-index:0}
+.bm2-picon{width:104px;height:104px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;gap:9px}
+.bm2-picon i{width:12px;height:40px;border-radius:4px;background:#f5f2ff}
+.bm2-h{font-size:31px;font-weight:900;letter-spacing:-.025em;margin-top:26px;text-wrap:balance}
+.bm2-p{font-size:15.5px;font-weight:700;color:#a99fc7;margin-top:10px;line-height:1.5;max-width:320px}
+.bm2-orb{width:132px;height:132px;border-radius:50%;background:linear-gradient(150deg,#9d5cff,#ff5d9e);display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:0 0 0 38px rgba(157,92,255,.1),0 16px 40px rgba(157,92,255,.4)}
+.bm2-orb i{width:6px;border-radius:99px;background:#fff}
+.bm2-chip{margin-top:24px;padding:12px 20px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);font-size:14px;font-weight:800;color:#cfc7e6}
+.bm2-hint{text-align:center;font-size:14px;font-weight:800;color:#8a80a8}
+@keyframes bm2Wave{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
+@keyframes bm2In{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.bm2-wave.run i,.bm2-reveal{animation:none}}
 .bm-head{display:flex;align-items:center;gap:14px;margin:2px 0 4px}
 .bm-x{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
   background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--faint,#8a80a8);
@@ -1075,6 +1142,18 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 .stk-links{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:10px}
 .stk-links button{background:none;border:none;font-family:inherit;font-size:14px;font-weight:800;color:rgba(255,255,255,.85);cursor:pointer;padding:6px}
 .stk-links span{opacity:.4}
+/* v9.21 — tidier round end (Claude Design 7f) */
+.stk-b2{background:linear-gradient(175deg,#251747,#120c20)}
+.stk-b2 .stk-bh{font-size:32px;line-height:1.1;text-wrap:balance}
+.stk-b2 .stk-bsub{color:#a99fc7}
+.stk-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#fbbf24;color:#2b1400;font-size:11.5px;font-weight:900;letter-spacing:.12em;padding:6px 14px;border-radius:99px;box-shadow:0 6px 18px rgba(0,0,0,.45);white-space:nowrap;z-index:2}
+.stk-b2 .stk-bpct{font-size:17px;font-weight:800;color:#e6e0f7}
+.stk-b2 .ws-tmrw{justify-content:center;text-align:center;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.11);font-size:13.5px;color:#cfc7e6}
+.stk-b2 .ws-tmrw b{color:#f5f2ff}
+.stk-b2 .ws-inst{background:linear-gradient(160deg,rgba(157,92,255,.26),rgba(255,93,158,.12)),rgba(255,255,255,.05);border-color:rgba(185,123,255,.4)}
+.stk-b2 .stk-keep{margin-top:18px;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 12px 30px rgba(157,92,255,.45)}
+.stk-2btn{display:flex;gap:10px;margin-top:12px}
+.stk-2btn button{flex:1;font-family:inherit;padding:14px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#f5f2ff;font-size:14px;font-weight:800;cursor:pointer}
 /* Sticker detail: 3f + 3g legend */
 .stk-page{text-align:center}
 .stk-back{display:block;background:none;border:none;font-family:inherit;font-size:15px;font-weight:800;color:var(--dim,#cfc7e6);padding:14px 4px 4px;cursor:pointer;text-align:left}
@@ -1163,7 +1242,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.20';
+const APP_VERSION = '9.21';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -22056,13 +22135,14 @@ function _buildSetPhase(phase, durMs){
     else if(wp === 'recording')      listenLabel = '🎤 Whisper recording — speak now';
     else if(wp === 'transcribing') listenLabel = '⏳ Whisper transcribing…';
     else if(whisperAvailable()) listenLabel = '🎤 listening (Whisper) — speak Japanese';
-    label.textContent = phase === 'prompt' ? '🔊 listen…'
-                      : phase === 'answer' ? '🔊 answer…'
-                      : phase === 'think' ? 'your turn — say it aloud'
-                      : phase === 'linger' ? 'next word…'
+    label.textContent = phase === 'prompt' ? 'Listen…'
+                      : phase === 'answer' ? 'Here it is…'
+                      : phase === 'think' ? 'Say it out loud'
+                      : phase === 'linger' ? 'Next word…'
                       : phase === 'listen' ? listenLabel
                       : phase === 'aithink' ? '🤖 Claude is replying…'
                       : '';
+    b._phaseText = label.textContent; b._phaseStep = b.stepIdx;
   }
 }
 
@@ -24366,17 +24446,19 @@ function _buildRenderCoachIntro(b){
       catch(e){ buildCoachIntroDone(); }
     }, 250);
   }
-  return `
-    <div class="bm-head">
-      <button class="bm-x" onclick="buildExit()" title="Exit lesson">✕</button>
-      <div class="build-progress"><div class="build-progress-fill" style="width:0%"></div></div>
-      <div class="bm-count">— / ${b.steps.length}</div>
+  /* v9.21 — Claude Design 8d. */
+  const total = b.steps.length;
+  return `<div class="bm2 bm2-intro"><div class="bm2-glow"></div>
+    <div class="bm2-head"><button class="bm2-circ x" onclick="buildExit()" aria-label="Exit">✕</button><div class="bm2-meta">${total} words · about ${Math.max(1, Math.round(total / 6))} min</div></div>
+    <div class="bm2-stage">
+      <div class="bm2-orb" aria-hidden="true">${[22, 44, 68, 36, 54, 20].map(h => `<i style="height:${h}px"></i>`).join('')}</div>
+      <div class="bm2-h" style="font-size:30px;margin-top:44px;line-height:1.15">${COACH_INTRO_LINE}</div>
+      <div class="bm2-p">No score, no marking. Just listen and repeat.</div>
+      <div class="bm2-chip">🎧 Headphones make it easier</div>
     </div>
-    <div class="card bm-stage"><div class="bm-stage-body">
-      <div class="coach-ring">🔊</div>
-      <div style="font-size:17px;font-weight:700;line-height:1.5;text-align:center;max-width:240px;margin:0 auto">“${COACH_INTRO_LINE}”</div>
-      <div class="muted" style="font-size:11px;text-align:center;margin-top:16px;letter-spacing:.06em">STARTING…</div>
-      <button class="btn btn-ghost" style="margin-top:10px" onclick="buildCoachIntroDone()">Start now →</button>
+    <div class="bm2-stack">
+      <button class="bm2-cta" onclick="buildCoachIntroDone()">▶ Start now</button>
+      <div class="bm2-hint">Starts on its own in a moment</div>
     </div></div>`;
 }
 
@@ -24405,6 +24487,89 @@ function _coachCaptionHTML(b, step){
   b._coachCur = { pk, html };
   return html;
 }
+
+/* v9.21 — full-screen drill card (Claude Design turn 8, 8a–8e). Vocab rounds
+   only — the customer drill; owner lesson modes keep the older card. One status
+   line fed by _buildSetPhase, the meaning of a new word behind a tap, and pause
+   as its own screen with End the round. */
+function _bm2Size(w, base){
+  const n = String((w && w.jp) || '').length;
+  return n <= 3 ? base : n <= 5 ? Math.round(base * .78) : n <= 8 ? Math.round(base * .58) : Math.round(base * .44);
+}
+function _bm2Wave(run){
+  const h = [10, 22, 30, 18, 26, 14, 22, 10];
+  return `<div class="bm2-wave${run ? ' run' : ''}" aria-hidden="true">${h.map((x, i) => `<i style="height:${x}px;animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('')}</div>`;
+}
+function _bm2Head(b, total, paused){
+  const n = Math.min(b.stepIdx + 1, total);
+  const pct = Math.round(100 * n / Math.max(1, total));
+  return `<div class="bm2-head">
+      <button class="bm2-circ x" onclick="buildStopSession()" aria-label="Stop the round">✕</button>
+      <div class="bm2-prog"><div class="bm2-bar"><i style="width:${pct}%"></i></div><div class="bm2-count">${n} of ${total}${paused ? ' · paused' : ''}</div></div>
+      <button class="bm2-circ${paused ? ' go' : ''}" onclick="buildTogglePause()" aria-label="${paused ? 'Resume' : 'Pause'}">${paused ? '▶' : '❚❚'}</button>
+    </div>`;
+}
+function _bm2Step(b, step, total, paused, auto){
+  const w = buildWordById(step.word_id);
+  if(!w) return '';
+  if(paused) return _bm2Paused(b, w, total);
+  const last = b.stepIdx === total - 1;
+  const rev = step.type === 'recall_rev';
+  const r = (romajiOn() && w.r) ? `<div class="bm2-r">${esc(w.r)}</div>` : '';
+  const tag = last ? `<div class="bm2-tag">LAST ONE</div>` : (step.fresh ? `<div class="bm2-tag">✦ NEW WORD</div>` : '');
+  const status = auto
+    ? ((b._phaseStep === b.stepIdx && b._phaseText) ? b._phaseText : (b.revealed ? 'Here it is…' : 'Listen…'))
+    : (rev ? 'Listen, then say it back' : 'Say it out loud');
+  const live = `${_bm2Wave(auto)}<div class="build-phase-label bm2-status">${esc(status)}</div><div class="build-countdown"><div class="build-countdown-fill"></div></div>`;
+  const big = (sz) => `<div class="bm2-jp" style="font-size:${_bm2Size(w, sz)}px">${jpDisplay(w)}</div>`;
+  let card;
+  if(rev){
+    if(step.fresh){
+      const showMean = b.revealed || b._meanOpen === b.stepIdx;
+      card = `${tag}${big(84)}${r}${live}${showMean ? `<div class="bm2-mean">“${esc(w.en)}”</div>` : `<button class="bm2-peek" onclick="buildMeanToggle()">Tap to see the meaning</button>`}`;
+    } else {
+      card = `${tag || '<div class="bm2-q bm2-qtop">WHAT DOES IT MEAN?</div>'}${big(84)}${r}${live}${b.revealed ? `<div class="bm2-reveal"><div class="bm2-rl">IT MEANS</div><div class="bm2-qen" style="font-size:30px;margin-top:8px">“${esc(w.en)}”</div></div>` : ''}`;
+    }
+  } else {
+    card = `${tag}<div class="bm2-q">HOW DO YOU SAY</div><div class="bm2-qen">“${esc(w.en)}”</div>${live}${b.revealed ? `<div class="bm2-reveal"><div class="bm2-rl">IT WAS</div>${big(76)}${r}</div>` : ''}`;
+  }
+  const extra = b.revealed ? `${_buildRenderHeard()}${w.note ? `<div class="build-nuance"><b>${jpDisplay(w)}</b> — ${esc(w.note)}</div>` : ''}` : '';
+  const on = state.settings.buildListenSteps !== false;
+  const cta = b.revealed
+    ? `<button class="bm2-cta${last ? ' gold' : ''}" onclick="buildNextStep()">${last ? 'Finish the round' : 'Got it'}</button>`
+    : `<button class="bm2-cta" onclick="buildRevealStep()">Got it</button>`;
+  return `<div class="bm2${rev ? '' : ' say'}${last ? ' last' : ''}"><div class="bm2-glow"></div>
+    ${_bm2Head(b, total, false)}
+    <div class="bm2-sub"><button class="bm2-en" onclick="buildToggleListenSteps()" aria-pressed="${on}" title="On: newer words play in Japanese and you say the English. Off: every card shows English and you say the Japanese.">${on ? '👂' : '🗣'}<span>${on ? 'EN' : 'JP'}</span><i class="${on ? 'on' : ''}"><b></b></i></button></div>
+    <div class="bm2-stage">${_coachCaptionHTML(b, step)}${card}${extra}${_bmGradeHtml()}</div>
+    <div class="bm2-ctl">
+      <button class="bm2-circ" onclick="buildPrevStep()" ${b.stepIdx === 0 ? 'disabled' : ''} aria-label="Previous word">‹</button>
+      <button class="bm2-circ" onclick="buildReplayAudio()" aria-label="Hear it again">↺</button>
+      ${cta}
+    </div></div>`;
+}
+function _bm2Paused(b, w, total){
+  const n = Math.min(b.stepIdx + 1, total);
+  return `<div class="bm2 bm2-paused">
+    <div class="bm2-ghost" aria-hidden="true"><div class="bm2-jp" style="font-size:${_bm2Size(w, 84)}px">${jpDisplay(w)}</div></div>
+    ${_bm2Head(b, total, true)}
+    <div class="bm2-stage">
+      <div class="bm2-picon" aria-hidden="true"><i></i><i></i></div>
+      <div class="bm2-h">Paused</div>
+      <div class="bm2-p">Take your time. You're ${n} word${n === 1 ? '' : 's'} into this round — we'll pick up exactly here.</div>
+    </div>
+    <div class="bm2-stack">
+      <button class="bm2-cta" onclick="buildTogglePause()">▶ Resume</button>
+      <button class="bm2-sec" onclick="buildStopSession()">End the round</button>
+    </div></div>`;
+}
+function buildMeanToggle(){
+  const b = state.buildMode;
+  if(!b) return;
+  b._meanOpen = b.stepIdx;
+  render();
+}
+window.buildMeanToggle = buildMeanToggle;
 
 function renderBuildModeStep(){
   const b = state.buildMode;
@@ -24473,6 +24638,8 @@ function renderBuildModeStep(){
     ? ` · <span style="color:var(--blue)">⛓ Lesson ${chainIdx} of ${chainCap}</span>`
     : '';
 
+  if(_nsIsVocab(b) && (step.type === 'recall' || step.type === 'recall_rev')) return _bm2Step(b, step, total, paused, auto);
+
   return `
     <div class="bm-head">
       <button class="bm-x" onclick="${_nsIsVocab(b) ? 'buildStopSession()' : 'buildExit()'}" title="${_nsIsVocab(b) ? 'Stop' : 'Exit lesson'}">✕</button>
@@ -24506,7 +24673,13 @@ function renderBuildModeStep(){
       }
     </div>
 
-    ${(() => {
+    ${_bmGradeHtml()}
+  `;
+}
+
+/* v9.21 — the self-grade block, shared by the old card and the full-screen card. */
+function _bmGradeHtml(){
+      const b = state.buildMode;
       /* v6.14 — Self-grade button. Only when this step has a resolvable
          deck word AND the answer has been revealed (you can't grade what
          you haven't seen yet). Optional — autopilot default is 'good'.
@@ -24560,8 +24733,6 @@ function renderBuildModeStep(){
           ? `Got it — this word will show up more often until it sticks.`
           : `No tap needed — leave it and the word comes back at its normal pace.`}</div>
       </div>`;
-    })()}
-  `;
 }
 
 function _buildChipClass(step){
@@ -27406,10 +27577,6 @@ function _stkBurst(sec, o){
   }
   const isNew = bm._stkNew === sec.id;
   const ring = Math.min(1, p.today / Math.max(1, p.need));
-  const eyebrow = isNew ? '+1 STICKER'
-    : p.collected ? `${STK_TIER_NAME[p.tier].toUpperCase()} STICKER`
-    : `${p.heard} OF ${p.need} TO COLLECT`;
-  const streak = (state.streak && state.streak.current) || 0;
   /* v9.19 — Delve 12 day-2 return: the morning check promised as a date, and
      (first round only) the home-screen card. The first round is decided once
      per session object so re-renders keep the same card; the cloud push runs
@@ -27419,30 +27586,25 @@ function _stkBurst(sec, o){
     bm._r1 = !state.settings.r1Done;
     if(bm._r1){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
   }
-  const tmrw = `<div class="ws-tmrw"><span style="font-size:19px;line-height:1.25">🌅</span><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words — no hints. The ones that come out are the ones that stick.</span></div>`;
+  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>`;
   const inst = _installCardHtml(bm);
+  /* v9.21 — Claude Design 7f: one celebration, one big button. The stats row
+     and the recap boxes under the card are gone (they repeated the headline). */
+  const badge = isNew ? '+1 STICKER' : (p.collected ? `${STK_TIER_NAME[p.tier].toUpperCase()} STICKER` : '');
   return `
-    <div class="stk-burst">
-      <div class="stk-rays"></div>
-      <div class="stk-eyebrow">${eyebrow}</div>
+    <div class="stk-burst stk-b2">
       <h2 class="stk-bh">That’s ${o.n} words${nm ? `, ${esc(nm)}` : ''}</h2>
-      <div class="stk-bsub">Nice one. ${esc(sec.name)} · ${o.mins} min this session</div>
-      <div class="stk-bart">${_stkArt(sec.id, 220, { tier:p.tier, ring, ringColor:'#ffd77a', shine:true, anim: isNew ? 'pop' : 'float' })}<i class="stk-cf a"></i><i class="stk-cf b"></i><i class="stk-cf c"></i><i class="stk-cf d"></i></div>
+      <div class="stk-bsub">${esc(sec.name)} · ${o.mins} min this session</div>
+      <div class="stk-bart">${_stkArt(sec.id, 200, { tier:p.tier, ring, ringColor:'#ffd77a', shine:true, anim: isNew ? 'pop' : 'float' })}<i class="stk-cf a"></i><i class="stk-cf b"></i><i class="stk-cf c"></i><i class="stk-cf d"></i>${badge ? `<div class="stk-badge">${badge}</div>` : ''}</div>
       <div class="stk-bpct">${p.pct}% of ${esc(sec.name)} heard</div>
-      <div class="stk-stats">
-        <div><b>${o.n}</b><span>WORDS</span></div><i></i>
-        <div><b>${o.mins}</b><span>MINUTES</span></div><i></i>
-        <div><b>🔥 ${streak}</b><span>DAY STREAK</span></div>
-      </div>
       ${tmrw}
+      ${inst}
       <button class="stk-keep" onclick="buildKeepGoing()">▶ Keep going</button>
       <div class="stk-next">Next: ${o.nextMix ? 'Mix' : `the same ${o.n} again`}</div>
-      ${inst}
-      <div class="stk-links"><button onclick="buildChangeCategory()">Change category</button><span>·</span><button onclick="buildExit()">Home</button></div>
+      <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
     </div>
     ${_buildRatePanel()}
-    ${_trialNudgeCard()}
-    ${_buildRoundRecap(o.ids)}`;
+    ${_trialNudgeCard()}`;
 }
 
 /* v9.19 — Delve 12 pick 2: "Keep WordStick one tap away". Shown on the first
