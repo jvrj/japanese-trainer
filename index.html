@@ -743,18 +743,10 @@ body[data-screen="name"] .back-fab{display:none !important}
 
 /* v9.19 — Delve 12 front door, sign-up form and name screen (Claude Design 6a–6d) */
 .wsd{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:linear-gradient(175deg,#0f0a1a,#120c20);color:#f5f2ff;overflow-y:auto;letter-spacing:-.011em}
-.wsd-glow{position:absolute;left:50%;top:170px;width:460px;height:460px;transform:translateX(-50%);background:radial-gradient(circle,rgba(157,92,255,.26),transparent 66%);pointer-events:none}
 .wsd-in{position:relative;flex:1 0 auto;display:flex;flex-direction:column;width:100%;max-width:440px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) 26px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box}
 .wsd-eyebrow{font-size:11.5px;font-weight:900;letter-spacing:.2em;color:#a99fc7}
 .wsd-h1{font-size:34px;font-weight:900;letter-spacing:-.035em;line-height:1.06;margin:14px 0 0;text-wrap:balance;color:#f5f2ff}
 .wsd-sub{font-size:15px;font-weight:700;color:#a99fc7;margin-top:10px;line-height:1.45}
-.wsd-hear{margin-top:24px;display:flex;align-items:center;gap:16px;width:100%;padding:18px;border-radius:24px;background:linear-gradient(160deg,rgba(157,92,255,.2),rgba(255,93,158,.08)),rgba(255,255,255,.05);border:1px solid rgba(185,123,255,.34);color:inherit;font-family:inherit;text-align:left;cursor:pointer}
-.wsd-hear:active{transform:scale(.98)}
-.wsd-play{width:58px;height:58px;flex:none;border-radius:50%;background:#fff;color:#1f1235;display:grid;place-items:center;font-size:20px;font-weight:900;box-shadow:0 10px 26px rgba(157,92,255,.4)}
-.wsd-hear small{display:block;font-size:11px;font-weight:900;letter-spacing:.16em;color:#b97bff}
-.wsd-hear .k{font-family:'Noto Sans JP',sans-serif;font-size:30px;font-weight:900;line-height:1.15}
-.wsd-hear .r{font-size:14px;font-weight:800;color:#cfc7e6;margin-left:8px}
-.wsd-hear .e{display:block;font-size:13.5px;font-weight:700;color:#a99fc7}
 .wsd-foot{margin-top:auto;padding-top:24px;display:flex;flex-direction:column;gap:12px}
 .wsd-btn{width:100%;padding:17px;border-radius:18px;border:none;font-family:inherit;font-size:16.5px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px}
 .wsd-btn:active{transform:scale(.98)}
@@ -781,6 +773,13 @@ body[data-screen="name"] .back-fab{display:none !important}
 .wsd-or{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:800;color:#8a80a8}
 .wsd-or::before,.wsd-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.11)}
 .wsd-forgot{align-self:flex-end;font-size:13.5px}
+.wsd-login{justify-content:center}
+.wsd-brand{display:flex;align-items:center;gap:11px;font-size:34px;font-weight:900;letter-spacing:-.035em;line-height:1.1;color:#f5f2ff}
+.wsd-brand i{width:14px;height:14px;border-radius:5px;background:linear-gradient(135deg,#9d5cff,#ff5d9e);box-shadow:0 0 18px rgba(157,92,255,.55)}
+.wsd-tabs{display:flex;gap:4px;margin-top:22px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.wsd-tab{flex:1;padding:11px 8px;border-radius:12px;border:none;background:none;color:#a99fc7;font-family:inherit;font-size:14.5px;font-weight:900;cursor:pointer}
+.wsd-tab.on{background:rgba(157,92,255,.28);color:#f5f2ff;box-shadow:inset 0 0 0 1px rgba(185,123,255,.4)}
+.wsd-tab:focus-visible{outline:2px solid #b97bff;outline-offset:2px}
 /* v9.19 — day-2 return: tomorrow line + install card (round end), tomorrow card (Home) */
 .ws-tmrw{margin:14px 0 4px;padding:13px 15px;border-radius:18px;background:rgba(255,215,122,.08);border:1px solid rgba(255,215,122,.3);display:flex;gap:11px;align-items:flex-start;font-size:14px;font-weight:700;color:#efe7ff;line-height:1.45;text-align:left}
 .ws-tmrw b{color:#ffd77a}
@@ -1164,7 +1163,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.19';
+const APP_VERSION = '9.20';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -7320,7 +7319,7 @@ const AUTH_PENDING_CONSENT_KEY = 'isshin_pending_consent';
    state.settings or save()/load(). */
 let _authUi = null;
 function _authUiEnsure(){
-  if(!_authUi) _authUi = { mode:'signin', view:'welcome', first:'', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
+  if(!_authUi) _authUi = { mode:'create', view:'create', first:'', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
   return _authUi;
 }
 function authSetEmail(v){ _authUiEnsure().email = v; }
@@ -28227,7 +28226,6 @@ function renderAuth(){
   try{
     const ui = _authUiEnsure();
     if(ui.view === 'sent') return _authSentHtml(ui);
-    if(ui.view === 'welcome') return _authWelcomeHtml(ui);
     if(ui.view === 'forgot') return _authForgotHtml(ui);
     if(ui.view === 'reset') return _authResetHtml(ui);
     return _authFormHtml(ui);
@@ -28254,39 +28252,16 @@ function _authSentHtml(ui){
     </div></div>`;
 }
 
-/* v9.19 — Delve 12 (ADR-025, Claude Design 6a/6b): ONE front door — the old
-   auth welcome and the onboarding welcome merged. Google leads, except inside
-   the Facebook/Instagram in-app browsers, where Google refuses to sign in:
-   there email leads and a line explains how to open a real browser. The
-   tap-to-hear sample writes nothing (strict wall: no learning before an account). */
+/* v9.20 — owner call: the login page IS the front door. Name, a Create
+   account / Sign in switch, email + password fields on the page, Google under
+   them. The v9.19 slogan + tap-to-hear welcome is gone. Inside Facebook /
+   Instagram in-app browsers Google refuses to sign in, so it's hidden there
+   and a line explains how to open a real browser. */
 function _authInApp(){
   try{ return /FBAN|FBAV|Instagram/i.test(navigator.userAgent || ''); }catch(e){ return false; }
 }
 const _WSD_GOOGLE = `<span class="wsd-gdot"><i></i></span>Continue with Google`;
 const _WSD_FINE = `<div class="wsd-fine">By continuing you agree to our <a href="https://wordstick.app/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="https://wordstick.app/privacy.html" target="_blank" rel="noopener">Privacy policy</a>.</div>`;
-function _authWelcomeHtml(ui){
-  const inApp = _authInApp();
-  const msgRow = ui.msg ? `<div class="wsd-err">${esc(ui.msg)}</div>` : '';
-  return `
-    <div class="wsd"><div class="wsd-glow"></div><div class="wsd-in">
-      <div class="wsd-eyebrow"><span style="font-family:'Noto Sans JP',sans-serif;letter-spacing:.06em">ことば</span> · WORDSTICK</div>
-      <h1 class="wsd-h1">Learn Japanese with your ears, not your thumbs.</h1>
-      <div class="wsd-sub">Hear a word, say it back, keep it. Free for 7 days — no card needed.</div>
-      <button class="wsd-hear" onclick="obfHear()" aria-label="Tap to hear mizu, water">
-        <span class="wsd-play">▶</span>
-        <span><small>TAP TO HEAR</small><span class="k">みず</span><span class="r">mizu</span><span class="e">"water"</span></span>
-      </button>
-      <div class="wsd-foot">
-        ${msgRow}
-        ${inApp ? '' : `<button class="wsd-btn g" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>${_WSD_GOOGLE}</button>`}
-        <button class="wsd-btn ${inApp ? 'pri' : 'sec'}" onclick="authGoto('create')">Sign up with email</button>
-        <button class="wsd-link" onclick="authGoto('signin')">I already have an account</button>
-        ${inApp ? `<div class="wsd-tip">Using Google? Tap <b>⋯</b> at the top → <b>Open in browser</b></div>` : ''}
-        ${_WSD_FINE}
-      </div>
-    </div></div>`;
-}
-
 function _authFormHtml(ui){
   const isCreate = ui.mode === 'create';
   const inApp = _authInApp();
@@ -28296,11 +28271,12 @@ function _authFormHtml(ui){
   const nameField = isCreate ? `
         <div><label class="wsd-lab" for="authFirst">FIRST NAME</label>
           <input id="authFirst" class="wsd-inp" type="text" autocomplete="given-name" autocapitalize="words" maxlength="24" value="${esc(ui.first || '')}" oninput="authSetFirst(this.value)" ${dis}></div>` : '';
+  const tab = (m, label) => `<button class="wsd-tab${ui.mode === m ? ' on' : ''}" role="tab" aria-selected="${ui.mode === m}" onclick="authGoto('${m}')" ${dis}>${label}</button>`;
   return `
-    <div class="wsd"><div class="wsd-in">
-      <button class="wsd-back" onclick="authGoto('welcome')" aria-label="Back">‹</button>
-      <h1 class="wsd-h1" style="font-size:31px;margin-top:10px">${isCreate ? 'Create your account' : 'Welcome back'}</h1>
-      <div class="wsd-sub">${isCreate ? 'Free for 7 days — no card needed.' : 'Your words are where you left them.'}</div>
+    <div class="wsd"><div class="wsd-in wsd-login">
+      <div class="wsd-brand"><i></i>WordStick</div>
+      <div class="wsd-sub">${isCreate ? 'Learn Japanese words that stick. Free for 7 days — no card needed.' : 'Welcome back. Your words are where you left them.'}</div>
+      <div class="wsd-tabs" role="tablist">${tab('create', 'Create account')}${tab('signin', 'Sign in')}</div>
       <div class="wsd-fields">
         ${nameField}
         <div><label class="wsd-lab" for="authEmail">EMAIL</label>
@@ -28315,9 +28291,10 @@ function _authFormHtml(ui){
       <div class="wsd-foot" style="margin-top:22px">
         ${msgRow}
         <button class="wsd-btn pri" onclick="${go}" ${dis}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
-        ${inApp ? '' : `<div class="wsd-or">or</div><button class="wsd-btn g" onclick="authContinueGoogle()" ${dis}>${_WSD_GOOGLE}</button>`}
-        <button class="wsd-link" onclick="authGoto('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : 'New here? Sign up free'}</button>
-        ${isCreate ? _WSD_FINE : ''}
+        ${inApp
+          ? `<div class="wsd-tip">Using Google? Tap <b>⋯</b> at the top → <b>Open in browser</b></div>`
+          : `<div class="wsd-or">or</div><button class="wsd-btn g" onclick="authContinueGoogle()" ${dis}>${_WSD_GOOGLE}</button>`}
+        ${_WSD_FINE}
       </div>
     </div></div>`;
 }
