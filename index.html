@@ -1100,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.16';
+const APP_VERSION = '9.17';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -28898,6 +28898,8 @@ function _settingsPlanLine(){
   const u = _authState.user;
   if(_entOwnerAccount(u)) return { line:'Owner account · full access', manage:false, plans:false };
   const p = _setUi.plan;
+  /* Tester accounts: an entitlements row set by hand with product 'tester'. */
+  if(p && p.active && p.product === 'tester') return { line:'Tester · full access', manage:false, plans:false };
   const manage = !!(p && p.stripe_customer_id);
   if(p && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())){
     const yearly = /year/i.test(p.product || '');
