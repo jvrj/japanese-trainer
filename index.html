@@ -735,6 +735,70 @@ body[data-screen="auth"] .bottom-nav,
 body[data-screen="auth"] .notes-fab,
 body[data-screen="auth"] .ask-fab,
 body[data-screen="auth"] .back-fab{display:none !important}
+body[data-screen="name"] .header,
+body[data-screen="name"] .bottom-nav,
+body[data-screen="name"] .notes-fab,
+body[data-screen="name"] .ask-fab,
+body[data-screen="name"] .back-fab{display:none !important}
+
+/* v9.19 — Delve 12 front door, sign-up form and name screen (Claude Design 6a–6d) */
+.wsd{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:linear-gradient(175deg,#0f0a1a,#120c20);color:#f5f2ff;overflow-y:auto;letter-spacing:-.011em}
+.wsd-glow{position:absolute;left:50%;top:170px;width:460px;height:460px;transform:translateX(-50%);background:radial-gradient(circle,rgba(157,92,255,.26),transparent 66%);pointer-events:none}
+.wsd-in{position:relative;flex:1 0 auto;display:flex;flex-direction:column;width:100%;max-width:440px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) 26px calc(24px + env(safe-area-inset-bottom));box-sizing:border-box}
+.wsd-eyebrow{font-size:11.5px;font-weight:900;letter-spacing:.2em;color:#a99fc7}
+.wsd-h1{font-size:34px;font-weight:900;letter-spacing:-.035em;line-height:1.06;margin:14px 0 0;text-wrap:balance;color:#f5f2ff}
+.wsd-sub{font-size:15px;font-weight:700;color:#a99fc7;margin-top:10px;line-height:1.45}
+.wsd-hear{margin-top:24px;display:flex;align-items:center;gap:16px;width:100%;padding:18px;border-radius:24px;background:linear-gradient(160deg,rgba(157,92,255,.2),rgba(255,93,158,.08)),rgba(255,255,255,.05);border:1px solid rgba(185,123,255,.34);color:inherit;font-family:inherit;text-align:left;cursor:pointer}
+.wsd-hear:active{transform:scale(.98)}
+.wsd-play{width:58px;height:58px;flex:none;border-radius:50%;background:#fff;color:#1f1235;display:grid;place-items:center;font-size:20px;font-weight:900;box-shadow:0 10px 26px rgba(157,92,255,.4)}
+.wsd-hear small{display:block;font-size:11px;font-weight:900;letter-spacing:.16em;color:#b97bff}
+.wsd-hear .k{font-family:'Noto Sans JP',sans-serif;font-size:30px;font-weight:900;line-height:1.15}
+.wsd-hear .r{font-size:14px;font-weight:800;color:#cfc7e6;margin-left:8px}
+.wsd-hear .e{display:block;font-size:13.5px;font-weight:700;color:#a99fc7}
+.wsd-foot{margin-top:auto;padding-top:24px;display:flex;flex-direction:column;gap:12px}
+.wsd-btn{width:100%;padding:17px;border-radius:18px;border:none;font-family:inherit;font-size:16.5px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px}
+.wsd-btn:active{transform:scale(.98)}
+.wsd-btn.pri{background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 12px 32px rgba(157,92,255,.42)}
+.wsd-btn.g{background:#fff;color:#1f1235;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+.wsd-btn.sec{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#f5f2ff}
+.wsd-btn:disabled{opacity:.55}
+.wsd-gdot{width:20px;height:20px;border-radius:50%;background:conic-gradient(#ea4335 0 25%,#fbbc05 25% 50%,#34a853 50% 75%,#4285f4 75% 100%);display:inline-grid;place-items:center}
+.wsd-gdot i{width:8px;height:8px;border-radius:50%;background:#fff}
+.wsd-link{background:none;border:none;font-family:inherit;color:#b97bff;font-size:14.5px;font-weight:800;cursor:pointer;padding:6px}
+.wsd-fine{text-align:center;font-size:12px;font-weight:700;color:#8a80a8;line-height:1.5}
+.wsd-fine a{color:#a99fc7}
+.wsd-tip{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.11);font-size:13px;font-weight:700;color:#a99fc7;text-align:center;line-height:1.45}
+.wsd-tip b{color:#f5f2ff}
+.wsd-back{align-self:flex-start;background:none;border:none;color:#a99fc7;font-size:30px;line-height:1;font-weight:800;padding:0 10px 0 0;cursor:pointer;font-family:inherit}
+.wsd-fields{display:flex;flex-direction:column;gap:14px;margin-top:22px}
+.wsd-lab{display:block;font-size:12px;font-weight:900;letter-spacing:.1em;color:#8a80a8;margin-bottom:7px}
+.wsd-inp{width:100%;box-sizing:border-box;padding:15px 17px;border-radius:15px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#f5f2ff;font-family:inherit;font-size:16px;font-weight:700;outline:none}
+.wsd-inp:focus{border-color:rgba(157,92,255,.6);box-shadow:0 0 0 3px rgba(157,92,255,.16)}
+.wsd-hint{font-size:12.5px;font-weight:700;color:#8a80a8;margin-top:7px}
+.wsd-err{padding:12px 14px;border-radius:14px;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.4);font-size:13.5px;font-weight:800;color:#fb7185;line-height:1.4}
+.wsd-consent{display:flex;align-items:flex-start;gap:11px;font-size:13.5px;font-weight:700;color:#cfc7e6;line-height:1.4;cursor:pointer}
+.wsd-consent input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:#9d5cff}
+.wsd-or{display:flex;align-items:center;gap:12px;font-size:12px;font-weight:800;color:#8a80a8}
+.wsd-or::before,.wsd-or::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.11)}
+.wsd-forgot{align-self:flex-end;font-size:13.5px}
+/* v9.19 — day-2 return: tomorrow line + install card (round end), tomorrow card (Home) */
+.ws-tmrw{margin:14px 0 4px;padding:13px 15px;border-radius:18px;background:rgba(255,215,122,.08);border:1px solid rgba(255,215,122,.3);display:flex;gap:11px;align-items:flex-start;font-size:14px;font-weight:700;color:#efe7ff;line-height:1.45;text-align:left}
+.ws-tmrw b{color:#ffd77a}
+.ws-inst{margin:14px 0 2px;padding:15px 16px;border-radius:20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);text-align:left}
+.ws-inst-h{display:flex;align-items:center;gap:13px}
+.ws-inst-ic{width:44px;height:44px;flex:none;border-radius:13px;background:linear-gradient(140deg,#9d5cff,#ff5d9e);display:grid;place-items:center;font-weight:900;font-size:17px;color:#fff}
+.ws-inst-t{font-size:14.5px;font-weight:900;color:#f5f2ff}
+.ws-inst-s{font-size:12.5px;font-weight:700;color:#bdb2da;line-height:1.35}
+.ws-inst-steps{margin-top:10px;font-size:13.5px;font-weight:700;color:#cfc7e6;line-height:1.6}
+.ws-inst-steps b{color:#fff}
+.ws-inst-row{display:flex;gap:10px;margin-top:12px}
+.ws-inst-row button{flex:1;font-family:inherit;padding:12px;border-radius:99px;font-size:14px;font-weight:900;cursor:pointer}
+.ws-inst-row .go{flex:1.5;background:#fff;border:none;color:#23143f}
+.ws-inst-row .no{background:transparent;border:1px solid rgba(255,255,255,.2);color:#cfc7e6;font-weight:800}
+.hv9-tmrw{margin:0 0 14px;padding:14px 16px;border-radius:20px;background:linear-gradient(160deg,rgba(255,215,122,.16),rgba(255,93,158,.06)),rgba(255,255,255,.05);border:1px solid rgba(255,215,122,.38);display:flex;align-items:center;gap:13px;text-align:left}
+.hv9-tmrw .ic{width:44px;height:44px;flex:none;border-radius:13px;background:rgba(255,215,122,.18);display:grid;place-items:center;font-size:22px}
+.hv9-tmrw b{display:block;font-size:15px;font-weight:900;color:#f5f2ff}
+.hv9-tmrw span{display:block;font-size:13px;font-weight:700;color:#d9d0ef;margin-top:2px}
 
 /* v9.02 — morning cold check owns the viewport the same way: no header, no
    bottom nav, no floating controls while the five words are being proved. */
@@ -1100,7 +1164,13 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.18';
+const APP_VERSION = '9.19';
+/* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
+   round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
+try{
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window._wsInstallEvt = e; });
+  window.addEventListener('appinstalled', () => { window._wsInstallEvt = null; });
+}catch(e){}
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -4789,7 +4859,8 @@ const DEFAULT_SETTINGS = {
   convoLevel:1,               // oshaberi — durable progression level (gates minLevel scenes)
   convoXp:0,                  // oshaberi — XP toward the next convoLevel
   leveledUpTo:null,           // oshaberi — transient: kana tier name on level-up, cleared after recap display
-  userName:'Julius',          // oshaberi — learner's name; injected so the partner addresses them + self-intros use it
+  userName:'',                // learner's first name (v9.19: no default — asked at sign-up or by the name gate)
+  nameSet:false,              // v9.19 — Delve 12: true once a real first name is stored (typed, Google, or account data)
   showCoverageMeter:true,     // v7.96 — display the vocabulary coverage/reach meter on the home screen
   onboard:{ done:false, path:null, placedStage:null },  // Stage B (v8.08) — first-run onboarding record. Additive; boot-time backfill in load() marks existing users done:true so they never see OB-0. path: 'beginner'|'router'. placedStage: router-derived starting stage (display-only, non-locking).
   convoRecapNotes:true,       // Stage D (v8.10) — judgment-free copy sweep: show up to 3 content-derived "did-you-mean" notes on the おしゃべり recap. Default ON; toggle in Settings hides them (celebration-only recap when off).
@@ -5467,6 +5538,13 @@ function load(){
       state.settings.onboard.done = true;
     }
   }catch(e){ log('onboard_backfill_err',{err:String(e)}); }
+  try{
+    /* v9.19 — Delve 12: first-round marker for the day-2 cards. Learners who
+       already finished a round never get the "first round" install card. */
+    if(!state.settings.r1Done && ((state.settings.coach && state.settings.coach.end === true) || Object.keys(state.stats).length >= 30)){
+      state.settings.r1Done = 'legacy';
+    }
+  }catch(e){}
   try{
     /* v8.99 — coach boot backfill. The first-round pathway (spoken intro +
        once-ever captions) is for true first-timers only. An existing user
@@ -7242,10 +7320,12 @@ const AUTH_PENDING_CONSENT_KEY = 'isshin_pending_consent';
    state.settings or save()/load(). */
 let _authUi = null;
 function _authUiEnsure(){
-  if(!_authUi) _authUi = { mode:'signin', view:'welcome', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
+  if(!_authUi) _authUi = { mode:'signin', view:'welcome', first:'', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
   return _authUi;
 }
 function authSetEmail(v){ _authUiEnsure().email = v; }
+function authSetFirst(v){ _authUiEnsure().first = v; }
+window.authSetFirst = authSetFirst;
 function authSetPw(v){ _authUiEnsure().pw = v; }
 function authToggleConsent(){ const ui = _authUiEnsure(); ui.consent = !ui.consent; render(); }
 /* v8.75 standard-auth — the one view switcher. Clears message + password on
@@ -7262,7 +7342,7 @@ function authSwitchMode(m){
   authGoto((m === 'create') ? 'create' : 'signin');
 }
 
-const AUTH_TRY_EMAIL_MSG = "That didn't work — try the email link instead.";
+const AUTH_TRY_EMAIL_MSG = "That didn't work — try signing up with email instead.";
 const AUTH_TRY_AGAIN_MSG = "That didn't work — try again in a moment.";
 
 /* Email magic-link (primary action, no password). Guards every step —
@@ -7372,6 +7452,10 @@ async function authDoPasswordSignIn(){
 async function authDoSignUp(){
   const ui = _authUiEnsure();
   if(ui.busy) return;
+  /* v9.19 — Delve 12: the first name rides on the sign-up itself (account
+     data), so the name gate never has to ask an email sign-up again. */
+  const first = _nameClean(ui.first);
+  if(!first){ ui.msg = 'Type your first name.'; render(); return; }
   const email = (ui.email || '').trim();
   const pw = ui.pw || '';
   if(!email){ ui.msg = 'Enter your email first.'; render(); return; }
@@ -7381,7 +7465,7 @@ async function authDoSignUp(){
     try{ localStorage.setItem(AUTH_PENDING_CONSENT_KEY, ui.consent ? '1' : '0'); }catch(e){ /* best-effort only */ }
     const c = authClient();
     if(!c || !c.auth || typeof c.auth.signUp !== 'function') throw new Error('auth unavailable');
-    const { data, error } = await c.auth.signUp({ email, password: pw, options:{ emailRedirectTo: AUTH_REDIRECT_URL } });
+    const { data, error } = await c.auth.signUp({ email, password: pw, options:{ emailRedirectTo: AUTH_REDIRECT_URL, data:{ first_name: first } } });
     if(error){
       ui.busy = false;
       /* v8.77 — with autoconfirm ON Supabase reports an existing email as an
@@ -7608,6 +7692,12 @@ function _syncApplyCloud(cloud){
    newer work whichever device it came from. Streak: later lastDate wins. */
 function _syncAdoptRicher(cloud){
   try{
+    /* v9.19 — a name set on another device follows the account. */
+    const csn = cloud && cloud.settings;
+    if(csn && csn.nameSet === true && state.settings.nameSet !== true && _nameClean(csn.userName)){
+      state.settings.userName = _nameClean(csn.userName); state.settings.nameSet = true;
+    }
+    if(csn && csn.r1Done && !state.settings.r1Done) state.settings.r1Done = csn.r1Done;
     const cs = (cloud && cloud.stats) || {};
     for(const id in cs){
       const c0 = cs[id], m = state.stats[id];
@@ -25604,7 +25694,7 @@ window.buildChainKeepGoing = buildChainKeepGoing;
    RENDER
    ========================================================================= */
 
-const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Your words', forms:'Form drills', formDrill:'Form drill', formBlitz:'Verb forms', kanaBlitz:'Letters', buildMode:'Drill', sentenceBlitz:'Sentences', phrases:'Phrases', phraseBlitz:'Phrases', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in', cold:'Morning check', paywall:'Plans', road:'Your progress', checkoutReturn:'Checkout'};
+const SCREEN_TITLES = {home:'Home', practice:'Practice', settings:'Settings', blitz:'Your words', forms:'Form drills', formDrill:'Form drill', formBlitz:'Verb forms', kanaBlitz:'Letters', buildMode:'Drill', sentenceBlitz:'Sentences', phrases:'Phrases', phraseBlitz:'Phrases', modules:'Module path', speakDrills:'Speak drills', speakDrillSession:'Speak drills', collections:'Collections', progress:'Progress', sentenceCoach:'Sentence Coach', recall:'Recall', memory:'Memory', nuance:'Nuance', formsLadder:'Verb forms', convo:'Talk', sentences:'Sentences', sentGap:'Fill the gap', sentCount:'Count it', sentBuild:'Make a sentence', focus:'Focus', onboard:'Welcome', auth:'Sign in', name:'Your name', cold:'Morning check', paywall:'Plans', road:'Your progress', checkoutReturn:'Checkout'};
 
 function renderTopbar(){
   /* Home and Practice both draw their own top bar inline (wordmark + streak +
@@ -25618,7 +25708,7 @@ function renderTopbar(){
      own in-flow "Sign in"/"Create account" switch link, so it gets the same
      no-generic-topbar treatment. */
   /* v9.06 — the morning check draws no topbar (owner: match the mock; "Not now" is the exit). */
-  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'cold' || state.screen === 'sticker') return '';
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'name' || state.screen === 'cold' || state.screen === 'sticker') return '';
   /* v8.67 — the drill draws its own header (✕ + progress + counter); the
      generic back topbar would be a second, redundant exit above it. */
   if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
@@ -26095,7 +26185,7 @@ function coldCheckDue(){
 function _coldAutoPop(){
   try{
     if(state.screen === 'cold') return false;
-    if(['auth','paywall','checkoutReturn','onboard'].includes(state.screen)) return false;
+    if(['auth','name','paywall','checkoutReturn','onboard'].includes(state.screen)) return false;
     if(!_authGateOpen()) return false;
     const bm = state.buildMode;
     if(state.screen === 'buildMode' && bm && bm.lesson && !bm.done) return false;
@@ -26244,7 +26334,7 @@ function renderColdCheck(){
     return `<span class="${cls}"></span>`;
   }).join('');
   const _h = new Date().getHours();
-  const greet = _h < 5 ? 'Good evening' : _h < 12 ? 'Good morning' : _h < 18 ? 'Good afternoon' : 'Good evening';
+  const greet = (_h < 5 ? 'Good evening' : _h < 12 ? 'Good morning' : _h < 18 ? 'Good afternoon' : 'Good evening') + (_firstName() ? ', ' + esc(_firstName()) : '');
 
   /* v9.05 — the copy was cut to what a person needs and turned to face them
      (owner, 13 Sep: "how can we make it look ENCOURAGING... that's the whole
@@ -26824,7 +26914,7 @@ function _spineHeaderHtml(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, name:renderNameGate, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -26858,6 +26948,12 @@ function nav(screen, data, fromPop){
      re-derived fresh on every call (see its definition) — never a cached
      "already checked" flag trusted blindly on later dispatches. */
   if(screen !== 'auth' && !_authGateOpen()) screen = 'auth';
+  /* v9.19 — Delve 12 name gate (ADR-024): any signed-in account without a
+     first name meets the one-field Name screen first, before the sticker or
+     Home, whether or not onboarding is done. Settings' "Change" opens the
+     same screen in edit mode (state._nameEdit). */
+  if(screen !== 'auth' && screen !== 'name' && _nameNeeded()) screen = 'name';
+  if(screen === 'name' && !state._nameEdit && !_nameNeeded()) screen = 'home';
   /* Entitlement tier (v8.79 free plan) — the old hard redirect to the
      paywall is GONE. A signed-in account past its free week now drops to
      the free plan (reviews unlimited, FREE_NEW_WORDS_PER_DAY new words a
@@ -27315,11 +27411,22 @@ function _stkBurst(sec, o){
     : p.collected ? `${STK_TIER_NAME[p.tier].toUpperCase()} STICKER`
     : `${p.heard} OF ${p.need} TO COLLECT`;
   const streak = (state.streak && state.streak.current) || 0;
+  /* v9.19 — Delve 12 day-2 return: the morning check promised as a date, and
+     (first round only) the home-screen card. The first round is decided once
+     per session object so re-renders keep the same card; the cloud push runs
+     before anyone leaves for another browser. */
+  const nm = _firstName();
+  if(bm._r1 === undefined){
+    bm._r1 = !state.settings.r1Done;
+    if(bm._r1){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
+  }
+  const tmrw = `<div class="ws-tmrw"><span style="font-size:19px;line-height:1.25">🌅</span><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words — no hints. The ones that come out are the ones that stick.</span></div>`;
+  const inst = _installCardHtml(bm);
   return `
     <div class="stk-burst">
       <div class="stk-rays"></div>
       <div class="stk-eyebrow">${eyebrow}</div>
-      <h2 class="stk-bh">That’s ${o.n} words</h2>
+      <h2 class="stk-bh">That’s ${o.n} words${nm ? `, ${esc(nm)}` : ''}</h2>
       <div class="stk-bsub">Nice one. ${esc(sec.name)} · ${o.mins} min this session</div>
       <div class="stk-bart">${_stkArt(sec.id, 220, { tier:p.tier, ring, ringColor:'#ffd77a', shine:true, anim: isNew ? 'pop' : 'float' })}<i class="stk-cf a"></i><i class="stk-cf b"></i><i class="stk-cf c"></i><i class="stk-cf d"></i></div>
       <div class="stk-bpct">${p.pct}% of ${esc(sec.name)} heard</div>
@@ -27328,15 +27435,79 @@ function _stkBurst(sec, o){
         <div><b>${o.mins}</b><span>MINUTES</span></div><i></i>
         <div><b>🔥 ${streak}</b><span>DAY STREAK</span></div>
       </div>
+      ${tmrw}
       <button class="stk-keep" onclick="buildKeepGoing()">▶ Keep going</button>
       <div class="stk-next">Next: ${o.nextMix ? 'Mix' : `the same ${o.n} again`}</div>
+      ${inst}
       <div class="stk-links"><button onclick="buildChangeCategory()">Change category</button><span>·</span><button onclick="buildExit()">Home</button></div>
     </div>
-    <div class="muted" style="font-size:13.5px;text-align:center;margin:0 8px 14px">Tomorrow morning I’ll ask for them cold. The ones that come out are the ones that stick.</div>
     ${_buildRatePanel()}
     ${_trialNudgeCard()}
     ${_buildRoundRecap(o.ids)}`;
 }
+
+/* v9.19 — Delve 12 pick 2: "Keep WordStick one tap away". Shown on the first
+   round end and, after "Not now", once more on a round on a later day — then
+   never. Never on an installed app. Four states: Chrome's own install prompt,
+   manual ⋮ steps, iPhone Share steps, or (inside Facebook/Instagram) open in
+   a real browser. */
+function _isStandalone(){
+  try{ return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }catch(e){ return false; }
+}
+function _installCardHtml(bm){
+  try{
+    if(!bm || bm._instHide || _isStandalone()) return '';
+    const s = state.settings.install || (state.settings.install = { dismissed:null, again:false, done:false });
+    if(s.done) return '';
+    if(bm._inst === undefined){
+      bm._inst = !!bm._r1 || (!!s.dismissed && s.dismissed !== _catDayKey() && !s.again);
+      if(bm._inst && !bm._r1 && s.dismissed){ s.again = true; save(); }
+    }
+    if(!bm._inst) return '';
+    const ua = navigator.userAgent || '';
+    const head = `<div class="ws-inst-h"><div class="ws-inst-ic">W</div><div><div class="ws-inst-t">Keep WordStick one tap away</div><div class="ws-inst-s">So tomorrow's check is right on your home screen.</div></div></div>`;
+    const no = `<button class="no" onclick="installCardDismiss()">Not now</button>`;
+    let body;
+    if(_authInApp()){
+      body = `<div class="ws-inst-steps">This tab disappears once you scroll away. Tap <b>⋯</b> → <b>Open in browser</b> and add it there. You'll sign in once — your words come with you.</div>
+        <div class="ws-inst-row">${/Android/i.test(ua) ? `<button class="go" onclick="installOpenChrome()">Open in Chrome</button>` : ''}${no}</div>`;
+    } else if(window._wsInstallEvt){
+      body = `<div class="ws-inst-row"><button class="go" onclick="installCardAdd()">Add to home screen</button>${no}</div>`;
+    } else if(/iPhone|iPad|iPod/i.test(ua)){
+      body = `<div class="ws-inst-steps">1. Tap Share <b>⬆</b> at the bottom<br>2. Tap <b>Add to Home Screen</b></div><div class="ws-inst-row">${no}</div>`;
+    } else {
+      body = `<div class="ws-inst-steps">Tap <b>⋮</b> at the top right → <b>Add to home screen</b></div><div class="ws-inst-row">${no}</div>`;
+    }
+    return `<div class="ws-inst">${head}${body}</div>`;
+  }catch(e){ return ''; }
+}
+function installCardDismiss(){
+  const s = state.settings.install || (state.settings.install = { dismissed:null, again:false, done:false });
+  if(!s.dismissed) s.dismissed = _catDayKey();
+  if(state.buildMode) state.buildMode._instHide = true;
+  save(); render();
+}
+async function installCardAdd(){
+  const e = window._wsInstallEvt;
+  if(!e){ render(); return; }
+  try{
+    e.prompt();
+    const r = await e.userChoice;
+    window._wsInstallEvt = null;
+    if(r && r.outcome === 'accepted'){
+      state.settings.install = Object.assign(state.settings.install || {}, { done:true });
+      if(state.buildMode) state.buildMode._instHide = true;
+      save();
+    }
+  }catch(err){ window._wsInstallEvt = null; }
+  render();
+}
+function installOpenChrome(){
+  try{ const u = new URL(window.location.href); window.location.href = 'intent://' + u.host + u.pathname + '#Intent;scheme=https;package=com.android.chrome;end'; }catch(e){}
+}
+window.installCardDismiss = installCardDismiss;
+window.installCardAdd = installCardAdd;
+window.installOpenChrome = installOpenChrome;
 
 /* Sticker detail (3f) with the ring/rim legend (3g). */
 function renderSticker(){
@@ -27374,18 +27545,22 @@ function renderSticker(){
     </div>`;
 }
 function _obfSticker(){
-  /* v9.13 — onboarding 3d: one sticker beat right before the first round. */
+  /* v9.13 — onboarding 3d. v9.19 (Delve 12) — the ONLY screen before round 1:
+     the welcome, word check and mic ask are cut, and the name leads. */
+  const ob = _obEnsure();
+  if(!ob.stkShown){ ob.stkShown = true; _obLog('step_sticker', {}); }
   const id = _stkFirstId();
   const sec = VOCAB_SECTIONS.find(x => x.id === id) || { name:'Greetings' };
   const p = stkProgress(id);
+  const nm = _firstName();
   const inner = `
     <div style="text-align:center">
-      <div class="stk-eyebrow" style="margin-top:18px">YOUR FIRST STICKER</div>
-      <h1 class="obf-h1" style="font-size:34px;margin-top:10px">Here's your<br>first <em>sticker</em></h1>
+      <div class="stk-eyebrow" style="margin-top:calc(34px + env(safe-area-inset-top))">YOUR FIRST STICKER</div>
+      <h1 class="obf-h1" style="font-size:33px;margin-top:10px;text-wrap:balance">${nm ? `${esc(nm)}, here's your first <em>sticker</em>` : `Here's your<br>first <em>sticker</em>`}</h1>
       <div class="obf-sub">Hear ${p.need} ${esc(sec.name)} words — hands-free — and it's yours for good.</div>
       <div class="stk-bart">${_stkArt(id, 210, { shine:true, anim:'pop' })}</div>
       <div class="stk-dname" style="margin-top:22px">${esc(sec.name)}</div>
-      <div class="obf-sub" style="margin-top:4px">${p.total} words · about 5 minutes to your first one</div>
+      <div class="obf-sub" style="margin-top:4px">About 5 minutes</div>
     </div>`;
   return _obfShell('sticker', 100, inner, `<button class="obf-cta" onclick="obGoto('drill')">▶ Let's go</button>`);
 }
@@ -27426,6 +27601,10 @@ function renderHome(){
      weekly delta, and — when today's cold check was skipped or is still
      open — a door back into it. Nothing is forced; the door just says what
      the number is waiting on. */
+  /* v9.19 — Delve 12: the day of the first round, Home says what tomorrow holds. */
+  const tmrwCard = (state.settings.r1Done === _catDayKey() && coldPendingCount() === 0)
+    ? `<div class="hv9-tmrw"><div class="ic">🌅</div><div><b>Tomorrow's check · ${COLD_N} words ready</b><span>Open WordStick tomorrow — it takes a minute.</span></div></div>`
+    : '';
   let coldLine = '';
   try{
     const week = coldStuckThisWeek();
@@ -27433,7 +27612,7 @@ function renderHome(){
     const { N: _n } = wordsThatStick();
     if(_n > 0 || week > 0) coldLine += `<span class="hv9-cold"><b>+${week}</b> this week · proven cold, not tapped</span>`;
     if(left > 0) coldLine += `<button class="hv9-cold-door" onclick="coldCheckStart()"><b>Prove ${left} word${left === 1 ? '' : 's'}</b> — 30 seconds<small>That is how the counter moves. No mic, just type the sound.</small></button>`;
-    else if(_n === 0 && week === 0) coldLine += `<span class="hv9-cold">Words you say back today are yours to prove tomorrow morning.</span>`;
+    else if(_n === 0 && week === 0 && !tmrwCard) coldLine += `<span class="hv9-cold">Words you say back today are yours to prove tomorrow morning.</span>`;
   }catch(e){ coldLine = ''; }
 
   const bc = blitzCounts();
@@ -27498,12 +27677,13 @@ function renderHome(){
     <div class="home-v8">
       ${_homeTopBar()}
       <div class="hv9-hello">
-        <div class="hv9-hi">${greet}</div>
+        <div class="hv9-hi">${greet}${_firstName() ? ', ' + esc(_firstName()) : ''}</div>
         <button class="hv9-stick" onclick="nav('road')">${stickLine}&nbsp;<span class="hv9-arr" style="white-space:nowrap">›</span></button>
         ${coldLine}
       </div>
       ${freeBanner}
       ${resumeChip}
+      ${tmrwCard}
       ${_catDayCard() || heroCard}
       ${_stkAlbumStrip()}
     </div>`;
@@ -27668,7 +27848,7 @@ const OB_LEVEL_STAGE = { zero:1, few:2, letters:3 };
 function _obEnsure(){
   if(!state.onboard){
     state.onboard = {
-      step:'w1',             // w1..w6 funnel -> 'mic' -> drill
+      step:'sticker',        // v9.19 — Delve 12: the first sticker is the only screen before round 1 (w1/w5/mic cut)
       why:null,              // 'trip' | 'media' | 'someone' | 'self'
       level:null,            // 'zero' | 'few' | 'letters'
       when:null,             // 'drive' | 'walk' | 'home'
@@ -27875,7 +28055,7 @@ window.startOnboardMicroDrill = startOnboardMicroDrill;
 const _OBF_ARROW = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>`;
 const _OBF_TICK = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="m5 13 4 4L19 7"/></svg>`;
 function _obfShell(step, pct, inner, foot){
-  const top = step === 'w1' ? '' : `
+  const top = (step === 'w1' || step === 'sticker') ? '' : `
     <div class="obf-top">
       <button class="obf-back" onclick="obfBack()" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5m6 6-6-6 6-6"/></svg></button>
       <div class="obf-prog"><i style="width:${pct}%"></i></div>
@@ -28033,7 +28213,7 @@ function renderOnboard(){
   const body = ({
     w1:_obfW1, w2:_obfW2, w3:_obfW3, w4:_obfW4, w5:_obfW5, w6:_obfW6,
     mic:_obfMic, sticker:_obfSticker
-  }[ob.step] || _obfW1)();
+  }[ob.step] || _obfSticker)();
   return body;
 }
 
@@ -28074,48 +28254,149 @@ function _authSentHtml(ui){
     </div></div>`;
 }
 
-/* v8.75 — the front door: what a cold visitor sees. Two clear buttons
-   (sign up / sign in) plus Google, modelled on standard consumer apps. */
+/* v9.19 — Delve 12 (ADR-025, Claude Design 6a/6b): ONE front door — the old
+   auth welcome and the onboarding welcome merged. Google leads, except inside
+   the Facebook/Instagram in-app browsers, where Google refuses to sign in:
+   there email leads and a line explains how to open a real browser. The
+   tap-to-hear sample writes nothing (strict wall: no learning before an account). */
+function _authInApp(){
+  try{ return /FBAN|FBAV|Instagram/i.test(navigator.userAgent || ''); }catch(e){ return false; }
+}
+const _WSD_GOOGLE = `<span class="wsd-gdot"><i></i></span>Continue with Google`;
+const _WSD_FINE = `<div class="wsd-fine">By continuing you agree to our <a href="https://wordstick.app/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="https://wordstick.app/privacy.html" target="_blank" rel="noopener">Privacy policy</a>.</div>`;
 function _authWelcomeHtml(ui){
-  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  const inApp = _authInApp();
+  const msgRow = ui.msg ? `<div class="wsd-err">${esc(ui.msg)}</div>` : '';
   return `
-    <div class="ob-wrap"><div class="ob-screen">
-      <div class="ob-emoji">📌</div>
-      <div class="ob-title">WordStick</div>
-      <div class="ob-sub">Japanese words that actually stick. Try everything free for 7 days — no card needed.</div>
-      <button class="ob-cta" onclick="authGoto('create')">Sign up free</button>
-      <button class="ob-cta ob-alt" onclick="authGoto('signin')">Sign in</button>
-      <button class="ob-cta ob-alt" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>Continue with Google</button>
-      ${msgRow}
+    <div class="wsd"><div class="wsd-glow"></div><div class="wsd-in">
+      <div class="wsd-eyebrow"><span style="font-family:'Noto Sans JP',sans-serif;letter-spacing:.06em">ことば</span> · WORDSTICK</div>
+      <h1 class="wsd-h1">Learn Japanese with your ears, not your thumbs.</h1>
+      <div class="wsd-sub">Hear a word, say it back, keep it. Free for 7 days — no card needed.</div>
+      <button class="wsd-hear" onclick="obfHear()" aria-label="Tap to hear mizu, water">
+        <span class="wsd-play">▶</span>
+        <span><small>TAP TO HEAR</small><span class="k">みず</span><span class="r">mizu</span><span class="e">"water"</span></span>
+      </button>
+      <div class="wsd-foot">
+        ${msgRow}
+        ${inApp ? '' : `<button class="wsd-btn g" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>${_WSD_GOOGLE}</button>`}
+        <button class="wsd-btn ${inApp ? 'pri' : 'sec'}" onclick="authGoto('create')">Sign up with email</button>
+        <button class="wsd-link" onclick="authGoto('signin')">I already have an account</button>
+        ${inApp ? `<div class="wsd-tip">Using Google? Tap <b>⋯</b> at the top → <b>Open in browser</b></div>` : ''}
+        ${_WSD_FINE}
+      </div>
     </div></div>`;
 }
 
 function _authFormHtml(ui){
   const isCreate = ui.mode === 'create';
-  const consentRow = isCreate ? `
-      <label class="ob-consent">
-        <input type="checkbox" ${ui.consent ? 'checked' : ''} onchange="authToggleConsent()">
-        <span>Email me tips and updates. No spam, unsubscribe anytime.</span>
-      </label>` : '';
-  const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+  const inApp = _authInApp();
+  const dis = ui.busy ? 'disabled' : '';
+  const go = isCreate ? 'authDoSignUp()' : 'authDoPasswordSignIn()';
+  const msgRow = ui.msg ? `<div class="wsd-err">${esc(ui.msg)}</div>` : '';
+  const nameField = isCreate ? `
+        <div><label class="wsd-lab" for="authFirst">FIRST NAME</label>
+          <input id="authFirst" class="wsd-inp" type="text" autocomplete="given-name" autocapitalize="words" maxlength="24" value="${esc(ui.first || '')}" oninput="authSetFirst(this.value)" ${dis}></div>` : '';
   return `
-    <div class="ob-wrap"><div class="ob-screen">
-      <div class="ob-emoji">一</div>
-      <div class="ob-title">${isCreate ? 'Create your account' : 'Sign in'}</div>
-      <div class="ob-sub">${isCreate ? 'Free for 7 days — no card needed.' : 'Welcome back.'}</div>
-      <input class="ob-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com"
-        value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${ui.busy ? 'disabled' : ''}>
-      <input class="ob-input" type="password" autocomplete="${isCreate ? 'new-password' : 'current-password'}" placeholder="${isCreate ? 'Choose a password (8+ characters)' : 'Password'}"
-        value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" ${ui.busy ? 'disabled' : ''}>
-      <button class="ob-cta" onclick="${isCreate ? 'authDoSignUp()' : 'authDoPasswordSignIn()'}" ${ui.busy ? 'disabled' : ''}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
-      ${consentRow}
-      ${isCreate ? '' : `<button class="ob-switch" onclick="authGoto('forgot')">Forgot your password?</button>`}
-      <button class="ob-cta ob-alt" onclick="authContinueGoogle()" ${ui.busy ? 'disabled' : ''}>Continue with Google</button>
-      ${msgRow}
-      <button class="ob-switch" onclick="authGoto('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : 'New here? Sign up free'}</button>
-      <button class="ob-switch" onclick="authGoto('welcome')">← Back</button>
+    <div class="wsd"><div class="wsd-in">
+      <button class="wsd-back" onclick="authGoto('welcome')" aria-label="Back">‹</button>
+      <h1 class="wsd-h1" style="font-size:31px;margin-top:10px">${isCreate ? 'Create your account' : 'Welcome back'}</h1>
+      <div class="wsd-sub">${isCreate ? 'Free for 7 days — no card needed.' : 'Your words are where you left them.'}</div>
+      <div class="wsd-fields">
+        ${nameField}
+        <div><label class="wsd-lab" for="authEmail">EMAIL</label>
+          <input id="authEmail" class="wsd-inp" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${dis}></div>
+        <div><label class="wsd-lab" for="authPw">PASSWORD</label>
+          <input id="authPw" class="wsd-inp" type="password" autocomplete="${isCreate ? 'new-password' : 'current-password'}" value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();${go};}" ${dis}>
+          ${isCreate ? '<div class="wsd-hint">8 characters or more</div>' : ''}</div>
+        ${isCreate
+          ? `<label class="wsd-consent"><input type="checkbox" ${ui.consent ? 'checked' : ''} onchange="authToggleConsent()"><span>Email me tips and updates. No spam, unsubscribe anytime.</span></label>`
+          : `<button class="wsd-link wsd-forgot" onclick="authGoto('forgot')">Forgot your password?</button>`}
+      </div>
+      <div class="wsd-foot" style="margin-top:22px">
+        ${msgRow}
+        <button class="wsd-btn pri" onclick="${go}" ${dis}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
+        ${inApp ? '' : `<div class="wsd-or">or</div><button class="wsd-btn g" onclick="authContinueGoogle()" ${dis}>${_WSD_GOOGLE}</button>`}
+        <button class="wsd-link" onclick="authGoto('${isCreate ? 'signin' : 'create'}')">${isCreate ? 'Already have an account? Sign in' : 'New here? Sign up free'}</button>
+        ${isCreate ? _WSD_FINE : ''}
+      </div>
     </div></div>`;
 }
+
+/* ---------- v9.19 — first name (Delve 12, ADR-024) ----------
+   Required for every signed-in account. Filled silently from account data
+   when it's there (email sign-up's first_name, Google's given/full name);
+   otherwise the one-field Name screen asks, once. `nameSet` is the durable,
+   synced flag — the old 'Julius' default string is never treated as a name. */
+let _nameDraft = null, _nameMsg = '';
+function _nameClean(v){
+  return String(v || '').replace(/[\r\n"<>]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 24);
+}
+function _nameFromMeta(u){
+  const m = (u && u.user_metadata) || {};
+  const n = _nameClean(m.first_name || m.given_name || String(m.full_name || m.name || '').trim().split(/\s+/)[0] || '');
+  return (n && !/@/.test(n)) ? n : '';
+}
+function _nameNeeded(){
+  try{
+    if(state.settings.ownerMode === true) return false;
+    const u = _authState.user;
+    if(!u) return false;
+    if(state.settings.nameSet === true && _nameClean(state.settings.userName)) return false;
+    const meta = _nameFromMeta(u);
+    if(meta){ state.settings.userName = meta; state.settings.nameSet = true; try{ save(); }catch(e){} return false; }
+    if(_entOwnerAccount(u) && _nameClean(state.settings.userName)){ state.settings.nameSet = true; try{ save(); }catch(e){} return false; }
+    return true;
+  }catch(e){ return false; }
+}
+function _firstName(){
+  try{ return state.settings.nameSet === true ? _nameClean(state.settings.userName) : ''; }catch(e){ return ''; }
+}
+function renderNameGate(){
+  const u = _authState.user;
+  const edit = !!state._nameEdit;
+  const v = (_nameDraft !== null) ? _nameDraft : (edit ? _firstName() : '');
+  return `
+    <div class="wsd"><div class="wsd-glow" style="top:260px"></div><div class="wsd-in">
+      ${edit ? `<button class="wsd-back" onclick="nameGateCancel()" aria-label="Back">‹</button>` : ''}
+      <h1 class="wsd-h1" style="margin-top:${edit ? '14px' : '56px'}">What should we call you?</h1>
+      <div class="wsd-sub">Just your first name — it's how WordStick talks to you.</div>
+      <div class="wsd-fields" style="margin-top:28px">
+        <div><label class="wsd-lab" for="wsName">FIRST NAME</label>
+          <input id="wsName" class="wsd-inp" style="font-size:20px;font-weight:900;padding:18px" type="text" autocomplete="given-name" autocapitalize="words" maxlength="24" value="${esc(v)}" oninput="nameGateInput(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();nameGateSave();}"></div>
+        ${_nameMsg ? `<div class="wsd-err">${esc(_nameMsg)}</div>` : ''}
+      </div>
+      <div class="wsd-foot">
+        <button class="wsd-btn pri" onclick="nameGateSave()">${edit ? 'Save' : 'Continue'}</button>
+        ${!edit && u ? `<div class="wsd-fine">Signed in as ${esc(u.email || 'your account')} · <button class="wsd-link" style="font-size:12.5px;padding:0" onclick="authDoSignOut()">Not you? Sign out</button></div>` : ''}
+      </div>
+    </div></div>`;
+}
+function nameGateInput(v){ _nameDraft = v; _nameMsg = ''; }
+function nameGateSave(){
+  const el = document.getElementById('wsName');
+  const n = _nameClean(el ? el.value : _nameDraft);
+  if(!n){ _nameMsg = 'Type your first name to continue.'; render(); return; }
+  state.settings.userName = n;
+  state.settings.nameSet = true;
+  _nameDraft = null; _nameMsg = '';
+  save();
+  /* Best-effort: keep it on the account too, so a new device never asks. */
+  try{
+    const c = authClient();
+    if(c && c.auth && typeof c.auth.updateUser === 'function' && _authState.user){
+      Promise.resolve(c.auth.updateUser({ data:{ first_name: n } })).catch(() => {});
+    }
+  }catch(e){}
+  const edit = !!state._nameEdit;
+  state._nameEdit = false;
+  nav(edit ? 'settings' : 'home');
+}
+function nameGateCancel(){ state._nameEdit = false; _nameDraft = null; _nameMsg = ''; nav('settings'); }
+function settingsNameEdit(){ state._nameEdit = true; _nameDraft = null; _nameMsg = ''; nav('name'); }
+window.nameGateInput = nameGateInput;
+window.nameGateSave = nameGateSave;
+window.nameGateCancel = nameGateCancel;
+window.settingsNameEdit = settingsNameEdit;
 
 function _authForgotHtml(ui){
   const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
@@ -28995,6 +29276,7 @@ function renderSettings(){
     if(!_setUi.planBusy && (_setUi.planFor !== u.id || Date.now() - _setUi.planAt > 60000)) setTimeout(_settingsPlanLoad, 0);
     const pl = _settingsPlanLine();
     account = brow('👤 ' + esc(u.email || 'Signed in'), 'Signed in — your progress is saved to this account.', btn('Sign out', 'authDoSignOut()', 'signout'))
+      + brow('🙂 Your name', esc(_firstName() || 'Not set yet'), btn('Change', 'settingsNameEdit()', 'name'))
       + brow('🎟️ Your plan', esc(pl.line), pl.manage ? btn('Manage', 'settingsManageSub()', 'portal') : (pl.plans ? btn('See plans', "nav('paywall')", 'plans') : ''));
   } else {
     account = brow('👤 Sign in', 'Sign in to keep your progress on every device.', btn('Sign in', "nav('auth')", 'signin'));
@@ -29966,6 +30248,9 @@ async function init(){
   if(!_authGateOpen()){
     state.screen = 'auth';
     try{ history.replaceState({screen:'auth'}, '', '#auth'); }catch(e){}
+  } else if(_nameNeeded()){
+    state.screen = 'name';
+    try{ history.replaceState({screen:'name'}, '', '#name'); }catch(e){}
   } else if(_checkoutReturn === 'success'){
     state.screen = 'checkoutReturn';
     try{ history.replaceState({screen:'checkoutReturn'}, '', '#checkoutReturn'); }catch(e){}
