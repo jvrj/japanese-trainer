@@ -1100,7 +1100,7 @@ body[data-screen="buildMode"] .ask-fab{display:none}
 
 'use strict';
 
-const APP_VERSION = '9.15';
+const APP_VERSION = '9.16';
 
 
 /* N5 PACK — full ~400-word curated pack. All hiragana/katakana, beginner-focused.
@@ -28978,10 +28978,10 @@ function renderSettings(){
   /* Rows holding a button are plain divs: a <label> forwards a tap anywhere on
      the row to the first button inside it. */
   const brow = (title, sub, ctrl) => `
-    <div class="word-row"><div class="word-main"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</div>`;
+    <div class="word-row" style="display:flex;align-items:center;gap:12px"><div class="word-main" style="flex:1;min-width:0"><div class="word-jp">${title}</div>${sub?`<div class="word-en">${sub}</div>`:''}</div>${ctrl}</div>`;
   const busy = !!_setUi.busy;
-  const btn = (label, onclick, key) => `<button class="btn btn-secondary" style="font-size:12px;white-space:nowrap" onclick="${onclick}" ${busy ? 'disabled' : ''}>${_setUi.busy === key ? 'One moment…' : label}</button>`;
-  const link = (label, href) => `<a class="btn btn-secondary" style="font-size:12px;white-space:nowrap;text-decoration:none" href="${href}"${href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
+  const btn = (label, onclick, key) => `<button class="btn btn-secondary" style="font-size:12px;white-space:nowrap;width:auto;flex:0 0 auto;padding:8px 14px" onclick="${onclick}" ${busy ? 'disabled' : ''}>${_setUi.busy === key ? 'One moment…' : label}</button>`;
+  const link = (label, href) => `<a class="btn btn-secondary" style="font-size:12px;white-space:nowrap;text-decoration:none;width:auto;flex:0 0 auto;padding:8px 14px" href="${href}"${href.startsWith('http') ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`;
 
   const u = _authState.user;
   let account;
