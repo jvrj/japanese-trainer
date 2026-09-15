@@ -1260,7 +1260,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.26';
+const APP_VERSION = '9.27';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -26622,8 +26622,8 @@ function _bm2Step(b, step, total, paused, auto){
   const r = (romajiOn() && w.r) ? `<div class="bm2-r">${esc(w.r)}</div>` : '';
   const tag = last ? `<div class="bm2-tag">LAST ONE</div>` : (step.fresh ? `<div class="bm2-tag">✦ NEW WORD</div>` : '');
   /* v9.25 — the family and its shared piece ("Shops · や = shop") so the pattern clicks. */
-  const fi = _famInfo(w.fam);
-  const chip = fi ? `<div class="bm2-fam">${esc(fi.n)}${fi.h ? ` · <b>${esc(fi.h)}</b>` : ''}</div>` : '';
+  /* v9.27 — owner: no hints on the card. The family still orders the round; the chip is gone. */
+  const chip = '';
   const status = auto
     ? ((b._phaseStep === b.stepIdx && b._phaseText) ? b._phaseText : (b.revealed ? 'Here it is…' : 'Listen…'))
     : (rev ? 'Listen, then say it back' : 'Say it out loud');
