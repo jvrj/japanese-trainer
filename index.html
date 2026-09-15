@@ -1172,6 +1172,13 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .stk-b2 .stk-keep{margin-top:18px;background:linear-gradient(95deg,#9d5cff,#ff5d9e);color:#fff;box-shadow:0 12px 30px rgba(157,92,255,.45)}
 .stk-2btn{display:flex;gap:10px;margin-top:12px}
 .stk-2btn button{flex:1;font-family:inherit;padding:14px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#f5f2ff;font-size:14px;font-weight:800;cursor:pointer}
+.stk-size{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12px;font-weight:700;color:rgba(255,255,255,.6)}
+.stk-size span{margin-right:4px}
+.stk-size button{font-family:inherit;padding:7px 15px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#f5f2ff;font-size:13px;font-weight:800;cursor:pointer}
+.stk-size button.on{background:#fff;color:#2a1748;border-color:#fff}
+.rs-seg{display:flex;gap:6px;flex:0 0 auto}
+.rs-seg button{font-family:inherit;padding:7px 13px;border-radius:99px;border:1px solid rgba(138,128,168,.45);background:transparent;color:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.rs-seg button.on{background:#9d5cff;color:#fff;border-color:#9d5cff}
 /* Sticker detail: 3f + 3g legend */
 .stk-page{text-align:center}
 .stk-back{display:block;background:none;border:none;font-family:inherit;font-size:15px;font-weight:800;color:var(--dim,#cfc7e6);padding:14px 4px 4px;cursor:pointer;text-align:left}
@@ -1260,7 +1267,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.27';
+const APP_VERSION = '9.28';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -23186,8 +23193,32 @@ function _stickyTopUp(rest, need){
   const fresh = _obfBiasFresh(unseen, need);
   return fresh.length >= need ? fresh.slice(0, need) : [...fresh, ..._famTake(seen, need - fresh.length, 'due')];
 }
+/* v9.28 — round size. 30 is right when you know most of the words; 10 lets
+   you smash a few new ones until they stick, then move on (owner, 16 Sep).
+   The pinned batch shrinks or grows to the size on the next build; words
+   that leave a shrunk batch stay in the spaced schedule. */
+function _roundSize(){ const n = Number(state.settings && state.settings.roundSize); return n === 10 ? 10 : 30; }
+function setRoundSize(n){
+  n = n === 10 ? 10 : 30;
+  if(_roundSize() === n) return;
+  state.settings.roundSize = n;
+  try{ save(); }catch(e){}
+  try{ log('round_size', {n}); }catch(e){}
+  render();
+  showToast(n === 10 ? 'Rounds are 10 words now' : 'Rounds are 30 words now', {tone:'info', duration:2500});
+}
+window.setRoundSize = setRoundSize;
+function _roundSizeHtml(){
+  const n = _roundSize();
+  return `<div class="stk-size"><span>Round size</span><button class="${n === 10 ? 'on' : ''}" onclick="setRoundSize(10)">10</button><button class="${n === 30 ? 'on' : ''}" onclick="setRoundSize(30)">30</button></div>`;
+}
+function _roundSizeSeg(){
+  const n = _roundSize();
+  return `<div class="rs-seg"><button class="${n === 10 ? 'on' : ''}" onclick="setRoundSize(10)">10</button><button class="${n === 30 ? 'on' : ''}" onclick="setRoundSize(30)">30</button></div>`;
+}
+function _againLabel(n){ const r = _roundSize(); return r === n ? `▶ Again — the same ${n}` : `▶ Next round — ${r} words`; }
 function buildGenerateVocabSpamLesson(opts){
-  const want = (opts && opts.count) || 30;
+  const want = (opts && opts.count) || _roundSize();
   const masteredSet = new Set(state.settings.masteredWords || []);
   const suspendedSet = new Set(state.settings.suspendedWords || []);
   /* v6.37 — Mastered review: include ★mastered words in the spam pool. */
@@ -27893,9 +27924,10 @@ function renderBuildModeComplete(){
       <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
       <div class="stk-bsub">${_secLine}${_mins} min this session</div>
       <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>
-      <button class="stk-keep" onclick="buildKeepGoing()">▶ Again — the same ${spamN}</button>
+      <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(spamN)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
       <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
+      ${_roundSizeHtml()}
     </div>
     ${_buildRatePanel()}
     ${_trialNudgeCard()}`;
@@ -29713,9 +29745,10 @@ function _stkBurst(sec, o){
       <div class="stk-bpct">${p.pct}% of ${esc(sec.name)} heard</div>
       ${tmrw}
       ${inst}
-      <button class="stk-keep" onclick="buildKeepGoing()">▶ Again — the same ${o.n}</button>
+      <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(o.n)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
       <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
+      ${_roundSizeHtml()}
     </div>
     ${_buildRatePanel()}
     ${_trialNudgeCard()}`;
@@ -31555,6 +31588,7 @@ function renderSettings(){
     <div class="h8-section" style="margin:16px 4px 8px">Learning</div>
     <div class="card">
       ${row('🔤 Show romaji', 'English letters under the Japanese. Turn it off once you can read without them.', chk('hideRomaji', s.hideRomaji !== true))}
+      <div class="word-row"><div class="word-main"><div class="word-jp">🔢 Round size</div><div class="word-en">10 to smash a few new words until they stick. 30 when you know most of them.</div></div>${_roundSizeSeg()}</div>
     </div>
 
     <div class="h8-section" style="margin:16px 4px 8px">Help</div>
