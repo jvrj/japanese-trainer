@@ -1267,7 +1267,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.29';
+const APP_VERSION = '9.30';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -23272,11 +23272,17 @@ function buildGenerateVocabSpamLesson(opts){
     const sticky = (state.settings.stickyBatch || {})[key];
     const byId = new Map(sectionPool.map(w => [w.id, w]));
     let batchWords = Array.isArray(sticky) ? sticky.map(id => byId.get(id)).filter(Boolean) : [];
+    /* v9.30 — the Mix avoid-list has to survive EVERY rebuild path, not just the
+       top-up one. When a Mix empties the batch — which it does whenever the round
+       IS one whole family (Dates at 10 = Days 1 to 10) — the build fell through to
+       the fresh pick below, which never read the list and handed back the identical
+       words under a "New words mixed in" toast. Read it once, here, for all paths. */
+    const avoidF = state._famAvoid || null; state._famAvoid = null;
+    const _notAvoided = w => !(avoidF && avoidF.has(w.id));
     if(batchWords.length){
       const keptIds = new Set(batchWords.map(w => w.id));
       const need = wantN - batchWords.length;
-      const avoidF = state._famAvoid || null; state._famAvoid = null;
-      if(need > 0) batchWords = [...batchWords, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id) && !(avoidF && avoidF.has(w.id))), need)];
+      if(need > 0) batchWords = [...batchWords, ..._stickyTopUp(sectionPool.filter(w => !keptIds.has(w.id) && _notAvoided(w)), need)];
       else batchWords = batchWords.slice(0, wantN);
     } else if(state._nextBatchNew){
       /* v9.07 — "Next 30 — new words" (round-end button): the relentless
@@ -23296,7 +23302,10 @@ function buildGenerateVocabSpamLesson(opts){
         batchWords = [...batchWords, ..._buildSpamPick(sectionPool.filter(w => !have.has(w.id)), wantN - batchWords.length, {freshMix:true})];
       }
     } else {
-      batchWords = _buildSpamPick(sectionPool, wantN, {freshMix:true});
+      /* Honour the avoid-list here too; fall back to the whole section only when
+         avoiding would leave too few words to fill a round. */
+      const freshRest = sectionPool.filter(_notAvoided);
+      batchWords = _buildSpamPick(freshRest.length >= wantN ? freshRest : sectionPool, wantN, {freshMix:true});
     }
     /* PIN the batch identity (full intended set)… */
     /* v9.25 — same pin played again: family order shuffles; a new pin opens
@@ -25052,11 +25061,23 @@ function buildMixFamilies(){
   const fams = [...g.entries()].map(([k, ids]) => ({ k, ids, next: ids.reduce((a, id) => a + ((state.stats[id] && state.stats[id].smNext) || 0), 0) / ids.length })).sort((a, b) => b.next - a.next);
   const target = Math.ceil(batch.length / 2);
   const drop = new Set();
-  for(const f of fams){ if(drop.size >= target) break; if(fams.length > 1 && drop.size + f.ids.length > batch.length - 5) continue; f.ids.forEach(id => drop.add(id)); }
+  /* v9.30 — families leave WHOLE, best-known first, until about half the round has
+     gone. The old "always leave 5 behind" guard skipped any family bigger than half
+     the round, so a 10-word round built from one big family swapped a single word. */
+  for(const f of fams){ if(drop.size >= target) break; f.ids.forEach(id => drop.add(id)); }
   if(!drop.size) fams[0].ids.forEach(id => drop.add(id));
   const before = new Set(batch);
   state.settings.stickyBatch[key] = batch.filter(id => !drop.has(id));
-  state._famAvoid = drop;
+  /* v9.30 — remember the PREVIOUS mix as well, so tapping Mix twice moves forward
+     instead of handing back the family the first tap just retired. Capped at a
+     third of the category so the pool can never starve. */
+  state._mixOut = state._mixOut || {};
+  const prevOut = state._mixOut[key] || [];
+  const avoid = new Set(drop);
+  let capN = 0; try{ capN = Math.floor((_topicWords(sec) || []).length / 3); }catch(e){}
+  for(const id of prevOut){ if(avoid.size >= capN) break; avoid.add(id); }
+  state._mixOut[key] = [...drop];
+  state._famAvoid = avoid;
   try{ save(); }catch(e){}
   state._quietStartToast = true;
   startBuildModeVocabSpam();
@@ -25089,7 +25110,7 @@ function _nsContinue(b, mix){
   const nb = state.buildMode;
   if(nb && nb !== b && nb.lesson){
     nb._origin = origin;
-    if(mixing) showToast(famIn.length ? `New: ${famIn.slice(0, 3).join(', ')}` : 'New words mixed in', {tone:'info', duration:3000});
+    if(mixing) showToast(famIn.length ? `New: ${famIn.slice(0, 3).join(', ')}` : 'No new words left in this category', {tone:'info', duration:3000});
     return true;
   }
   return false;
