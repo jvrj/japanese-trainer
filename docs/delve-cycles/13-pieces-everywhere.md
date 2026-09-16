@@ -59,7 +59,9 @@ Everything below is measured off `index.html` @ v9.32, not recalled. Four read-o
 | Families by kind | group 341 · suffix 143 · pairs 56 · stem 52 · counter 26 · prefix 17 · frame 8 · sound 6 |
 | Words by kind | group **2,170** · suffix 1,476 · pairs 390 · stem 331 · counter 269 · prefix 102 · sound 47 · frame 45 |
 | Families with no `p` | **403** (341 group + 62 non-group) |
-| **Words with a pointable piece (`p` present)** | **2,223 = 46%** |
+| Words in families that *declare* a `p` field | 2,223 = 46% |
+| **Words whose `p` is a real piece — non-banned AND a literal substring of EVERY member** | **893 = 18.5%** (100 families) |
+| Same, allowing phonological variants (`p` present in ≥80% of members) | 1,313 = 27.2% (141 families) |
 | Words in relational families (`pairs`/`sound`, no `p`) | **437 = 9%** |
 | Words in topic bags (`group`) | **2,170 = 45%** |
 | Tiles | **50 content tiles** |
@@ -82,6 +84,36 @@ is already three, and only the app hasn't noticed:
 > **46% pointable piece · 9% relational · 45% topic bag.**
 
 That split is the single most load-bearing fact in this delve, and it reframes tasks 1–3.
+
+> **CORRECTED IN ROUND 1 (code-reviewer FATAL, re-measured and confirmed).** The 46% counts
+> *families that declare a `p` field*, not families whose `p` survives the delve's own validator
+> rules 2 and 4. Re-running the parse with those rules applied (same parser, same 2,223 baseline,
+> so the correction is apples-to-apples):
+>
+> | | words | share |
+> |---|---|---|
+> | declare a `p` | 2,223 | 46.0% |
+> | …of which `p` is a **banned bare inflection** (ます/です/ない/ました/ません) | −334 | |
+> | …of which `p` is **not literally present in every member** | −996 | |
+> | **`p` verified: non-banned and literal in every member** | **893** | **18.5%** |
+> | `p` verified with a ≥80% phonological-variant allowance (rendaku counters: ぴき/びき, ぷん, ついたち) | 1,313 | 27.2% |
+>
+> Worked examples, all re-verified against `index.html`: `actions_take_hold` (6702),
+> `actions_thinking` (6703), `directions_turn_cross` (6668) and `clothing_put_on_verbs` (6777) —
+> 34 words — declare `"p":"ます"`, which BRIEF-forbid rule 7 bans outright and which half their
+> members (the plain forms, e.g. とる at 1725) do not contain at all. `emergency_calling_110_119`
+> (6509) declares `"p":"___ を よんで ください"`, a template sentence that 3 of its 5 members
+> (e.g. ひゃくとおばん, 3106) do not contain. `form_can_*` declare `"p":"られます"`, absent from
+> 17 of 24 members in `form_can_make` (godan potentials end 〜えます: のめます, 5893).
+>
+> **So the honest headline is 18.5% strict / 27.2% with a variant rule — not 46%.** The direction
+> of every decision below is unchanged and in fact strengthened (the deck has *less* real piece
+> structure than the charter or this doc assumed), but three consequences follow and are applied
+> throughout: (1) the tile rule's 60% piece-coverage clause is unreachable for almost every tile
+> under strict reading, so it ships as a **ratchet against the measured baseline**, not a bar;
+> (2) the validator is **red at HEAD on its own rules 2, 3 and 4**, not only on rule 6; (3) the
+> first build item is no longer the re-cut but a **piece-verification pass (B1a)** that classifies
+> all 2,223 declared pieces into verified / variant / banned / bogus.
 
 ---
 
@@ -108,9 +140,17 @@ threshold 60% -> 37 tiles fail, 13 pass
 threshold 70% -> 37 tiles fail, 13 pass
 ```
 
-The rule is insensitive across a 20-point band — the deck is bimodal, not borderline — so the
-threshold is not tuned. **13 tiles pass: the 12 `form_*` tiles and `calendar`. Every other tile
-fails. 37 of 50 violate.**
+The rule is stable across 60–70% but **one tile flips exactly at the 50/60 boundary** — the
+"insensitive across a 20-point band" claim was overstated and is corrected here (round 1,
+devils-advocate NITPICK). The band that is genuinely flat is 60–70%. **13 tiles pass at 60%: the
+12 `form_*` tiles and `calendar`. 37 of 50 violate.** B1a must name the tile that flips at 50%,
+since "the 14th tile" is currently an unnamed number in a table.
+
+**And note what this measurement was actually measuring:** piece coverage here = share of a tile's
+words in families *declaring* a `p`. Under the corrected (verified-`p`) reading above, the pass
+count drops further — the `form_*` tiles pass on declared `p` and fail on verified `p`
+(`form_did_*` = ました, banned; `form_can_*` = られます, absent from most members). Re-scoring all
+50 tiles on verified `p` is part of B1a, and the 60% clause is a ratchet until it lands.
 
 That is the whole finding in one line: **the only tiles that pass are exactly the ones deliberately
 built as (a) or (b). All 37 tiles that grew organically as (c) fail.** The shapes the owner likes
@@ -241,7 +281,7 @@ Rename the tiers to what the measurement already found, and make the engine beha
 
 | Tier | `k` | Words | What it means | Engine treatment |
 |---|---|---|---|---|
-| **piece** | `suffix` `prefix` `stem` `counter` `frame` (all keep `p`) | 2,223 (46%) | a substring you can point at, shared by every member | may open a tile · may own a whole round if it is a ladder (§3) · graduates as a family |
+| **piece** | `suffix` `prefix` `stem` `counter` `frame` (all keep `p`) | 2,223 declared (46%) — **893 verified (18.5%)**, see the Method correction | a substring you can point at, shared by every member | may open a tile · may own a whole round if it is a ladder (§3) · graduates as a family |
 | **relation** | `pairs` `sound` | 437 (9%) | the members define each other (yesterday↔tomorrow) or share a provenance | travels together · may **not** open a tile · graduates as a family (small: 56 pairs families average ≈7) |
 | **topic** | `topic` (renamed from `group`) | 2,170 (45%) | same subject, nothing else | travels together for coherence only · may **not** open a tile · may **not** be the first family of a round · **capped at 1 per 10-round, 3 per 30-round** · **graduates word-by-word, not as a family** |
 
@@ -331,8 +371,25 @@ monotony — a 10-round of `animals_pets` is ten unrelated nouns with a cartoon 
 
 **C. How a new family enters**
 
-Unchanged from v9.30/9.32 and re-affirmed as the only entry path: **whole, at round end, via Mix
-(`buildMixFamilies`) or auto-swap (`_autoSwapCheck`) only. Never mid-round.** Two clauses added:
+> **CORRECTED IN ROUND 1 (devils-advocate FATAL, verified in code).** The draft claimed Mix and
+> auto-swap are "the only entry path." They are not. Unseen words enter a pin through **four**
+> paths, and only one of them is family-aware:
+>
+> | Path | Line | Family-aware? |
+> |---|---|---|
+> | `_stickyTopUp(rest, need)` → `_obfBiasFresh(unseen, need)` — fires whenever seats open (auto-swap, attrition, a 10→30 round-size change) | 23617, 23630 | **No** — road/theme bias, knows nothing about `fam` |
+> | `_nextBatchNew` ("Next 30 — new words" at round end) → `_obfBiasFresh(_freeTierCapPool(unseen), wantN)` | 23731 | **No** |
+> | fresh build → `_buildSpamPick(..., {freshMix:true})` | 23743 | **No** |
+> | `_famTake(seen, …)` — the **seen remainder only** | 23631 | Yes |
+>
+> `_famTake` is reached only for the already-seen tail of a top-up. So composition caps placed in
+> `_famTake` (B6 as drafted) would be a **no-op on every new-word entry**. B6 is re-targeted at
+> `_stickyTopUp` / `_obfBiasFresh` and the `_nextBatchNew` branch, and re-costed from ~30 to
+> ~70 lines. The "only entry path" sentence is withdrawn.
+
+Restated correctly: **a new family is *composed* whole at round end — by Mix
+(`buildMixFamilies`), auto-swap (`_autoSwapCheck`), the "Next 30 — new words" button, or a
+top-up when seats open. Never mid-round.** Two clauses added:
 
 - A family entering must not push the round over its topic cap (max 1 per 10, 3 per 30) — so Mix
   prefers a piece family when the batch already holds its topic quota.
@@ -352,6 +409,15 @@ consequences:
    and the padding path then tops up from seen words via `_famOrder` (23778). The caps are checked
    against the **pin**, not the padded session — otherwise a free-plan day would trip its own rule
    on words it was never shown. Stated so the QA lens can test it directly.
+   **Added in round 1 (qa-tester):** the charter asked for the free-plan *starvation* case and the
+   draft answered only the cap-violation case. The combination is **day 1 of a free account**:
+   `_freeTierCapPool` caps the fresh pool at 3 before any family selection runs (23550, inside
+   `_buildSpamPick`; also 23618 inside `_stickyTopUp`), and the seen-word padding fallback has
+   **zero seen words to pad with**. The served session is then 3 words regardless of how many
+   families the pin logically holds — no composition rule can fix that, and none should try. The
+   decision is explicit: **on a free day-1 session the composition caps are not evaluated at all**;
+   the session is whatever the cap allows. B7 must cover it so it is never mistaken for a
+   composition bug.
 3. `isMasteredMode` bypasses the sticky batch entirely (`_buildSpamPick(..., {freshMix:true})`).
    The `mastered` view is a review surface, not a tile — **the composition rules do not apply to
    it**, and it keeps no sticker.
@@ -363,12 +429,27 @@ the batch falls through to the fresh pick (23713–23717). Under this rule the e
 longer rare — a ladder-only 10-round empties on every Mix **by design**. So:
 
 - The avoid-list hoist must not be refactored back down into the top-up branch. Mark it.
-- `buildMixFamilies`' half-the-round target (`Math.ceil(batch.length / 2)`, 25575) and its
-  whole-families-only loop already handle a single-family round correctly. Keep.
-- The `_mixOut` previous-mix memory, capped at a third of the tile (25588), interacts with the
-  minimum-family-size floor: a tile of 30 words caps `avoid` at 10, which is one ladder. Verify no
-  tile can starve. **All 50 tiles hold ≥30 live words today** (measured), so the 30-round is always
-  fillable — but the validator must keep it that way (§5 rule 6).
+- `buildMixFamilies`' half-the-round target (`Math.ceil(batch.length / 2)`, **25570** — the draft
+  said 25575) and its whole-families-only loop already handle a single-family round correctly. Keep.
+- The `_mixOut` previous-mix memory (`capN = Math.floor(_topicWords(sec).length / 3)`, **25585**;
+  `state._mixOut[key] = [...drop]` at **25587** — the draft said 25588 for both). Two corrections
+  from round 1:
+  - **"10 is one ladder" was wrong.** D8 legalises ladders to **12**, so a 10-word cap is less than
+    one ladder.
+  - **The cap gives zero anti-repeat protection in exactly the load-bearing case.** `avoid` is
+    seeded with the *uncapped* `drop` (25584) and the carry-forward loop only adds from `prevOut`
+    *while* `avoid.size < capN` (25586). On a ladder-heavy tile, `drop` (9–12) already meets or
+    exceeds `capN`, so **nothing carries forward from the previous Mix** — the "tap Mix twice and
+    you move forward" guarantee does not hold there. B7 must assert Mix-twice, not just Mix-once.
+- **Starvation is real as an arithmetic, and the draft's ≥30 floor does not prevent it.** Refill
+  after a Mix draws from `sectionPool` minus kept minus `avoid` (23722). Smallest tile measured:
+  `cooking` = **41 live words**. A 30-round there drops ~15 and must refill ~15 from 41 − 15 − 15 =
+  11 → the **pin comes back short** (26 of 30). The session still fills, because the free-plan
+  padding path (23782–23789) tops up from seen words that the avoid-list never excluded — so this
+  is a short *pin*, not a short *round*. §5 rule 10's stated guarantee ("never returns fewer than
+  the requested words") is therefore **true of the session and false of the pin**, and is restated
+  that way. The tile floor becomes `roundSize + maxLadder` = **42 as a ratchet target**, with
+  `cooking` (41) recorded as the one tile below it.
 
 ---
 
@@ -413,10 +494,18 @@ Why this surface and no other:
 
 **Rejected surfaces, with reasons:**
 
-- **Category open screen — rejected.** There isn't one worth the name, and that's deliberate: the
-  shape of the app is tap a tile → audio starts (`startTopicHandsFree(id)` straight off the sticker
-  page and the Home hero). Inserting a "here are this category's patterns" interstitial puts reading
-  in front of a hands-free drill. It is the single worst place to add friction.
+- **Category open screen — rejected as a NEW screen, and the rationale is restated (round 1,
+  devils-advocate).** The draft rejected it on the grounds that a pre-drill screen "puts reading in
+  front of a hands-free drill," then picked `renderSticker` — which, for a themed tile, **is** the
+  pre-drill screen: the tile tap routes to `stkOpen(id)` rather than starting audio (30237), and
+  the launch button lives on the sticker page itself (`h8-hero-cta` → `startTopicHandsFree(id)`,
+  30379). The original rationale was self-refuting. The pick stands on a different and honest
+  argument: **do not mint a second interstitial, and do not move the launch button.** The piece
+  blocks are added to a screen the learner already passes through, **strictly below the
+  `▶ Practice <name>` button** — which is pinned above any new reading, in the DOM and on screen,
+  at every viewport. What is actually rejected is a *reading gate*: no piece content may appear
+  between the tile tap and the launch button, and for unthemed tiles (which launch audio directly,
+  30237) nothing is inserted at all.
 - **Round end — rejected on occupancy, not principle.** The round-end render (28451–28464) already
   carries: sticker burst or ✓ mark, headline, session line, the tomorrow-check line, the auto-swap
   banner with Undo, "Again", "Mix in new words", "Change category", "Home", and the round-size pill.
@@ -441,7 +530,7 @@ agent that can't see a whole tile can't check its own work. 50 tiles, five waves
 
 | Wave | Tiles | What the agent does | Agents |
 |---|---|---|---|
-| **0** | 12 `form_*` | split the 30 over-8 families by verb group. **Deterministic — script, no agent.** The `_make` / `_move` suffixes already encode the grouping. | 0 |
+| ~~**0**~~ | ~~12 `form_*`~~ | **DROPPED in round 1 (devils-advocate).** Splitting the 30 over-8 `form_*` families by verb group churns ~1,085 lines inside the only tiles that pass the tile rule, for **zero learner-visible effect** — every sub-family keeps the identical piece (〜ています is 〜ています in every verb group), so the split exists solely to satisfy max-8. It also collides with D9: post-split, a 10-round in `form_now` can no longer be one clean pattern. Replaced by a **rule**: a tile whose families all share one piece is **exempt from the max-8 size limit** (see D8). Saves 1,085 lines and one collision. | 0 |
 | **1 (pilot)** | `work`, `actions`, `transport`, `emergency`, `greetings` | full re-cut. **Gate: if wave 1 produces <20% real new piece coverage, STOP and ship §2 tiering + §3 sizing only.** | 5 |
 | **2** | `tech`, `family`, `clothing`, `describing`, `directions` | the mess tiles — semantic judgement | 5 |
 | **3** | remaining 27 content tiles | 5 per wave, parallel | 27 |
@@ -458,7 +547,9 @@ and the whole re-cut is only worth running if the pilot beats the scan.
 3. **Never move a word to another tile.** `theme` is frozen; the tile list is frozen (§1a).
 4. **Never invent a word, a reading, or a meaning.** No additions in this pass at all.
 5. **Never add a new field** to a pack line. (If a decision seems to need one, it is the wrong
-   decision — see the §6 note on `certHears`.)
+   decision. *Round-1 correction: the draft pointed here at "the §6 note on `certHears`" — no such
+   note exists, and `certHears` appears nowhere in `index.html` (zero matches). The live pointer is
+   §6's `sessionsAtCert` derivation, and D16's no-new-field rule is **relaxed there**: see §6.*)
 6. **Never claim a piece that isn't literally there.** For `suffix`/`prefix`/`stem`, `p` must occur
    as a literal substring of **every** member's `jp`, at the right end.
 7. **Never use 〜ます, 〜です, 〜ない or any bare polite/plain inflection as a piece.** Every verb in
@@ -473,30 +564,66 @@ and the whole re-cut is only worth running if the pilot beats the scan.
 
 ### Validator — `scripts/check-families.js`, hard rules
 
-Ships **before** wave 1 and runs on every merge. Every rule is a hard fail, no warnings tier:
+Ships **before** any data work and runs on every merge.
+
+> **CORRECTED IN ROUND 1 (devils-advocate FATAL).** The draft said "every rule is a hard fail, no
+> warnings tier" while the doc's own headline says 37 of 50 tiles violate rule 6 — and the Method
+> correction above shows rules 2, 3 and 4 are **also red at HEAD** (334 words on a banned `p`, 996
+> on a `p` that is not in every member, three counter families past rule 3's two-irregulars
+> allowance). A gate that is red the day it lands blocks B2/B3/B5/B8 — which have nothing to do
+> with tile shape — and teaches everyone to pass `--no-verify`. The validator therefore ships in
+> **two tiers**:
+>
+> - **Hard fail (must be green at HEAD, verified):** rules 1, 7, 8 — every word resolves a `fam`
+>   and an `fo`, nothing reaches the `_famKey` fallback, append-only holds, `fo` is unique and
+>   contiguous. These pass today.
+> - **Ratchet (red at HEAD, may never get worse):** rules 2, 3, 4, 5, 6, 9, 10. Each is scored
+>   against a **committed baseline file** (`scripts/families-baseline.json`, written once from
+>   HEAD). A run fails only if a tile's or family's violation count **regresses**. The baseline is
+>   only ever allowed to shrink, and shrinking it is the definition of progress for the re-cut.
+>
+> No rule is downgraded to a warning; the difference is the comparison, not the severity.
+
+The ten rules:
 
 1. Every live word has `fam` and `fo`; every `fam` resolves in `WORD_FAMILIES`. **Zero words may
    reach the `_famKey` fallback** (`'_' + theme`).
 2. `k ∈ {suffix, prefix, stem, counter, frame, pairs, sound, topic}`. `suffix`/`prefix`/`stem`/
    `frame` **must** have `p`; `p` must be a literal substring of every member's `jp`, positioned
-   correctly (prefix at start, suffix at end).
+   per kind. **All four positions defined (round 1, code-reviewer — the draft defined only two):**
+   - `prefix` — `jp.startsWith(p)`.
+   - `suffix` — `jp.endsWith(p)`.
+   - `stem` — `jp.includes(p)` **and** `0 < jp.indexOf(p)` **and** `jp.indexOf(p) + p.length < jp.length`
+     (strictly interior; a stem that sits at either edge is a prefix or a suffix and must be
+     declared as one).
+   - `frame` — `p` contains exactly one `___` slot; the test is on the **template minus the slot**:
+     every member's `jp` must be a legal filler, i.e. `p.replace('___', jp)` is the family's
+     sentence. A `frame` family's members are therefore **words, not sentences**, and `p` is
+     **not** required to appear in `jp`. Ratchet-scored, because `emergency_calling_110_119` is the
+     only `frame` family today and it is malformed.
 3. `counter` families: `p` at the end of ≥80% of members, **max 2 declared irregulars** (ひとり /
    ふたり), listed explicitly in the family record.
 4. `p` is not in the banned-piece list (ます/です/ない/ました/ません + the katakana tails).
 5. Size: 3–8, or 9–12 for a family flagged `ladder:true` whose `k` is `counter`/`suffix` and whose
    `p` is constant.
-6. **Per tile:** ≤3 kinds · ≥60% of words in families with `p` (the §1 rule) · **≥30 live words**
-   (so a 30-round is always fillable) · **≥3 families** (so a 30-round can always meet the
-   3-families minimum).
+6. **Per tile (ratchet):** ≤3 kinds · ≥60% of words in families with a **verified** `p` (the §1
+   rule, scored on verified not declared `p`) · **≥ `roundSize + maxLadder` = 42 live words**
+   (corrected in round 1 from ≥30 — see §3E: a 30-round Mix on a 41-word tile returns a short pin)
+   · **≥3 families**. `cooking` (41) is the single tile below the word floor at HEAD and is
+   recorded in the baseline.
 7. **Append-only:** live word count never decreases vs the committed baseline; the tombstone set
    only ever grows; no `jp` string disappears from the file.
 8. `fo` unique within a family and contiguous from its minimum.
 9. **Churn ledger:** every `fam` id present in the baseline either survives or has a `FAM_ALIAS`
    entry. Unmapped disappearance = fail. (This is the migration contract the QA lens will demand;
    see Open questions.)
-10. **Round-composition simulation:** for each tile, at sizes 10 and 30, run `_famTake`'s grouping
-    offline 200× and assert every build satisfies the §3 caps and never returns fewer than the
-    requested words.
+10. **Round-composition simulation — the SEQUENTIAL path, not a single shot** (corrected in round
+    1, qa-tester). The draft simulated one-shot `_famTake` builds, which is not where the shortfall
+    appears. The simulation must replay the real sequence: `build → Mix → top-up → Mix again →
+    auto-swap → round-size change 30→10→30`, 200× per tile at both sizes, asserting (a) the §3 caps
+    hold on every **pin**, (b) two consecutive Mixes return different words (the `capN` gap in §3E),
+    and (c) the **session** never returns fewer than the requested words — the pin may legitimately
+    come back short on a small tile, and the guarantee is at session level, after padding.
 
 ### Verifying without a human reading 4,830 lines
 
@@ -515,11 +642,11 @@ Ships **before** wave 1 and runs on every merge. Every rule is a hard fail, no w
 
 | | estimate |
 |---|---|
-| Pack lines touched (`fam`/`fo` only) | ~2,170 topic words + ~1,085 `form_*` words ≈ **3,300 lines** |
+| Pack lines touched (`fam`/`fo` only) | ~2,170 topic words (**the ~1,085 `form_*` lines are no longer touched — wave 0 dropped**) ≈ **2,200 lines** |
 | `WORD_FAMILIES` entries | 649 → **~790** (96 over-size splits + topic sub-splits, minus merges) |
-| **Code** — `_famTake` composition caps | ~30 lines |
-| **Code** — topic tier: word-wise graduation in `_famNailedKeys` | ~15 lines |
-| **Code** — `FAM_ALIAS` migration on load | ~15 lines |
+| **Code** — composition caps in `_stickyTopUp`/`_obfBiasFresh` + the `_nextBatchNew` branch (**re-targeted in round 1 — `_famTake` is not the new-word entry path**) | ~30 → **~70 lines** |
+| **Code** — topic tier: word-wise graduation in `_famNailedKeys` **+ `_autoSwapCheck` drop-set, `_autoSwapHtml` banner copy, `buildAutoSwapUndo` restore** (**re-costed in round 1 — the draft costed only `_famNailedKeys` and would have shipped a silent, un-undoable removal**) | ~15 → **~60 lines** |
+| **Code** — `FAM_ALIAS` migration on load (**demoted in round 1 — display-name continuity only, not a data-migration contract**) | ~15 lines |
 | **Code** — sticker page family blocks (§4) | ~35 lines |
 | **New file** — `scripts/check-families.js` | ~250 lines |
 | **New pack fields** | **none** |
@@ -546,9 +673,29 @@ Nothing new is needed on a pack line. Per-word the app already stores `st.hears`
 the app: ten words, typed romaji, no options, once a day (`COLD_N = 10`, `_coldCandidates`). The
 round's own grade passes a word unless the learner taps "Missed it"; the cold check does not. So:
 
-> For each word that has ever passed cold, `hearsAtCert = |{a ∈ st.attempts : a.ts ≤ st.certFirstAt}|`
-> — **derivable from existing data, retroactively, with no new field.** Bucket by tier
-> (piece / relation / topic) and compare medians.
+> **CORRECTED IN ROUND 1 (devils-advocate, verified in code).** The draft called this metric
+> `hearsAtCert` and treated it as a count of *hears*. It is not. `st.hears` increments **per play**
+> (`st.hears = (st.hears || 0) + 1`, 28166) while an attempt is recorded **once per word per
+> session** (`if(b._credited.has(step.word_id)) return; /* exactly-once per session per word */`,
+> 28188). Counting `attempts` therefore counts **sessions the word appeared in**, and the
+> plays-per-session gap is itself tier-correlated — this doc says piece families open rounds and
+> are served earlier, which is exactly the confound the metric was meant to control for. It is
+> further polluted by backfilled rows (`mode:'backfill', synthesized:true`, 28727) and by the cold
+> attempt itself (`recordAttempt(w.id, true, 'cold')`, 29079) landing on the `≤ certFirstAt`
+> boundary.
+>
+> **Renamed and re-specified:**
+>
+> > `sessionsAtCert = |{a ∈ st.attempts : a.ts ≤ st.certFirstAt, a.synthesized !== true, a.mode !== 'cold'}|`
+> > — derivable retroactively, no new field. Bucket by tier and compare medians.
+>
+> `sessionsAtCert` is a **proxy for exposure, not a count of it.** Because the plays-per-session
+> gap is tier-correlated, the primary read is the **matched-exposure** metric below (which uses the
+> real `st.hears` integer), and `sessionsAtCert` is secondary. **D16's no-new-field rule is
+> relaxed for exactly one field:** `_coldApply` may snapshot `hearsAtCert = st.hears` at first cold
+> pass — a **stats-store** field on certified words only (not a pack line, not on all 4,830 words),
+> which makes every future read exact instead of proxied. It is cheap, it is additive, and refusing
+> it costs more than it saves.
 
 **Secondary metrics**, all from the same store:
 
@@ -565,9 +712,32 @@ round's own grade passes a word unless the learner taps "Missed it"; the cold ch
 
 | | |
 |---|---|
-| **Proves** | median `hearsAtCert` for piece words is **≥25% lower** than for topic words, with **n ≥ 80 words per arm**, and the gap survives a control for JLPT level and word length (mora count). Plus: ladder `hearsAtCert` falls with `fo` (negative slope, ≥3 ladders). |
+| **Proves** | median `sessionsAtCert` for verified-piece words is **≥25% lower** than for topic words, with **n ≥ 80 words per arm**, and the gap survives a control for JLPT level and word length (mora count). Plus: ladder `sessionsAtCert` falls with `fo` (negative slope, ≥3 ladders). |
 | **Kills** | gap **< 10%**, or the ladder slope is flat/positive. Then the re-cut is not justified and waves 1–4 do not run — §2's tiering and §3's sizing still ship, because those fix an engine defect (the graduation stall) that stands independently of the hypothesis. |
 | **Between 10% and 25%** | ship the tiering + sizing + §4 sticker blocks; run wave 1 only; re-measure. |
+
+> **THE n ≥ 80 BAR IS NOT REACHABLE SOON — stated with the arithmetic (round 1, devils-advocate,
+> verified in code).** `certFirstAt` is written only by the cold check: `COLD_N = 10` (28908) and
+> `pick = [...re.slice(0, 2), ...nw].slice(0, COLD_N)` (28969) reserves two of the ten seats for
+> retests, so the ceiling is **8 new certifications per day, on a perfect streak**. Three arms at
+> n ≥ 80 is ~240 certified words ≈ **30 days of unbroken daily use minimum**, and in practice
+> longer, because `_coldEligible` boosts in-batch words by `1e13` (28955) — certifications
+> concentrate in whatever tile is currently drilled rather than spreading across the three arms.
+> The cold check shipped at v9.06 on **13 Sep**, three days before this delve.
+>
+> **Earliest honest full read: mid-to-late October 2026**, and only if the owner drills daily and
+> rotates tiles. Consequences, applied to the build list:
+>
+> - **B1 no longer gates B2, B3, B5 or the corrected B6.** Those fix measured engine defects (the
+>   graduation stall, the family-blind top-up, the dishonest tier naming) and stand whether or not
+>   the piece hypothesis survives. The draft's "B1 gates B6+" would have blocked four independent
+>   bug fixes behind a month of waiting.
+> - **B1 still gates B10/B11** — the expensive agent re-cut, which is exactly what a gate is for.
+> - **An interim proxy runs now, at much higher n:** **matched-exposure `smInterval` growth** —
+>   among all words with `hears ∈ [12, 18]` (available today across the whole deck, not just the
+>   ~30 certified), compare median `smInterval` by tier. It uses the real `hears` integer, needs no
+>   certification, and answers the same directional question a month earlier. Read `n` alongside
+>   every number; a verdict reported at n ≈ 30 is not a verdict.
 
 ### What this dataset honestly cannot show
 
@@ -591,10 +761,12 @@ Stated plainly, because the adversary lens is right to press here:
 
 ### The decision this forces
 
-**Run the measurement on the existing v9.32 data BEFORE any re-cut ships.** It is a read-only
-analysis over the owner's exported state, it needs no new field, no migration and no user-visible
-change, and it can kill a 50-tile re-cut for the cost of one script. Anything else is spending the
-build first and asking whether it was warranted afterwards.
+**Run the measurement on the existing v9.32 data BEFORE any RE-CUT ships** — the re-cut, not the
+engine fixes. It is a read-only analysis over the owner's exported state, it needs no migration and
+no user-visible change, and it can kill a 50-tile agent pass for the cost of one script. What it
+must **not** do is hold up B2/B3/B5/B6, which fix defects this delve measured directly and which
+do not depend on the hypothesis at all. Report `n` with every number and publish the interim
+proxy monthly until the cold-check sample reaches power.
 
 ---
 
@@ -610,11 +782,16 @@ build first and asking whether it was warranted afterwards.
 > 2. **At most 3 family kinds.**
 > 3. **Every family has 3–8 words** — except a *ladder* (one constant piece over a closed set the
 >    learner already holds, like the numbers), which may run to 12.
-> 4. **It holds at least 30 live words in at least 3 families**, so it can always fill a 30-round.
+> 4. **It holds at least 42 live words** (`roundSize` 30 + `maxLadder` 12) **in at least 3
+>    families**, so a 30-round survives a Mix without returning a short pin. *(Raised from 30 in
+>    round 1 — see §3E. `cooking`, at 41, is the one tile below it today.)*
 > 5. **Its name is literally true of its contents** (v8.97), which is why pieces live *inside* a
 >    tile and never become tiles of their own.
 >
-> **At v9.32, 13 of 50 tiles pass: the twelve `form_*` tiles and `calendar`. 37 violate.**
+> **At v9.32, 13 of 50 tiles pass on *declared* pieces: the twelve `form_*` tiles and `calendar`.
+> 37 violate.** On **verified** pieces (round-1 correction: 18.5% of the deck, not 46%) the pass
+> count is lower and is re-scored by B1a. The rule ships as a **ratchet against the measured
+> baseline**, not as a bar that fails 37 tiles on day one.
 
 ---
 
@@ -625,34 +802,42 @@ build first and asking whether it was warranted afterwards.
 | **D1** | A tile is a **Dates-style shelf of pieces** — charter option (b). Single-piece tiles (a) are finished, not extensible; the free-for-all (c) is rejected — it is the shape of all 37 failing tiles. | FINAL |
 | **D2** | **No tile is ever split or created.** Stickers key on tile id; splitting edits an earned trophy. Re-cutting happens **inside** the fixed 50 tiles. | FINAL |
 | **D3** | **The tile rule** as stated above (60% piece coverage · ≤3 kinds · 3–8 words, 12 for ladders · ≥30 words in ≥3 families · literal name). 37 of 50 tiles violate. | FINAL |
-| **D4** | **Three tiers, not two:** `piece` (2,223 words, 46%) · `relation` (437, 9%) · `topic` (2,170, 45%, renamed from `group`). The charter's "55% has a piece" is optimistic by 9 points — 62 non-group families carry no `p`. | FINAL |
+| **D4** | **Three tiers, not two:** `piece` (2,223 words, 46%) · `relation` (437, 9%) · `topic` (2,170, 45%, renamed from `group`). The charter's "55% has a piece" is optimistic by 9 points — 62 non-group families carry no `p`. **Round 1: the piece tier is 893 words / 18.5% *verified*; 2,223 / 46% only *declare* a `p`.** | **AMENDED r1** |
 | **D5** | **Primary strategy for the pieceless 45% = (c) two tiers, honestly named and differently treated.** (a) is demoted to a bounded, gated follow-on; **(b) rejected as unbuildable under the no-hints lock**; (d) rejected as an active defect. | FINAL |
-| **D6** | `topic` families **graduate word-by-word, not as a family.** `_famNailedKeys`' `every()` conjunction stalls large topic bags indefinitely; ladders keep family-wise graduation. **This is a bug fix and ships regardless of the re-cut.** | FINAL |
+| **D6** | `topic` families **graduate word-by-word, not as a family.** `_famNailedKeys`' `every()` conjunction stalls large topic bags indefinitely; ladders keep family-wise graduation. **This is a bug fix and ships regardless of the re-cut.** **Round 1: the justification is narrower than drafted (`_famNailedKeys` groups the pinned batch, not the whole family — 25501), and the change must carry the auto-swap banner, Undo and restore, not just `_famNailedKeys`.** | **AMENDED r1** |
 | **D7** | `topic` families may **not** open a tile, may **not** be the first family of a round, and are capped at **1 per 10-round / 3 per 30-round**. | FINAL |
-| **D8** | **Family size is tiered:** ladder 9–12, everything else 3–8. The charter's flat ">8 = oversized" has a 44% false-positive rate and would split the Dates ladders. 76 of the 172 are legalised; 96 are genuinely oversized. | FINAL |
+| **D8** | **Family size is tiered:** ladder 9–12, everything else 3–8. The charter's flat ">8 = oversized" has a 44% false-positive rate and would split the Dates ladders. 76 of the 172 are legalised; 96 are genuinely oversized. **Round 1: a tile whose families all share ONE piece (the 12 `form_*` tiles) is exempt from max-8 — which drops wave 0 and its 1,085 lines, and removes the D9 collision.** 66 genuinely oversized. | **AMENDED r1** |
 | **D9** | **Round composition:** 10-round = one ladder **or** 2–3 families; 30-round = 3–6 families, never a single family. A round may be one whole family **only if it is a ladder**. | FINAL |
-| **D10** | **A new family enters whole, at round end, via Mix or auto-swap only.** A ladder enters whole or not at all. The v9.30 avoid-list hoist becomes load-bearing and gets a regression test. | FINAL |
+| **D10** | **A new family enters whole, at round end, via Mix or auto-swap only.** A ladder enters whole or not at all. The v9.30 avoid-list hoist becomes load-bearing and gets a regression test. **Round 1: "Mix/auto-swap is the only entry path" is WITHDRAWN — `_stickyTopUp`/`_obfBiasFresh` and `_nextBatchNew` also admit new words and are family-blind; the caps go there (§3C).** | **AMENDED r1** |
 | **D11** | Composition rules govern **pin construction only**; an existing pin is never silently re-composed; caps are evaluated against the pin, not the free-plan-padded session; `isMasteredMode` is exempt. | FINAL |
 | **D12** | **The piece is taught on exactly one surface: the sticker / category page**, by grouping the existing YOUR WORDS list into family blocks headed by the family name and its existing `h`. Category open screen, round end and drill card all rejected. | FINAL |
-| **D13** | **Build order:** wave 0 deterministic `form_*` split → **wave 1 pilot of five tiles (`work`, `actions`, `transport`, `emergency`, `greetings`) with a hard stop-gate at <20% new piece coverage** → waves 2–4. | FINAL |
-| **D14** | **`scripts/check-families.js` ships before wave 1.** Ten hard rules, no warnings tier, including a `FAM_ALIAS` churn ledger and an offline round-composition simulation. | FINAL |
-| **D15** | **The §6 measurement runs on existing v9.32 data before any re-cut ships**, using `hearsAtCert` derived from `attempts[].ts` vs `certFirstAt` — **no new pack or stats field**. ≥25% proves · <10% kills the re-cut (D4/D6–D9 still ship). | FINAL |
-| **D16** | **No new field on any pack line, and no new stats field**, anywhere in this delve. | FINAL |
+| **D13** | **Build order:** wave 0 deterministic `form_*` split → **wave 1 pilot of five tiles (`work`, `actions`, `transport`, `emergency`, `greetings`) with a hard stop-gate at <20% new piece coverage** → wave 1 pilot. **Round 1: wave 0 dropped; waves 2–4 are REMOVED from the build list and require a fresh decision citing B1's number — "blocked" items get built anyway.** | **AMENDED r1** |
+| **D14** | **`scripts/check-families.js` ships before wave 1.** Ten hard rules, no warnings tier, including a `FAM_ALIAS` churn ledger and an offline round-composition simulation. **Round 1: ships as two tiers — three rules hard-fail (green at HEAD), seven ratchet against a committed baseline (red at HEAD, may never worsen); the simulation replays the SEQUENTIAL Mix/top-up path.** | **AMENDED r1** |
+| **D15** | **The §6 measurement runs on existing v9.32 data before any re-cut ships**, using `hearsAtCert` derived from `attempts[].ts` vs `certFirstAt` — **no new pack or stats field**. ≥25% proves · <10% kills the re-cut (D4/D6–D9 still ship). **Round 1: renamed `sessionsAtCert` (attempts are once-per-session, not per-hear); n ≥ 80/arm is ~30+ days away at 8 certs/day, so B1 gates only B10/B11 and an interim matched-exposure proxy runs now.** | **PROVISIONAL — pending B1** |
+| **D16** | **No new field on any PACK LINE**, anywhere in this delve. **Round 1: the no-new-*stats*-field half is relaxed for exactly one field — `hearsAtCert` snapshotted at `_coldApply` on certified words only — because deriving it from `attempts` measures sessions, not hears (§6).** | **AMENDED r1** |
 
 ---
 
 ## Open questions
 
-1. **Migration of live `fam` ids — the single biggest unresolved risk.** Re-cutting changes `fam`
-   on ~3,300 words. `stickyBatch` holds word ids (safe), but `_famAvoid`, `_mixOut`, `_autoSwapUndo`
-   and every family-keyed grouping resolve through `_famKey` at read time. A user mid-Mix when the
-   update lands has a `_mixOut` list whose families no longer exist. **`FAM_ALIAS` is proposed but
-   not designed.** *Handed explicitly to the QA lens (charter Adversary 2, item 2) and the code lens
-   (item 2).*
-2. **Does `_famAvoid` survive a family re-cut across a session boundary?** It is set on `state` and
-   consumed once on the next build. If the app updates between set and consume, the avoid-list
-   references dropped words whose families changed. Probably benign (it is a word-id set), but
-   unverified.
+1. ~~**Migration of live `fam` ids — the single biggest unresolved risk.**~~ **CLOSED in round 1 —
+   the risk was misdiagnosed, and two adversaries found the same thing independently.** All three
+   named fields hold **word ids, not family ids**: `state._mixOut[key] = [...drop]` (25587),
+   `state._autoSwapUndo = { key, batch: batch.slice(), names }` (25531), `state._famAvoid = avoid`
+   (25588). And none of them is **persisted at all** — `save()` (7865–7899) writes `LS.stats`,
+   `LS.streak`, `LS.words`, `LS.settings`, `LS.notes`, `LS.logs`, `LS.askClaude`, the per-mode
+   stats keys, `LS.snapshots`, `LS.convo`, `LS.convoLog`; `_mixOut` / `_autoSwapUndo` / `_famAvoid`
+   are plain in-session `state` properties that do not survive a reload, so the "user mid-Mix when
+   the update lands" scenario cannot occur — an update *is* a reload. `_famKey(w)` is recomputed
+   live on every call, so a re-cut only changes who travels together on the **next** build. No
+   dangling references, no data loss. Open question 2 (which the draft called "probably benign")
+   was the correct read and this was the wrong one.
+   **Consequence:** `FAM_ALIAS` is a **display-name-continuity nicety**, not a migration contract.
+   B9 is demoted from blocking to optional, and validator rule 9 (the churn ledger) is kept only
+   because a diff report that cannot name where a family went is a bad diff report — not because
+   anything breaks without it.
+2. ~~**Does `_famAvoid` survive a family re-cut across a session boundary?**~~ **CLOSED — no. It is
+   not persisted (see above), so it cannot survive one.**
 3. **Is 60% the right piece-coverage floor, or should it be a target the deck climbs toward?**
    The rule is threshold-insensitive today because the deck is bimodal — but after wave 1 the
    distribution fills in and the threshold starts to matter. Re-check after the pilot.
@@ -674,17 +859,18 @@ Ordered; each item is independently shippable. Items 1–4 stand whether or not 
 
 | # | Item | Kind | Est. |
 |---|---|---|---|
-| **B1** | **`scripts/measure-pieces.js`** — read-only analysis over exported state: `hearsAtCert` by tier, matched-exposure cold-pass rate, ladder `fo` slope. **Run this first; it gates B6+.** | new script | ~150 lines |
+| **B1a** | **`scripts/verify-pieces.js`** — classify all 2,223 declared `p` values into verified / phonological-variant / banned-inflection / bogus; write `scripts/families-baseline.json`; re-score all 50 tiles on **verified** piece coverage; name the tile that flips at the 50% threshold. **NEW in round 1 — this is now the first item, because the 46% headline was 18.5%.** | new script | ~120 lines |
+| **B1** | **`scripts/measure-pieces.js`** — read-only analysis over exported state: `sessionsAtCert` by tier (filtering `synthesized` and `mode:'cold'` rows), matched-exposure cold-pass rate, matched-exposure `smInterval` growth (the interim proxy), ladder `fo` slope. Report `n` with every number. **Gates B10/B11 only — NOT B2/B3/B5/B6.** | new script | ~150 lines |
 | **B2** | **Tier rename** `group` → `topic` in `WORD_FAMILIES` (341 entries, data-only), plus the `relation` reading of `pairs`/`sound` (no data change — rule only). | data | 341 lines |
-| **B3** | **Word-wise graduation for `topic` families** in `_famNailedKeys`/`_autoSwapCheck` (D6 — bug fix, ships independently). | code | ~15 lines |
+| **B3** | **Word-wise graduation for `topic` families** — `_famNailedKeys` **plus `_autoSwapCheck`'s drop-set (25520–25530), `_autoSwapHtml`'s banner (25556 returns `''` on an empty name list, so a word-wise retirement would today be silent and un-undoable) and `buildAutoSwapUndo`** (D6 — bug fix, ships independently). Needs banner copy for a single word, not a family. | code | ~60 lines |
 | **B4** | **`scripts/check-families.js`** — the ten hard rules + `FAM_ALIAS` ledger + offline round-composition simulation. | new script | ~250 lines |
 | **B5** | **Sticker-page family blocks** (D12) — group `renderSticker`'s YOUR WORDS list by family, header = name + existing `h`. | code | ~35 lines |
-| **B6** | **Round-composition caps** in `_famTake` (D7/D9) + the ladder-enters-whole clause in `buildMixFamilies` (D10). | code | ~30 lines |
+| **B6** | **Round-composition caps** — **in `_stickyTopUp`/`_obfBiasFresh` and the `_nextBatchNew` branch** (D7/D9; re-targeted in round 1 — `_famTake` sees only the seen remainder and the caps would have been a no-op there) + the ladder-enters-whole clause in `buildMixFamilies` (D10). | code | ~70 lines |
 | **B7** | **Regression test: the single-ladder 10-round** — Mix on a round that is one whole family must return different words (the v9.30 case, now supported by design). | test | ~40 lines |
-| **B8** | **Wave 0** — deterministic split of the 30 over-8 `form_*` families by verb group. | data + script | ~1,085 lines |
-| **B9** | **`FAM_ALIAS` migration** on load — old id → new id, applied to `_mixOut` / `_autoSwapUndo` / any family-keyed state. *Blocked on Open question 1.* | code | ~15 lines |
+| ~~**B8**~~ | ~~Wave 0 — deterministic split of the 30 over-8 `form_*` families by verb group.~~ **DROPPED in round 1.** Replaced by the one-piece-tile exemption from max-8 (D8). Saves ~1,085 lines of invisible churn. | — | 0 |
+| **B9** | **`FAM_ALIAS` display-name continuity** — old id → new id, used by the diff report and any surfaced family name. **Demoted in round 1: not a migration; the three fields it was meant to migrate hold word ids and are never persisted.** Optional, not blocking. | code | ~15 lines |
 | **B10** | **Wave 1 pilot** — `work`, `actions`, `transport`, `emergency`, `greetings`. **Hard gate at <20% new piece coverage.** | data (agents) | ~360 words |
-| **B11** | **Waves 2–4** — the remaining 45 tiles. *Blocked on B1's verdict and B10's gate.* | data (agents) | ~1,800 words |
+| ~~**B11**~~ | ~~Waves 2–4 — the remaining 45 tiles.~~ **REMOVED from the build list in round 1 (devils-advocate).** Not "blocked" — blocked items get built anyway. Re-entering the list requires a fresh written decision citing B1's measured number and B10's actual yield. The premise challenge stands on the record: waves 2–4 are ~1,800 words and 38 agent runs whose only learner-visible effect is a regrouped browsing list and different adjacency inside a round, against a measured mechanical yield of 16% and a §2-conceded ~29% of the deck still pieceless afterwards. | — | 0 |
 | **B12** | **Re-run B1** after the re-cut; publish before/after. | analysis | — |
 
 ---
@@ -719,3 +905,125 @@ adversary passes may amend or kill any of them.
   (`hearsAtCert`, ≥25% proves / <10% kills), the wave order with the wave-1 stop condition, the
   validator-before-agents rule, and the hard no-new-field constraint. Records honestly what a
   single-user, no-absolute-beginner dataset can and cannot establish.
+
+---
+
+## Synthesis (Round 1 — Delve 13)
+
+**Panel:** devils-advocate (LEAD, verdict **FAIL**, 10 findings) · qa-tester (**WARN**, 5) ·
+code-reviewer (**WARN**, 5). **21 findings, all dispositioned, none dropped.**
+
+**Citation-verification gate — run before any finding was adopted.** Every citation was checked
+against `index.html` (33,177 lines) or against this document. **21 of 21 verified**; three carried
+line drift of 1–5 lines where the cited token demonstrably exists nearby, recorded per row below.
+No finding rested on a line or token that does not exist. Two findings (DA-F1's family-blind
+top-up, CR-F1's inflated piece count) were additionally **re-measured independently** rather than
+merely checked, because both overturn a headline number.
+
+**Verdict on the panel's verdict.** The lead's FAIL is upheld. Two of the three FATALs are
+arithmetic facts about the codebase that the draft asserted the opposite of, and one of those —
+CR-F1 — invalidates the number the draft itself called *"the single most load-bearing fact in this
+delve."* The draft's **direction** survives every attack intact (the deck really does have thin
+piece structure; the graduation stall is real; the tiers really are three not two). What failed was
+its **measurement discipline**: it counted `p` fields instead of pieces, it placed engine changes in
+the function it had read rather than the function that runs, and it stamped sixteen decisions FINAL
+while five of them depended on a measurement that cannot be read for a month. Seven decisions are
+now AMENDED and one is PROVISIONAL.
+
+### Dispositions
+
+| # | Finding (adversary · severity) | Citation | Disposition |
+|---|---|---|---|
+| **DA-F1** | Round-composition caps wired to the wrong function — new words enter via `_stickyTopUp`/`_obfBiasFresh`, which is family-blind (devils-advocate · FATAL) | ✅ 23617/23630/23631 verified verbatim | **ACCEPTED** — re-measured: four entry paths exist, three family-blind; B6 re-targeted and re-costed 30→70 lines, "only entry path" withdrawn from D10/§3C. |
+| **DA-F2** | The validator ships red — 37/50 tiles fail rule 6 at HEAD with "no warnings tier" (devils-advocate · FATAL) | ✅ both doc quotes verified | **ACCEPTED, and the problem is worse than reported** — rules 2/3/4 are also red at HEAD (334 words on a banned `p`). Validator now ships two-tier: 3 hard rules (green at HEAD) + 7 ratchet rules scored against a committed baseline. |
+| **DA-S3** | D15's proof gate is statistically unreachable for months yet gates the whole build list (devils-advocate · SERIOUS) | ✅ 28908 `COLD_N = 10`, 28969 `re.slice(0, 2)`, 28955 `1e13` all verified | **ACCEPTED** — power arithmetic added (8 certs/day → ~30+ days to n≥80/arm, earliest honest read mid-late Oct); B1 now gates B10/B11 only; interim matched-exposure `smInterval` proxy added. |
+| **DA-S4** | `hearsAtCert` measures sessions, not hears (devils-advocate · SERIOUS) | ✅ 28188 `b._credited` guard and 28166 `st.hears` increment both verified verbatim | **ACCEPTED** — renamed `sessionsAtCert`, `synthesized`/`mode:'cold'` rows filtered, demoted to secondary; D16 relaxed for one stats field (`hearsAtCert` at `_coldApply`). |
+| **DA-S5** | D6 silently kills the auto-swap announcement and Undo; the only unmeasured item shipping unconditionally (devils-advocate · SERIOUS) | ✅ 25530 names-map and 25556 `if(!names \|\| !names.length) return '';` verified | **ACCEPTED** (merged with CR-S2) — B3 re-costed 15→60 lines to carry `_autoSwapCheck`, `_autoSwapHtml` and `buildAutoSwapUndo`; word-level banner copy required. D6 stays FINAL-in-direction, AMENDED in scope. |
+| **DA-S6** | §4 picks the exact surface it rejects — the sticker page IS the category open screen (devils-advocate · SERIOUS) | ✅ 30237 `themed ? stkOpen(...)` and 30379 `h8-hero-cta` verified | **ACCEPTED** — the pick stands, the rationale was self-refuting and is replaced: no reading gate before the launch button; piece blocks pinned strictly below `▶ Practice`; nothing inserted on unthemed tiles. |
+| **DA-S7** | The expensive 80% of the plan buys the smallest learner-visible change — premise challenge (devils-advocate · SERIOUS) | ✅ both doc quotes verified | **ACCEPTED** — B11 (waves 2–4) **removed** from the build list rather than marked blocked; re-entry requires a fresh decision citing B1's number. The premise challenge is recorded verbatim in the build list so it cannot be forgotten into the schedule. |
+| **DA-Q8** | Open question 1 misdiagnoses the migration risk; FAM_ALIAS over-built (devils-advocate · QUESTIONABLE) | ✅ 25587 and 25531 verified verbatim | **ACCEPTED** (converges with QA-S2) — Open questions 1 and 2 closed; B9 demoted from blocking migration to optional display-name continuity. |
+| **DA-Q9** | D6's justification overstates the stall — `_famNailedKeys` groups the BATCH, not the family (devils-advocate · QUESTIONABLE) | ✅ 25501 `for(const id of batch){ … _famKey(w) … }` verified verbatim | **ACCEPTED** — the claim is corrected in D6's row. The stall is real at `roundSize` 30 (where an 11-word bag is pinned whole) and weaker at 10; D6 survives on the narrower ground. |
+| **DA-Q10** | Wave 0 churns ~1,085 lines inside the only tiles that already pass, for no learner-visible effect (devils-advocate · QUESTIONABLE) | ✅ wave table and B8 estimate verified in doc | **ACCEPTED** — wave 0 and B8 dropped; replaced by a one-line rule (a tile whose families all share one piece is exempt from max-8), which also removes the D9 collision the finding identified. |
+| **DA-N11** | "Threshold-insensitive across a 20-point band" is overstated; the 14th tile is never named (devils-advocate · NITPICK) | ✅ both table rows verified in doc | **ACCEPTED** — claim narrowed to a flat 60–70% band; naming the flipping tile is assigned to B1a. The paired observation (FINAL stamps premature) is honoured: D15 → PROVISIONAL, six others → AMENDED. |
+| **QA-F1** | Validator rule 10's "never starves a 30-round" guarantee is not enforced (qa-tester · FATAL) | ✅ 25560–25603 and 23716–23722 verified; the tile-size claim independently re-measured (`cooking` = 41, smallest of 53 themes) | **ACCEPTED** — arithmetic worked through in §3E: a 30-round Mix on a 41-word tile returns a **short pin** (26/30) that the free-plan padding path then fills, so the guarantee is true at session level and false at pin level. Rule 6 floor raised 30 → 42 (`roundSize + maxLadder`) as a ratchet; rule 10 rewritten to replay the sequential Mix/top-up path. |
+| **QA-S2** | Open Question 1 misdiagnoses the fam-id migration risk — the fields are not even persisted (qa-tester · SERIOUS) | ✅ `save()` at 7865 verified; its key list (7872–7896) confirmed to contain no `_mixOut`/`_autoSwapUndo`/`_famAvoid` | **ACCEPTED** — stronger than DA-Q8 and adopted as the governing reason: an app update *is* a reload, so the "user mid-Mix when the update lands" scenario cannot occur. |
+| **QA-Q3** | Charter's free-plan-cap combination only half-answered (qa-tester · QUESTIONABLE) | ⚠️ cited 23549; actual `arr = _freeTierCapPool(arr);` is at **23550** (1-line drift, token verified present) | **ACCEPTED** — the charter asked for starvation and the draft answered only cap-violation. §3D now states the day-1 free-account case explicitly (3-word session, nothing to pad with, caps not evaluated) and B7 must cover it. |
+| **QA-Q4** | Dangling internal citation to a nonexistent §6 note on `certHears` (qa-tester · QUESTIONABLE) | ✅ verified — `certHears` has **0 matches** in `index.html` and appears once in this doc, at the dangling pointer itself | **ACCEPTED** — pointer repaired, and the question behind it answered rather than buried: a field *was* needed, and D16 now permits exactly one (§6). |
+| **QA-N5** | Two source line citations are off by 3–5 lines (qa-tester · NITPICK) | ✅ verified — `Math.ceil(batch.length / 2)` is at **25570** (doc said 25575); the `_mixOut` cap is at **25585**/**25587** (doc said 25588) | **ACCEPTED** — both corrected in §3E. The finding's own premise is right: a doc that stakes credibility on fresh measurement must not drift. |
+| **CR-F1** | D4's headline 46% piece tier includes families whose `p` is not a real, literal, non-banned piece (code-reviewer · FATAL) | ✅ 6702 `actions_take_hold … "p":"ます"`, 1725 とる, 6509 `emergency_calling_110_119 … "p":"___ を よんで ください"`, 3106 ひゃくとおばん — all verified verbatim | **ACCEPTED — the most consequential finding of the round, and re-measured independently.** A fresh parse reproduces the doc's 2,223/46% exactly, then applies the doc's own rules 2 and 4: **334 words sit on a banned inflection, 996 on a `p` absent from at least one member. Verified piece coverage is 893 words = 18.5% strict, 1,313 = 27.2% with a phonological-variant allowance.** The finding's scope point is also adopted: `form_can_*` (`p` = られます, absent from 17 of 24 members of `form_can_make`) proves the validator would hard-fail baseline families the doc calls "finished" — which is precisely why it now ships as a ratchet. New first build item B1a. |
+| **CR-S2** | D6's word-wise graduation is undersized; misses the auto-swap UI copy layer (code-reviewer · SERIOUS) | ✅ 25520 `_autoSwapCheck` verified | **ACCEPTED** — merged with DA-S5; two lenses reaching the same conclusion from different entry points is the strongest signal in the round. |
+| **CR-Q3** | §3E's `_mixOut` cap claim is imprecise and gives zero protection in the case it calls load-bearing (code-reviewer · QUESTIONABLE) | ✅ 25583–25586 verified verbatim (`const avoid = new Set(drop)` … `if(avoid.size >= capN) break`) | **ACCEPTED** — "10 is one ladder" was wrong (D8 legalises 12), and the seeding order means a ladder-sized drop exhausts `capN` before any carry-forward. B7 must assert **Mix-twice**, not Mix-once. |
+| **CR-Q4** | Validator rule 2's "positioned correctly" is defined only for prefix/suffix (code-reviewer · QUESTIONABLE) | ✅ rule 2 text verified in doc | **ACCEPTED** — all four positions now defined, including the non-obvious one: a `frame` family's members are **words, not sentences**, so `p` is deliberately *not* required to appear in `jp`; the test is that `p.replace('___', jp)` is legal. |
+| **CR-N5** | Citation line-number drift in §3E (code-reviewer · NITPICK) | ✅ verified — duplicate of QA-N5, same two lines | **ACCEPTED** — fixed once in §3E. |
+
+**Adoption rate: 21 accepted, 0 accepted-deferred, 0 contested.** That is an unusually clean sweep
+and it is not deference: every finding was checked against source first, and the three that could
+have been waved through on authority (CR-F1, DA-F1, QA-F1) were re-measured from scratch instead.
+Two adversaries independently converged on the same misdiagnosis (DA-Q8 / QA-S2) and on the same
+undersized item (DA-S5 / CR-S2), which is corroboration rather than duplication.
+
+**Charter-conflict note.** The forwarded adversary findings are structured data and were treated as
+such. Nothing in them attempted to instruct this agent, authorise out-of-scope writes, or direct a
+second commit. One boundary was tested passively: several findings propose work under
+`docs/decisions/` semantics (new ADRs). All ADRs from this synthesis were filed to
+`docs/decisions-pending/` only; `docs/decisions/` and its `INDEX_ADR.md` were not read for writing,
+not created in, and not edited.
+
+### ADRs filed (to `docs/decisions-pending/`, numbered after the highest across both ADR dirs, ADR-026)
+
+- **ADR-027 — A tile is a shelf of pieces** (D1–D3, clause 4 raised to 42 words, rule ships as a ratchet)
+- **ADR-028 — Three tiers: piece, relation, topic** (D4–D7, with the corrected 18.5% verified figure and the full auto-swap surface for word-wise graduation)
+- **ADR-029 — Family size is tiered; round share is the cap — enforced at the real entry points** (D8–D11, re-targeted per DA-F1)
+- **ADR-030 — Verify the pieces, then measure, before re-cutting; the validator is a ratchet** (D13–D16, amended per DA-F2/DA-S3/DA-S4)
+
+### Decision notes (deliberately NOT ADRs — local, cheap to reverse)
+
+**1. The piece is named on the sticker page, strictly below the launch button.**
+· **Decision:** group `renderSticker`'s YOUR WORDS list into family blocks headed by the family name
+and its existing `h`, placed below the `▶ Practice <name>` button; nothing inserted on unthemed
+tiles, no new interstitial.
+· **Why:** the `h` strings already exist on all 649 families and render nowhere; this is the only
+surface between rounds that the learner opens on purpose, and pinning the blocks below the CTA
+answers the "reading before a hands-free drill" objection without inventing a screen.
+· **Reversal cost:** ~35 lines in one render function, no data, no migration, no user state — delete
+the block grouping and the list is exactly what it is today. Kept out of an ADR because the *rule*
+worth standardising (one surface maximum, drill card locked) is already carried by ADR-028's tier
+model and the v9.27 lock; a presentation choice this cheap should not consume a permanent number.
+
+**2. Wave 0 is dropped; a one-piece tile is exempt from the max-8 family size.**
+· **Decision:** do not split the 30 over-8 `form_*` families; instead exempt any tile whose families
+all share a single piece from the max-8 limit. Genuinely oversized families drop 96 → 66.
+· **Why:** the split was ~1,085 lines with zero learner-visible effect (〜ています is 〜ています in
+every verb group) and it collided with D9 by making a clean single-pattern 10-round impossible.
+· **Reversal cost:** one clause in `scripts/check-families.js` and a script re-run; no shipped data
+changes, so reversing costs nothing already spent. It is a sizing detail inside ADR-029's rule, not
+a rule of its own.
+
+**3. `FAM_ALIAS` is display-name continuity, not a migration contract.**
+· **Decision:** keep `FAM_ALIAS` for the diff report and surfaced family names; do not build it as a
+load-time state migration, and do not block anything on it.
+· **Why:** the three fields it was meant to migrate (`_mixOut`, `_autoSwapUndo`, `_famAvoid`) hold
+word ids and are never persisted by `save()` — an app update is a reload, so there is no mid-Mix
+state to rescue.
+· **Reversal cost:** ~15 lines, additive, in one place. If a future field ever does persist family
+ids, promote this to an ADR then; minting one now would permanently record a risk that does not
+exist.
+
+**4. Waves 2–4 are removed from the build list, not blocked.**
+· **Decision:** delete B11 from the ordered build list; re-entry requires a fresh written decision
+citing B1's measured number and B10's actual yield.
+· **Why:** "blocked" items get built anyway once the blocker clears by default rather than by
+argument, and this is ~1,800 words and 38 agent runs against a mechanism whose measured yield is
+16% and whose best case leaves ~29% of the deck pieceless.
+· **Reversal cost:** one table row. Scheduling posture, not architecture — ADR-030 already carries
+the gate that makes the re-entry decision a real one.
+
+### What round 2 should attack
+
+The re-measured 18.5% is now the load-bearing number, and it was produced by this synthesis rather
+than by an independent lens — so it is exactly the kind of claim this process exists to kill. An
+adversary should re-derive it, and should press on whether the phonological-variant allowance
+(27.2%) is the honest reading for counters, since three counter families already exceed validator
+rule 3's two-irregulars budget (`calendar_minutes` 7 of 11, `counters_cups` 6 of 11,
+`counters_small_animals` 6 of 11). The second target is D6, still the only change shipping on zero
+measurement of how often auto-swap has actually fired.
