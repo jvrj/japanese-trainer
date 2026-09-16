@@ -1157,6 +1157,8 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .stk-keep{width:100%;margin-top:22px;border:none;font-family:inherit;padding:18px;border-radius:99px;background:#fff;color:#2a1748;font-size:17px;font-weight:900;box-shadow:0 12px 34px rgba(255,255,255,.22);cursor:pointer}
 .stk-next{font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-top:7px}
 .stk-keep.stk-mix{margin-top:10px;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:none;font-size:15px;padding:15px}
+.stk-swap{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px;padding:12px 14px;border-radius:16px;background:rgba(74,222,128,.14);border:1px solid rgba(74,222,128,.4);color:#eafff1;font-size:13px;font-weight:700;line-height:1.45;text-align:center}
+.stk-swap button{font-family:inherit;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:12px;font-weight:800;cursor:pointer;flex:0 0 auto}
 .stk-links{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:10px}
 .stk-links button{background:none;border:none;font-family:inherit;font-size:14px;font-weight:800;color:rgba(255,255,255,.85);cursor:pointer;padding:6px}
 .stk-links span{opacity:.4}
@@ -1267,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.31';
+const APP_VERSION = '9.32';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -25483,6 +25485,78 @@ function _nsHeadLine(b){
    Before, Keep going alternated same-30 / Mix and the 20-minute idle reset
    put it back to same-30, so one round a day never mixed (owner: "I'm getting
    the same 30 words almost every time"). Mix now swaps whole families. */
+/* v9.32 — auto-swap. The owner shouldn't have to remember to tap Mix, but
+   being moved on before you actually know something is the one way this
+   feels like the app taking words away. So the bar is deliberately high and
+   needs THREE independent signals to agree, because the round's own grade is
+   generous — a word passes unless you tap "Missed it":
+     · exposure   — the word has actually played 12+ times
+     · schedule   — SM-2 has pushed it 3+ days out
+     · clean form — no "Missed it" in its last three outings
+   Only whole families leave, only at round end, always announced, always
+   undoable. 💪 self-ratings still never retire a word on their own (v8.48). */
+const NAILED_HEARS = 12, NAILED_DAYS = 3;
+function _famNailedKeys(batch, byId){
+  const g = new Map();
+  for(const id of batch){ const w = byId.get(id); if(!w) continue; const k = _famKey(w); if(!g.has(k)) g.set(k, []); g.get(k).push(id); }
+  const far = now() + NAILED_DAYS * 24 * 60 * 60 * 1000;
+  const out = [];
+  for(const [k, ids] of g){
+    const nailed = ids.every(id => {
+      const st = state.stats[id]; if(!st) return false;
+      try{ ensureSm(st); }catch(e){}
+      if((st.hears || 0) < NAILED_HEARS) return false;
+      if((st.smNext || 0) < far) return false;
+      const a = st.attempts || [];
+      if(a.slice(-3).some(x => x && x.correct === false)) return false;
+      return true;
+    });
+    if(nailed) out.push(k);
+  }
+  return out;
+}
+/* Runs once per finished round, from the round-end render (the same seam
+   _stkBurst already uses to award a sticker). */
+function _autoSwapCheck(){
+  try{
+    const sec = activeVocabSection(); if(!sec) return;
+    const key = sec.id || 'all';
+    const batch = (state.settings.stickyBatch || {})[key];
+    if(!Array.isArray(batch) || !batch.length) return;
+    const byId = new Map(); for(const w of state.words) byId.set(w.id, w);
+    const keys = _famNailedKeys(batch, byId); if(!keys.length) return;
+    const drop = new Set(batch.filter(id => { const w = byId.get(id); return w && keys.includes(_famKey(w)); }));
+    if(!drop.size) return;
+    const names = keys.map(k => { const fi = _famInfo(k); return fi && fi.n; }).filter(Boolean);
+    state._autoSwapUndo = { key, batch: batch.slice(), names };
+    state.settings.stickyBatch[key] = batch.filter(id => !drop.has(id));
+    state._famAvoid = drop;
+    const b = state.buildMode; if(b) b._autoSwap = names;
+    try{ save(); }catch(e){}
+    try{ log('auto_swap', {tile: key, families: keys.length, words: drop.size}); }catch(e){}
+  }catch(e){ try{ log('auto_swap_err', {err: String(e)}); }catch(e2){} }
+}
+function buildAutoSwapUndo(){
+  const u = state._autoSwapUndo; if(!u) return;
+  state.settings.stickyBatch = state.settings.stickyBatch || {};
+  state.settings.stickyBatch[u.key] = u.batch.slice();
+  state._autoSwapUndo = null;
+  state._famAvoid = null;
+  const b = state.buildMode; if(b){ b._autoSwap = null; b._autoSwapUndone = true; }
+  try{ save(); }catch(e){}
+  try{ log('auto_swap_undo', {tile: u.key}); }catch(e){}
+  render();
+  showToast('Kept them — nothing swapped', {tone:'info', duration:2500});
+}
+window.buildAutoSwapUndo = buildAutoSwapUndo;
+function _autoSwapHtml(){
+  const b = state.buildMode; if(!b) return '';
+  if(!b._autoSwapChecked){ b._autoSwapChecked = true; _autoSwapCheck(); }
+  const names = b._autoSwap;
+  if(!names || !names.length) return '';
+  const list = names.length > 2 ? names.slice(0, 2).join(', ') + ' and more' : names.join(' and ');
+  return `<div class="stk-swap"><span>✓ You’ve got ${esc(list)} — swapped ${names.length > 1 ? 'them' : 'it'} for new words</span><button onclick="buildAutoSwapUndo()">Undo</button></div>`;
+}
 function buildMixFamilies(){
   const sec = activeVocabSection();
   const key = sec.id || 'all';
@@ -28380,6 +28454,7 @@ function renderBuildModeComplete(){
       <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
       <div class="stk-bsub">${_secLine}${_mins} min this session</div>
       <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>
+      ${_autoSwapHtml()}
       <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(spamN)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
       <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
@@ -30202,6 +30277,7 @@ function _stkBurst(sec, o){
       <div class="stk-bpct">${p.pct}% of ${esc(sec.name)} heard</div>
       ${tmrw}
       ${inst}
+      ${_autoSwapHtml()}
       <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(o.n)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
       <div class="stk-2btn"><button onclick="buildChangeCategory()">Change category</button><button onclick="buildExit()">Home</button></div>
