@@ -1267,7 +1267,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.28';
+const APP_VERSION = '9.29';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -23066,9 +23066,10 @@ function _famTake(words, need, mode, fs){
    Dates feeling — "I basically know this"); repeats shuffle the family order. */
 function _famOrder(words, shuffleFams){
   const g = _famGroup(words);
+  /* v9.29 — owner: a replay must not repeat the order. Repeats are a full shuffle; only the first play of a set is family-ordered. */
+  if(shuffleFams) return shuffleFY(words.slice());
   let keys = [...g.keys()];
-  if(shuffleFams) keys = shuffleFY(keys);
-  else {
+  {
     const fs = _famStats();
     keys.sort((a, b) => {
       const sa = fs.get(a) || { n:1, seen:0 }, sb = fs.get(b) || { n:1, seen:0 };
