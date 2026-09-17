@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.32';
+const APP_VERSION = '9.33';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29758,9 +29758,374 @@ function _spineHeaderHtml(){
   }
 }
 
+/* ===================================================================
+   FRAME ROUNDS (owner probe, v9.33) — the Paul-Noble shape.
+
+   A frame is ONE sentence skeleton with swappable slots. Ten cards do
+   not teach ten phrases: they teach one shape plus its slot sets, so
+   the learner can then say combinations the round never showed.
+
+   ZERO-WRITE. No SRS, no credit, no streak, no save(). All state lives
+   in the module-level `_frUi` and dies with the screen, so nothing here
+   can touch a real progress record. Reachable only from owner settings.
+
+   --- THE LOAD-BEARING LESSON, learned the hard way ---
+   Slots are NOT freely combinable. A first cut combined every verb with
+   every place and produced 「しごとに かえります」 and 「うちに いきます」
+   -- かえる means return to where you belong, so it takes うち and not
+   the shop; いく does the opposite. Free recombination is what makes the
+   "90 reachable sentences" number look impressive, and a good share of
+   those 90 were wrong. A learner drilling them hands-free would learn
+   them wrong.
+
+   So every slot set here is declared PER FILLER, not per frame: each
+   verb names the places it accepts, each noun pair names the adjectives
+   that make sense of it. The reachable count drops and every sentence
+   in it is one a Japanese speaker would say. That trade is the whole
+   design -- do not "simplify" this back into a cross product.
+   =================================================================== */
+
+const FRAME_ROLE_COLOR = {
+  fixed:'#ffb35c', when:'#a78bfa', where:'#5eead4',
+  verb:'#fb7185', adj:'#5eead4', a:'#a78bfa', b:'#fb7185'
+};
+
+function _frShuffle(a){
+  for(let i=a.length-1; i>0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+  return a;
+}
+function _frPick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+/* いく and くる go OUT to a destination; かえる returns home. Keeping these
+   two lists separate is what stops 「うちに いきます」 and 「しごとに かえります」. */
+const _FR_OUT  = [{s:'がっこう',en:'school'},{s:'えき',en:'the station'},{s:'みせ',en:'the shop'},{s:'しごと',en:'work'}];
+const _FR_HOME = [{s:'うち',en:'home'}];
+
+const _FR_MOVE = {
+  when:[
+    {s:'きのう', en:'Yesterday', t:'past'},
+    {s:'きょう', en:'Today', t:'any'},
+    {s:'あした', en:'Tomorrow', t:'non'},
+    {s:'まいにち', en:'Every day', t:'non'}
+  ],
+  verb:[
+    {s:'いきました',   t:'past', places:_FR_OUT,  en:'I went to {p}'},
+    {s:'いきます',     t:'non',  places:_FR_OUT,  en:'I go to {p}',        enFut:'I will go to {p}'},
+    {s:'いきません',   t:'non',  places:_FR_OUT,  en:'I do not go to {p}', enFut:'I will not go to {p}'},
+    {s:'いきたいです', t:'non',  places:_FR_OUT,  en:'I want to go to {p}'},
+    {s:'かえりました', t:'past', places:_FR_HOME, en:'I went home'},
+    {s:'かえります',   t:'non',  places:_FR_HOME, en:'I go home',          enFut:'I will go home'},
+    {s:'かえりたいです',t:'non', places:_FR_HOME, en:'I want to go home'},
+    {s:'きました',     t:'past', places:_FR_OUT,  en:'I came to {p}'},
+    {s:'きます',       t:'non',  places:_FR_OUT,  en:'I come to {p}',      enFut:'I will come to {p}'}
+  ]
+};
+function _frWhenFor(v){
+  return _FR_MOVE.when.filter(function(x){ return x.t === 'any' || x.t === v.t; });
+}
+
+/* Polarity pairs: the did-form and the ない-form of the same verb. The frame is
+   the PAIR, not either half — 〜ほうがいい on its own is one ending glued to any
+   verb, which is the treadmill shape this whole exercise exists to avoid. */
+const _FR_HOUGAII = [
+  [{s:'たべた', en:'eat'},  {s:'たべない', en:'eat'}],
+  [{s:'いった', en:'go'},   {s:'いかない', en:'go'}],
+  [{s:'のんだ', en:'drink'},{s:'のまない', en:'drink'}],
+  [{s:'みた', en:'watch'},  {s:'みない', en:'watch'}],
+  [{s:'ねた', en:'sleep'},  {s:'ねない', en:'sleep'}]
+];
+
+const _FR_ADJ = {
+  'はやい':'faster', 'たかい':'more expensive', 'やすい':'cheaper',
+  'おおきい':'bigger', 'ちいさい':'smaller', 'むずかしい':'harder',
+  'あたらしい':'newer', 'ふるい':'older'
+};
+/* Each pair names only the adjectives that are true-or-false about it, never
+   the ones that are simply meaningless (a shop is not "faster"). */
+const _FR_YORI = [
+  { a:{s:'でんしゃ', en:'The train'},     b:{s:'くるま', en:'a car'},
+    adjs:['はやい','おおきい','たかい','やすい'] },
+  { a:{s:'この みせ', en:'This shop'},    b:{s:'あの みせ', en:'that shop'},
+    adjs:['やすい','たかい','おおきい','ちいさい','あたらしい','ふるい'] },
+  { a:{s:'にほんご', en:'Japanese'},      b:{s:'えいご', en:'English'},
+    adjs:['むずかしい','あたらしい','ふるい'] },
+  { a:{s:'この ほん', en:'This book'},    b:{s:'あの ほん', en:'that book'},
+    adjs:['たかい','やすい','おおきい','ちいさい','あたらしい','ふるい','むずかしい'] },
+  { a:{s:'わたしの うち', en:'My house'}, b:{s:'がっこう', en:'the school'},
+    adjs:['おおきい','ちいさい','あたらしい','ふるい'] }
+];
+
+const FRAME_ROUNDS = [
+  {
+    id:'move',
+    title:'Going places',
+    skeleton:'（いつ）（ばしょ）に （どうし）',
+    blurb:'Three motion verbs across four polite endings. Two slots interact: the time word must match the verb tense, and かえる only ever goes home.',
+    enumerate(){
+      const out = [];
+      _FR_MOVE.verb.forEach(function(v){
+        _frWhenFor(v).forEach(function(w){
+          v.places.forEach(function(p){ out.push(w.s + p.s + 'に' + v.s); });
+        });
+      });
+      return out;
+    },
+    build(){
+      const vs = _frShuffle(_FR_MOVE.verb.slice());
+      /* Each verb gets its OWN shuffled bag of legal (time, place) pairs, drawn
+         without replacement. Ten cards over nine verbs means one verb comes up
+         twice, and the bag guarantees its second card is a different sentence —
+         かえりました has only two legal sentences, so a naive retry loop there
+         either repeats or spins. */
+      const bag = {};
+      vs.forEach(function(v){
+        const combos = [];
+        _frWhenFor(v).forEach(function(w){
+          v.places.forEach(function(p){ combos.push({w:w, p:p}); });
+        });
+        bag[v.s] = _frShuffle(combos);
+      });
+      const cards = [];
+      for(let i=0; i<10; i++){
+        const v = vs[i % vs.length];
+        const c = bag[v.s].shift();
+        if(!c) continue;                       /* bag exhausted: skip, never repeat */
+        const tmpl = (c.w.s === 'あした' && v.enFut) ? v.enFut : v.en;
+        cards.push({
+          parts:[{s:c.w.s, r:'when'},{s:c.p.s, r:'where'},{s:'に', r:'fixed'},{s:v.s, r:'verb'}],
+          en:c.w.en + ', ' + tmpl.replace('{p}', c.p.en) + '.'
+        });
+      }
+      return cards;
+    }
+  },
+  {
+    id:'hougaii',
+    title:'Better to, better not to',
+    skeleton:'（どうし）ほうが いいです',
+    blurb:'The slot takes a plain-form verb, and the closed set is exactly two: the did-form for "better to", the ない-form for "better not to". Every card comes as a pair.',
+    enumerate(){
+      const out = [];
+      _FR_HOUGAII.forEach(function(pr){
+        out.push(pr[0].s + 'ほうが いいです');
+        out.push(pr[1].s + 'ほうが いいです');
+      });
+      return out;
+    },
+    build(){
+      const pairs = _FR_HOUGAII;
+      const cards = [];
+      _frShuffle(pairs.slice()).forEach(function(pr){
+        cards.push({ parts:[{s:pr[0].s, r:'verb'},{s:'ほうが いいです', r:'fixed'}], en:'Better to ' + pr[0].en + '.' });
+        cards.push({ parts:[{s:pr[1].s, r:'verb'},{s:'ほうが いいです', r:'fixed'}], en:'Better not to ' + pr[1].en + '.' });
+      });
+      return cards;
+    }
+  },
+  {
+    id:'yori',
+    title:'More than',
+    skeleton:'（Ａ）は （Ｂ）より （けいようし）です',
+    blurb:'Two noun slots and an adjective slot — but only the adjectives that make sense of the pair. A shop can be cheaper; it cannot be faster.',
+    enumerate(){
+      const out = [];
+      _FR_YORI.forEach(function(pr){
+        pr.adjs.forEach(function(j){ out.push(pr.a.s + 'は' + pr.b.s + 'より' + j + 'です'); });
+      });
+      return out;
+    },
+    build(){
+      const ADJ = _FR_ADJ;
+      const pairs = _FR_YORI;
+      const cards = [];
+      /* Five pairs, two cards each — and the two always take DIFFERENT
+         adjectives, so a round never shows the same sentence twice. */
+      _frShuffle(pairs.slice()).forEach(function(pr){
+        const js = _frShuffle(pr.adjs.slice()).slice(0, 2);
+        js.forEach(function(j){
+          cards.push({
+            parts:[{s:pr.a.s, r:'a'},{s:'は', r:'fixed'},{s:pr.b.s, r:'b'},{s:'より', r:'fixed'},{s:j + 'です', r:'adj'}],
+            en:pr.a.en + ' is ' + ADJ[j] + ' than ' + pr.b.en + '.'
+          });
+        });
+      });
+      return cards;
+    }
+  }
+];
+
+/* How many DIFFERENT sentences a frame can actually make. ENUMERATED off the
+   very lists the cards are built from — never hand-arithmetic, which is how a
+   reach figure quietly drifts back into the inflated cross-product. If a slot
+   list changes, this number changes with it and cannot go stale. */
+function frameReach(f){
+  const seen = {};
+  (f.enumerate ? f.enumerate() : []).forEach(function(s){ seen[s] = 1; });
+  return Object.keys(seen).length;
+}
+
+/* Transient only — deliberately NOT on `state`, so no save() path can
+   ever serialize a probe session into a real profile. */
+let _frUi = null;
+
+function frameStart(id){
+  const f = FRAME_ROUNDS.find(function(x){ return x.id === id; });
+  if(!f) return;
+  _frUi = { id:id, title:f.title, skeleton:f.skeleton, blurb:f.blurb,
+            cards:f.build(), idx:0, revealed:false, playing:false, done:false, timer:null };
+  nav('frames');
+}
+window.frameStart = frameStart;
+
+function _frStop(){
+  if(_frUi && _frUi.timer){ clearTimeout(_frUi.timer); _frUi.timer = null; }
+  if(_frUi) _frUi.playing = false;
+  try{ if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){}
+}
+
+function _frJp(c){ return c.parts.map(function(p){ return p.s; }).join(''); }
+
+function _frPlay(){
+  if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+  const c = _frUi.cards[_frUi.idx];
+  if(!c) return;
+  _buildSpeakJP(_frJp(c), function(){
+    if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+    _frUi.timer = setTimeout(function(){
+      if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+      if(_frUi.idx >= _frUi.cards.length - 1){
+        _frUi.playing = false; _frUi.done = true; render(); return;
+      }
+      _frUi.idx++; _frUi.revealed = false; render(); _frPlay();
+    }, 2800);
+  });
+}
+
+function frameTogglePlay(){
+  if(!_frUi) return;
+  if(_frUi.playing){ _frStop(); render(); return; }
+  if(_frUi.done){ _frUi.done = false; _frUi.idx = 0; _frUi.revealed = false; }
+  _frUi.playing = true; render(); _frPlay();
+}
+window.frameTogglePlay = frameTogglePlay;
+
+function frameNext(){
+  if(!_frUi) return;
+  _frStop();
+  if(_frUi.idx >= _frUi.cards.length - 1) _frUi.done = true;
+  else { _frUi.idx++; _frUi.revealed = false; }
+  render();
+}
+window.frameNext = frameNext;
+
+function framePrev(){
+  if(!_frUi) return;
+  _frStop();
+  if(_frUi.idx > 0){ _frUi.idx--; _frUi.revealed = false; }
+  render();
+}
+window.framePrev = framePrev;
+
+function framePeek(){
+  if(!_frUi) return;
+  _frUi.revealed = !_frUi.revealed; render();
+}
+window.framePeek = framePeek;
+
+function frameSay(){
+  if(!_frUi) return;
+  const c = _frUi.cards[_frUi.idx];
+  if(c) _buildSpeakJP(_frJp(c));
+}
+window.frameSay = frameSay;
+
+function frameAgain(){
+  if(!_frUi) return;
+  const id = _frUi.id;
+  _frStop();
+  frameStart(id);
+}
+window.frameAgain = frameAgain;
+
+function frameExit(){
+  _frStop(); _frUi = null; nav('settings');
+}
+window.frameExit = frameExit;
+
+function renderFrames(){
+  if(!_frUi){
+    return '<div class="card"><h3>Frames</h3>' +
+      '<div class="muted" style="font-size:13px">No round loaded. Pick one from owner settings.</div>' +
+      '<button class="btn btn-secondary" style="margin-top:12px" onclick="frameExit()">Back</button></div>';
+  }
+  const u = _frUi;
+
+  if(u.done){
+    return '' +
+      '<div class="card" style="text-align:center">' +
+        '<div class="h8-section" style="margin:0 0 6px">' + esc(u.title) + '</div>' +
+        '<div class="word-jp" style="font-size:20px;margin-bottom:6px">' + esc(u.skeleton) + '</div>' +
+        '<div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:16px">' +
+          'That was ten sentences from one shape.<br>' +
+          'You can now say the combinations this round never showed you.' +
+        '</div>' +
+        '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+          '<button class="btn" style="width:auto;padding-left:22px;padding-right:22px" onclick="frameAgain()">New ten</button>' +
+          '<button class="btn btn-secondary" style="width:auto;padding-left:22px;padding-right:22px" onclick="frameExit()">Done</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  const c = u.cards[u.idx];
+  /* Each slot is its own inline-block so a long line wraps BETWEEN slots and
+     never mid-word — 「いきまし / た」 is unreadable at a glance, which is the
+     one thing a drill card cannot afford. */
+  const sentence = c.parts.map(function(p){
+    return '<span style="display:inline-block;white-space:nowrap;color:' +
+      (FRAME_ROLE_COLOR[p.r] || '#fff') + '">' + esc(p.s) + '</span>';
+  }).join('<span style="display:inline-block;width:.42em"></span>');
+
+  return '' +
+    '<div class="card" style="border:1px solid rgba(255,179,92,.35);background:rgba(255,179,92,.05);padding:12px 14px">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+        '<div style="min-width:0">' +
+          '<div class="h8-section" style="margin:0 0 2px">' + esc(u.title) + '</div>' +
+          '<div class="word-jp" style="font-size:15px;opacity:.9">' + esc(u.skeleton) + '</div>' +
+        '</div>' +
+        '<div class="muted" style="font-size:12px;white-space:nowrap">' + (u.idx + 1) + ' / ' + u.cards.length + '</div>' +
+      '</div>' +
+      '<div class="muted" style="font-size:12px;line-height:1.5;margin-top:8px">' + esc(u.blurb) + '</div>' +
+    '</div>' +
+
+    '<div class="card" style="text-align:center;padding:30px 16px;min-height:190px;display:flex;flex-direction:column;justify-content:center;gap:16px">' +
+      '<div style="font-size:28px;font-weight:700;line-height:1.7">' + sentence + '</div>' +
+      '<div style="min-height:24px">' +
+        (u.revealed
+          ? '<div class="muted" style="font-size:15px">' + esc(c.en) + '</div>'
+          : '<button class="btn btn-secondary btn-sm" onclick="framePeek()">Peek at the meaning</button>') +
+      '</div>' +
+    '</div>' +
+
+    /* .btn is full-width by default in this app, which turns one row of four
+       into four stacked rows. Pin each to its content so the transport stays a
+       single thumb-reachable row. */
+    '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:4px">' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="framePrev()" ' + (u.idx === 0 ? 'disabled' : '') + '>&#9664;</button>' +
+      '<button class="btn" style="width:auto;flex:0 1 auto;padding-left:18px;padding-right:18px" onclick="frameTogglePlay()">' + (u.playing ? '&#9208; Pause' : '&#9654; Play all') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameSay()">&#128266;</button>' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameNext()">&#9654;</button>' +
+    '</div>' +
+    '<div style="text-align:center;margin-top:14px">' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;padding-left:22px;padding-right:22px" onclick="frameExit()">End</button>' +
+    '</div>' +
+    '<div class="muted" style="text-align:center;font-size:11px;margin-top:10px;opacity:.6">' +
+      'Owner probe — nothing here is recorded. No streak, no progress, no words marked.' +
+    '</div>';
+}
+
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, name:renderNameGate, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, name:renderNameGate, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker, frames:renderFrames}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -32074,6 +32439,15 @@ function renderSettings(){
               <div class="word-en">Customers see the simple page. Changes here set the experience for this device.</div>
             </div>
             <button class="btn btn-secondary" style="white-space:nowrap;font-size:12px" onclick="ownerModeOff()">Hide</button>
+          </div>
+        </div>
+        <div class="card" style="border:1px solid rgba(94,234,212,.35)">
+          <h3>🧩 Frame rounds (probe)</h3>
+          <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">One sentence shape, swappable slots. Ten cards teach the shape, not ten phrases. Nothing here is recorded — no streak, no progress, no words marked.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="frameStart('move')">Going places</button>
+            <button class="btn btn-sm" onclick="frameStart('hougaii')">ほうが いい</button>
+            <button class="btn btn-sm" onclick="frameStart('yori')">より</button>
           </div>
         </div>
       </div>
