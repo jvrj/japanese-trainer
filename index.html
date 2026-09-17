@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.36';
+const APP_VERSION = '9.37';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -30067,6 +30067,79 @@ function frameReach(f){
    ever serialize a probe session into a real profile. */
 let _frUi = null;
 
+
+/* The teaching layer. A frame round can show you a hundred sentences and still
+   never tell you WHY the words sit in that order — this is that missing half.
+   byText wins over byRole because one frame uses の, に and が all tagged
+   'fixed'; the particle, not the role, is the lesson. */
+const FRAME_TEACH = {
+  move: {
+    byText: {
+      'に': 'The arrow. It attaches BACKWARDS, to the place right before it — えきに = "to the station". Not a word on its own.'
+    },
+    byRole: {
+      when: 'When it happens. Time sits near the front in Japanese, ahead of the place.',
+      where: 'Where you are heading.',
+      verb: 'The verb comes LAST. Japanese holds the action back until the end — you hear where before you hear what.'
+    }
+  },
+  where: {
+    byText: {
+      'の': 'Glue between two nouns, and the owner comes first: テーブルの うしろ is literally "the table\'s behind".',
+      'に': 'Marks the spot where something exists.',
+      'が': 'Points at the thing being introduced. It is new information, not the topic — that is why it is が and not は.',
+      'あります': '"there is" — for objects only. Anything alive never takes this.',
+      'います': '"there is" — for people and animals only. The living-or-not choice is forced, never free.'
+    },
+    byRole: {
+      where: 'The landmark — the thing you measure a position from.',
+      pos: 'The position word. In Japanese these are NOUNS, not prepositions: you say "the behind of the table", not "behind the table".',
+      thing: 'The thing that is there.'
+    }
+  },
+  hougaii: {
+    byText: {
+      'ほうが いいです': '"…would be better". Literally "that side is good" — ほう means side, or option.'
+    },
+    byRole: {
+      verb: 'Plain form, never ます. The did-form (たべた) for "better to"; the ない-form (たべない) for "better not to".'
+    }
+  },
+  yori: {
+    byText: {
+      'は': 'Marks it as the topic — "as for the train…".',
+      'より': '"compared to". It comes AFTER the thing it marks, where English puts "than" BEFORE it: くるまより = "than a car". This is the piece the whole shape turns on.'
+    },
+    byRole: {
+      a: 'What you are talking about.',
+      b: 'What you are measuring it against.',
+      adj: 'The quality, closed off politely with です.'
+    }
+  }
+};
+function _frNote(id, part){
+  const t = FRAME_TEACH[id];
+  if(!t || !part) return '';
+  return (t.byText && t.byText[part.s]) || (t.byRole && t.byRole[part.r]) || '';
+}
+
+/* Teach or drill — a session-level MODE, not a per-round button, because the
+   answer is the same for every round until the learner's answer changes.
+   Session-only, so the probe stays zero-write. */
+let _frMode = 'teach';
+function frameSetMode(m){
+  _frMode = (m === 'drill') ? 'drill' : 'teach';
+  _frRateKey = (_frMode === 'drill') ? 'full' : 'slow';
+  if(_frUi){
+    _frStop();
+    _frUi.build = (_frMode === 'teach');
+    _frUi.step = _frUi.build ? 1 : _frSteps(_frUi.cards[_frUi.idx]);
+    _frUi.revealed = false;
+    render();
+  }
+}
+window.frameSetMode = frameSetMode;
+
 /* Slower than the drill default on purpose: a sentence you have never built
    before is not a word you are reviewing. Session-only — never saved. */
 const _FR_RATES = [{k:'slow', r:0.55, label:'Slow'},
@@ -30102,8 +30175,9 @@ function frameStart(id){
   const f = FRAME_ROUNDS.find(function(x){ return x.id === id; });
   if(!f) return;
   _frUi = { id:id, title:f.title, skeleton:f.skeleton, blurb:f.blurb,
-            cards:f.build(), idx:0, step:1, build:true,
+            cards:f.build(), idx:0, step:1, build:(_frMode === 'teach'),
             revealed:false, playing:false, done:false, timer:null };
+  if(!_frUi.build) _frUi.step = _frSteps(_frUi.cards[0]);
   nav('frames');
 }
 window.frameStart = frameStart;
@@ -30184,15 +30258,7 @@ function framePrev(){
 }
 window.framePrev = framePrev;
 
-/* `I already know this shape` — drop the ladder and show whole sentences. */
-function frameToggleBuild(){
-  if(!_frUi) return;
-  _frStop();
-  _frUi.build = !_frUi.build;
-  _frUi.step = _frUi.build ? 1 : _frSteps(_frUi.cards[_frUi.idx]);
-  render();
-}
-window.frameToggleBuild = frameToggleBuild;
+
 
 function framePeek(){
   if(!_frUi) return;
@@ -30263,6 +30329,20 @@ function renderFrames(){
       esc(p.s) + '</span>';
   }).join('<span style="display:inline-block;width:.42em"></span>');
 
+  const note = (u.build && step >= 1) ? _frNote(u.id, c.parts[step-1]) : '';
+
+  const modeRow =
+    '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:2px">' +
+      ['teach','drill'].map(function(m){
+        const on = _frMode === m;
+        return '<button class="btn btn-sm" style="width:auto;flex:0 0 auto;padding:6px 16px;font-size:12px;' +
+          (on ? 'background:rgba(167,139,250,.25);border:1px solid rgba(167,139,250,.55)'
+              : 'background:transparent;border:1px solid rgba(255,255,255,.16);opacity:.6') +
+          '" onclick="frameSetMode(\'' + m + '\')">' +
+          (m === 'teach' ? 'Teach me' : 'Drill me') + '</button>';
+      }).join('') +
+    '</div>';
+
   const speed = _FR_RATES.map(function(r){
     const on = r.k === _frRateKey;
     return '<button class="btn btn-sm" style="width:auto;flex:0 0 auto;padding:5px 12px;font-size:12px;' +
@@ -30292,6 +30372,13 @@ function renderFrames(){
         ? '<div class="muted" style="font-size:12px;letter-spacing:.06em">' +
             (whole ? 'whole sentence' : (step + ' of ' + last + ' words')) + '</div>'
         : '') +
+      /* The note belongs to the word that just arrived, so it reads as an
+         explanation of THAT piece rather than a paragraph about the card. */
+      (note
+        ? '<div style="font-size:13px;line-height:1.55;text-align:left;margin:2px auto 0;max-width:30em;' +
+            'padding:10px 12px;border-radius:10px;background:rgba(167,139,250,.10);' +
+            'border-left:2px solid rgba(167,139,250,.5);opacity:.92">' + esc(note) + '</div>'
+        : '') +
       '<div style="min-height:24px">' +
         (u.revealed
           ? '<div class="muted" style="font-size:15px">' + esc(c.en) + '</div>'
@@ -30299,7 +30386,8 @@ function renderFrames(){
       '</div>' +
     '</div>' +
 
-    '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:2px">' + speed + '</div>' +
+    modeRow +
+    '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:8px">' + speed + '</div>' +
 
     /* .btn is full-width by default in this app, which turns one row of four
        into four stacked rows. Pin each to its content so the transport stays a
@@ -30314,8 +30402,6 @@ function renderFrames(){
     '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:9px">' +
       '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;padding-left:16px;padding-right:16px" onclick="frameTogglePlay()">' +
         (u.playing ? '&#9208; Pause' : '&#9654; Play it for me') + '</button>' +
-      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;padding-left:16px;padding-right:16px;opacity:.7" onclick="frameToggleBuild()">' +
-        (u.build ? 'Skip the build-up' : 'Build word by word') + '</button>' +
     '</div>' +
     '<div style="text-align:center;margin-top:14px">' +
       '<button class="btn btn-secondary btn-sm" style="width:auto;padding-left:22px;padding-right:22px" onclick="frameExit()">End</button>' +

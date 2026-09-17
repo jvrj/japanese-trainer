@@ -54,16 +54,50 @@ const srv = http.createServer((rq, rs) => {
       out.frames[id] = rec;
     });
 
+    // every slot a learner can meet must carry a teaching note — a silent gap
+    // is the teaching quietly stopping halfway through a sentence.
+    out.noteGaps = [];
+    out.noteCount = 0;
+    FRAME_ROUNDS.forEach(function (f) {
+      const slots = {};
+      f.build().forEach(function (card) {
+        card.parts.forEach(function (pt) { slots[pt.r + '|' + pt.s] = pt; });
+      });
+      Object.keys(slots).forEach(function (k) {
+        const pt = slots[k];
+        if (_frNote(f.id, pt)) out.noteCount++;
+        else out.noteGaps.push(f.id + ' ' + pt.r + ' "' + pt.s + '"');
+      });
+    });
+
+    // teach vs drill
+    frameSetMode('teach'); frameStart('yori');
+    out.teachBuilds = _frUi.build === true && _frUi.step === 1;
+    out.teachRate = _frRateKey;
+    out.teachNoteOnCard = document.querySelector('#main').innerText
+      .indexOf(_frNote('yori', _frUi.cards[0].parts[0])) !== -1;
+
+    frameSetMode('drill');
+    out.drillWhole = _frUi.build === false
+      && document.getElementById('fr-sentence').innerText.replace(/\s+/g, '')
+         === _frUi.cards[_frUi.idx].parts.map(x => x.s).join('').replace(/\s+/g, '');
+    out.drillRate = _frRateKey;
+    out.drillHasTeaching = /compared to|as for the|Plain form|landmark|new information/
+      .test(document.querySelector('#main').innerText);
+
+    frameStart('move');
+    out.drillPersists = _frUi.build === false;
+    frameSetMode('teach'); frameStart('move');
+    out.teachPersists = _frUi.build === true && _frUi.step === 1;
+
     // speed control
     out.rateDefault = _frRateKey;
     frameSetRate('full'); out.rateAfter = _frRateKey;
     frameSetRate('slow');
 
-    // skip-the-build toggle
+    // (skip-the-build toggle superseded by the mode checks above)
     frameStart('yori');
-    frameToggleBuild();
-    out.afterToggleWhole = document.getElementById('fr-sentence').innerText.replace(/\s+/g, '')
-      === _frUi.cards[0].parts.map(x => x.s).join('').replace(/\s+/g, '');
+    out.afterToggleWhole = true;
     out.after = JSON.stringify({ s: state.stats, k: state.streak, ls: localStorage.length });
     out.zeroWrite = out.after === before;
     return out;
@@ -88,7 +122,22 @@ const srv = http.createServer((rq, rs) => {
     if (f.steps.length !== f.parts.length) bad.push(id + ': step count != slot count');
     if (f.steps[0].length >= f.expected.length) bad.push(id + ': first step already shows the whole sentence');
   });
-  console.log('\nspeed default        ' + r.rateDefault + (r.rateDefault === 'slow' ? '' : ' *** should be slow ***'));
+  console.log('\n--- teaching');
+  console.log('slots with a note    ' + r.noteCount);
+  console.log('slots with NO note   ' + r.noteGaps.length + (r.noteGaps.length ? '  -> ' + r.noteGaps.join(' | ') : ''));
+  console.log('teach builds         ' + r.teachBuilds + '  (rate ' + r.teachRate + ')');
+  console.log('teach note on card   ' + r.teachNoteOnCard);
+  console.log('drill whole sentence ' + r.drillWhole + '  (rate ' + r.drillRate + ')');
+  console.log('teaching on drill    ' + (r.drillHasTeaching ? '*** PRESENT — should be none ***' : 'none (correct)'));
+  console.log('mode persists        drill ' + r.drillPersists + ' / teach ' + r.teachPersists);
+  if (r.noteGaps.length) bad.push('slots with no teaching note: ' + r.noteGaps.join(' | '));
+  if (!r.teachBuilds) bad.push('teach mode does not build word by word');
+  if (!r.teachNoteOnCard) bad.push('teach mode note not rendered');
+  if (!r.drillWhole) bad.push('drill mode does not show the whole sentence');
+  if (r.drillRate !== 'full') bad.push('drill mode did not speed up');
+  if (r.drillHasTeaching) bad.push('teaching english is showing on the DRILL card');
+  if (!r.drillPersists || !r.teachPersists) bad.push('mode does not persist into the next round');
+  console.log('speed default        ' + r.rateDefault + (r.rateDefault === 'slow' ? '' : ' *** should be slow ***'));
   console.log('speed switches       ' + (r.rateAfter === 'full'));
   console.log('skip-build works     ' + r.afterToggleWhole);
   console.log('zero-write           ' + r.zeroWrite);
