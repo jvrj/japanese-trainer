@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.35';
+const APP_VERSION = '9.36';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -24135,7 +24135,7 @@ function _buildSpeakEN(text, force, onDone){
   }catch(e){ if(onDone) setTimeout(onDone, 0); }
 }
 
-function _buildSpeakJP(text, onDone){
+function _buildSpeakJP(text, onDone, rateOverride){
   try{
     if(!('speechSynthesis' in window)){ if(onDone) setTimeout(onDone, 0); return; }
     const ss = window.speechSynthesis;
@@ -24143,7 +24143,7 @@ function _buildSpeakJP(text, onDone){
     if(ss.speaking || ss.pending) ss.cancel();
     const utter = () => {
       const u = new SpeechSynthesisUtterance(String(text).replace(/\s+/g,''));
-      u.rate = state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
+      u.rate = rateOverride || state.settings.buildTtsRate || state.settings.ttsRate || 0.9;
       const v = (typeof _pickJaVoice === 'function') ? _pickJaVoice() : null;
       if(v){ u.voice = v; u.lang = v.lang || 'ja-JP'; } else { u.lang = 'ja-JP'; _maybeWarnNoJaVoice(); }
       if(onDone) _ttsFireGuard(u, onDone, text, u.rate);
@@ -30067,11 +30067,43 @@ function frameReach(f){
    ever serialize a probe session into a real profile. */
 let _frUi = null;
 
+/* Slower than the drill default on purpose: a sentence you have never built
+   before is not a word you are reviewing. Session-only — never saved. */
+const _FR_RATES = [{k:'slow', r:0.55, label:'Slow'},
+                   {k:'easy', r:0.75, label:'Steady'},
+                   {k:'full', r:0.95, label:'Normal'}];
+let _frRateKey = 'slow';
+function _frRate(){ const f = _FR_RATES.find(function(x){ return x.k === _frRateKey; }); return f ? f.r : 0.55; }
+function frameSetRate(k){ _frRateKey = k; if(_frUi){ _frStop(); render(); } }
+window.frameSetRate = frameSetRate;
+
+/* The whole point of the ladder: a card is not a sentence to absorb, it is a
+   sentence you WATCH ASSEMBLE one slot at a time. `step` is how many slots are
+   showing; the card is whole when step === parts.length. */
+function _frSteps(c){ return c ? c.parts.length : 0; }
+function _frWhole(c, step){ return c.parts.slice(0, step).map(function(p){ return p.s; }).join(''); }
+
+/* One step = hear the NEW word alone, then the phrase it just joined. The
+   first step has no `so far` to add it to, so it speaks once. */
+function _frSpeakStep(c, step, onDone){
+  const rate = _frRate();
+  const whole = _frWhole(c, step);
+  if(step <= 1){ _buildSpeakJP(whole, onDone, rate); return; }
+  _buildSpeakJP(c.parts[step-1].s, function(){
+    if(!_frUi || state.screen !== 'frames') return;
+    _frUi.timer = setTimeout(function(){
+      if(!_frUi || state.screen !== 'frames') return;
+      _buildSpeakJP(whole, onDone, rate);
+    }, 520);
+  }, rate);
+}
+
 function frameStart(id){
   const f = FRAME_ROUNDS.find(function(x){ return x.id === id; });
   if(!f) return;
   _frUi = { id:id, title:f.title, skeleton:f.skeleton, blurb:f.blurb,
-            cards:f.build(), idx:0, revealed:false, playing:false, done:false, timer:null };
+            cards:f.build(), idx:0, step:1, build:true,
+            revealed:false, playing:false, done:false, timer:null };
   nav('frames');
 }
 window.frameStart = frameStart;
@@ -30088,31 +30120,53 @@ function _frPlay(){
   if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
   const c = _frUi.cards[_frUi.idx];
   if(!c) return;
-  _buildSpeakJP(_frJp(c), function(){
+  const last = _frSteps(c);
+  const done = function(){
     if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+    /* A whole sentence earns a longer silence than a half-built one — that
+       gap is where the learner says it back. */
+    const gap = (!_frUi.build || _frUi.step >= last) ? 2600 : 1150;
     _frUi.timer = setTimeout(function(){
       if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+      if(_frUi.build && _frUi.step < last){ _frUi.step++; render(); _frPlay(); return; }
       if(_frUi.idx >= _frUi.cards.length - 1){
         _frUi.playing = false; _frUi.done = true; render(); return;
       }
-      _frUi.idx++; _frUi.revealed = false; render(); _frPlay();
-    }, 2800);
-  });
+      _frUi.idx++; _frUi.step = 1; _frUi.revealed = false; render(); _frPlay();
+    }, gap);
+  };
+  if(_frUi.build) _frSpeakStep(c, _frUi.step, done);
+  else _buildSpeakJP(_frJp(c), done, _frRate());
 }
 
 function frameTogglePlay(){
   if(!_frUi) return;
   if(_frUi.playing){ _frStop(); render(); return; }
-  if(_frUi.done){ _frUi.done = false; _frUi.idx = 0; _frUi.revealed = false; }
+  if(_frUi.done){ _frUi.done = false; _frUi.idx = 0; _frUi.step = 1; _frUi.revealed = false; }
   _frUi.playing = true; render(); _frPlay();
 }
 window.frameTogglePlay = frameTogglePlay;
+
+/* Forward means `one more word` until the sentence is whole, and only then
+   `next sentence`. One button, so the thumb never has to choose. */
+function frameFwd(){
+  if(!_frUi) return;
+  _frStop();
+  const c = _frUi.cards[_frUi.idx];
+  if(_frUi.build && c && _frUi.step < _frSteps(c)){
+    _frUi.step++; render();
+    _frSpeakStep(c, _frUi.step);
+    return;
+  }
+  frameNext();
+}
+window.frameFwd = frameFwd;
 
 function frameNext(){
   if(!_frUi) return;
   _frStop();
   if(_frUi.idx >= _frUi.cards.length - 1) _frUi.done = true;
-  else { _frUi.idx++; _frUi.revealed = false; }
+  else { _frUi.idx++; _frUi.step = 1; _frUi.revealed = false; }
   render();
 }
 window.frameNext = frameNext;
@@ -30120,10 +30174,25 @@ window.frameNext = frameNext;
 function framePrev(){
   if(!_frUi) return;
   _frStop();
-  if(_frUi.idx > 0){ _frUi.idx--; _frUi.revealed = false; }
+  const c = _frUi.cards[_frUi.idx];
+  if(_frUi.build && c && _frUi.step > 1){ _frUi.step--; render(); return; }
+  if(_frUi.idx > 0){
+    _frUi.idx--; _frUi.revealed = false;
+    _frUi.step = _frUi.build ? _frSteps(_frUi.cards[_frUi.idx]) : 1;
+  }
   render();
 }
 window.framePrev = framePrev;
+
+/* `I already know this shape` — drop the ladder and show whole sentences. */
+function frameToggleBuild(){
+  if(!_frUi) return;
+  _frStop();
+  _frUi.build = !_frUi.build;
+  _frUi.step = _frUi.build ? 1 : _frSteps(_frUi.cards[_frUi.idx]);
+  render();
+}
+window.frameToggleBuild = frameToggleBuild;
 
 function framePeek(){
   if(!_frUi) return;
@@ -30134,7 +30203,9 @@ window.framePeek = framePeek;
 function frameSay(){
   if(!_frUi) return;
   const c = _frUi.cards[_frUi.idx];
-  if(c) _buildSpeakJP(_frJp(c));
+  if(!c) return;
+  _frStop();
+  _buildSpeakJP(_frUi.build ? _frWhole(c, _frUi.step) : _frJp(c), null, _frRate());
 }
 window.frameSay = frameSay;
 
@@ -30176,28 +30247,51 @@ function renderFrames(){
   }
 
   const c = u.cards[u.idx];
+  const last = _frSteps(c);
+  const step = u.build ? Math.min(u.step, last) : last;
+  const whole = step >= last;
+
   /* Each slot is its own inline-block so a long line wraps BETWEEN slots and
      never mid-word — 「いきまし / た」 is unreadable at a glance, which is the
      one thing a drill card cannot afford. */
-  const sentence = c.parts.map(function(p){
+  const sentence = c.parts.slice(0, step).map(function(p, i){
+    /* The word that just arrived is the lesson; the ones before it are context. */
+    const isNew = u.build && i === step - 1 && step > 1;
     return '<span style="display:inline-block;white-space:nowrap;color:' +
-      (FRAME_ROLE_COLOR[p.r] || '#fff') + '">' + esc(p.s) + '</span>';
+      (FRAME_ROLE_COLOR[p.r] || '#fff') +
+      (isNew ? ';text-shadow:0 0 18px currentColor' : ';opacity:.82') + '">' +
+      esc(p.s) + '</span>';
   }).join('<span style="display:inline-block;width:.42em"></span>');
 
+  const speed = _FR_RATES.map(function(r){
+    const on = r.k === _frRateKey;
+    return '<button class="btn btn-sm" style="width:auto;flex:0 0 auto;padding:5px 12px;font-size:12px;' +
+      (on ? 'background:rgba(94,234,212,.22);border:1px solid rgba(94,234,212,.5)'
+          : 'background:transparent;border:1px solid rgba(255,255,255,.16);opacity:.65') +
+      '" onclick="frameSetRate(\'' + r.k + '\')">' + r.label + '</button>';
+  }).join('');
+
   return '' +
+    /* While the sentence is still assembling, the abstract skeleton is noise —
+       a pattern written as （Ａ）は（Ｂ）より… means nothing until you have met
+       it once. It appears at the moment the sentence completes. */
     '<div class="card" style="border:1px solid rgba(255,179,92,.35);background:rgba(255,179,92,.05);padding:12px 14px">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
-        '<div style="min-width:0">' +
-          '<div class="h8-section" style="margin:0 0 2px">' + esc(u.title) + '</div>' +
-          '<div class="word-jp" style="font-size:15px;opacity:.9">' + esc(u.skeleton) + '</div>' +
-        '</div>' +
+        '<div class="h8-section" style="margin:0">' + esc(u.title) + '</div>' +
         '<div class="muted" style="font-size:12px;white-space:nowrap">' + (u.idx + 1) + ' / ' + u.cards.length + '</div>' +
       '</div>' +
-      '<div class="muted" style="font-size:12px;line-height:1.5;margin-top:8px">' + esc(u.blurb) + '</div>' +
+      (whole
+        ? '<div class="word-jp" style="font-size:15px;opacity:.9;margin-top:6px">' + esc(u.skeleton) + '</div>' +
+          (u.idx === 0 ? '<div class="muted" style="font-size:12px;line-height:1.5;margin-top:6px">' + esc(u.blurb) + '</div>' : '')
+        : '') +
     '</div>' +
 
-    '<div class="card" style="text-align:center;padding:30px 16px;min-height:190px;display:flex;flex-direction:column;justify-content:center;gap:16px">' +
-      '<div style="font-size:28px;font-weight:700;line-height:1.7">' + sentence + '</div>' +
+    '<div class="card" style="text-align:center;padding:30px 16px;min-height:190px;display:flex;flex-direction:column;justify-content:center;gap:14px">' +
+      '<div id="fr-sentence" style="font-size:28px;font-weight:700;line-height:1.7;min-height:1.7em">' + sentence + '</div>' +
+      (u.build
+        ? '<div class="muted" style="font-size:12px;letter-spacing:.06em">' +
+            (whole ? 'whole sentence' : (step + ' of ' + last + ' words')) + '</div>'
+        : '') +
       '<div style="min-height:24px">' +
         (u.revealed
           ? '<div class="muted" style="font-size:15px">' + esc(c.en) + '</div>'
@@ -30205,14 +30299,23 @@ function renderFrames(){
       '</div>' +
     '</div>' +
 
+    '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:2px">' + speed + '</div>' +
+
     /* .btn is full-width by default in this app, which turns one row of four
        into four stacked rows. Pin each to its content so the transport stays a
        single thumb-reachable row. */
-    '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:4px">' +
-      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="framePrev()" ' + (u.idx === 0 ? 'disabled' : '') + '>&#9664;</button>' +
-      '<button class="btn" style="width:auto;flex:0 1 auto;padding-left:18px;padding-right:18px" onclick="frameTogglePlay()">' + (u.playing ? '&#9208; Pause' : '&#9654; Play all') + '</button>' +
+    '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:10px">' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="framePrev()" ' +
+        ((u.idx === 0 && step <= 1) ? 'disabled' : '') + '>&#9664;</button>' +
       '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameSay()">&#128266;</button>' +
-      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameNext()">&#9654;</button>' +
+      '<button id="fr-fwd" class="btn" style="width:auto;flex:0 1 auto;padding-left:20px;padding-right:20px" onclick="frameFwd()">' +
+        ((u.build && !whole) ? '&#43; word' : 'Next &#9654;') + '</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:9px">' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;padding-left:16px;padding-right:16px" onclick="frameTogglePlay()">' +
+        (u.playing ? '&#9208; Pause' : '&#9654; Play it for me') + '</button>' +
+      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;padding-left:16px;padding-right:16px;opacity:.7" onclick="frameToggleBuild()">' +
+        (u.build ? 'Skip the build-up' : 'Build word by word') + '</button>' +
     '</div>' +
     '<div style="text-align:center;margin-top:14px">' +
       '<button class="btn btn-secondary btn-sm" style="width:auto;padding-left:22px;padding-right:22px" onclick="frameExit()">End</button>' +
