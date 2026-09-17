@@ -350,6 +350,12 @@ Violations to fix: **96 families** (30 `form_*`, 66 content). The 76 ladders are
 split** — which flips them from "172 problems" to "96 problems," and that is the point of doing the
 measurement before writing the rule.
 
+> **SUPERSEDED r2 (synthesis, CR-r2-S2).** Both numbers in this paragraph are wrong and the table
+> above is pre-exemption. The ladder count over 8 words is **23**, not 76 (the 76 counted `form_*`
+> suffix families as ladders); genuinely oversized after the one-piece exemption is **71**, not 96.
+> The governing text is **amended D8** in *Round 2 — Task 1*. This paragraph is left in place as the
+> round-1 record and must not be implemented from.
+
 **B. Round composition — the rule is round share, not family size**
 
 This is the real control, and it has to be stated as *share of the round* because `_roundSize()`
@@ -359,6 +365,12 @@ returns 10 or 30 (line 23637) and a family that is a third of a 30-round is a wh
 |---|---|---|---|
 | **10** | 1 (ladder only) or **2–3** | **Yes — and only if it is a ladder** | max **1** |
 | **30** | **3–6** | No | max **3** |
+
+> **SUPERSEDED r2 (synthesis, CR-r2-S2 + DA-r2-F1).** The *Families per round* column is replaced by
+> **D9.1's half-the-round share cap** (the "3–6, never a single family" floor is unsatisfiable), and
+> the *Topic families* column is replaced by **D9.5's relaxation ladder** — a topic **family count**
+> of 1 per 10-round leaves `animals`, `home` and `onomatope` unable to legally assemble a 10-round at
+> all. Governing text: **amended D9** in *Round 2 — Task 1*, as further amended by the synthesis.
 
 **"A round may be one whole family" is preserved deliberately.** v9.30's comment names the exact
 case — *"a 10-word round built from one big family"*, Dates at 10 = Days 1 to 10 — and that is the
@@ -556,7 +568,10 @@ and the whole re-cut is only worth running if the pilot beats the scan.
    the deck has it; it carries no information. (This kills the scan's largest false positive.)
 8. **Never use a katakana loanword tail** (〜ット, 〜ート, 〜ター, 〜ード) as a piece unless it is a
    genuine morpheme. Spelling coincidence is not a family.
-9. **Never create a family under 3 words**, over 8 (or over 12 for a declared ladder).
+9. **Never create a family under 3 words**, over 8 (or over 12 for a declared ladder) — **…or any
+   size, for a family in a one-piece tile per D8.2.** *(Clause added at r2 synthesis: without it this
+   rule forbids all 30 exempt `form_*` families of 13–25 words and the D8.2 exemption is a dead
+   letter — DA-Q10, CR-r2-S2.)*
 10. **Never leave a tile with more than 3 kinds.**
 11. **Never re-use a retired `fam` id for different contents.** New cut = new id; the old id goes in
     `FAM_ALIAS` (below).
@@ -602,10 +617,17 @@ The ten rules:
      **not** required to appear in `jp`. Ratchet-scored, because `emergency_calling_110_119` is the
      only `frame` family today and it is malformed.
 3. `counter` families: `p` at the end of ≥80% of members, **max 2 declared irregulars** (ひとり /
-   ふたり), listed explicitly in the family record.
-4. `p` is not in the banned-piece list (ます/です/ない/ました/ません + the katakana tails).
+   ふたり), listed explicitly in the family record. **AMENDED r2:** the two-irregulars budget is
+   replaced by the ≥80%-final-after-rendaku-normalisation test in D8.1. **Four** previously-flagged
+   families recover under it; **`counters_times` does not and is not expected to** — it holds two
+   unrelated counter words (かい and ど), which is a data defect for B2a, not a rendaku case
+   (DA-r2-S3 / CR-r2-S1).
+4. `p` is not in the banned-piece list (ます/です/ない/ました/ません + the katakana tails) —
+   **…except as the shared `p` of a one-piece tile per D8.2** *(clause added r2, Task 3)*.
 5. Size: 3–8, or 9–12 for a family flagged `ladder:true` whose `k` is `counter`/`suffix` and whose
-   `p` is constant.
+   `p` is constant — **…or any size, for a family in a one-piece tile per D8.2.** *(Clause added at
+   r2 synthesis; without it the validator ratchet-fails the 30 families the exemption legalised —
+   DA-Q10, CR-r2-S2.)*
 6. **Per tile (ratchet):** ≤3 kinds · ≥60% of words in families with a **verified** `p` (the §1
    rule, scored on verified not declared `p`) · **≥ `roundSize + maxLadder` = 42 live words**
    (corrected in round 1 from ≥30 — see §3E: a 30-round Mix on a 41-word tile returns a short pin)
@@ -788,10 +810,14 @@ proxy monthly until the cold-check sample reaches power.
 > 5. **Its name is literally true of its contents** (v8.97), which is why pieces live *inside* a
 >    tile and never become tiles of their own.
 >
-> **At v9.32, 13 of 50 tiles pass on *declared* pieces: the twelve `form_*` tiles and `calendar`.
-> 37 violate.** On **verified** pieces (round-1 correction: 18.5% of the deck, not 46%) the pass
-> count is lower and is re-scored by B1a. The rule ships as a **ratchet against the measured
-> baseline**, not as a bar that fails 37 tiles on day one.
+> **At v9.32, 4 of 50 tiles pass on *verified* pieces — `form_didnt`, `form_want`, `form_lets`,
+> `form_shall`. 46 violate, and `calendar` (44% verified) is not one of the four.** *(13 of 50 pass
+> on merely **declared** pieces — the twelve `form_*` tiles and `calendar` — which was the round-1
+> headline; it was never the honest one. On verified+variant the count is 9. Re-scored in Round 2,
+> Task 3 and re-verified at r2 synthesis: `calendar` = 44% verified / 79% verified+variant.)* The
+> rule ships as a **ratchet against the measured baseline** on **verified** coverage, not as a bar
+> that fails 46 tiles on day one. *(Callout corrected at r2 synthesis — CR-r2-S3; the round-1 text is
+> preserved in the parenthesis rather than deleted.)*
 
 ---
 
@@ -1142,7 +1168,10 @@ becomes 25 words at the round size he shipped on 16 September.** That is the fin
 edge case; it is the exemplar failing.
 
 At `roundSize` 30 whole-family entry is arithmetically fine — a subset of family sizes sums to
-exactly 30 in **all 50** tiles — but D9's *"30-round = 3–6 families"* floor is unsatisfiable for the
+exactly 30 in **all 50** tiles *(asserted without shown work in the draft — QA-r2-Q4. Independently
+subset-summed over every tile's family-size multiset at r2 synthesis: **0 of 50 fail**. The claim
+holds; the flag against publishing an unshown universally-quantified claim in this document is
+accepted, and the work is now shown)* — but D9's *"30-round = 3–6 families"* floor is unsatisfiable for the
 twelve `form_*_make` families of 23–25 words: 25 + 3 = 28 (short) and 25 + 5 needs a 5-word family
 the tile may not have. So the break is total at 10 and partial at 30.
 
@@ -1190,12 +1219,35 @@ concept is smuggled in, and no field D16 forbids is needed.
 >    つ/づ collapse to one class); and the members are a **complete run over a set the learner
 >    already holds** — today, the numbers — which the validator tests as *`fo` contiguous from its
 >    minimum with no gap in the enumerated set*. **23 families qualify at ≥9 words, 19 of them at
->    11–12.** All 23 pass the 80%-after-rendaku test; **five of them fail validator rule 3's
+>    11–12.** All 23 pass the 80%-after-rendaku test; **four of them fail validator rule 3's
 >    "max 2 declared irregulars" budget, so that budget is replaced by this test** —
 >    `calendar_minutes` (4 of 11 end in ふん literally, 11 of 11 after rendaku),
 >    `counters_small_animals` (5/11 → 11/11), `counters_cups` (5/11 → 11/11),
->    `counters_long_things` (4/10 → 10/10), `counters_times` (4/7 → 7/7). Rendaku is what counters
->    *do*; a rule that counts it as an irregularity is counting the pattern as the exception.
+>    `counters_long_things` (4/10 → 10/10). Rendaku is what counters *do*; a rule that counts it as
+>    an irregularity is counting the pattern as the exception.
+>
+>    > **AMENDED at r2 synthesis (DA-r2-S3 / CR-r2-S1 accepted, DA-r2-S4 accepted).** Two defects in
+>    > the draft above are corrected here rather than left to be discovered in B4:
+>    > **(i)** `counters_times` was listed as a fifth recovery (*"4/7 → 7/7"*). It does not recover.
+>    > Verified at r2 synthesis: `index.html:6860` declares `p:"かい"` over seven members, three of
+>    > which are にど・さんど・なんど (3786–3788) — **ど is a different counter word, not a rendaku
+>    > variant of かい**, and no listed collapse class maps one to the other. It scores **4/7 = 57%
+>    > before and after normalisation** and it holds 7 words, so it was never one of "the 23" either.
+>    > It is a **mixed-counter data defect queued in B2a**, not a validator-rule problem. Four
+>    > families recover, not five; the budget replacement still stands.
+>    > **(ii) The closed-set clause as written is vacuous.** This same document verifies `fo` is
+>    > unique and contiguous in **all 649** families, so *"`fo` contiguous from its minimum"* filters
+>    > nothing and the test collapses to `k === 'counter'` **plus** the rendaku bar — which is what
+>    > the deck already asserted before the delve began. It also mis-reads the flagship:
+>    > `calendar_days_1_10` (3631–3641) has **eleven** members whose eleventh is **なんにち**, a
+>    > question word and not a member of the closed set 1–10; `fo` runs 0–10, so the clause cannot see
+>    > it. **Replacement clause:** the validator must map the family's members onto an **enumerated
+>    > sequence the app already holds** (the numbers), require the run to be complete, and carry an
+>    > **explicit allowance list** for the two known non-sequence members — **ついたち** (suppletive
+>    > 1st) and **なんにち / なんかい / なんど**-style question words, which are part of the closed set
+>    > *as taught* but not part of the numeric run. **Open question 4 is RE-OPENED for non-counter
+>    > cases** — the test as it now stands is a counter test, and the delve has not shown that a
+>    > non-counter closed set exists in this deck.
 > 2. **One-piece exempt class — no upper size limit.** A family in a tile where **every** family
 >    declares the **same** `p`, **and that shared `p` is verified or variant in at least half the
 >    tile's families**, is exempt from the max-8 limit. Today that is the twelve `form_*` tiles;
@@ -1207,7 +1259,17 @@ concept is smuggled in, and no field D16 forbids is needed.
 >    grammatical operation, not a substring. It takes the exemption **provisionally** and is queued
 >    in B2a as a mis-declared piece, not as a size violation — splitting it would be fixing the
 >    wrong thing.*
-> 3. **Everything else — 3 to 8 words.** piece, relation and topic families alike.
+> 3. **Everything else — 3 to 8 words — as a rule on *newly authored* families, not as a ratchet
+>    target.** *(AMENDED at r2 synthesis — DA-r2-Q9 accepted.)* With B11 removed in round 1 and B10
+>    removed in round 2, **45 of 50 tiles are never re-cut**, so the **71** genuinely-oversized
+>    families are permanent by construction. Carrying 71 permanent violations in validator rule 5's
+>    ratchet — whose entire premise is that the baseline *only ever shrinks* — gives the rule a
+>    baseline nothing can move, and a rule with no path to compliance teaches reviewers to ignore the
+>    validator. **Therefore:** the 71 are frozen into `scripts/families-baseline.json` as a
+>    **grandfathered set**, excluded from the ratchet and reported separately; the 3–8 limit is
+>    enforced **only on families created or edited after this delve lands**, and the ratchet clause
+>    becomes *“the grandfathered set may only ever shrink”* — which is true, achievable and worth
+>    checking. A family leaving the set by being split is a win; none is required to.
 >
 > **Genuinely oversized, after clauses 1 and 2: 71 families** (172 over 8, minus 78 `form_*` exempt,
 > minus 23 ladders). Round 1 said 96 and then 66; both were arithmetic against the pre-exemption
@@ -1226,6 +1288,10 @@ concept is smuggled in, and no field D16 forbids is needed.
 > 1. **No family may occupy more than half the round** — **5 seats at `roundSize` 10, 15 at 30** —
 >    measured against the **pin**, never against the free-plan-padded session (D11, unchanged).
 > 2. **One exception, and only one: a closed-set ladder at `roundSize` 10 takes the whole round**,
+>    *— **AMENDED at r2 synthesis: this clause ships behind a flag, default OFF** (DA-r2-S7,
+>    DA-r2-Q8/QA-r2-Q3, DA-r2-Q11 accepted). See D9.6 below; the default-OFF behaviour is that a
+>    ladder enters as a 5,3,3 slice like anything else, which serves `calendar` without overfilling
+>    the round —*
 >    and the round **overfills to the ladder's own size, capped at 12.** "Dates at 10" means eleven
 >    cards, because `calendar_days_1_10` holds eleven; the round-end pill must report the **actual
 >    card count**, not the setting, or the app lies about a number the owner chose.
@@ -1241,6 +1307,56 @@ concept is smuggled in, and no field D16 forbids is needed.
 >    clause 1 like any other: **5 seats at a time at `roundSize` 10, 15 at a time at 30**, as an
 >    ordered slice under D10. This is the clause D8's r1 amendment created a hole for and did not
 >    fill.
+>
+> **The two clauses below are added at r2 synthesis. Clause 5 is the FATAL fix; clause 6 de-risks
+> clause 2.**
+>
+> 5. **The caps never shorten a round — they relax, in a fixed and logged order.** Clause 3's
+>    partitions plus the locked D7 topic caps are **not jointly satisfiable in every tile**, and the
+>    unsatisfiable cases are real tiles, not corners. Independently measured at r2 synthesis against
+>    `WORD_FAMILIES` at HEAD:
+>
+>    | | tiles that cannot legally assemble a 10-round |
+>    |---|---|
+>    | today, under D9.3 + D7 as written | **3** — `animals` (16 of 17 families are `k:"group"`; the only non-topic family holds 4), `home` (14 of 15; likewise 4), `onomatope` (**11 of 11 topic — there is no legal round opener in the tile at all**) |
+>    | after **B2a** re-kinds the 67 bogus/banned content families to `topic` | **8** — the three above plus `grammar`, `nature`, `objects`, `transport`, `work`; five of those become 100% topic |
+>
+>    *The devil's-advocate lens proposed converting the topic **count** cap to a topic **seat-share**
+>    cap. Reproduced at synthesis and **it does not fix this**: the binding constraint is D7's locked
+>    "a topic family may open neither a tile nor a round," and a tile with zero non-topic families
+>    has no opener under any share arithmetic. Seat-share leaves the same 3 tiles failing at
+>    `roundSize` 10 and one more failing at 30. The finding is accepted; its proposed remedy is not.*
+>
+>    **The rule, therefore:** the round is **always** served at its full requested size. When a tile
+>    cannot fill it under the caps, the engine relaxes them in this order, taking the first step that
+>    makes the round assemblable, and **logs which step it took**:
+>    **(a)** the **topic-opener** rule yields — a topic family may open a round in a tile that holds
+>    no eligible non-topic family; **(b)** the **topic count/share** cap yields; **(c)** the **≥3
+>    slice minimum** yields last. **The half-the-round share cap in clause 1 never yields** — it is
+>    the one clause with no satisfiability failure in any tile at either size.
+>    **Why this clause and not a stricter one:** B6 lands in `_stickyTopUp` / `_obfBiasFresh`, the
+>    exact path whose last change shipped a silently no-op Mix (v9.30). An unsatisfiable cap on that
+>    path does not fail loudly — it returns a short round or is silently ignored. A relaxation ladder
+>    with a log line converts an impossible constraint into an observable one.
+>    **Acceptance:** across all 50 tiles × {10, 30} the round is served at full size in **100%** of
+>    simulated builds, and the relaxation log fires on **exactly** the tiles named above and no
+>    others.
+>
+> 6. **Clause 2 (ladder takes the whole round, overfilling to ≤12) ships behind a flag, default
+>    OFF.** It is the one clause in the amendment that is a **bet on the unmeasured transfer
+>    hypothesis** rather than arithmetic: it privileges ladders ahead of every other family in the
+>    tile on a theory measured at 18.5% deck-wide and never tested for transfer. It also has costs
+>    the draft did not price — it breaks the round-size contract the owner shipped on 16 September
+>    (`_againLabel`, 23656, and `setRoundSize`'s toast both read `_roundSize()`, not the served
+>    count), and at `roundSize` 10 it makes **cross-counter contrast impossible in `calendar`**: every
+>    10-round becomes exactly one ladder, eleven days or eleven hours, never five and five — while
+>    the founding observation is *"the number **and** the counter,"* a transfer that runs **across**
+>    counters. The completeness argument for clause 2 is real; the contrast argument against it was
+>    never made. **Default OFF resolves it without deciding it:** with the flag off a ladder is a
+>    5,3,3 slice like anything else, `calendar` is served, the round is exactly 10, and `_againLabel`
+>    stays true. **The flag's default flips to ON on one number, not on an argument:** B1's
+>    ladder-`fo` slope read — the hypothesis' own fingerprint. Until B1 has power (COLD_N = 10 at
+>    28908, ~8 certifications/day), clause 2 is owner-testable and not shipped on.
 
 > **D10 — A family enters at round end, in `fo` order, and finishes before another starts.**
 >
@@ -1266,6 +1382,40 @@ concept is smuggled in, and no field D16 forbids is needed.
 >    not **5,5,1**.
 > 7. **Replay is untouched.** Everything here governs **pin construction**; an existing pin is
 >    replayed verbatim and is never silently re-composed (D11, locked).
+>
+> **Clauses 8 and 9 are added at r2 synthesis (DA-r2-S5 and QA-r2-F1 accepted).**
+>
+> 8. **"Seen" for the cursor is the drill-surface signal, not every `recordAttempt` writer, and the
+>    cursor is defined for a fully-seen family.** Clause 4 above defines the cursor against
+>    `state.stats[id].attempts`, which is written from **fifteen call sites across thirteen modes** —
+>    verified at r2 synthesis: `blitz` 13942, `formDrill` 14840, `formBlitz` 15398, `convo`
+>    17261/17270, `recall` 18736, `memory` 18983, `nuance` 19147, `sentGap` 19552, `sentBuild` 19744,
+>    `lesson` 25710, `drill` 28191, `cold` 29079/29088, `onboardKnown` 30806. A word ticked during
+>    onboarding or answered once in conversation would push the family's cursor past it, and the
+>    promise *"in `fo` order, finishes before another starts"* would degrade silently.
+>    **Rule:** the slice cursor reads **only** attempts whose `mode` is `'drill'` or `'lesson'` — the
+>    two surfaces the pinned batch actually serves. Still derived, still no new field; the filter is
+>    one predicate and is the same shape as D15's `mode:'cold'` filter.
+>    **And the review case is specified, which the draft left blank:** when a family's unseen set is
+>    empty the slice is empty, the family is **exhausted for new-word entry** and takes no seats from
+>    the *entering* path — but it is **not** thereby removed from the pin, and the seen-word top-up
+>    (`_famTake(seen, …, 'due')`, 23631) is **not** governed by the D9 share cap at all. D9/D10
+>    govern **new-word admission only**; a returning learner's mostly-seen pin is composed by
+>    due-order, exactly as it is today. Stated because it is the app's steady state and the draft
+>    specified only day one.
+>
+> 9. **A sliced family graduates word-wise, and the auto-swap banner names the slice, not the
+>    family.** Slicing breaks `_autoSwapCheck` as it stands, and D6 does not cover it: D6 moves only
+>    **`topic`** families to word-wise graduation and leaves piece-tier families on the pre-D6
+>    family-wise path. `_famNailedKeys` (25499) groups **only the ids present in the batch** (25501),
+>    so once a **5-of-25 slice** of `form_now_make` is nailed (`NAILED_HEARS` 12 / `NAILED_DAYS` 3,
+>    25498) `_autoSwapCheck` takes the family key and `_autoSwapHtml` (25558) renders
+>    *"✓ You've got **Using & Handling** — swapped it for new words"* — while **20 of its 25 words
+>    have never been seen.** That is the exact false-completion defect §2 and D6 were written to kill
+>    for topic bags, reintroduced by this amendment's own slicing. **Rule:** any family that entered
+>    the pin as a slice graduates **word-by-word** (D6's treatment, extended from `topic` to *sliced*),
+>    and the banner may name a family only when `_famNailedKeys`' group **is** the whole family —
+>    otherwise it reports the words. **B3 carries this**, not B6; its scope grows accordingly.
 
 ### Arithmetic across all 86 families of 11+ words, at `roundSize` 10 and 30
 
@@ -1352,12 +1502,12 @@ citation. **No target count was set, and the retro's "2" was treated as provenan
 | **DA-S3** | D15's gate unreachable, gates the build list | **CLOSES, with one stale pointer** | Power arithmetic and the interim proxy landed (D15 row, B1 row). But B1's row reads *"Gates B10/B11 only"* while **B11 was removed by DA-S7 in the same synthesis**, and Task 3 now gates B10 as well — so the sentence names one dead item and one that has moved. Corrected in the build-list section below. Substance closes; the pointer did not. |
 | **DA-S4** | `hearsAtCert` measures sessions | **CLOSES** | `sessionsAtCert` appears 8× in the document; the rename, the `synthesized`/`mode:'cold'` filter and the single D16 relaxation all landed in §6, D15 and D16. |
 | **DA-S5** | D6 kills the auto-swap banner and Undo | **CLOSES** | B3's row names `_autoSwapCheck` (25520), `_autoSwapHtml` (25556) and `buildAutoSwapUndo`; §5's size table carries 15→60. |
-| **DA-S6** | §4 picks the surface it rejects | **CLOSES** | §4's **body** was rewritten, not just the synthesis row — the blocks are pinned below the `▶ Practice <name>` button (479, 505), and decision note 1 records the same. |
+| **DA-S6** | §4 picks the surface it rejects | **CLOSES** | §4's **body** was rewritten, not just the synthesis row — the blocks are pinned below the `▶ Practice <name>` button (505 — *r1 cited “479, 505”; 479 is an entry-point list and does not support the claim, corrected at r2 synthesis, QA-r2-N5*), and decision note 1 records the same. |
 | **DA-S7** | premise challenge: the expensive 80% buys the least | **DOES NOT CLOSE — under-applied** | B11 was removed and the challenge recorded verbatim ✅. But the identical argument was never turned on **B10**, and B10 is where it bites hardest: the five pilot tiles hold 529 words of which **13 (2.5%) are in a verified-piece family**, against a stop-gate of **20%**. Accepting an argument for waves 2–4 and never testing it against wave 1 is accepting half a finding. **Closed by Task 3**, which removes B10 pending B10a. |
 | **DA-Q8** | migration risk misdiagnosed | **CLOSES** | Open questions 1 and 2 struck through and closed; B9 demoted in its row. |
 | **DA-Q9** | `_famNailedKeys` groups the batch, not the family | **CLOSES** | D6's row carries the narrower ground; `_famNailedKeys(batch, byId)` verified at **25499**, the `for(const id of batch)` loop at 25501. |
 | **DA-Q10** | wave 0 churns 1,085 lines for nothing | **DOES NOT CLOSE — and its disposition states a falsehood** | Two failures. **(i)** The replacement rule never landed where it has to: **BRIEF-forbid rule 9** (*"…over 8 (or over 12 for a declared ladder)"*) and **validator rule 5** (*"Size: 3–8, or 9–12 for a family flagged `ladder:true`"*) both still forbid all **30** exempt `form_*` families of 13–25 words, so the validator as specified ratchet-fails the very families the exemption legalised. **(ii)** The disposition claims the exemption *"also removes the D9 collision the finding identified."* It does not — it **relocates** it: D9/D10 acquired a third size class with no composition clause, which is this charter's Gap 1 and **839 of the 1,220 unreachable words**. Closed by amended D8.2 / D9.4 / D10.3 above. |
-| **DA-N11** | threshold band overstated; the 14th tile never named | **DOES NOT CLOSE — deferred, and the deferral was unnecessary** | The narrowing to a 60–70% band landed; naming the flipping tile was assigned to B1a, i.e. postponed to a script that does not exist. It is a one-line measurement: on **declared** pieces the clause-1 pass count is flat at **15 from 60% through 75%**, drops to 14 at 80%, and rises to 21 at 40%. The tiles beyond the twelve `form_*` are **`calendar` 93%, `counters` 90%, `numbers` 75%** — so the "14th and 15th" are `counters` and `numbers`, both of which pass clause 1 and fail the **full** rule on kind count (5 and 4 kinds against a limit of 3), which is why the full-rule count is 13 and not 15. **`numbers` is the tile that flips out at an 80% threshold.** Closed here. |
+| **DA-N11** | threshold band overstated; the 14th tile never named | **DOES NOT CLOSE — deferred, and the deferral was unnecessary** | The narrowing to a 60–70% band landed; naming the flipping tile was assigned to B1a, i.e. postponed to a script that does not exist. It is a one-line measurement: on **declared** pieces the clause-1 pass count is flat at **15 from 60% through 75%**, drops to 14 at 80%, and rises to 21 at 40%. The tiles beyond the twelve `form_*` are **`calendar` 93%, `counters` 90%, `numbers` 75%** — so the "14th and 15th" are `counters` and `numbers`, both of which pass clause 1 and fail the **full** rule on kind count (5 and 4 kinds against a limit of 3), which is why the full-rule count is 13 and not 15. **`numbers` is the tile that flips out at an 80% threshold.** *Its r1 disposition does not close it — it deferred a one-line measurement to a script that does not exist; **closed by this row**, in the same way DA-S7, QA-Q3 and CR-F1 are closed elsewhere in round 2. It therefore stays inside the not-closed count, which is about r1 dispositions. (Wording corrected at r2 synthesis — QA-r2-S2; the draft read “Closed here.”, which contradicted the tally two sections below.)* |
 | **QA-F1** | rule 10's starvation guarantee unenforced | **CLOSES** | §3E carries the worked arithmetic; rule 6's floor is 42 with `cooking` named; rule 10 was rewritten to the sequential replay. `cooking` re-measured at **41** live words and is still the only tile below 42. |
 | **QA-S2** | the fields are not even persisted | **CLOSES** | Adopted as the governing reason in open question 1; `save()` at 7865 and its key list confirmed in r1 and not disturbed since. |
 | **QA-Q3** | free-plan combination half-answered | **DOES NOT CLOSE — half landed** | The design answer landed in §3D (day-1 free account: 3-word session, nothing to pad with, caps not evaluated) ✅. The disposition's other half — *"B7 must cover it"* — **never reached B7**, whose row still reads only *"Mix on a round that is one whole family must return different words."* Nor does rule 10's simulation list include the free-plan cap. The test assignment evaporated between the synthesis table and the build list. Corrected below. |
@@ -1494,7 +1644,7 @@ and `mastered`; `_topicWords`, 29916, maps several themes onto one tile):
 | **verified** `p` | **4** | **4** — `form_didnt`, `form_want`, `form_lets`, `form_shall` |
 | verified + variant | 10 | 9 |
 
-**The median tile sits at ~6% verified coverage.** A 60% floor that 46 of 50 tiles miss — by a factor
+**The median tile sits at ~9% verified coverage** *(corrected from ~6% at r2 synthesis; an independent parse puts the median at 8.5 and the devil's-advocate lens at 9 — DA-r2-N13)*. A 60% floor that 46 of 50 tiles miss — by a factor
 of ten at the median — is not a floor. It is a number doing no work, and calling it "a ratchet
 against the measured baseline" (r1's fix) keeps the figure while quietly conceding it is not a bar.
 Worse, it is wrong about its own exemplar: **the tile rule names `calendar` as one of the 13 that
@@ -1672,3 +1822,164 @@ The load-bearing new claims of this round, in the order they are most likely to 
    checkable but strict: a reader who thinks a disposition closes when the synthesis records the intent
    will get a different number. The qa adversary's independent audit is the right check, and this
    document is deliberately structured so that it can be diffed row by row.
+
+---
+
+## Synthesis (Round 2 — Delve 13)
+
+Three adversary lenses returned **FAIL · WARN · WARN** and **22 findings** between them. Every one is
+dispositioned below. **Nothing was dropped, and nothing was accepted on the strength of its own
+citation.**
+
+### The citation-verification gate, run first
+
+Round 1's clean citation audit was offered as evidence of soundness, so round 2's was run before a
+single finding was adopted. **Every non-empty citation in all 22 findings was checked against source
+at HEAD** — 31 line references into this document, 20 into `index.html`, 2 into the r2 charter.
+
+> **Result: 22 of 22 citations verify. Zero fabricated, zero off-by-N, zero mis-quoted.**
+
+Beyond the citations, the load-bearing *measurements* were re-derived from scratch with an
+independent parser rather than taken on the finding's word:
+
+| Claim re-measured at synthesis | Adversary's number | Synthesis' number | |
+|---|---|---|---|
+| Tiles that cannot legally assemble a 10-round today | 3 (`animals`, `home`, `onomatope`) | **3 — identical set** | ✅ reproduces |
+| …after B2a re-kinds the bogus/banned content families | 8 (+`grammar`, `nature`, `objects`, `transport`, `work`) | **8 — identical set** | ✅ reproduces |
+| B2a's scope | 67 content families / 468 words | **67 / 468** | ✅ reproduces (and matches the doc's own figure) |
+| `counters_times` under rendaku normalisation | 4/7, not 7/7 | **4/7** — `p:"かい"`, three members are にど・さんど・なんど | ✅ reproduces |
+| `calendar` coverage | 44% verified / 79% verified+variant | **44% / 79%** | ✅ reproduces |
+| Median tile verified coverage | 9%, not the doc's ~6% | **8.5%** | ✅ the doc's ~6% is wrong either way |
+| "A subset of family sizes sums to 30 in all 50 tiles" (flagged unshown) | unverified | **0 of 50 fail — the claim is true** | ✅ flag accepted, claim upheld |
+| The devil's-advocate **remedy**: convert the topic cap to a seat share | "satisfiable in all 50 tiles at both sizes" | **does not fix it** — same 3 tiles fail at 10, one more at 30 | ❌ **remedy contested** |
+
+That last row is the reason this gate is run on remedies and not only on defects. The finding is
+correct and fatal; the fix it proposed would have shipped the same bug.
+
+### Dispositions — all 22
+
+**devils-advocate (FAIL) — 13 findings**
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| **DA-r2-F1** | Amended D9 cannot fill a 10-round in 3 tiles; the share cap was never checked against locked D7's topic cap | **ACCEPTED (defect) · remedy CONTESTED** | Reproduced exactly — `animals`, `home`, `onomatope`; `onomatope` has **no** non-topic family, so it has no legal round opener at all. But the proposed seat-share cap does not fix it (D7's locked opener rule is the binding constraint). Fixed by **new D9.5**, a logged relaxation ladder that never shortens a round. |
+| **DA-r2-F2** | B2a takes unfillable-at-10 from 3 tiles to 8 | **ACCEPTED** | Reproduced to the tile: `grammar`, `nature`, `objects`, `transport`, `work` join the three, five of them becoming 100% topic. D9.5 covers it, and B2a's row now carries the interaction instead of claiming "no cost". |
+| **DA-r2-S3** | D8.1's rendaku evidence contains a false recovery (`counters_times`) | **ACCEPTED** | Verified at `index.html:6860`: `p:"かい"`, seven members, three of them ど-counters. 4/7 before and after normalisation, and 7 words puts it outside "the 23". Struck from D8.1; re-filed as a B2a data defect. Four recoveries, not five. |
+| **DA-r2-S4** | The formal ladder test is vacuous and admits a question word into the flagship ladder | **ACCEPTED** | The doc's own line — `fo` unique and contiguous in all 649 families — proves the closed-set clause filters nothing; `calendar_days_1_10`'s eleventh member is なんにち (3641). D8.1 gains a real set test with an explicit ついたち / なんにち allowance list, and **open question 4 is re-opened for non-counter cases**. |
+| **DA-r2-S5** | The derived slice cursor is undefined for seen words and depends on a "seen" signal written by thirteen modes | **ACCEPTED** | All fifteen `recordAttempt` call sites verified individually. Fixed by **new D10.8**: the cursor reads only `mode` `'drill'`/`'lesson'`, and the review case is specified — D9/D10 govern new-word admission only; the seen-word top-up is due-ordered and uncapped. |
+| **DA-r2-S6** | Two incompatible definitions of "piece", and the strict one demotes the delve's own exemplar | **ACCEPTED** | `calendar` = 44% verified / 79% variant, reproduced. One standard is now published (below): **verified governs every gate and label; rendaku normalisation is scoped to D8.1's ladder test only**. The go/no-go survives either basis (6.4% strict vs ~9.5% variant, both well under the 20% gate), so nothing reverses — but the document now says which number is the number. |
+| **DA-r2-S7** | The falsifier gates nothing while D9.2 — a pure bet on the unmeasured hypothesis — ships unconditionally | **ACCEPTED** | The delve did end in the posture it set out to avoid. **New D9.6**: clause 2 ships behind a flag, **default OFF**, whose default flips on B1's ladder-`fo` slope read and on nothing else. D9.1's share cap — pure arithmetic — ships unconditionally, as the finding proposed. |
+| **DA-r2-Q8** | The ladder overfill breaks `_againLabel` and the round-size toast, not just the round-end pill | **ACCEPTED** | `_againLabel` (23656) verified verbatim: it returns `▶ Next round — ${r} words` off the **setting**, so an 11-card replay would be labelled "10 words". Moot by default under D9.6; when the flag is on, **B6's scope now names every `_roundSize()` consumer** (23640, 23649, 23653, 23656, 23658) and both strings derive from the built batch length. |
+| **DA-r2-Q9** | D8.3's 3–8 rule is permanently unsatisfiable and its ratchet can never turn | **ACCEPTED** | 45 of 50 tiles are never re-cut, so the 71 are permanent. D8.3 is restated as a rule on **newly authored** families; the 71 are grandfathered into the baseline, excluded from the ratchet and reported separately. |
+| **DA-r2-Q10** | Task 2's 5-of-21 tally is self-graded against a charter clause forbidding self-grading | **ACCEPTED (framing)** | The primary conceded this honestly and published the number anyway. Synthesis treats **5 of 21 as a claim, not as the reconciliation the charter asked for**, and adopts the qa head's audit where they differ — which is QA-r2-S2, below. The tally survives that reconciliation at **16 close / 5 do not**, but it survives it as a *reconciled* number now rather than a self-reported one. |
+| **DA-r2-Q11** | At `roundSize` 10 the amendment makes cross-counter contrast impossible in `calendar` | **ACCEPTED** | A real cost the draft never defended — the founding observation is *"the number **and** the counter,"* a transfer running across counters. Recorded in D9.6 as the second reason clause 2 defaults OFF, and as **open question 10**. |
+| **DA-r2-N12** | Adversary filename divergence between charter and workflow | **ACCEPTED (noted, no rename)** | Verified at charter:112. The workflow's `-<lens>-r2.md` convention matches round 1 and all three r2 docs use it, so **the workflow convention is canonical**; the charter's pattern is the outlier. No file is renamed (a rename would break the r1 parallel); recorded so a future glob is written against the right pattern. |
+| **DA-r2-N13** | Median verified tile coverage is 9%, not ~6% | **ACCEPTED** | Independently measured at **8.5%**. Corrected in Task 3; the rhetorical point is unaffected, but a document whose credibility rests on fresh measurement must reproduce its own median. |
+
+**qa-tester (WARN) — 5 findings**
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| **QA-r2-F1** | A partially-served family breaks `_autoSwapCheck`'s completion banner — the charter's explicit QA task 3, unanswered | **ACCEPTED** | Confirmed in source end to end: `_famNailedKeys` groups the **batch** (25501), `_autoSwapCheck` takes the family key, `_autoSwapHtml` (25558) renders *"✓ You've got Using & Handling"* — and D6 (807) moves only `topic` families to word-wise graduation, leaving `form_now_make` (25 words, `k:"suffix"`, 6979) on the family-wise path. Nailing 5 of 25 would announce the family done. Fixed by **new D10.9**; **B3 carries it**, and its scope grows. This was the single biggest hole in the round. |
+| **QA-r2-S2** | DA-N11's row says "Closed here." but is tallied among the 5 that do not close | **ACCEPTED** | Verified at 1360 vs 1384. Adopted in the qa head's first form: the row is reworded to match DA-S7 / QA-Q3 / CR-F1 — its **r1** disposition does not close it; **this row** closes it. The tally is about r1 dispositions, so it stays **16 / 5**, now consistent with its own prose. |
+| **QA-r2-Q3** | D9.2's "report the actual card count" has no code owner, and `_againLabel` does the opposite | **ACCEPTED** | Same defect as DA-r2-Q8, found independently by a second lens — which is why it is dispositioned separately rather than merged away. Same fix: default-OFF under D9.6, and `_againLabel` named in B6's scope. |
+| **QA-r2-Q4** | "A subset of family sizes sums to exactly 30 in all 50 tiles" is asserted without shown work | **ACCEPTED (process), claim UPHELD** | The flag is right on the document's own standard. Subset-summed independently at synthesis: **0 of 50 tiles fail**. The claim is true and the work is now shown inline. |
+| **QA-r2-N5** | The DA-S6 audit row's own citation (479) does not support its claim | **ACCEPTED** | Verified: 479 is an entry-point list, 505 is the pinning claim. Corrected to cite 505 alone. Small, but this table's whole premise is mechanical citation-checking. |
+
+**code-reviewer (WARN) — 4 findings + 1 positive**
+
+| # | Finding | Disposition | Rationale |
+|---|---|---|---|
+| **CR-r2-S1** | D8.1's "ready to paste" ladder test fails its own worked example | **ACCEPTED** | Independent confirmation of DA-r2-S3 by a second lens, plus the secondary catch that `counters_times`' 7 words exclude it from "the 23". Both carried into the D8.1 amendment. |
+| **CR-r2-S2** | Round 2 diagnoses adopted-but-not-applied drift, then commits it against its own D8/D9/D10 | **ACCEPTED** | The sharpest finding of the round, because it is the round's own thesis turned on the round. Verified at every cited line: §3A (349) still read 96/76; §3B's table still carried the retired "3–6" floor; BRIEF rule 9 (559) and validator rule 5 (607) still forbade the 30 families D8.2 legalised. **All four are patched in the body at this synthesis** — supersede callouts on §3A/§3B, real clauses on rules 4, 5 and 9. |
+| **CR-r2-S3** | "The tile rule" callout box is not updated to reflect round 2's own re-score | **ACCEPTED** | Verified at 790–793: the single-takeaway box still led with 13 of 50 and named `calendar` as passing, while the same document had already measured 4 of 50 and `calendar` at 44%. The callout is rewritten in place; the round-1 figure is kept parenthetically rather than deleted. |
+| **CR-r2-Q4** | B4's estimate inherits the unverified "all 23 pass" claim | **ACCEPTED** | Follows from CR-r2-S1. B4's row now reads *four* recoveries and budgets `counters_times` as a B2a data fix, not a validator override. |
+| **CR-r2-N5** | Sampled citations and every headline arithmetic claim re-derived and correct | **ACCEPTED (positive evidence)** | No citation to verify — the finding **is** a verification. Five of its claims were spot-re-checked at synthesis (4,830 live words, 649 families, the 100/41/28/77/403 family-class split, 67/468 for B2a, `cooking` = 41) and all reproduce. Recorded because a negative-only synthesis loses the information that the rest of the document held up. |
+
+### The one published standard (DA-r2-S6, resolved)
+
+> **`verified` is the standard.** A piece is *verified* when it is a literal substring of **every**
+> live member. Every gate, every baseline, every coverage number and the *finished* label are scored
+> on verified coverage and on nothing else.
+> **Rendaku normalisation is scoped to exactly one place — D8.1's ladder test** — because there the
+> unit under test is a counter, and rendaku is what counters do. It never re-scores tile coverage,
+> never moves the ratchet, and never promotes a tile to *finished*.
+> **`variant` is reported, never enforced.** It exists so the document can say honestly that
+> `calendar` is at 79% on a rendaku-tolerant basis while remaining at 44% on the basis that governs.
+> The go/no-go on the re-cut survives both bases (projected wave-1 yield 6.4% strict, ~9.5% variant,
+> against a 20% gate), which is why publishing the standard changes no conclusion — only the number
+> the reader is entitled to rely on.
+
+### Build-list movements from this synthesis
+
+| # | Item | Movement |
+|---|---|---|
+| **B3** | Word-wise graduation | **Scope grows (QA-r2-F1).** Now also covers *sliced* families, not only `topic` ones, and the `_autoSwapHtml` banner must name the slice's words unless `_famNailedKeys`' group is the whole family. |
+| **B4** | `check-families.js` | **Four** rendaku recoveries, not five; `counters_times` is re-filed to B2a as a mixed-counter data defect. Rule 5 and BRIEF rule 9 gain the one-piece clause (now present in the body). D8.1's set test replaces the vacuous `fo`-contiguity clause and carries the ついたち / なんにち allowance list. |
+| **B2a** | Retract the 910 false piece claims | **No longer costless.** Re-kinding 67 content families to `topic` takes tiles that cannot assemble a 10-round from 3 to 8. It still ships first-after-B1a, but **D9.5 must land with or before it**, and B7 gains a row asserting all 50 tiles still fill at both sizes after the re-kind. |
+| **B6** | Round-composition caps | Gains **D9.5's relaxation ladder + its log line**, **D10.8's mode-filtered cursor**, and — only when D9.6's flag is on — every `_roundSize()` consumer (23640, 23649, 23653, 23656, 23658). Loses the unconditional ladder overfill. Net roughly flat at **~120 lines**. |
+| **B7** | Regression tests | **+2 rows:** (e) every tile assembles a full round at 10 and 30 **before and after B2a**, with the relaxation log firing on exactly the named tiles; (f) a 5-of-25 slice of `form_now_make` nailed does **not** produce a family-complete banner. |
+
+### Decision-notes (not ADRs)
+
+**1 · The ladder whole-round overfill ships behind a flag, default OFF.**
+**Decision:** D9.2 (a closed-set ladder takes the whole 10-round, overfilling to ≤12) is implemented
+but defaults off; its default flips on B1's ladder-`fo` slope read, not on argument.
+**Why:** it is the amendment's only clause that bets on the unmeasured transfer hypothesis, and it
+breaks the v9.28 round-size contract and `calendar`'s cross-counter contrast to do it.
+**Reversal cost:** one boolean. Flipping the default is a one-line change with a named number behind
+it; nothing downstream is shaped by which way it sits.
+
+**2 · The workflow's `-<lens>-r2.md` adversary filename convention is canonical; no file is renamed.**
+**Decision:** keep the three r2 adversary docs where they are and write future globs against the
+workflow pattern; the r2 charter's `-r2-<lens>.md` spelling is the outlier.
+**Reversal cost:** trivial — a `git mv` of three files, and nothing references them by path except a
+future synthesis glob.
+
+**3 · The 71 permanently-oversized families are grandfathered out of the validator ratchet.**
+**Decision:** freeze them into `scripts/families-baseline.json` as a named set, excluded from the
+ratchet and reported separately; the 3–8 limit binds only families created or edited after this delve.
+**Reversal cost:** a line in the baseline file. If a re-cut ever happens, the set shrinks or empties
+and the rule reverts to universal with no code change.
+
+### ADRs filed
+
+- **ADR-029 amended** (`docs/decisions-pending/`) — the charter's own trigger fires: D8/D9/D10
+  changed materially. The ADR carried rules that are **arithmetically unsatisfiable at a round size
+  the app shipped on 16 September**, so this is a correction to a proposed-but-unsigned ADR, not an
+  extension of an accepted one.
+- **ADR-031 filed** (`docs/decisions-pending/`) — *A declared piece is a claim, and 910 words
+  currently make a false one.* The primary proposed this as "ADR-P6" and argued for a permanent
+  number; synthesis agrees, for the reason the primary gave and one it did not: this decision sets
+  the convention **every** later piece of work must follow (the validator scores it, the teaching
+  surface renders off it, B2a executes it, the D3 ratchet is denominated in it) and it changes what
+  the app is permitted to tell a learner. That is load-bearing and not cheap to reverse.
+
+*(Promotion of either file to `docs/decisions/` and the `INDEX_ADR.md` row are a separate
+human-reviewed step and are deliberately not performed here.)*
+
+### Open questions added at synthesis
+
+| # | |
+|---|---|
+| **10** | **NEW — is completeness worth contrast in `calendar`?** D9.2 maximises ladder completeness and, at `roundSize` 10, eliminates cross-counter contrast — eleven days or eleven hours, never five and five. The founding observation is *the number **and** the counter*. D9.6 defaults the clause OFF so the question is open rather than decided by omission; the owner can answer it directly by flipping the flag for a week. |
+| **11** | **NEW — is `'drill'`/`'lesson'` the right seen-signal for the cursor?** D10.8 scopes seen-ness to the two surfaces the pinned batch serves. A word genuinely learned in `convo` or `cold` will be re-served by its family's slice. That is a deliberate over-serve, chosen because the alternative (any of thirteen modes advancing the cursor) silently under-serves — but it is a guess about which error the learner minds less. |
+| **12** | **NEW — what does a 100%-topic tile teach?** D9.5 relaxes the topic-opener rule so `onomatope` can serve a round at all. But D7's opener rule exists for a reason, and in `onomatope` the relaxation is not an exception — it is the tile's only mode of operation. Either the rule does not apply to tiles like this, or the tile is mis-kinded. Neither is decided here. |
+| 4 | **RE-OPENED** (was closed by D8.1) — the closed-set clause is vacuous and the test reduces to "is it a counter family". Closed for counters; **open for whether a non-counter closed set exists in this deck at all.** |
+
+### What round 3 should attack, if there is one — revised
+
+Superseding the primary's list, in order of how load-bearing the new claim is:
+
+1. **D9.5's relaxation ladder.** It is the fix for the round's FATAL and it was written at synthesis,
+   so it has had no adversary pass. Specifically: does relaxing the **topic-opener** rule first (not
+   the count cap) teach worse in `onomatope`, a tile that is 100% topic and where the relaxation is
+   not an edge case but the only mode of operation?
+2. **The 6.4% projected wave-1 yield**, unchanged from the primary's list — it is still the number
+   removing B10, and B10a is still its cheap falsifier.
+3. **D10.9's word-wise graduation for sliced families.** It extends a locked decision (D6) sideways
+   under a size fix. That is the same move round 2 criticised "slice with position memory" for, and
+   it deserves the same scrutiny.
+4. **The 16/5 tally**, now reconciled against an independent audit rather than self-graded — but
+   reconciled on one row only. The other twenty were uncontested by any lens, which is weaker
+   evidence than it looks.
