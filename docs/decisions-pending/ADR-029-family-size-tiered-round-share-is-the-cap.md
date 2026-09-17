@@ -236,7 +236,24 @@ Replacing the round-1 gate's ladder clause and adding three:
 
 - **Full-size service, all tiles:** across **all 50 tiles × {10, 30} × 200 replays**, the round is
   served at the **requested size in 100%** of builds — **before and after** the piece-retraction item
-  lands. The relaxation log fires on **exactly** the tiles named in A2.3 and **0** others.
+  lands. The relaxation log fires on **exactly** the per-size sets below and **0** others.
+
+  > **CORRECTED post-retro (2026-09-17, measured).** The round-2 gate named one set of three tiles
+  > and was checked **only at `roundSize` 10**. The retro gate caught it; `scripts/check-round-feasibility.cjs`
+  > reproduces it. **The relaxation sets differ by round size and neither contains the other:**
+  >
+  > | Round size | Tiles needing relaxation | |
+  > |---|---|---|
+  > | **10** | `animals`, `home`, `onomatope` | 3 |
+  > | **30** | `cooking`, `home`, `objects`, `onomatope` | 4 |
+  > | **union** | `animals`, `cooking`, `home`, `objects`, `onomatope` | **5** |
+  >
+  > `animals` needs relaxation at 10 but **not** at 30 (three topic families reach 30 where one
+  > cannot reach 10); `cooking` and `objects` need it at 30 but **not** at 10. Every one of the five
+  > is rescued at ladder step **(b)** — the topic count/share cap yielding — so **A2.3's rule is
+  > sound and unchanged**; what was false was the published tile list and the single-size check
+  > behind it. The gate is now executable: **`node scripts/check-round-feasibility.cjs` must print
+  > exactly these sets**, and any change to `WORD_FAMILIES` or the caps re-runs it.
 - **Share cap:** **0** pins in which any family exceeds half the round, across the same simulation.
 - **Slice order:** **0** cases in which a family re-serves a word it has already given, and **0**
   slices below 3 words, across the same simulation.
@@ -247,7 +264,9 @@ Replacing the round-1 gate's ladder clause and adding three:
 
 ### Amended reversal trigger
 
-- The relaxation log fires on **more than the 8 named tiles**, or on **>20%** of builds in any tile →
+- The relaxation log fires on **more tiles than `scripts/check-round-feasibility.cjs` predicts for
+  that round size** (5 today across both sizes; 8+ once the piece-retraction item re-kinds 67
+  families), or on **>20%** of builds in any tile →
   the caps are wrong for this deck, not merely tight; the topic caps are re-opened rather than
   relaxed at runtime.
 - The full-size-service gate cannot reach 100% on **>2 tiles** → the 42-word tile floor is

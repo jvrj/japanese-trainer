@@ -1844,7 +1844,7 @@ independent parser rather than taken on the finding's word:
 
 | Claim re-measured at synthesis | Adversary's number | Synthesis' number | |
 |---|---|---|---|
-| Tiles that cannot legally assemble a 10-round today | 3 (`animals`, `home`, `onomatope`) | **3 — identical set** | ✅ reproduces |
+| Tiles that cannot legally assemble a 10-round today | 3 (`animals`, `home`, `onomatope`) | **3 — identical set** | ✅ reproduces — **but at `roundSize` 30 the set is different and larger: see *Post-retro correction* at the end of this document** |
 | …after B2a re-kinds the bogus/banned content families | 8 (+`grammar`, `nature`, `objects`, `transport`, `work`) | **8 — identical set** | ✅ reproduces |
 | B2a's scope | 67 content families / 468 words | **67 / 468** | ✅ reproduces (and matches the doc's own figure) |
 | `counters_times` under rendaku normalisation | 4/7, not 7/7 | **4/7** — `p:"かい"`, three members are にど・さんど・なんど | ✅ reproduces |
@@ -1983,3 +1983,59 @@ Superseding the primary's list, in order of how load-bearing the new claim is:
 4. **The 16/5 tally**, now reconciled against an independent audit rather than self-graded — but
    reconciled on one row only. The other twenty were uncontested by any lens, which is weaker
    evidence than it looks.
+
+---
+
+## Post-retro correction (2026-09-17) — the gate was checked at one round size
+
+The round-2 retro gate held the delve at **PAUSED** with two objections. Both are upheld. This
+section records the measured correction; it is written by hand after the run, not by the engine.
+
+**Objection 1 — the FATAL fix was only ever checked at `roundSize` 10. UPHELD, and corrected here.**
+
+D9.5's relaxation ladder was verified against the three tiles that cannot assemble a **10**-round.
+Nobody ran the same arithmetic at **30**, where the caps differ (3 topic families, share cap 15
+instead of 1 and 5). Re-measured against `WORD_FAMILIES` at HEAD with
+`scripts/check-round-feasibility.cjs`:
+
+| Round size | Tiles needing relaxation | |
+|---|---|---|
+| **10** | `animals`, `home`, `onomatope` | 3 |
+| **30** | `cooking`, `home`, `objects`, `onomatope` | 4 |
+| **union** | `animals`, `cooking`, `home`, `objects`, `onomatope` | **5** |
+
+**The two sets are not nested.** `animals` needs relaxation at 10 and not at 30 — three topic
+families reach 30 where one cannot reach 10. `cooking` (41 live words, 29 seats under the 3-topic
+cap) and `objects` (61 live words, 29 seats) need it at 30 and not at 10. This is exactly why a
+single-size check missed it: at each size a *different* tile is the binding case.
+
+**What this does and does not falsify:**
+
+- **A2.3's rule is sound and unchanged.** All five tiles are rescued at ladder step **(b)** — the
+  topic count/share cap yielding. No tile reaches step (c), and none is unservable. The relaxation
+  ladder does the job it was written to do, at both sizes.
+- **The published acceptance gate was false.** *"The relaxation log fires on exactly the tiles named
+  in A2.3 and 0 others"* is wrong at `roundSize` 30 by two tiles. A gate that is false in the
+  permissive direction is worse than no gate: it passes a real regression at 10 and fails correct
+  code at 30, and the obvious response to a failing gate is to "fix" the code. Corrected in
+  ADR-029's amended gate, and the reversal trigger now reads off the checker rather than a
+  hand-copied list.
+- **The gate is now executable.** `node scripts/check-round-feasibility.cjs` prints the per-size sets
+  and exits non-zero if any tile is unservable. It must be re-run after any change to
+  `WORD_FAMILIES`, to the caps, or to a family's `k` — which the piece-retraction item (B2a) does to
+  67 families at once.
+
+**Objection 2 — D9.5, D10.8 and D10.9 were authored at synthesis with no adversary pass, and D9.5
+relaxes locked D7. UPHELD, not resolved here.**
+
+This is a governance breach, not an arithmetic error, and it is not something a measurement closes.
+The synthesis head introduced three load-bearing clauses that no lens audited, and one of them
+(D9.5) yields a rule D7 locked — *"a topic family may open neither a tile nor a round."* The delve's
+own **open question 12** already concedes the sharp end of it: in `onomatope` the relaxation is not
+an exception, it is the tile's only mode of operation, so either D7 does not apply to tiles like
+this or the tile is mis-kinded. **That is an owner decision and it is carried forward unresolved.**
+It is recorded here rather than in a third round because the question is not "is the arithmetic
+right" — it now demonstrably is — but "should a tile with no teachable pieces exist at all", which
+is a product call.
+
+**Status:** delve 13 stays **PAUSED** on objection 2 by design. Objection 1 is closed by measurement.
