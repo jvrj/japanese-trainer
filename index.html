@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.33';
+const APP_VERSION = '9.34';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -6383,6 +6383,8 @@ const N5_PACK = [
   {jp:"ないてもいいですか",kj:"泣いてもいいですか",romaji:"naitemoiidesuka",en:"may I cry?",pos:"v",theme:"form_mayi",register:"polite",jlpt:5,fam:"form_mayi_feel",fo:5,base:"n5_608"},
   {jp:"わらってもいいですか",kj:"笑ってもいいですか",romaji:"warattemoiidesuka",en:"may I laugh?",pos:"v",theme:"form_mayi",register:"polite",jlpt:5,fam:"form_mayi_feel",fo:6,base:"n5_609"},
   {jp:"がんばってもいいですか",kj:"頑張ってもいいですか",romaji:"ganbattemoiidesuka",en:"may I do your best?",pos:"v",theme:"form_mayi",register:"polite",jlpt:5,fam:"form_mayi_feel",fo:7,base:"n5_2022"},
+  {jp:"います",romaji:"imasu",en:"to be there – people & animals (polite)",pos:"v",theme:"grammar",register:"polite",jlpt:5,note:"Living things take います; あります is for things. Polite ます form — いる is the plain version, same word.",fam:"grammar_do_be",fo:7},
+  {jp:"でした",romaji:"deshita",en:"was / were (polite)",pos:"expr",theme:"grammar",register:"polite",jlpt:5,note:"Past of です. い-adjectives do NOT take でした — they use ～かったです instead.",fam:"grammar_enders",fo:6},
 ];
 
 /* ===================== ADVANCED PACK (N4/N3) =====================
@@ -29787,7 +29789,8 @@ function _spineHeaderHtml(){
 
 const FRAME_ROLE_COLOR = {
   fixed:'#ffb35c', when:'#a78bfa', where:'#5eead4',
-  verb:'#fb7185', adj:'#5eead4', a:'#a78bfa', b:'#fb7185'
+  verb:'#fb7185', adj:'#5eead4', a:'#a78bfa', b:'#fb7185',
+  pos:'#a78bfa', thing:'#7dd3fc'
 };
 
 function _frShuffle(a){
@@ -29855,6 +29858,46 @@ const _FR_YORI = [
     adjs:['おおきい','ちいさい','あたらしい','ふるい'] }
 ];
 
+/* Position words. Genki I ch.4 gives nine; あいだ is deliberately NOT here
+   because it takes TWO nouns (AとBのあいだ) — a different shape that needs its
+   own round rather than a slot in this one. That leaves a closed set of eight
+   a learner can actually finish. */
+const _FR_POS = [
+  {s:'うえ',   en:'on'},
+  {s:'した',   en:'under'},
+  {s:'なか',   en:'in'},
+  {s:'うしろ', en:'behind'},
+  {s:'まえ',   en:'in front of'},
+  {s:'となり', en:'next to'},
+  {s:'そば',   en:'beside'},
+  {s:'ちかく', en:'near'}
+];
+/* Each landmark names the positions that make physical sense of it —
+   「テーブルの なか」 is not a place. なか lives with へや and かばん. */
+const _FR_PLACE = [
+  {s:'テーブル', en:'the table', pos:['うえ','した','まえ','うしろ','そば','ちかく']},
+  {s:'いす',     en:'the chair', pos:['うえ','した','まえ','うしろ','となり','そば']},
+  {s:'つくえ',   en:'the desk',  pos:['うえ','した','まえ','うしろ','そば','ちかく']},
+  {s:'ベッド',   en:'the bed',   pos:['うえ','した','まえ','うしろ','そば','となり']},
+  {s:'まど',     en:'the window',pos:['まえ','した','そば','ちかく','となり']},
+  {s:'ドア',     en:'the door',  pos:['まえ','うしろ','そば','ちかく','となり']},
+  {s:'へや',     en:'the room',  pos:['なか']},
+  {s:'かばん',   en:'the bag',   pos:['なか','うえ','した','そば']}
+];
+/* Animacy picks the verb, and that is the whole second lesson of this frame:
+   things take あります, anything alive takes います. */
+const _FR_THING = [
+  {s:'ほん',     en:'a book',   alive:false},
+  {s:'かばん',   en:'a bag',    alive:false},
+  {s:'とけい',   en:'a clock',  alive:false},
+  {s:'けいたい', en:'a phone',  alive:false},
+  {s:'みず',     en:'water',    alive:false},
+  {s:'ねこ',     en:'a cat',    alive:true},
+  {s:'いぬ',     en:'a dog',    alive:true},
+  {s:'こども',   en:'a child',  alive:true},
+  {s:'ひと',     en:'a person', alive:true}
+];
+
 const FRAME_ROUNDS = [
   {
     id:'move',
@@ -29895,6 +29938,51 @@ const FRAME_ROUNDS = [
           parts:[{s:c.w.s, r:'when'},{s:c.p.s, r:'where'},{s:'に', r:'fixed'},{s:v.s, r:'verb'}],
           en:c.w.en + ', ' + tmpl.replace('{p}', c.p.en) + '.'
         });
+      }
+      return cards;
+    }
+  },
+  {
+    id:'where',
+    title:'What is where',
+    skeleton:'（ばしょ）の （いち）に （もの）が あります／います',
+    blurb:'The position slot is a closed set of eight — you can finish it. The last word is not free: things take あります, anything alive takes います.',
+    enumerate(){
+      const out = [];
+      _FR_PLACE.forEach(function(pl){
+        pl.pos.forEach(function(ps){
+          _FR_THING.forEach(function(th){
+            out.push(pl.s + 'の' + ps + 'に' + th.s + 'が' + (th.alive ? 'います' : 'あります'));
+          });
+        });
+      });
+      return out;
+    },
+    build(){
+      /* All eight positions appear, then two repeat — so one round covers the
+         whole closed set, which is the point of a closed set. Animacy
+         alternates so あります and います are heard five times each. */
+      const order = _frShuffle(_FR_POS.slice()).concat(_frShuffle(_FR_POS.slice()).slice(0, 2));
+      const cards = [], seen = {};
+      for(let i=0; i<order.length && cards.length<10; i++){
+        const ps = order[i];
+        const places = _FR_PLACE.filter(function(p){ return p.pos.indexOf(ps.s) !== -1; });
+        if(!places.length) continue;
+        const pool = _FR_THING.filter(function(t){ return t.alive === (cards.length % 2 === 1); });
+        let made = null;
+        for(let tries=0; tries<12 && !made; tries++){
+          const pl = _frPick(places), th = _frPick(pool);
+          const verb = th.alive ? 'います' : 'あります';
+          const jp = pl.s + 'の' + ps.s + 'に' + th.s + 'が' + verb;
+          if(seen[jp]) continue;
+          seen[jp] = 1;
+          made = {
+            parts:[{s:pl.s, r:'where'},{s:'の', r:'fixed'},{s:ps.s, r:'pos'},{s:'に', r:'fixed'},
+                   {s:th.s, r:'thing'},{s:'が', r:'fixed'},{s:verb, r:'verb'}],
+            en:'There is ' + th.en + ' ' + ps.en + ' ' + pl.en + '.'
+          };
+        }
+        if(made) cards.push(made);
       }
       return cards;
     }
@@ -32446,6 +32534,7 @@ function renderSettings(){
           <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">One sentence shape, swappable slots. Ten cards teach the shape, not ten phrases. Nothing here is recorded — no streak, no progress, no words marked.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="frameStart('move')">Going places</button>
+            <button class="btn btn-sm" onclick="frameStart('where')">What is where</button>
             <button class="btn btn-sm" onclick="frameStart('hougaii')">ほうが いい</button>
             <button class="btn btn-sm" onclick="frameStart('yori')">より</button>
           </div>

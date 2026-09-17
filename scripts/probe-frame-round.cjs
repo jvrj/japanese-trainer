@@ -15,6 +15,7 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applica
 const srv = http.createServer((q, s) => { let p = decodeURIComponent(q.url.split('?')[0]); if (p === '/') p = '/index.html'; fs.readFile(path.join(ROOT, p), (e, d) => { if (e) { s.writeHead(404); s.end(); return; } s.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' }); s.end(d); }); });
 
 const SHOT = process.argv[2] || '';
+const SHOT_FRAME = process.argv[3] || 'move';
 
 (async () => {
   await new Promise(r => srv.listen(8994, r));
@@ -51,6 +52,17 @@ const SHOT = process.argv[2] || '';
     const snap = () => JSON.stringify({
       stats: state.stats, streak: state.streak,
       ls: Object.keys(localStorage).sort().map(k => [k, localStorage.getItem(k)])
+    });
+
+    /* います and でした were absent from the deck and were added for the
+       location frame. Dedup runs at boot and can drop a same-kana entry, so
+       assert they are actually in the live word list, not just in the source. */
+    out.deck = { total: state.words.length, added: {} };
+    ['います', 'でした'].forEach(function (k) {
+      const hits = state.words.filter(function (w) { return w.jp === k; });
+      out.deck.added[k] = hits.length ? (hits.length + '× fam=' + (hits[0].fam || '-')) : 'MISSING';
+      if (!hits.length) out.problems.push('deck: ' + k + ' did not survive boot dedup');
+      if (hits.length > 1) out.problems.push('deck: ' + k + ' is duplicated (' + hits.length + ')');
     });
 
     /* The owner settings page must offer the entry buttons. */
@@ -124,14 +136,15 @@ const SHOT = process.argv[2] || '';
   });
 
   if (SHOT) {
-    await p.evaluate(() => { state.settings.ownerMode = true; frameStart('move'); });
+    await p.evaluate((id) => { state.settings.ownerMode = true; frameStart(id); }, SHOT_FRAME);
     await p.waitForTimeout(400);
     await p.screenshot({ path: SHOT });
   }
 
   console.log('version           ' + r.version);
   console.log('entry buttons     ' + r.entryButtons.join(', '));
-  console.log('zero-write        ' + (r.zeroWrite ? 'PASS — profile byte-identical after all three rounds' : 'FAIL'));
+  console.log('deck              ' + r.deck.total + ' words | ' + Object.keys(r.deck.added).map(function(k){return k+': '+r.deck.added[k];}).join(' | '));
+  console.log('zero-write        ' + (r.zeroWrite ? 'PASS — profile byte-identical after every round' : 'FAIL'));
   console.log('page errors       ' + (errs.length ? errs.join(' | ') : 'none'));
   console.log('');
   for (const f of r.frames) {
