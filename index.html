@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.34';
+const APP_VERSION = '9.35';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29858,30 +29858,41 @@ const _FR_YORI = [
     adjs:['おおきい','ちいさい','あたらしい','ふるい'] }
 ];
 
-/* Position words. Genki I ch.4 gives nine; あいだ is deliberately NOT here
-   because it takes TWO nouns (AとBのあいだ) — a different shape that needs its
-   own round rather than a slot in this one. That leaves a closed set of eight
-   a learner can actually finish. */
+/* Position words — the UNION of the two classroom syllabi, because they teach
+   DIFFERENT SETS, not different counts:
+     Genki I ch.4 (9):  みぎ ひだり まえ うしろ なか うえ した そば となり
+     Minna no Nihongo L10 (10): うえ した まえ うしろ あいだ そと ひだり みぎ
+                                ちかく となり
+   Seven are common; Genki adds なか and そば, MNN adds あいだ そと ちかく. The
+   union below is every member of both EXCEPT あいだ, which takes TWO nouns
+   (AとBのあいだ) — a different shape that needs its own round, not a slot here.
+   Eleven is still a set with an edge, which is the whole point; at round size
+   30 one sitting covers it. If the learner's class turns out to follow one
+   textbook, filter this to that syllabus and the edge gets sharper. */
 const _FR_POS = [
   {s:'うえ',   en:'on'},
   {s:'した',   en:'under'},
   {s:'なか',   en:'in'},
+  {s:'そと',   en:'outside'},
   {s:'うしろ', en:'behind'},
   {s:'まえ',   en:'in front of'},
+  {s:'みぎ',   en:'to the right of'},
+  {s:'ひだり', en:'to the left of'},
   {s:'となり', en:'next to'},
   {s:'そば',   en:'beside'},
   {s:'ちかく', en:'near'}
 ];
 /* Each landmark names the positions that make physical sense of it —
-   「テーブルの なか」 is not a place. なか lives with へや and かばん. */
+   「テーブルの なか」 is not a place. なか lives with へや and かばん, そと with
+   へや and まど. */
 const _FR_PLACE = [
-  {s:'テーブル', en:'the table', pos:['うえ','した','まえ','うしろ','そば','ちかく']},
-  {s:'いす',     en:'the chair', pos:['うえ','した','まえ','うしろ','となり','そば']},
-  {s:'つくえ',   en:'the desk',  pos:['うえ','した','まえ','うしろ','そば','ちかく']},
-  {s:'ベッド',   en:'the bed',   pos:['うえ','した','まえ','うしろ','そば','となり']},
-  {s:'まど',     en:'the window',pos:['まえ','した','そば','ちかく','となり']},
-  {s:'ドア',     en:'the door',  pos:['まえ','うしろ','そば','ちかく','となり']},
-  {s:'へや',     en:'the room',  pos:['なか']},
+  {s:'テーブル', en:'the table', pos:['うえ','した','まえ','うしろ','みぎ','ひだり','そば','ちかく']},
+  {s:'いす',     en:'the chair', pos:['うえ','した','まえ','うしろ','みぎ','ひだり','となり','そば']},
+  {s:'つくえ',   en:'the desk',  pos:['うえ','した','まえ','うしろ','みぎ','ひだり','そば','ちかく']},
+  {s:'ベッド',   en:'the bed',   pos:['うえ','した','まえ','うしろ','みぎ','ひだり','そば','となり']},
+  {s:'まど',     en:'the window',pos:['まえ','した','そと','みぎ','ひだり','そば','ちかく','となり']},
+  {s:'ドア',     en:'the door',  pos:['まえ','うしろ','みぎ','ひだり','そば','ちかく','となり']},
+  {s:'へや',     en:'the room',  pos:['なか','そと']},
   {s:'かばん',   en:'the bag',   pos:['なか','うえ','した','そば']}
 ];
 /* Animacy picks the verb, and that is the whole second lesson of this frame:
@@ -29946,7 +29957,7 @@ const FRAME_ROUNDS = [
     id:'where',
     title:'What is where',
     skeleton:'（ばしょ）の （いち）に （もの）が あります／います',
-    blurb:'The position slot is a closed set of eight — you can finish it. The last word is not free: things take あります, anything alive takes います.',
+    blurb:'The position slot is a CLOSED set of eleven — every position word Genki and Minna no Nihongo teach, minus あいだ (it needs two nouns). The last word is not free: things take あります, anything alive takes います.',
     enumerate(){
       const out = [];
       _FR_PLACE.forEach(function(pl){
@@ -29962,7 +29973,7 @@ const FRAME_ROUNDS = [
       /* All eight positions appear, then two repeat — so one round covers the
          whole closed set, which is the point of a closed set. Animacy
          alternates so あります and います are heard five times each. */
-      const order = _frShuffle(_FR_POS.slice()).concat(_frShuffle(_FR_POS.slice()).slice(0, 2));
+      const order = _frShuffle(_FR_POS.slice());
       const cards = [], seen = {};
       for(let i=0; i<order.length && cards.length<10; i++){
         const ps = order[i];
@@ -32535,8 +32546,8 @@ function renderSettings(){
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="frameStart('move')">Going places</button>
             <button class="btn btn-sm" onclick="frameStart('where')">What is where</button>
-            <button class="btn btn-sm" onclick="frameStart('hougaii')">ほうが いい</button>
-            <button class="btn btn-sm" onclick="frameStart('yori')">より</button>
+            <button class="btn btn-sm" onclick="frameStart('yori')">より （comparison）</button>
+            <button class="btn btn-sm" onclick="frameStart('hougaii')">ほうが いい （advice）</button>
           </div>
         </div>
       </div>
