@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.37';
+const APP_VERSION = '9.38';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -30074,6 +30074,7 @@ let _frUi = null;
    'fixed'; the particle, not the role, is the lesson. */
 const FRAME_TEACH = {
   move: {
+    key: 'に',
     byText: {
       'に': 'The arrow. It attaches BACKWARDS, to the place right before it — えきに = "to the station". Not a word on its own.'
     },
@@ -30084,6 +30085,7 @@ const FRAME_TEACH = {
     }
   },
   where: {
+    key: 'の',
     byText: {
       'の': 'Glue between two nouns, and the owner comes first: テーブルの うしろ is literally "the table\'s behind".',
       'に': 'Marks the spot where something exists.',
@@ -30098,6 +30100,7 @@ const FRAME_TEACH = {
     }
   },
   hougaii: {
+    key: 'ほうが いいです',
     byText: {
       'ほうが いいです': '"…would be better". Literally "that side is good" — ほう means side, or option.'
     },
@@ -30106,8 +30109,9 @@ const FRAME_TEACH = {
     }
   },
   yori: {
+    key: 'より',
     byText: {
-      'は': 'Marks it as the topic — "as for the train…".',
+      'は': 'Marks what you are talking about as the topic — "as for this one…". It sets the stage; より does the comparing.',
       'より': '"compared to". It comes AFTER the thing it marks, where English puts "than" BEFORE it: くるまより = "than a car". This is the piece the whole shape turns on.'
     },
     byRole: {
@@ -30125,18 +30129,17 @@ function _frNote(id, part){
 
 /* Teach or drill — a session-level MODE, not a per-round button, because the
    answer is the same for every round until the learner's answer changes.
-   Session-only, so the probe stays zero-write. */
+   Session-only, so the probe stays zero-write.
+
+   Both modes ASK. The difference is scaffolding: teach shows one model card,
+   then hides a little, then more; drill hides everything but the first word
+   from the first card. Watching a sentence assemble is recognition; being
+   made to supply the missing piece before it appears is recall. */
 let _frMode = 'teach';
 function frameSetMode(m){
   _frMode = (m === 'drill') ? 'drill' : 'teach';
   _frRateKey = (_frMode === 'drill') ? 'full' : 'slow';
-  if(_frUi){
-    _frStop();
-    _frUi.build = (_frMode === 'teach');
-    _frUi.step = _frUi.build ? 1 : _frSteps(_frUi.cards[_frUi.idx]);
-    _frUi.revealed = false;
-    render();
-  }
+  if(_frUi){ _frStop(); _frEnterCard(_frUi.idx); render(); }
 }
 window.frameSetMode = frameSetMode;
 
@@ -30150,14 +30153,10 @@ function _frRate(){ const f = _FR_RATES.find(function(x){ return x.k === _frRate
 function frameSetRate(k){ _frRateKey = k; if(_frUi){ _frStop(); render(); } }
 window.frameSetRate = frameSetRate;
 
-/* The whole point of the ladder: a card is not a sentence to absorb, it is a
-   sentence you WATCH ASSEMBLE one slot at a time. `step` is how many slots are
-   showing; the card is whole when step === parts.length. */
 function _frSteps(c){ return c ? c.parts.length : 0; }
 function _frWhole(c, step){ return c.parts.slice(0, step).map(function(p){ return p.s; }).join(''); }
 
-/* One step = hear the NEW word alone, then the phrase it just joined. The
-   first step has no `so far` to add it to, so it speaks once. */
+/* One build step = hear the NEW word alone, then the phrase it just joined. */
 function _frSpeakStep(c, step, onDone){
   const rate = _frRate();
   const whole = _frWhole(c, step);
@@ -30171,13 +30170,58 @@ function _frSpeakStep(c, step, onDone){
   }, rate);
 }
 
+/* What gets hidden, and in what order. The tiers escalate through a teach
+   round; drill sits at the top tier from card one.
+     build — the model card: assembles word by word, nothing hidden
+     A     — the last slot (comfortable: any legal filler is a right answer)
+     B     — the pivot: every particle, plus あります/います in the where
+             frame, because the living-or-not choice IS that frame's test
+     C     — A and B together
+     D     — everything but the first word */
+function _frTierFor(i){
+  if(_frMode === 'drill') return 'D';
+  if(i === 0) return 'build';
+  if(i <= 2) return 'A';
+  if(i <= 4) return 'B';
+  if(i <= 6) return 'C';
+  return 'D';
+}
+function _frHideSet(c, tier){
+  const n = c.parts.length;
+  const A = [n - 1];
+  let B = [];
+  c.parts.forEach(function(p, i){
+    if(p.r === 'fixed' || (_frUi && _frUi.id === 'where' && p.r === 'verb')) B.push(i);
+  });
+  if(!B.length) B = A.slice();
+  const D = []; for(let i = 1; i < n; i++) D.push(i);
+  if(tier === 'A') return A;
+  if(tier === 'B') return B;
+  if(tier === 'C'){ const u = B.slice(); if(u.indexOf(n - 1) === -1) u.push(n - 1); return u.sort(function(a, b){ return a - b; }); }
+  return D;
+}
+function _frEnterCard(i){
+  const c = _frUi.cards[i];
+  _frUi.idx = i;
+  _frUi.peeked = false;
+  const tier = c.tier || _frTierFor(i);
+  _frUi.tier = tier;
+  if(tier === 'build'){ _frUi.phase = 'build'; _frUi.step = 1; _frUi.hide = []; }
+  else { _frUi.phase = 'ask'; _frUi.step = c.parts.length; _frUi.hide = _frHideSet(c, tier); }
+}
+/* The audio for an ask card is the sentence up to the gap, then nothing. */
+function _frPrefix(c, hide){
+  const first = hide.length ? Math.min.apply(null, hide) : c.parts.length;
+  return c.parts.slice(0, first).map(function(p){ return p.s; }).join('');
+}
+
 function frameStart(id){
   const f = FRAME_ROUNDS.find(function(x){ return x.id === id; });
   if(!f) return;
   _frUi = { id:id, title:f.title, skeleton:f.skeleton, blurb:f.blurb,
-            cards:f.build(), idx:0, step:1, build:(_frMode === 'teach'),
-            revealed:false, playing:false, done:false, timer:null };
-  if(!_frUi.build) _frUi.step = _frSteps(_frUi.cards[0]);
+            cards:f.build(), idx:0, phase:'ask', step:1, hide:[], tier:'A',
+            peeked:false, playing:false, done:false, timer:null, asked:0, missed:0 };
+  _frEnterCard(0);
   nav('frames');
 }
 window.frameStart = frameStart;
@@ -30190,46 +30234,69 @@ function _frStop(){
 
 function _frJp(c){ return c.parts.map(function(p){ return p.s; }).join(''); }
 
+function _frLater(ms, fn){
+  if(!_frUi) return;
+  _frUi.timer = setTimeout(function(){
+    if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
+    fn();
+  }, ms);
+}
+function _frAdvance(){
+  if(_frUi.idx >= _frUi.cards.length - 1){ _frUi.playing = false; _frUi.done = true; render(); return; }
+  _frEnterCard(_frUi.idx + 1); render(); _frPlay();
+}
+
+/* Hands-free walk of the whole round. The silences are the product: after a
+   half-built phrase, after the gap in an ask card, after a whole sentence —
+   each is where the learner speaks. */
 function _frPlay(){
   if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
-  const c = _frUi.cards[_frUi.idx];
+  const u = _frUi, c = u.cards[u.idx];
   if(!c) return;
-  const last = _frSteps(c);
-  const done = function(){
-    if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
-    /* A whole sentence earns a longer silence than a half-built one — that
-       gap is where the learner says it back. */
-    const gap = (!_frUi.build || _frUi.step >= last) ? 2600 : 1150;
-    _frUi.timer = setTimeout(function(){
-      if(!_frUi || !_frUi.playing || state.screen !== 'frames') return;
-      if(_frUi.build && _frUi.step < last){ _frUi.step++; render(); _frPlay(); return; }
-      if(_frUi.idx >= _frUi.cards.length - 1){
-        _frUi.playing = false; _frUi.done = true; render(); return;
-      }
-      _frUi.idx++; _frUi.step = 1; _frUi.revealed = false; render(); _frPlay();
-    }, gap);
-  };
-  if(_frUi.build) _frSpeakStep(c, _frUi.step, done);
-  else _buildSpeakJP(_frJp(c), done, _frRate());
+  const teach = _frMode === 'teach';
+  if(u.phase === 'build'){
+    const last = _frSteps(c);
+    _frSpeakStep(c, u.step, function(){
+      if(u.step < last){ _frLater(1150, function(){ u.step++; render(); _frPlay(); }); return; }
+      u.phase = 'model'; render();
+      _frLater(2600, _frAdvance);
+    });
+    return;
+  }
+  if(u.phase === 'ask'){
+    const pre = _frPrefix(c, u.hide);
+    const gap = teach ? 3600 : 2400;
+    const afterPrefix = function(){
+      _frLater(gap, function(){ u.phase = 'reveal'; u.asked++; render(); _frPlay(); });
+    };
+    if(pre) _buildSpeakJP(pre, afterPrefix, _frRate()); else afterPrefix();
+    return;
+  }
+  /* reveal or model: hear the whole thing, then move on */
+  _buildSpeakJP(_frJp(c), function(){ _frLater(teach ? 2200 : 1400, _frAdvance); }, _frRate());
 }
 
 function frameTogglePlay(){
   if(!_frUi) return;
   if(_frUi.playing){ _frStop(); render(); return; }
-  if(_frUi.done){ _frUi.done = false; _frUi.idx = 0; _frUi.step = 1; _frUi.revealed = false; }
+  if(_frUi.done){ _frUi.done = false; _frUi.asked = 0; _frUi.missed = 0; _frEnterCard(0); }
   _frUi.playing = true; render(); _frPlay();
 }
 window.frameTogglePlay = frameTogglePlay;
 
-/* Forward means `one more word` until the sentence is whole, and only then
-   `next sentence`. One button, so the thumb never has to choose. */
+/* One forward button. In a build it adds a word; on an ask it reveals; on a
+   revealed card it moves on. The thumb never has to choose. */
 function frameFwd(){
   if(!_frUi) return;
   _frStop();
-  const c = _frUi.cards[_frUi.idx];
-  if(_frUi.build && c && _frUi.step < _frSteps(c)){
-    _frUi.step++; render();
-    _frSpeakStep(c, _frUi.step);
+  const u = _frUi, c = u.cards[u.idx];
+  if(u.phase === 'build'){
+    if(u.step < _frSteps(c)){ u.step++; render(); _frSpeakStep(c, u.step); return; }
+    u.phase = 'model'; render(); return;
+  }
+  if(u.phase === 'ask'){
+    u.phase = 'reveal'; u.asked++; render();
+    _buildSpeakJP(_frJp(c), null, _frRate());
     return;
   }
   frameNext();
@@ -30240,7 +30307,7 @@ function frameNext(){
   if(!_frUi) return;
   _frStop();
   if(_frUi.idx >= _frUi.cards.length - 1) _frUi.done = true;
-  else { _frUi.idx++; _frUi.step = 1; _frUi.revealed = false; }
+  else _frEnterCard(_frUi.idx + 1);
   render();
 }
 window.frameNext = frameNext;
@@ -30248,30 +30315,49 @@ window.frameNext = frameNext;
 function framePrev(){
   if(!_frUi) return;
   _frStop();
-  const c = _frUi.cards[_frUi.idx];
-  if(_frUi.build && c && _frUi.step > 1){ _frUi.step--; render(); return; }
-  if(_frUi.idx > 0){
-    _frUi.idx--; _frUi.revealed = false;
-    _frUi.step = _frUi.build ? _frSteps(_frUi.cards[_frUi.idx]) : 1;
+  const u = _frUi;
+  if(u.phase === 'build' && u.step > 1){ u.step--; render(); return; }
+  if(u.idx > 0){
+    _frEnterCard(u.idx - 1);
+    /* Going back is for looking, not being re-asked. */
+    if(u.phase === 'ask') u.phase = 'reveal';
+    if(u.phase === 'build'){ u.step = _frSteps(u.cards[u.idx]); u.phase = 'model'; }
   }
   render();
 }
 window.framePrev = framePrev;
 
-
+/* The honest grade channel: the learner says whether they had it. A miss
+   comes back three cards later with the same thing hidden. Round-local —
+   nothing is written anywhere. */
+function frameReport(hit){
+  if(!_frUi) return;
+  _frStop();
+  const u = _frUi, c = u.cards[u.idx];
+  if(!hit){
+    u.missed++;
+    const again = { parts:c.parts, en:c.en, tier:u.tier, again:true };
+    u.cards.splice(Math.min(u.idx + 3, u.cards.length), 0, again);
+  }
+  frameNext();
+}
+window.frameReport = frameReport;
 
 function framePeek(){
   if(!_frUi) return;
-  _frUi.revealed = !_frUi.revealed; render();
+  _frUi.peeked = !_frUi.peeked; render();
 }
 window.framePeek = framePeek;
 
 function frameSay(){
   if(!_frUi) return;
-  const c = _frUi.cards[_frUi.idx];
+  const u = _frUi, c = u.cards[u.idx];
   if(!c) return;
   _frStop();
-  _buildSpeakJP(_frUi.build ? _frWhole(c, _frUi.step) : _frJp(c), null, _frRate());
+  const text = u.phase === 'build' ? _frWhole(c, u.step)
+             : u.phase === 'ask'   ? _frPrefix(c, u.hide)
+             : _frJp(c);
+  if(text) _buildSpeakJP(text, null, _frRate());
 }
 window.frameSay = frameSay;
 
@@ -30295,14 +30381,19 @@ function renderFrames(){
       '<button class="btn btn-secondary" style="margin-top:12px" onclick="frameExit()">Back</button></div>';
   }
   const u = _frUi;
+  const teach = _frMode === 'teach';
 
   if(u.done){
+    const missLine = u.asked
+      ? 'Asked ' + u.asked + ' times, missed ' + u.missed + '.' +
+        (u.missed ? ' Each miss came back once.' : ' Every gap filled first time.')
+      : '';
     return '' +
       '<div class="card" style="text-align:center">' +
         '<div class="h8-section" style="margin:0 0 6px">' + esc(u.title) + '</div>' +
         '<div class="word-jp" style="font-size:20px;margin-bottom:6px">' + esc(u.skeleton) + '</div>' +
         '<div class="muted" style="font-size:13px;line-height:1.6;margin-bottom:16px">' +
-          'That was ten sentences from one shape.<br>' +
+          esc(missLine) + (missLine ? '<br>' : '') +
           'You can now say the combinations this round never showed you.' +
         '</div>' +
         '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
@@ -30314,32 +30405,54 @@ function renderFrames(){
 
   const c = u.cards[u.idx];
   const last = _frSteps(c);
-  const step = u.build ? Math.min(u.step, last) : last;
-  const whole = step >= last;
+  const building = u.phase === 'build';
+  const asking = u.phase === 'ask';
+  const shown = building ? Math.min(u.step, last) : last;
+  const hideNow = asking ? u.hide : [];
+  const justShown = (u.phase === 'reveal') ? u.hide : [];
 
-  /* Each slot is its own inline-block so a long line wraps BETWEEN slots and
-     never mid-word — 「いきまし / た」 is unreadable at a glance, which is the
-     one thing a drill card cannot afford. */
-  const sentence = c.parts.slice(0, step).map(function(p, i){
-    /* The word that just arrived is the lesson; the ones before it are context. */
-    const isNew = u.build && i === step - 1 && step > 1;
-    return '<span style="display:inline-block;white-space:nowrap;color:' +
-      (FRAME_ROLE_COLOR[p.r] || '#fff') +
-      (isNew ? ';text-shadow:0 0 18px currentColor' : ';opacity:.82') + '">' +
-      esc(p.s) + '</span>';
+  /* One inline-block per slot so a long line wraps BETWEEN slots, never
+     mid-word. A hidden slot is a box with nothing in it — the width is a hint,
+     the content is the question. */
+  const sentence = c.parts.slice(0, shown).map(function(p, i){
+    const col = FRAME_ROLE_COLOR[p.r] || '#fff';
+    if(hideNow.indexOf(i) !== -1){
+      return '<span style="display:inline-block;min-width:' + Math.max(1.6, p.s.replace(/\s+/g, '').length * 0.95) + 'em;' +
+        'height:1.25em;vertical-align:-.15em;border:2px dashed ' + col + ';border-radius:8px;opacity:.75;' +
+        'box-shadow:0 0 14px ' + col + '55"></span>';
+    }
+    const isNew = (building && i === shown - 1 && shown > 1) || justShown.indexOf(i) !== -1;
+    return '<span style="display:inline-block;white-space:nowrap;color:' + col +
+      (isNew ? ';text-shadow:0 0 18px currentColor' : ';opacity:.82') + '">' + esc(p.s) + '</span>';
   }).join('<span style="display:inline-block;width:.42em"></span>');
 
-  const note = (u.build && step >= 1) ? _frNote(u.id, c.parts[step-1]) : '';
+  /* Under-line: what the learner is being asked to do right now. */
+  const cue = building ? (shown >= last ? 'whole sentence' : shown + ' of ' + last + ' words')
+            : u.phase === 'model' ? 'whole sentence'
+            : asking ? (u.hide.length > 1 ? 'say the missing pieces' : 'say the missing piece')
+            : 'whole sentence';
+
+  /* The note belongs to the piece that was just supplied or just arrived — in
+     teach mode only. Drill puts no English on the card. */
+  let note = '';
+  if(teach){
+    if(building && shown >= 1) note = _frNote(u.id, c.parts[shown - 1]);
+    else if(u.phase === 'reveal' && u.hide.length){
+      const key = (FRAME_TEACH[u.id] || {}).key;
+      const piv = u.hide.filter(function(i){ return c.parts[i].r === 'fixed' || c.parts[i].r === 'verb'; });
+      const keyed = u.hide.filter(function(i){ return c.parts[i].s === key; });
+      note = _frNote(u.id, c.parts[(keyed.length ? keyed : piv.length ? piv : u.hide)[0]]);
+    }
+  }
 
   const modeRow =
     '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:2px">' +
-      ['teach','drill'].map(function(m){
+      ['teach', 'drill'].map(function(m){
         const on = _frMode === m;
         return '<button class="btn btn-sm" style="width:auto;flex:0 0 auto;padding:6px 16px;font-size:12px;' +
           (on ? 'background:rgba(167,139,250,.25);border:1px solid rgba(167,139,250,.55)'
               : 'background:transparent;border:1px solid rgba(255,255,255,.16);opacity:.6') +
-          '" onclick="frameSetMode(\'' + m + '\')">' +
-          (m === 'teach' ? 'Teach me' : 'Drill me') + '</button>';
+          '" onclick="frameSetMode(\'' + m + '\')">' + (m === 'teach' ? 'Teach me' : 'Drill me') + '</button>';
       }).join('') +
     '</div>';
 
@@ -30351,36 +30464,51 @@ function renderFrames(){
       '" onclick="frameSetRate(\'' + r.k + '\')">' + r.label + '</button>';
   }).join('');
 
+  /* The main button says the one thing that happens next. */
+  let mainBtn;
+  if(building) mainBtn = (shown < last) ? '&#43; word' : 'Next &#9654;';
+  else if(asking) mainBtn = 'Show me';
+  else if(u.phase === 'reveal') mainBtn = null;   /* the report buttons take its place */
+  else mainBtn = 'Next &#9654;';
+
+  const transport = (u.phase === 'reveal')
+    ? '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:10px">' +
+        '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameSay()">&#128266;</button>' +
+        '<button id="fr-hit" class="btn" style="width:auto;flex:0 1 auto;padding-left:18px;padding-right:18px" onclick="frameReport(true)">Had it</button>' +
+        '<button id="fr-miss" class="btn btn-secondary" style="width:auto;flex:0 1 auto;padding-left:18px;padding-right:18px" onclick="frameReport(false)">Missed it</button>' +
+      '</div>'
+    : '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:10px">' +
+        '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="framePrev()" ' +
+          ((u.idx === 0 && (!building || u.step <= 1)) ? 'disabled' : '') + '>&#9664;</button>' +
+        '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameSay()">&#128266;</button>' +
+        '<button id="fr-fwd" class="btn" style="width:auto;flex:0 1 auto;padding-left:20px;padding-right:20px" onclick="frameFwd()">' + mainBtn + '</button>' +
+      '</div>';
+
   return '' +
-    /* While the sentence is still assembling, the abstract skeleton is noise —
-       a pattern written as （Ａ）は（Ｂ）より… means nothing until you have met
-       it once. It appears at the moment the sentence completes. */
     '<div class="card" style="border:1px solid rgba(255,179,92,.35);background:rgba(255,179,92,.05);padding:12px 14px">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
-        '<div class="h8-section" style="margin:0">' + esc(u.title) + '</div>' +
+        '<div class="h8-section" style="margin:0">' + esc(u.title) +
+          (c.again ? ' <span style="font-size:10px;letter-spacing:.08em;opacity:.7;color:#fb7185">AGAIN</span>' : '') + '</div>' +
         '<div class="muted" style="font-size:12px;white-space:nowrap">' + (u.idx + 1) + ' / ' + u.cards.length + '</div>' +
       '</div>' +
-      (whole
+      /* The abstract skeleton is noise until the sentence has been met once;
+         it appears on the model card the moment it completes. */
+      ((u.phase === 'model' && u.idx === 0)
         ? '<div class="word-jp" style="font-size:15px;opacity:.9;margin-top:6px">' + esc(u.skeleton) + '</div>' +
-          (u.idx === 0 ? '<div class="muted" style="font-size:12px;line-height:1.5;margin-top:6px">' + esc(u.blurb) + '</div>' : '')
+          '<div class="muted" style="font-size:12px;line-height:1.5;margin-top:6px">' + esc(u.blurb) + '</div>'
         : '') +
     '</div>' +
 
     '<div class="card" style="text-align:center;padding:30px 16px;min-height:190px;display:flex;flex-direction:column;justify-content:center;gap:14px">' +
       '<div id="fr-sentence" style="font-size:28px;font-weight:700;line-height:1.7;min-height:1.7em">' + sentence + '</div>' +
-      (u.build
-        ? '<div class="muted" style="font-size:12px;letter-spacing:.06em">' +
-            (whole ? 'whole sentence' : (step + ' of ' + last + ' words')) + '</div>'
-        : '') +
-      /* The note belongs to the word that just arrived, so it reads as an
-         explanation of THAT piece rather than a paragraph about the card. */
+      '<div id="fr-cue" class="muted" style="font-size:12px;letter-spacing:.06em">' + esc(cue) + '</div>' +
       (note
-        ? '<div style="font-size:13px;line-height:1.55;text-align:left;margin:2px auto 0;max-width:30em;' +
+        ? '<div id="fr-note" style="font-size:13px;line-height:1.55;text-align:left;margin:2px auto 0;max-width:30em;' +
             'padding:10px 12px;border-radius:10px;background:rgba(167,139,250,.10);' +
             'border-left:2px solid rgba(167,139,250,.5);opacity:.92">' + esc(note) + '</div>'
         : '') +
       '<div style="min-height:24px">' +
-        (u.revealed
+        (u.peeked
           ? '<div class="muted" style="font-size:15px">' + esc(c.en) + '</div>'
           : '<button class="btn btn-secondary btn-sm" onclick="framePeek()">Peek at the meaning</button>') +
       '</div>' +
@@ -30388,17 +30516,7 @@ function renderFrames(){
 
     modeRow +
     '<div style="display:flex;gap:7px;justify-content:center;align-items:center;margin-top:8px">' + speed + '</div>' +
-
-    /* .btn is full-width by default in this app, which turns one row of four
-       into four stacked rows. Pin each to its content so the transport stays a
-       single thumb-reachable row. */
-    '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:10px">' +
-      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="framePrev()" ' +
-        ((u.idx === 0 && step <= 1) ? 'disabled' : '') + '>&#9664;</button>' +
-      '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;min-width:46px" onclick="frameSay()">&#128266;</button>' +
-      '<button id="fr-fwd" class="btn" style="width:auto;flex:0 1 auto;padding-left:20px;padding-right:20px" onclick="frameFwd()">' +
-        ((u.build && !whole) ? '&#43; word' : 'Next &#9654;') + '</button>' +
-    '</div>' +
+    transport +
     '<div style="display:flex;gap:9px;justify-content:center;align-items:center;margin-top:9px">' +
       '<button class="btn btn-secondary btn-sm" style="width:auto;flex:0 0 auto;padding-left:16px;padding-right:16px" onclick="frameTogglePlay()">' +
         (u.playing ? '&#9208; Pause' : '&#9654; Play it for me') + '</button>' +
@@ -30410,6 +30528,7 @@ function renderFrames(){
       'Owner probe — nothing here is recorded. No streak, no progress, no words marked.' +
     '</div>';
 }
+
 
 function render(){
   updateNav();
