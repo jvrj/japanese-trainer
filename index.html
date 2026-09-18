@@ -1269,7 +1269,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.38';
+const APP_VERSION = '9.39';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -28893,7 +28893,8 @@ function wtsBarHtml(info){
        correct recalls, at least one not today) and hasn't certified yet,
      · plus certified words whose re-test gap (COLD_GAPS_DAYS by level)
        has elapsed — at most two per morning so new proofs dominate.
-   Meaning shown, learner types the romaji. coldRomajiNorm() makes the
+   Meaning shown, learner types the word — romaji, kana or kanji (v9.39;
+   see coldAnswerMatches). For romaji, coldRomajiNorm() makes the
    comparison forgiving about spelling systems (shi/si, tsu/tu, long
    vowels) but never about the sound itself. Pass → certLevel+1, longer
    re-test gap, word GRADUATES out of the sticky batch (a new word takes
@@ -28929,6 +28930,32 @@ function coldRomajiNorm(s){
   t = t.replace(/ou/g, 'o').replace(/([aeiou])\1+/g, '$1');
   return t;
 }
+/* v9.39 — the check takes the answer in whatever script the learner writes:
+   romaji, hiragana, katakana or kanji. Romaji still goes through the
+   Hepburn/kunrei folding above; anything containing a Japanese character is
+   compared to the word's kana and, when it has one, its kanji form. Katakana
+   folds to hiragana so ネコ and ねこ meet; ー is left alone. */
+function coldJpNorm(s){
+  let t = String(s || '').normalize('NFKC');
+  t = t.replace(/[\s\u3000]+/g, '');
+  t = t.replace(/[、。，．,.!?！？・「」『』（）()~～〜…\-]/g, '');
+  t = t.replace(/[\u30a1-\u30f6]/g, function(ch){ return String.fromCharCode(ch.charCodeAt(0) - 0x60); });
+  return t;
+}
+function coldHasJp(s){ return /[\u3040-\u30ff\u4e00-\u9fff]/.test(String(s || '')); }
+function coldAnswerMatches(typed, w){
+  if(!coldHasJp(typed)){
+    const norm = coldRomajiNorm(typed);
+    return norm !== '' && norm === coldRomajiNorm(w.romaji);
+  }
+  const t = coldJpNorm(typed);
+  if(!t) return false;
+  /* a kanji field can list alternates (～本、～本) — any of them is the word */
+  const forms = [w.jp].concat(w.kj ? String(w.kj).split(/[、,\/／]/) : []);
+  return forms.some(function(f){ return f && coldJpNorm(f) === t; });
+}
+window.coldAnswerMatches = coldAnswerMatches;
+
 /* v9.05 — RELEVANCE. The first picker ranked "new" candidates by how many
    times they had ever been said back, so week-old greetings out-ranked the
    words drilled yesterday (owner, 13 Sep: "not relevant to what I've been
@@ -29100,8 +29127,7 @@ function coldCheckAnswer(){
   const id = s.ids[s.idx];
   const w = id && state.words.find(x => x && x.id === id);
   if(!w){ s.idx++; if(s.idx >= s.ids.length) s.done = true; save(); render(); return; }
-  const norm = coldRomajiNorm(typed);
-  const pass = norm !== '' && norm === coldRomajiNorm(w.romaji);
+  const pass = coldAnswerMatches(typed, w);
   _coldApply(w, pass);
   s.results[id] = pass;
   s.pending = { id, pass, typed: String(typed || '').slice(0, 40) };
@@ -29188,7 +29214,7 @@ function renderColdCheck(){
      (owner, 13 Sep: "how can we make it look ENCOURAGING... that's the whole
      point"). The how-to line shows once, ever. No "prove", no "penalty",
      no "cold" — the number that matters is the one that went up. */
-  const intro = state.settings.coldIntroSeen ? '' : `<p class="cold-sub">Type the sound in English letters — <b>mizu</b>, not みず.</p>`;
+  const intro = state.settings.coldIntroSeen ? '' : `<p class="cold-sub">Type it however you write — <b>mizu</b>, <b>みず</b>, <b>ミズ</b> or <b>水</b> all count.</p>`;
   const badge = s.preview ? '<span class="cold-preview">Preview · nothing is scored</span>' : '';
 
   if(!total){
@@ -29254,7 +29280,7 @@ function renderColdCheck(){
       <p class="cold-eyebrow">${s.idx + 1} of ${total}</p>
       <p class="cold-meaning">${esc(w.en)}</p>
       <div class="cold-row" style="margin-top:12px">
-        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="say it, then type it…" aria-label="Type the Japanese word in romaji" value="${p ? esc(p.typed || '') : ''}"${p ? ' disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
+        <input class="input" id="ansInput" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="say it, then type it…" aria-label="Type the word — romaji, hiragana, katakana or kanji" value="${p ? esc(p.typed || '') : ''}"${p ? ' disabled' : ''} onkeydown="if(event.key==='Enter'){event.preventDefault();coldCheckAnswer();}">
         <button class="btn btn-primary" onclick="coldCheckAnswer()"${p ? ' disabled' : ''}>Check</button>
       </div>
       ${p ? '' : `<button class="cold-later" style="margin-top:4px;padding:10px" onclick="coldCheckSkipWord()">Skip this one</button>`}
