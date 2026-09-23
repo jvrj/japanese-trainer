@@ -1,6 +1,29 @@
 # WordStick · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
-*Last updated: **2026-09-05***
+*Last updated: **2026-09-23***
+
+> **23 Sep — the economics reset (v9.40 shipped).** The audit said the app is
+> fine; the PLAN was the mismatch (card-free trial + $9 monthly cannot pay
+> for cold ads). Now live in the app: the first round is free with no card,
+> then ONE "Start your free week" screen (yearly first, card needed, first
+> charge day 8), "Not now" = free plan; "Missed it" on every card; the honest
+> count on the round end and plans screen; the 7-tap owner switch only works
+> on your account. **Three things only you can do, in order:**
+>
+> 1. **Deploy the backend** (at the computer, in `backend/`, signed in to the
+>    Supabase CLI): `supabase db push` · `supabase functions deploy checkout`
+>    · `supabase functions deploy stripe-webhook`. Until this runs, the plans
+>    screen still charges immediately instead of starting a 7-day card trial.
+> 2. **Stripe dashboard → Settings → Customer emails → turn on "Trial ending"
+>    reminders.** The plans screen promises an email the day before.
+> 3. **Confirm Stripe is in LIVE mode** (the four `STRIPE_*` secrets on
+>    Supabase are the live values — `supabase secrets list` shows the names).
+>    Then buy your own product once with a real card and refund it.
+>
+> After those: the $300 cold-traffic test with the three kill lines in
+> `docs/ads-playbook-2026-09-06.md` §14 (landing→trial ≥ 8%, trial→paid ≥ 20%,
+> cost per payer ≤ $45). Intent targeting only (Japan trip booked / in a
+> class / JLPT registered).
 
 > **2 Sep — three things locked:** the name is **WordStick** (domain
 > **wordstick.app** bought ✓), the app icon is the **Sticker W** (live in

@@ -916,6 +916,11 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .bm2 .build-phase-label.bm2-status{font-size:19px;font-weight:900;color:#b97bff;margin:14px 0 0;letter-spacing:0;text-transform:none;min-height:26px}
 .bm2.say .build-phase-label.bm2-status{color:#ff8fc0}
 .bm2 .build-countdown{display:none}
+.pw-hero{border-color:rgba(255,120,200,.55)!important;box-shadow:0 0 0 1px rgba(255,120,200,.25),0 10px 30px rgba(255,120,200,.12)}
+.bm2-missrow{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px}
+.bm2-miss{padding:9px 16px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);font:800 13px Nunito,system-ui,sans-serif;color:#d8d0f0;cursor:pointer}
+.bm2-miss.on{background:rgba(255,183,77,.16);border-color:rgba(255,183,77,.5);color:#ffd27a}
+.bm2-more{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;padding:6px 8px}
 .bm2-peek{margin-top:20px;padding:13px 22px;border-radius:99px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.22);font:800 15px Nunito,system-ui,sans-serif;color:#a99fc7;cursor:pointer}
 .bm2-reveal{width:100%;max-width:360px;box-sizing:border-box;margin-top:22px;padding:22px 18px;border-radius:26px;background:linear-gradient(160deg,rgba(157,92,255,.2),rgba(255,93,158,.1)),rgba(255,255,255,.05);border:1px solid rgba(185,123,255,.36);animation:bm2In .45s cubic-bezier(.2,.9,.3,1) both}
 .bm2-rl{font-size:11px;font-weight:900;letter-spacing:.16em;color:#c9c2e6}
@@ -1269,7 +1274,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.39';
+const APP_VERSION = '9.40';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10521,6 +10526,19 @@ function renderPaywall(){
     const savePct = _paywallSavePct();
     const busy = ui.busy;
     const msgRow = ui.msg ? `<div class="ob-note">${esc(ui.msg)}</div>` : '';
+    /* v9.40 — a learner already on the Stripe trial has nothing to buy here. */
+    if(_entTrialing()){
+      const endTxt = _entTrialEndText();
+      return `
+      <div class="ob-wrap"><div class="ob-screen">
+        <div class="ob-emoji">✅</div>
+        <div class="ob-title">Your free week is on</div>
+        <div class="ob-sub">Everything is unlocked${endTxt ? ` until ${esc(endTxt)}` : ''}. Cancel anytime before then and you pay nothing — Settings → Your plan → Manage.</div>
+        ${msgRow}
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="nav('home')">Back to my words</button>
+        <button class="ob-switch" onclick="settingsManageSub()">Manage my plan</button>
+      </div></div>`;
+    }
     /* v8.79 free plan — this screen is now a plan PICKER, not a wall: the
        free plan continues underneath it, so it always offers a way back.
        Yearly leads (monthly churn is the category's weak point — gating
@@ -10530,28 +10548,33 @@ function renderPaywall(){
     const deckLine = deckN > 0 ? `all ${deckN.toLocaleString()} words` : 'every word';
     /* v8.92 — a mid-trial viewer isn't on the free plan yet; sell the
        day-8 slowdown instead of describing a tier they're not on. */
-    const onTrial = state._entUnlocked === true && state._entReason === 'trial';
-    const subLine = onTrial
-      ? `You're on your free week — everything's unlocked. When it ends you drop to the free plan (${FREE_NEW_WORDS_PER_DAY} new words a day). Lock in full speed now and never slow down. Cancel anytime.`
-      : `You're on the free plan — reviews are unlimited, plus ${FREE_NEW_WORDS_PER_DAY} new words a day. Unlock ${deckLine} and learn at full speed. Cancel anytime.`;
+    /* v9.40 — card-required trial, yearly first. The honest count leads
+       when there is one; a brand-new learner gets the plain promise. */
+    let own = 0;
+    try{ own = wordsThatStick().N; }catch(e){ own = 0; }
+    const ownLine = own > 0
+      ? `You own <b>${own} word${own === 1 ? '' : 's'}</b> — proven cold, out of your own head. Keep the count growing.`
+      : `Every word you prove in the morning check is yours for good. Watch the count grow.`;
+    const subLine = `${ownLine} 7 days free, everything unlocked — ${deckLine}. Cancel before the week ends and you pay nothing.`;
+    const yr = PAYWALL_PRICES.yearly, mo = PAYWALL_PRICES.monthly;
     return `
       <div class="ob-wrap"><div class="ob-screen">
-        <div class="ob-emoji">📌</div>
-        <div class="ob-title">Keep going with WordStick</div>
+        <div class="ob-emoji">🎟️</div>
+        <div class="ob-title">Start your free week</div>
         <div class="ob-sub">${subLine}</div>
-        <button class="ob-path-card" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
-          <div class="ob-path-em">🎟️</div>
-          <div class="ob-path-t">Yearly — $${PAYWALL_PRICES.yearly.toFixed(2)}/yr ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">$${PAYWALL_PRICES.yearly.toFixed(2)} a year — about $${(PAYWALL_PRICES.yearly/12).toFixed(2)} a month. Cancel anytime.</div>
+        <button class="ob-path-card pw-hero" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
+          <div class="ob-path-em">▶</div>
+          <div class="ob-path-t">Start free week ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">Free for 7 days, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
         </button>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
-          <div class="ob-path-t">Monthly — $${PAYWALL_PRICES.monthly.toFixed(2)}/mo</div>
-          <div class="ob-path-s">$${PAYWALL_PRICES.monthly.toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-t">Or pay monthly</div>
+          <div class="ob-path-s">Free for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
         </button>
+        <div class="ob-note" style="opacity:.8">Card needed to start. We email you the day before the week ends, so nothing sneaks up on you.</div>
         ${msgRow}
-        <button class="ob-switch" onclick="nav('home')">${onTrial ? 'Not now' : 'Keep the free plan for now'}</button>
-        <button class="ob-switch" onclick="authDoSignOut()">Sign out</button>
+        <button class="ob-switch" onclick="nav('home')">Not now — keep the free plan (${FREE_NEW_WORDS_PER_DAY} new words a day)</button>
       </div></div>`;
   } catch(e){
     return `
@@ -10688,13 +10711,19 @@ function _entOwnerAccount(u){
 /* True iff the signed-in account is still inside its free week, measured
    from the auth user's own created_at (part of the server-issued session,
    not client-settable state). Absent/unparsable created_at fails CLOSED. */
-function _entTrialGood(u){
+/* v9.40 — the card-free week is GONE. The free week now lives in Stripe: a
+   Checkout with trial_period_days=7 collects the card up front and the
+   webhook writes status 'trialing' on the entitlements row. Kept as a
+   function so every old call site keeps working; it always says no. */
+function _entTrialGood(u){ return false; }
+/* True while the account's entitlement row is a Stripe trial. */
+function _entTrialing(){ return state._entUnlocked === true && state._entReason === 'trial'; }
+function _entTrialEndText(){
   try{
-    if(!u || !u.created_at) return false;
-    const t = new Date(u.created_at).getTime();
-    if(!isFinite(t)) return false;
-    return (Date.now() - t) < ENT_FREE_TRIAL_MS;
-  } catch(e){ return false; }
+    const t = state._entTrialEnd ? new Date(state._entTrialEnd) : null;
+    if(!t || !isFinite(t.getTime())) return '';
+    return t.toLocaleDateString(undefined, { day:'numeric', month:'short' });
+  }catch(e){ return ''; }
 }
 
 /* True iff an {active, expires_at} pair — a FRESH entFetch() result or a
@@ -10724,9 +10753,9 @@ function _entCacheRead(){
    real Supabase response object — never from a URL/query param, postMessage,
    or any other attacker-reachable input (CWE-602: a forged cache entry
    could otherwise unlock the app for a visitor who was never entitled). */
-function _entCacheWrite(active, expiresAt){
+function _entCacheWrite(active, expiresAt, status, trialEnd){
   try{
-    const entry = { active: !!active, expires_at: expiresAt || null, fetchedAt: Date.now() };
+    const entry = { active: !!active, expires_at: expiresAt || null, status: status || null, trial_end: trialEnd || null, fetchedAt: Date.now() };
     localStorage.setItem(ENT_CACHE_KEY, JSON.stringify(entry));
     return entry;
   } catch(e){ return null; }
@@ -10754,12 +10783,17 @@ async function entFetch(){
     const c = authClient();
     const u = await authUser();
     if(!c || typeof c.from !== 'function' || !u) return { ok:false };
-    const { data, error } = await c.from('entitlements').select('active, product, expires_at').eq('user_id', u.id).maybeSingle();
+    /* v9.40 — select('*') so the row's newer columns (status, trial_end —
+       migration 0007) come back when present and their absence is not an
+       error on a database that has not run the migration yet. */
+    const { data, error } = await c.from('entitlements').select('*').eq('user_id', u.id).maybeSingle();
     if(error) return { ok:false };
     const active = !!(data && data.active);
     const expires_at = (data && data.expires_at) || null;
-    _entCacheWrite(active, expires_at);
-    return { ok:true, active, expires_at };
+    const status = (data && data.status) || null;
+    const trial_end = (data && data.trial_end) || null;
+    _entCacheWrite(active, expires_at, status, trial_end);
+    return { ok:true, active, expires_at, status, trial_end };
   } catch(e){ return { ok:false }; }
 }
 window.entFetch = entFetch;
@@ -10777,23 +10811,35 @@ window.entFetch = entFetch;
    boot or the checkout-return poll loop below. */
 async function isUnlocked(){
   state._entLastAttemptAt = Date.now();
-  if(state.settings.ownerMode === true) return { unlocked:true, reason:'owner' };
   let u = null;
   try{ u = await authUser(); } catch(e){ u = null; }
+  /* v9.40 — the owner switch is the owner's. A signed-in account that is
+     not on the allow-list can never hold ownerMode (the 7-tap version-line
+     switch used to unlock the paid tier for anyone who found it). */
+  if(state.settings.ownerMode === true && u && !_entOwnerAccount(u)){
+    state.settings.ownerMode = false;
+    try{ save(); }catch(e){}
+  }
+  if(state.settings.ownerMode === true) return { unlocked:true, reason:'owner' };
   if(_entOwnerAccount(u)) return { unlocked:true, reason:'owner-account' };
-  const trial = _entTrialGood(u);
   const cached = _entCacheRead();
   let result = null;
   try{
     const timeout = new Promise(resolve => setTimeout(() => resolve(null), ENT_GATE_TIMEOUT_MS));
     result = await Promise.race([ entFetch(), timeout ]);
   } catch(e){ result = null; }
+  const good = (row) => {
+    const trialing = row.status === 'trialing';
+    state._entTrialEnd = trialing ? (row.trial_end || row.expires_at || null) : null;
+    return { unlocked:true, reason: trialing ? 'trial' : 'paid' };
+  };
   if(result && result.ok === true){
-    if(_entRowIsGood(result)) return { unlocked:true, reason:'fresh' };
-    return trial ? { unlocked:true, reason:'trial' } : { unlocked:false, reason:'locked' };
+    if(_entRowIsGood(result)) return good(result);
+    state._entTrialEnd = null;
+    return { unlocked:false, reason:'locked' };
   }
-  if(_entCacheGraceGood(cached)) return { unlocked:true, reason:'grace' };
-  return trial ? { unlocked:true, reason:'trial' } : { unlocked:false, reason:'locked' };
+  if(_entCacheGraceGood(cached)) return good(cached);
+  return { unlocked:false, reason:'locked' };
 }
 window.isUnlocked = isUnlocked;
 
@@ -10806,6 +10852,16 @@ window.isUnlocked = isUnlocked;
 function _entGateOpen(){
   if(state.settings.ownerMode === true) return true;
   return state._entUnlocked === true;
+}
+function _trialOfferDue(screen){
+  try{
+    if(state.settings.ownerMode === true) return false;
+    if(!_authState.user || _entOwnerAccount(_authState.user)) return false;
+    if(state.settings.trialOfferShown) return false;
+    if(!state.settings.r1Done) return false;
+    if(state._entUnlocked === true) return false;
+    return screen === 'home' || screen === 'practice' || screen === 'buildMode';
+  }catch(e){ return false; }
 }
 window._entGateOpen = _entGateOpen;
 
@@ -10847,6 +10903,9 @@ const FREE_NEW_WORDS_PER_DAY = 3;
    this predicate degrades softly (a capped pool, a banner), never a lock. */
 function _freeTierActive(){
   if(state.settings.ownerMode === true) return false;
+  /* v9.40 — the first round is the demo: never capped. The plan screen
+     comes once, after it (see _trialOfferDue). */
+  if(!state.settings.r1Done) return false;
   return state._entUnlocked !== true;
 }
 window._freeTierActive = _freeTierActive;
@@ -27371,8 +27430,12 @@ function _bmGradeHtml(){
       /* v9.07 — a hands-free card should not shout "HOW WELL DO YOU KNOW THIS
          WORD?" with two big buttons on every reveal. Folded behind one small
          link; opens for the card, closes on the next word. */
-      if(!b._gradeOpen && !(b._missed && b._missed.has(wid))){
-        return `<div style="text-align:center;margin-top:10px"><button onclick="buildToggleGradeOpen()" style="background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;padding:6px 10px">Mark this word ▾</button></div>`;
+      /* v9.40 — the one signal the scheduler has is now one tap away on
+         every reveal: "Missed it" sits beside the fold instead of inside
+         it, so a miss costs one tap and a hit costs nothing. */
+      if(!b._gradeOpen){
+        const isMissed = !!(b._missed && b._missed.has(wid));
+        return `<div class="bm2-missrow"><button class="bm2-miss${isMissed ? ' on' : ''}" onclick="buildToggleMissed()">${isMissed ? '🔁 Coming back more ✓' : '🔁 Missed it'}</button><button class="bm2-more" onclick="buildToggleGradeOpen()">More ▾</button></div>`;
       }
       /* v8.55 — consumer-legible self-grade. "Missed it" read as an admission
          of failure and never told a stranger what tapping it DOES; the rename
@@ -28244,11 +28307,15 @@ function _trialNudgeEligible(){
   try{
     if(state.settings.ownerMode === true) return false;
     if(state.settings.trialNudgeShown === true) return false;
-    if(state._entUnlocked !== true || state._entReason !== 'trial') return false;
+    /* v9.40 — the nudge now speaks to the FREE PLAN (a learner who said
+       "not now" to the card trial), from day 2, once. Trial and paid
+       accounts never see it. */
+    if(state._entUnlocked === true) return false;
+    if(!state.settings.trialOfferShown) return false;
     const u = _authState.user;
     if(!u || !u.created_at || _entOwnerAccount(u)) return false;
     const day = Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86400000) + 1;
-    if(!(day >= 5 && day <= 7)) return false;
+    if(day < 2) return false;
     let n = 0;
     for(const id in state.stats){
       const st = state.stats[id];
@@ -28272,15 +28339,15 @@ function _trialNudgeCard(){
       if(st && st.attempts && st.attempts.length) drilled++;
     }
   }catch(e){}
-  let left = 2;
-  try{
-    const u = _authState.user;
-    left = Math.max(1, 7 - Math.floor((Date.now() - new Date(u.created_at).getTime()) / 86400000));
-  }catch(e){}
+  let own = 0;
+  try{ own = wordsThatStick().N; }catch(e){ own = 0; }
+  const line = own > 0
+    ? `You own ${own} word${own === 1 ? '' : 's'} already, proven cold. On the free plan the count grows ${FREE_NEW_WORDS_PER_DAY} words a day at most — start your free week and take the brakes off.`
+    : `You've drilled ${drilled} words. On the free plan only ${FREE_NEW_WORDS_PER_DAY} new words a day get in — start your free week and take the brakes off.`;
   return `<div style="text-align:left;background:linear-gradient(135deg,rgba(159,233,207,.10),rgba(255,255,255,.04));border:1px solid rgba(159,233,207,.28);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px">
     <div style="font-weight:800;font-size:15px;margin-bottom:4px">It's sticking 🎉</div>
-    <div style="font-weight:600;font-size:12.5px;color:#cfc8e6;line-height:1.55;margin-bottom:12px">You've drilled ${drilled} words this week. Your free week ends in ${left} day${left === 1 ? '' : 's'} — lock in full speed and keep going.</div>
-    <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('paywall')">See plans →</button>
+    <div style="font-weight:600;font-size:12.5px;color:#cfc8e6;line-height:1.55;margin-bottom:12px">${line}</div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('paywall')">Start my free week →</button>
     <button class="ob-switch" style="width:100%" onclick="trialNudgeDismiss()">Not now</button>
   </div>`;
 }
@@ -28448,6 +28515,11 @@ function renderBuildModeComplete(){
     const _nextMix = (_s.plays % 2) === 1;
     /* v9.13 — a finished category round ends on its sticker (2b). */
     if(!_stopped && _sec && _stkIs(_sec.id)) return _stkBurst(_sec, { n: spamN, mins: _mins, nextMix: _nextMix, ids: _s.ids });
+    /* v9.40 — the plain round end must also count as the first round done,
+       or the once-only plans screen (and the tomorrow card) never fire for a
+       learner whose first round ends here instead of on a sticker. */
+    if(!_stopped && !state.settings.r1Done){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
+    let _ownP = 0; try{ _ownP = wordsThatStick().N; }catch(e){ _ownP = 0; }
     /* v9.23 — same tidy layout as the sticker round end (7f), without the sticker. */
     const _nm = _firstName();
     return `
@@ -28455,7 +28527,7 @@ function renderBuildModeComplete(){
       <div class="stk-okmark" aria-hidden="true">✓</div>
       <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
       <div class="stk-bsub">${_secLine}${_mins} min this session</div>
-      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>
+      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words${_ownP > 0 ? ` · you own <b>${_ownP}</b> so far` : ''}</span></div>
       ${_autoSwapHtml()}
       <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(spamN)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
@@ -30598,6 +30670,14 @@ function nav(screen, data, fromPop){
      same screen in edit mode (state._nameEdit). */
   if(screen !== 'auth' && screen !== 'name' && _nameNeeded()) screen = 'name';
   if(screen === 'name' && !state._nameEdit && !_nameNeeded()) screen = 'home';
+  /* v9.40 — card-required trial: the plans screen is shown ONCE, the first
+     time the learner leaves their first round. "Not now" drops to the free
+     plan (3 new words a day) and the screen never forces itself again. */
+  if(_trialOfferDue(screen)){
+    state.settings.trialOfferShown = _catDayKey();
+    try{ save(); }catch(e){}
+    screen = 'paywall';
+  }
   /* Entitlement tier (v8.79 free plan) — the old hard redirect to the
      paywall is GONE. A signed-in account past its free week now drops to
      the free plan (reviews unlimited, FREE_NEW_WORDS_PER_DAY new words a
@@ -31062,7 +31142,8 @@ function _stkBurst(sec, o){
     bm._r1 = !state.settings.r1Done;
     if(bm._r1){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
   }
-  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words</span></div>`;
+  let _own = 0; try{ _own = wordsThatStick().N; }catch(e){ _own = 0; }
+  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words${_own > 0 ? ` · you own <b>${_own}</b> so far` : ''}</span></div>`;
   const inst = _installCardHtml(bm);
   /* v9.21 — Claude Design 7f: one celebration, one big button. The stats row
      and the recap boxes under the card are gone (they repeated the headline). */
@@ -31295,7 +31376,7 @@ function renderHome(){
   let freeBanner = '';
   try{
     if(_freeTierActive() && typeof _authState !== 'undefined' && _authState.user
-       && !_entTrialGood(_authState.user) && !_entOwnerAccount(_authState.user)){
+       && !_entOwnerAccount(_authState.user)){
       const ftLeft = _freeTierNewBudget();
       const ftLocked = _freeTierLockedCount();
       freeBanner = `
@@ -32450,7 +32531,7 @@ function renderPractice(){
     <div class="home-v8">
       ${topBar}
       ${pathStrip}
-      <div class="stk-ph"><b>Pick a sticker</b><span>${_stkAll().length} stickers · ${(_freeTierActive() && _authState.user && !_entTrialGood(_authState.user) && !_entOwnerAccount(_authState.user)) ? FREE_NEW_WORDS_PER_DAY + ' new words a day' : '30 words a round'}</span></div>
+      <div class="stk-ph"><b>Pick a sticker</b><span>${_stkAll().length} stickers · ${(_freeTierActive() && _authState.user && !_entOwnerAccount(_authState.user)) ? FREE_NEW_WORDS_PER_DAY + ' new words a day' : '30 words a round'}</span></div>
       ${searchBox}
       ${coverageMeterHtml}
       ${_stkTodayPick()}
@@ -32790,7 +32871,7 @@ async function _settingsPlanLoad(){
   try{
     const c = authClient();
     if(c && typeof c.from === 'function'){
-      const { data, error } = await c.from('entitlements').select('active, product, expires_at, stripe_customer_id').eq('user_id', u.id).maybeSingle();
+      const { data, error } = await c.from('entitlements').select('*').eq('user_id', u.id).maybeSingle();
       if(!error) _setUi.plan = data || {};
     }
   }catch(e){}
@@ -32806,12 +32887,14 @@ function _settingsPlanLine(){
   const manage = !!(p && p.stripe_customer_id);
   if(p && p.active && (!p.expires_at || new Date(p.expires_at) > new Date())){
     const yearly = /year/i.test(p.product || '');
-    const until = p.expires_at ? new Date(p.expires_at).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) : '';
+    const fmt = (d) => new Date(d).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+    /* v9.40 — a Stripe trial: card on file, first charge at trial end. */
+    if(p.status === 'trialing'){
+      const ends = p.trial_end || p.expires_at;
+      return { line:`Free week${ends ? ' · ends ' + fmt(ends) : ''} · then ${yearly ? 'yearly' : 'monthly'}`, manage, plans:false };
+    }
+    const until = p.expires_at ? fmt(p.expires_at) : '';
     return { line:`${yearly ? 'Yearly' : 'Monthly'} plan${until ? ' · paid through ' + until : ''}`, manage, plans:false };
-  }
-  if(_entTrialGood(u)){
-    const left = Math.max(1, Math.ceil((new Date(u.created_at).getTime() + ENT_FREE_TRIAL_MS - Date.now()) / 86400000));
-    return { line:`Free trial · ${left} day${left === 1 ? '' : 's'} left`, manage, plans:true };
   }
   return { line: p ? 'Free plan' : 'Checking your plan…', manage, plans:true };
 }
@@ -32948,6 +33031,8 @@ function renderSettings(){
    room. Silent for the first 3 taps so customers never trip over it. */
 let _verTapCount = 0, _verTapT = 0;
 function _verTap(){
+  /* v9.40 — only the owner's signed-in account can open the control room. */
+  try{ if(!_entOwnerAccount(_authState && _authState.user)) return; }catch(e){ return; }
   const t = Date.now();
   if(t - _verTapT > 2500) _verTapCount = 0;
   _verTapT = t;

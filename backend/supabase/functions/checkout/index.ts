@@ -4,12 +4,12 @@
 // real account, so there is no soft-secret path here.
 // The webhook (stripe-webhook/) is the only writer of entitlements; this
 // function only mints the redirect URL.
-// No Stripe-side trial (owner call 2026-08-28): the app itself gives the
-// 7-day free week from account creation, so checkout charges immediately —
-// the old trial_period_days stacked a SECOND free week on top and pushed
-// first revenue to day ~14.
+// Card-required trial (owner call 2026-09-23, cold-traffic economics): the
+// free week now lives HERE — trial_period_days=7 with the card collected up
+// front — and the app's own card-free week from account creation is gone
+// (index.html v9.40). One free week, one place, first charge on day 8.
 
-import { CORS, json, svc } from '../_shared/gate.ts'
+import { CORS, json, svc, TRIAL_DAYS } from '../_shared/gate.ts'
 import { stripeFetch } from '../_shared/stripe.ts'
 
 // app.wordstick.app is the app's home; jvrj.github.io stays allowed so a
@@ -61,6 +61,12 @@ Deno.serve(async (req) => {
     'line_items[0][price]': priceId,
     'line_items[0][quantity]': '1',
     'subscription_data[metadata][user_id]': user.id,
+    'subscription_data[trial_period_days]': String(TRIAL_DAYS),
+    // Card always collected, even during the trial — the whole point of the
+    // opt-out trial. If the card is somehow missing at trial end, cancel
+    // rather than leave a zombie subscription.
+    payment_method_collection: 'always',
+    'subscription_data[trial_settings][end_behavior][missing_payment_method]': 'cancel',
     client_reference_id: user.id,
     success_url: successUrl,
     cancel_url: cancelUrl,

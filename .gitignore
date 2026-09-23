@@ -7,3 +7,7 @@
 
 # Raw phone screen recordings for the ad/landing video (never published)
 video_raw/
+
+# Local Chrome profile used for NotebookLM/Quizlet scraping — holds saved logins, never publish
+study_notes/quizlet/_chrome_profile/
+**/_chrome_profile/

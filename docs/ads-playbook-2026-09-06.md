@@ -189,3 +189,39 @@ two calls) + Ben (copywriter) + Patrick Kenney (Google Ads).*
 
 *Source transcripts: D:\ff-transcribe\transcripts\b1–b5, b7 + b1/b2 ALEN-WRITTEN-NOTES.
 Course lessons: NHB-FF/04a, 17a, 39a.*
+
+## 14. Cold-traffic economics — the 23 Sep reset (why the first plan could not pay)
+*Added 23 Sep 2026 after the full-app audit. Owner call: "it's just an economic mismatch — make these changes."*
+
+**The mismatch.** A bathroom job pays $10k–30k a week after the click; a $8.99/mo
+subscription pays $9 on day 8 and about $45–60 over its life. Same ad cost, 200× less
+cash per customer. Education-app benchmarks (RevenueCat 2026, Adapty Apr 2026): trial→paid
+25–31%, install→paid ~2%, 12-month LTV ~$45. Nobody in the Japanese niche scaled on cold
+Facebook at a $9 monthly price with a card-free trial.
+
+**The four levers (all shipped/planned 23 Sep):**
+1. **Card at the start of the trial** (Stripe `trial_period_days=7`, card collected). Card-free
+   trials never force a payment decision; opt-out trials convert roughly 3–4× better.
+   The first ROUND stays free with no card — that is the demo. The plans screen comes once, after it.
+2. **Yearly first.** $59.99 lands on day 8 and recovers the whole customer value at once. Monthly
+   is the secondary card ("or pay monthly").
+3. **The honest count is the product from day 2.** Morning check daily; "you own N words" on
+   Home, the round end and the plans screen; "Missed it" one tap away on every card so the
+   number is real. The trial must END with a growing number the learner does not want to lose.
+4. **Target intent, not interest.** Not "likes Japan". People who booked a Japan trip, enrolled in
+   a class (Minna no Nihongo / Genki learners), or registered for the December JLPT. Same as
+   targeting new-house buyers, not bathroom fans.
+
+**The maths that has to hold (web app = a landing click, not a $70 app install):**
+- Landing click (interest/intent targeting): **$0.50–2.00**
+- Landing → card trial started: **≥ 8%** (kill line; aim 15–20%)
+- Trial → paid on day 8: **≥ 20%** (kill line; aim 30%)
+- Cost per paying customer: **≤ $45** (kill line) against $59.99 in hand on day 8
+- Worked example: $1 click ÷ (0.15 × 0.30) = **$22 per payer**
+
+**The test: $300, not $150.** At $150 the trial-start count is too small to read. Run the
+Loren recipe (§8) with the four levers live; grade ONLY on the three kill lines above. All
+three clear → scale spend 2× per week while they hold. One fails → work that lever, retest.
+
+**Not the plan:** more features, AI conversation, avatar, more languages. Praktika and Speak
+grew on an audience moment plus $20M–100M ARR; the solo lever is unit economics + honest proof.

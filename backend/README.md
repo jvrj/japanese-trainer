@@ -43,7 +43,17 @@ columns included) and nothing else's. No insert/delete/select widening.
 
 ## Billing (Stripe — wired 2026-08-23, TEST mode)
 Web + Stripe first (go-to-market lock 2026-08-20): $8.99/mo + $59.99/yr, 7-day
-card trial, USD. Stripe writes the `entitlements` table (migration 0004 adds the
+card trial, USD.
+
+**Card-required trial (2026-09-23):** `checkout` now passes
+`subscription_data[trial_period_days]=TRIAL_DAYS` + `payment_method_collection=always`,
+so the free week is a Stripe trial with the card on file and the first charge
+on day 8. The app's old card-free week from `created_at` is gone (v9.40).
+Migration 0007 adds `entitlements.status` + `trial_end`; the webhook writes
+them on every event. **Deploy:** `supabase db push` (0007), then
+`supabase functions deploy checkout` and `supabase functions deploy stripe-webhook`.
+In the Stripe dashboard turn on **Customer emails → "Trial ending" reminder**
+(sent 3 days before) so the promise on the plans screen is kept. Stripe writes the `entitlements` table (migration 0004 adds the
 stripe columns); the gate reads it unchanged — RevenueCat's old seat, taken by
 Stripe.
 

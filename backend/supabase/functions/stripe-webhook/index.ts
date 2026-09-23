@@ -68,6 +68,10 @@ async function applySubscription(sub: any, userId: string | null | undefined): P
     expires_at: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     stripe_customer_id: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id ?? null,
     stripe_subscription_id: sub.id ?? null,
+    // v9.40 — migration 0007: the raw Stripe status and the trial end, so the
+    // app can tell a free week from a paid period without guessing.
+    status: sub.status ?? null,
+    trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
     updated_at: new Date().toISOString(),
   })
   if (error) throw new Error('entitlements upsert failed: ' + error.message)
