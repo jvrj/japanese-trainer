@@ -20,6 +20,12 @@
 >    Supabase are the live values — `supabase secrets list` shows the names).
 >    Then buy your own product once with a real card and refund it.
 >
+> 4. **Add the keepalive workflow on GitHub** (2 min, in the browser — git and
+>    `gh` on this PC can't create workflow files). Repo → Add file → Create new
+>    file → name `.github/workflows/supabase-keepalive.yml` → paste the contents
+>    of the same file from this folder → Commit. It pings Supabase every 3 days
+>    so the free tier never pauses sign-in and checkout again.
+>
 > After those: the $300 cold-traffic test with the three kill lines in
 > `docs/ads-playbook-2026-09-06.md` §14 (landing→trial ≥ 8%, trial→paid ≥ 20%,
 > cost per payer ≤ $45). Intent targeting only (Japan trip booked / in a
