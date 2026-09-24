@@ -5,6 +5,14 @@ speak with, built ON the ledger (the drill is its memory). The spike is coded on
 the `staging` branch (v9.50) and verified locally with a mocked call. To hear it
 on your phone you need to do THREE things (all backend/owner actions):
 
+0. Make the staging site (Claude is not allowed to create a public repo). In
+   the repo folder run these three, then wait ~2 min for Pages to build:
+   `gh repo create jvrj/wordstick-staging --public -d "WordStick STAGING"`
+   `git push https://github.com/jvrj/wordstick-staging.git staging:main`
+   `gh api -X POST repos/jvrj/wordstick-staging/pages -f "source[branch]=main" -f "source[path]=/"`
+   Staging URL will be **https://jvrj.github.io/wordstick-staging/**
+   (Google sign-in there needs that origin added in Supabase → Auth → URL
+   configuration; email + password works without it.)
 1. In `backend/`: `supabase db push` · `supabase functions deploy talk-token`
    (plus the earlier `checkout` / `stripe-webhook` deploys if not done yet).
 2. Open the STAGING site on your Pixel with headphones (URL in the message
