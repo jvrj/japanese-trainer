@@ -1274,7 +1274,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.40';
+const APP_VERSION = '9.41';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -31387,7 +31387,7 @@ function renderHome(){
             <div style="font-weight:800;font-size:14px">Free plan — ${isFinite(ftLeft) ? ftLeft : 0} new word${ftLeft === 1 ? '' : 's'} left today</div>
             <div class="muted" style="font-size:12px;margin-top:2px">Reviews are unlimited.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} words waiting to unlock.` : ''}</div>
           </div>
-          <button class="hv9-pill on" style="flex-shrink:0" onclick="nav('paywall')">Unlock</button>
+          <button class="hv9-pill on" style="width:auto;flex-shrink:0;margin-top:0;padding:10px 16px" onclick="nav('paywall')">Unlock</button>
         </div>
       </div>`;
     }
