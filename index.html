@@ -869,6 +869,12 @@ body[data-screen="checkoutReturn"] .back-fab{display:none !important}
 /* ===== v8.67 Studio drill card (approved design batch 2, card 4) ===== */
 /* The drill owns its own header (X + progress + counter) — hide the app
    chrome above it, same pattern as the home screen. v9.21: the bottom nav hides too. */
+body[data-screen="talk"] .header,
+body[data-screen="talk"] .bottom-nav,
+body[data-screen="talk"] .notes-fab,
+body[data-screen="talk"] .ask-fab,
+body[data-screen="talk"] .back-fab{display:none !important}
+body[data-screen="talk"] .app{padding-top:max(10px,env(safe-area-inset-top));padding-bottom:0}
 body[data-screen="buildMode"] .header{display:none}
 body[data-screen="buildMode"] .app{padding-top:max(10px,env(safe-area-inset-top))}
 body[data-screen="buildMode"] .back-fab,
@@ -916,6 +922,43 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .bm2 .build-phase-label.bm2-status{font-size:19px;font-weight:900;color:#b97bff;margin:14px 0 0;letter-spacing:0;text-transform:none;min-height:26px}
 .bm2.say .build-phase-label.bm2-status{color:#ff8fc0}
 .bm2 .build-countdown{display:none}
+
+/* ---- Talk (live voice teacher, staging) ---- */
+.tk-screen{min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:12px 18px 28px;gap:12px;text-align:center}
+.tk-top{width:100%;display:flex;align-items:center;justify-content:space-between}
+.tk-x{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:18px;cursor:pointer}
+.tk-clock{font:800 20px/1 Nunito,system-ui,sans-serif;color:#fff;letter-spacing:.5px;font-variant-numeric:tabular-nums}
+.tk-orb{width:132px;height:132px;border-radius:50%;margin-top:10px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.28),rgba(255,255,255,0) 55%),linear-gradient(150deg,#ff6bba,#9d5cff);box-shadow:0 18px 50px rgba(157,92,255,.45)}
+.tk-orb.live{animation:tkPulse 2.2s ease-in-out infinite}
+@keyframes tkPulse{0%,100%{box-shadow:0 18px 50px rgba(157,92,255,.45)}50%{box-shadow:0 18px 70px rgba(255,107,186,.75),0 0 0 14px rgba(255,107,186,.10)}}
+.tk-orb-in{font-size:58px;line-height:1}
+.tk-status{font-weight:700;color:#d8d0f0;font-size:14px}
+.tk-title{font:800 26px/1.15 Nunito,system-ui,sans-serif;color:#fff;margin-top:4px}
+.tk-sub{color:#b9aed6;font-size:14px;line-height:1.4;max-width:34ch}
+.tk-card{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:6px}
+.tk-row{font-size:14px;color:#e6dff8}.tk-row.muted{color:#8a80a8;font-size:12.5px}
+.tk-lines{width:100%;flex:1;min-height:120px;max-height:38vh;overflow-y:auto;text-align:left;display:flex;flex-direction:column;gap:8px;padding:4px 2px}
+.tk-line{padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.4;max-width:92%}
+.tk-line.teacher{align-self:flex-start;background:rgba(157,92,255,.16);border:1px solid rgba(157,92,255,.28);color:#fff}
+.tk-line.you{align-self:flex-end;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#e6dff8}
+.tk-line.sys{align-self:center;color:#ffb74d;font-size:12px;background:none;border:none}
+.tk-who{display:block;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;opacity:.6;margin-bottom:2px}
+.tk-marks{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:0}
+.tk-mark{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.4);color:#9fe9cf}
+.tk-mark.fumbled{background:rgba(255,183,77,.14);border-color:rgba(255,183,77,.45);color:#ffd27a}
+.tk-actions{width:100%;display:flex;gap:10px;margin-top:auto}
+.tk-btn{flex:1;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#fff;font:800 14px Nunito,system-ui,sans-serif;cursor:pointer}
+.tk-btn.end{background:rgba(255,93,158,.18);border-color:rgba(255,93,158,.5)}
+.tk-primary{width:100%;padding:16px;border:none;border-radius:16px;font:800 16px Nunito,system-ui,sans-serif;color:#fff;background:linear-gradient(100deg,#9d5cff,#ff5d9e);box-shadow:0 12px 30px rgba(255,93,158,.4);cursor:pointer;margin-top:6px}
+.tk-link{background:none;border:none;color:#c9b3ff;text-decoration:underline;font:700 14px Nunito,system-ui,sans-serif;cursor:pointer;padding:8px}
+.tk-hint{color:#8a80a8;font-size:12.5px}
+.tk-err{width:100%;background:rgba(255,120,120,.12);border:1px solid rgba(255,120,120,.4);border-radius:14px;padding:10px 12px;color:#ffb3b3;font-size:13px}
+.tk-done-ico{font-size:54px;margin-top:10px}
+.tk-eng{display:flex;align-items:center;gap:6px;font-size:12px;color:#8a80a8;flex-wrap:wrap;justify-content:center}
+.tk-engbtn{padding:5px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#d8d0f0;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}
+.tk-engbtn.on{background:rgba(157,92,255,.28);border-color:rgba(157,92,255,.7);color:#fff}
+.tk-model{font-size:10px;color:#6f6688}
+.tk-live-row .h8-row-emoji{background:linear-gradient(150deg,#34d399,#9d5cff)!important;box-shadow:0 8px 22px rgba(52,211,153,.35)!important}
 .pw-hero{border-color:rgba(255,120,200,.55)!important;box-shadow:0 0 0 1px rgba(255,120,200,.25),0 10px 30px rgba(255,120,200,.12)}
 .bm2-missrow{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px}
 .bm2-miss{padding:9px 16px;border-radius:99px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);font:800 13px Nunito,system-ui,sans-serif;color:#d8d0f0;cursor:pointer}
@@ -1274,7 +1317,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.41';
+const APP_VERSION = '9.50';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -28628,7 +28671,7 @@ function renderTopbar(){
      own in-flow "Sign in"/"Create account" switch link, so it gets the same
      no-generic-topbar treatment. */
   /* v9.06 — the morning check draws no topbar (owner: match the mock; "Not now" is the exit). */
-  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'name' || state.screen === 'cold' || state.screen === 'sticker') return '';
+  if(state.screen === 'home' || state.screen === 'practice' || state.screen === 'onboard' || state.screen === 'auth' || state.screen === 'name' || state.screen === 'cold' || state.screen === 'sticker' || state.screen === 'talk') return '';
   /* v8.67 — the drill draws its own header (✕ + progress + counter); the
      generic back topbar would be a second, redundant exit above it. */
   if(state.screen === 'buildMode' && state.buildMode?.lesson) return '';
@@ -29270,6 +29313,298 @@ const COLD_PASS_LINES = [
   'no hints, no options. Yours.',
   'a day later and still there. That’s what sticking means.'
 ];
+/* =========================================================================
+   TALK — the live voice teacher (staging, owner call 2026-09-24 "voice next").
+   A one-on-one spoken lesson over the LEDGER: the phone opens a direct
+   WebRTC call to the realtime model with a short-lived pass minted by the
+   talk-token function (the OpenAI key never reaches the phone). The
+   teacher is told the words the learner OWNS (cold-check certified), the
+   words DUE today and up to two FRESH ones, and speaks mostly Japanese.
+   The teacher reports fumbles/clean uses through a tool call (mark_word).
+   Honest-metrics rule: a mark STEERS scheduling only — a fumble reseats
+   the word at the front of the batch and grades it "again"; a clean use
+   is recorded as a warm recall. Neither ever sets certLevel: the morning
+   check stays the one place a word is PROVEN (see wtsStuck / _coldApply).
+   ========================================================================= */
+const TALK_URL = SUPA_URL + '/functions/v1/talk-token';
+const TALK_OAI_CALLS = 'https://api.openai.com/v1/realtime/calls';
+window._talk = window._talk || { status:'idle', lines:[], marks:[], err:'', engine:null, model:'', startedAt:0, secondsLeft:0, capSeconds:0, pc:null, dc:null, stream:null, audio:null, tick:null, endAt:0, lastUsage:0, muted:false };
+
+function _talkWords(){
+  const all = getActiveWords();
+  const byId = new Map(all.map(w => [w.id, w]));
+  const slim = w => ({ id:w.id, jp:w.jp, romaji:w.romaji || '', en:w.en });
+  const owned = all.filter(w => wtsStuck(w));
+  /* most recently certified first, so a big ledger keeps today's words in the prompt */
+  owned.sort((a, b) => ((state.stats[b.id] || {}).certAt || 0) - ((state.stats[a.id] || {}).certAt || 0));
+  let due = [];
+  try{ due = _coldCandidates().map(id => byId.get(id)).filter(Boolean); }catch(e){ due = []; }
+  const dueSet = new Set(due.map(w => w.id));
+  const fresh = all.filter(w => !wtsStuck(w) && !dueSet.has(w.id) && wtsWarming(w)).slice(0, 2);
+  return { name: state.settings.userName || '', owned: owned.slice(0, 120).map(slim), due: due.map(slim), fresh: fresh.map(slim) };
+}
+function _talkFindWord(jp){
+  /* exact match only, and only against the words the teacher was given —
+     a loose "contains" match once credited ちがう for ぜんぜんちがう. */
+  const norm = s => String(s || '').replace(/[\s　・。、!！?？]/g, '');
+  const want = norm(jp);
+  if(!want) return null;
+  const t = window._talk;
+  const ids = new Set(((t.ctx && [].concat(t.ctx.owned || [], t.ctx.due || [], t.ctx.fresh || [])) || []).map(x => x.id));
+  const all = getActiveWords().filter(w => ids.has(w.id));
+  return all.find(w => norm(w.jp) === want) || all.find(w => w.romaji && norm(w.romaji).toLowerCase() === want.toLowerCase()) || null;
+}
+function _talkEngine(){
+  const e = state.settings.talkEngine;
+  return e === 'mini' ? 'mini' : 'full';
+}
+function talkSetEngine(e){ state.settings.talkEngine = e === 'mini' ? 'mini' : 'full'; save(); render(); }
+window.talkSetEngine = talkSetEngine;
+
+async function _talkPost(body){
+  const token = await authToken();
+  if(!token) return { status:401, body:{} };
+  const res = await fetch(TALK_URL, { method:'POST', headers:{ 'content-type':'application/json', 'authorization':'Bearer ' + token }, body: JSON.stringify(body) });
+  let j = {}; try{ j = await res.json(); }catch(e){}
+  return { status: res.status, body: j };
+}
+
+function _talkSend(obj){
+  const t = window._talk;
+  try{ if(t.dc && t.dc.readyState === 'open') t.dc.send(JSON.stringify(obj)); }catch(e){}
+}
+
+async function talkStart(){
+  const t = window._talk;
+  if(t.status === 'connecting' || t.status === 'live') return;
+  if(!_entGateOpen()){ nav('paywall'); return; }
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.RTCPeerConnection)){
+    t.status = 'error'; t.err = 'This browser cannot make a live call. Try Chrome.'; render(); return;
+  }
+  t.status = 'connecting'; t.err = ''; t.lines = []; t.marks = []; t.lastUsage = 0; t.muted = false; render();
+  try{
+    t.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+  }catch(e){
+    t.status = 'error'; t.err = 'Microphone permission is needed for a lesson.'; render(); return;
+  }
+  const ctx = _talkWords(); t.ctx = ctx;
+  const r = await _talkPost({ action:'start', engine:_talkEngine(), ctx });
+  if(r.status !== 200){
+    _talkCleanup();
+    t.status = 'error';
+    t.err = r.status === 429 && r.body && r.body.error === 'talk_cap' ? 'You have used today\'s lesson minutes. Come back tomorrow.'
+          : r.status === 402 ? 'Talk is part of the paid plan.'
+          : r.status === 401 ? 'Please sign in again.'
+          : 'The teacher is not available right now. Try again in a minute.';
+    render(); return;
+  }
+  t.engine = r.body.engine; t.model = r.body.model; t.secondsLeft = Number(r.body.seconds_left || 0); t.capSeconds = Number(r.body.cap_seconds || 0);
+  try{
+    const pc = new RTCPeerConnection();
+    t.pc = pc;
+    const audio = document.createElement('audio'); audio.autoplay = true; audio.setAttribute('playsinline', ''); t.audio = audio;
+    pc.ontrack = ev => { audio.srcObject = ev.streams[0]; };
+    t.stream.getTracks().forEach(tr => pc.addTrack(tr, t.stream));
+    const dc = pc.createDataChannel('oai-events'); t.dc = dc;
+    dc.onmessage = ev => { try{ _talkOnEvent(JSON.parse(ev.data)); }catch(e){} };
+    dc.onopen = () => {
+      /* the teacher speaks first: greet + the first due word */
+      _talkSend({ type:'response.create', response:{ instructions:'Greet the learner briefly in Japanese and start the lesson with the first due word, if any.' } });
+    };
+    pc.onconnectionstatechange = () => {
+      if(!t.pc) return;
+      if(pc.connectionState === 'failed' || pc.connectionState === 'disconnected'){ if(t.status === 'live') talkStop('dropped'); }
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const sdpRes = await fetch(TALK_OAI_CALLS + '?model=' + encodeURIComponent(t.model), {
+      method:'POST', headers:{ 'authorization':'Bearer ' + r.body.client_secret, 'content-type':'application/sdp' }, body: offer.sdp,
+    });
+    if(!sdpRes.ok) throw new Error('call ' + sdpRes.status);
+    const answer = await sdpRes.text();
+    await pc.setRemoteDescription({ type:'answer', sdp: answer });
+    t.status = 'live'; t.startedAt = Date.now(); t.endAt = t.startedAt + t.secondsLeft * 1000;
+    clearInterval(t.tick);
+    t.tick = setInterval(() => {
+      if(t.status !== 'live') return;
+      const el = document.getElementById('tkClock'); if(el) el.textContent = _talkClock();
+      if(Date.now() >= t.endAt) talkStop('time');
+    }, 500);
+    try{ log('talk_start', { engine:t.engine, owned:ctx.owned.length, due:ctx.due.length }); }catch(e){}
+    render();
+  }catch(e){
+    _talkCleanup();
+    t.status = 'error'; t.err = 'Could not connect the call. Check your connection and try again.'; render();
+  }
+}
+window.talkStart = talkStart;
+
+function _talkClock(){
+  const t = window._talk;
+  const left = Math.max(0, Math.round((t.endAt - Date.now()) / 1000));
+  return Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+}
+
+function _talkOnEvent(ev){
+  const t = window._talk;
+  if(!ev || !ev.type) return;
+  if(ev.type === 'conversation.item.input_audio_transcription.completed'){
+    const text = String(ev.transcript || '').trim();
+    if(text){ t.lines.push({ who:'you', text }); _talkRenderLines(); }
+  } else if(ev.type === 'response.output_audio_transcript.done'){
+    const text = String(ev.transcript || '').trim();
+    if(text){ t.lines.push({ who:'teacher', text }); _talkRenderLines(); }
+  } else if(ev.type === 'response.done'){
+    const items = (ev.response && ev.response.output) || [];
+    for(const it of items){
+      if(it && it.type === 'function_call' && it.name === 'mark_word'){
+        let args = {}; try{ args = JSON.parse(it.arguments || '{}'); }catch(e){}
+        const out = _talkMark(args);
+        _talkSend({ type:'conversation.item.create', item:{ type:'function_call_output', call_id: it.call_id, output: JSON.stringify(out) } });
+        _talkSend({ type:'response.create' });
+      }
+    }
+  } else if(ev.type === 'error'){
+    const msg = (ev.error && ev.error.message) || 'error';
+    t.lines.push({ who:'sys', text: msg }); _talkRenderLines();
+  }
+}
+
+/* The teacher's report. Steers the schedule, never certifies (see header). */
+function _talkMark(args){
+  const t = window._talk;
+  const w = _talkFindWord(args && args.jp);
+  const result = args && args.result === 'fumbled' ? 'fumbled' : 'clean';
+  if(!w) return { ok:false, reason:'not_in_ledger' };
+  if(t.marks.some(m => m.id === w.id)) return { ok:true, note:'already_marked' };
+  try{
+    if(result === 'fumbled'){
+      const st = smStatFor(w.id);
+      try{ smGrade(st, 'again'); }catch(e){}
+      try{ recordAttempt(w.id, false, 'talk'); }catch(e){}
+      try{ _coldReseat(w.id); }catch(e){}
+    } else {
+      try{ recordAttempt(w.id, true, 'talk'); }catch(e){}
+    }
+  }catch(e){}
+  t.marks.push({ id:w.id, jp:w.jp, en:w.en, result });
+  try{ log('talk_mark', { id:w.id, result }); }catch(e){}
+  save();
+  _talkRenderMarks();
+  return { ok:true };
+}
+
+function _talkCleanup(){
+  const t = window._talk;
+  clearInterval(t.tick); t.tick = null;
+  try{ if(t.dc) t.dc.close(); }catch(e){}
+  try{ if(t.pc) t.pc.close(); }catch(e){}
+  try{ if(t.stream) t.stream.getTracks().forEach(tr => tr.stop()); }catch(e){}
+  try{ if(t.audio){ t.audio.srcObject = null; } }catch(e){}
+  t.dc = null; t.pc = null; t.stream = null; t.audio = null;
+}
+
+async function talkStop(why){
+  const t = window._talk;
+  if(t.status !== 'live' && t.status !== 'connecting'){ return; }
+  const secs = t.startedAt ? Math.round((Date.now() - t.startedAt) / 1000) : 0;
+  _talkCleanup();
+  t.status = 'done'; t.lastUsage = secs; t.why = why || 'you';
+  try{ log('talk_end', { secs, why: t.why, marks: t.marks.length }); }catch(e){}
+  render();
+  try{ if(secs > 0) await _talkPost({ action:'usage', seconds: secs }); }catch(e){}
+  try{ _syncPushNow(); }catch(e){}
+}
+window.talkStop = talkStop;
+
+function talkMute(){
+  const t = window._talk;
+  t.muted = !t.muted;
+  try{ if(t.stream) t.stream.getAudioTracks().forEach(tr => { tr.enabled = !t.muted; }); }catch(e){}
+  const b = document.getElementById('tkMute'); if(b) b.textContent = t.muted ? '🔇 Mic off' : '🎙️ Mic on';
+}
+window.talkMute = talkMute;
+
+function _talkRenderLines(){
+  const el = document.getElementById('tkLines'); if(!el) return;
+  el.innerHTML = _talkLinesHtml();
+  el.scrollTop = el.scrollHeight;
+}
+function _talkLinesHtml(){
+  const t = window._talk;
+  if(!t.lines.length) return '<div class="tk-hint">Say こんにちは to begin.</div>';
+  return t.lines.slice(-12).map(l => `<div class="tk-line ${l.who}"><span class="tk-who">${l.who === 'you' ? 'You' : l.who === 'teacher' ? 'Teacher' : '·'}</span>${esc(l.text)}</div>`).join('');
+}
+function _talkRenderMarks(){
+  const el = document.getElementById('tkMarks'); if(!el) return;
+  el.innerHTML = _talkMarksHtml();
+}
+function _talkMarksHtml(){
+  const t = window._talk;
+  if(!t.marks.length) return '';
+  return t.marks.map(m => `<span class="tk-mark ${m.result}">${m.result === 'fumbled' ? '🔁' : '✓'} ${esc(m.jp)}</span>`).join('');
+}
+
+function renderTalk(){
+  const t = window._talk;
+  const mins = Math.round((t.capSeconds || 900) / 60);
+  const eng = _talkEngine();
+  const engineLine = state.settings.ownerMode === true
+    ? `<div class="tk-eng">Engine: <button class="tk-engbtn ${eng === 'full' ? 'on' : ''}" onclick="talkSetEngine('full')">Full</button><button class="tk-engbtn ${eng === 'mini' ? 'on' : ''}" onclick="talkSetEngine('mini')">Mini</button>${t.model ? `<span class="tk-model">${esc(t.model)}</span>` : ''}</div>`
+    : '';
+  const back = `<button class="tk-x" onclick="${t.status === 'live' ? "talkStop('you')" : "nav('practice')"}" aria-label="Back">✕</button>`;
+  if(t.status === 'live' || t.status === 'connecting'){
+    const live = t.status === 'live';
+    return `<div class="tk-screen">
+      <div class="tk-top">${back}<div class="tk-clock" id="tkClock">${live ? _talkClock() : '…'}</div><div style="width:44px"></div></div>
+      <div class="tk-orb ${live ? 'live' : ''}"><div class="tk-orb-in">🧑‍🏫</div></div>
+      <div class="tk-status">${live ? 'Your teacher is listening' : 'Connecting to your teacher…'}</div>
+      <div class="tk-lines" id="tkLines">${_talkLinesHtml()}</div>
+      <div class="tk-marks" id="tkMarks">${_talkMarksHtml()}</div>
+      <div class="tk-actions">
+        <button class="tk-btn" id="tkMute" onclick="talkMute()" ${live ? '' : 'disabled'}>${t.muted ? '🔇 Mic off' : '🎙️ Mic on'}</button>
+        <button class="tk-btn end" onclick="talkStop('you')">End lesson</button>
+      </div>
+    </div>`;
+  }
+  if(t.status === 'done'){
+    const clean = t.marks.filter(m => m.result === 'clean');
+    const fum = t.marks.filter(m => m.result === 'fumbled');
+    const m = Math.max(1, Math.round((t.lastUsage || 0) / 60));
+    return `<div class="tk-screen">
+      <div class="tk-top">${back}<div></div><div style="width:44px"></div></div>
+      <div class="tk-done-ico">✅</div>
+      <div class="tk-title">Lesson done</div>
+      <div class="tk-sub">${m} minute${m === 1 ? '' : 's'} with your teacher${t.why === 'time' ? ' · time is up for today' : ''}</div>
+      <div class="tk-card">
+        <div class="tk-row"><b>${clean.length}</b> word${clean.length === 1 ? '' : 's'} you used cleanly</div>
+        <div class="tk-row"><b>${fum.length}</b> coming back in your next round${fum.length ? ': ' + fum.map(x => esc(x.jp)).join('、') : ''}</div>
+        <div class="tk-row muted">Words are proven in the morning check, not here.</div>
+      </div>
+      ${engineLine}
+      <button class="tk-primary" onclick="talkStart()">Talk again</button>
+      <button class="tk-link" onclick="nav('home')">Home</button>
+    </div>`;
+  }
+  /* idle / error */
+  const ctx = _talkWords();
+  const locked = !_entGateOpen();
+  return `<div class="tk-screen">
+    <div class="tk-top">${back}<div></div><div style="width:44px"></div></div>
+    <div class="tk-orb"><div class="tk-orb-in">🧑‍🏫</div></div>
+    <div class="tk-title">Talk with your teacher</div>
+    <div class="tk-sub">A ${mins}-minute spoken lesson, in Japanese, using only the words you own.</div>
+    <div class="tk-card">
+      <div class="tk-row"><b>${ctx.owned.length}</b> words you own · <b>${ctx.due.length}</b> due today · <b>${ctx.fresh.length}</b> new</div>
+      <div class="tk-row muted">${ctx.owned.length ? 'Your teacher will only use these, so every sentence is one you can follow.' : 'Prove a few words in the morning check first — your teacher needs words to talk with.'}</div>
+    </div>
+    ${t.status === 'error' ? `<div class="tk-err">${esc(t.err)}</div>` : ''}
+    ${engineLine}
+    <button class="tk-primary" onclick="${locked ? "nav('paywall')" : 'talkStart()'}">${locked ? 'Unlock Talk' : '🎙️ Start lesson'}</button>
+    <div class="tk-hint">Headphones help. Speak when the teacher stops.</div>
+  </div>`;
+}
+
 function renderColdCheck(){
   const s = _coldEnsure();
   const total = s.ids.length;
@@ -30630,7 +30965,7 @@ function renderFrames(){
 
 function render(){
   updateNav();
-  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, name:renderNameGate, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker, frames:renderFrames}[state.screen] || renderHome;
+  const r = {home:renderHome, practice:renderPractice, settings:renderSettings, blitz:renderBlitz, forms:renderForms, formDrill:renderFormDrill, formBlitz:renderFormBlitz, kanaBlitz:renderKanaBlitz, sentenceBlitz:renderSentenceBlitz, buildMode:renderBuildMode, phrases:renderPhrases, phraseBlitz:renderPhraseBlitz, modules:renderModules, speakDrills:renderSpeakDrills, speakDrillSession:renderSpeakDrillSession, focus:renderFocus, collections:renderCollections, progress:renderProgress, sentenceCoach:renderSentenceCoach, recall:renderRecall, memory:renderMemory, nuance:renderNuance, formsLadder:renderFormsLadder, sentences:renderSentences, sentGap:renderSentGap, sentCount:renderSentCount, sentBuild:renderSentBuild, convo:renderConvo, onboard:renderOnboard, road:renderRoad, auth:renderAuth, name:renderNameGate, paywall:renderPaywall, checkoutReturn:renderCheckoutReturn, cold:renderColdCheck, sticker:renderSticker, frames:renderFrames, talk:renderTalk}[state.screen] || renderHome;
   const m = $('#main');
   m.innerHTML = renderTopbar() + r();
   document.body.dataset.screen = state.screen;
@@ -32495,6 +32830,14 @@ function renderPractice(){
       <span style="font-size:11px;color:var(--faint);line-height:1.25">${sub}</span>
     </button>`;
   const moreWays = `<div class="cat-group"><div class="cat-group-label">More ways to practise</div>
+    <button class="h8-row tk-live-row" onclick="nav('talk')" style="border-radius:18px;border:1px solid rgba(52,211,153,.35);margin-bottom:9px">
+      <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;flex-shrink:0">🧑‍🏫</div>
+      <div class="h8-row-body" style="min-width:0">
+        <div class="h8-row-title">Talk with your teacher <span style="font-size:10px;font-weight:800;letter-spacing:.6px;color:#9fe9cf;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.4);padding:2px 6px;border-radius:8px;margin-left:6px;vertical-align:middle">LIVE</span></div>
+        <div class="h8-row-meta">A spoken lesson, one on one, using only the words you own</div>
+      </div>
+      <div class="h8-row-arrow">›</div>
+    </button>
     <div style="display:flex;gap:9px">
       ${_pmTile("nav('sentences')", '🧩', 'linear-gradient(150deg,#ffb35c,#f2653f)', 'rgba(242,101,63,.40)', 'Sentences', 'Fill the gap · count it', false)}
       ${_pmTile('startFormsLadder()', '🪜', 'linear-gradient(150deg,#b97bff,#7b3ff2)', 'rgba(123,63,242,.40)', 'Verb forms', 'Every form of a verb', false)}
@@ -33235,6 +33578,13 @@ function _renderSettingsOwner(){
       <h3>🌅 Morning check</h3>
       <div class="muted" style="font-size:12px;margin-bottom:8px">The check runs once a day. Preview shows the real screen again, with your own words — nothing is scored or saved. Also reachable by opening the app at <b>app.wordstick.app/?cold=preview</b>.</div>
       <button class="btn btn-primary" onclick="coldPreviewStart()">▶ Preview the morning check</button>
+    </div>
+
+    ${groupHeader('Talk (live teacher)')}
+    <div class="card" style="border:1px solid rgba(52,211,153,.35)">
+      <h3>🧑‍🏫 Talk engine</h3>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">Full = best voice, ~8c a minute. Mini = ~3c a minute. Run the same lesson on both and compare. Current: <b>${_talkEngine() === 'mini' ? 'Mini' : 'Full'}</b></div>
+      <div style="display:flex;gap:8px"><button class="btn ${_talkEngine() === 'full' ? 'btn-primary' : 'btn-secondary'}" onclick="talkSetEngine('full')">Full</button><button class="btn ${_talkEngine() === 'mini' ? 'btn-primary' : 'btn-secondary'}" onclick="talkSetEngine('mini')">Mini</button><button class="btn btn-secondary" onclick="nav('talk')">Open Talk</button></div>
     </div>
 
     ${groupHeader('Data')}

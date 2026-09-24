@@ -1,3 +1,23 @@
+# DO THIS NEXT — 24 Sep 2026 (evening): the live teacher ("Talk") is built in STAGING
+
+Owner call today: **voice next.** WordStick becomes a one-on-one AI teacher you
+speak with, built ON the ledger (the drill is its memory). The spike is coded on
+the `staging` branch (v9.50) and verified locally with a mocked call. To hear it
+on your phone you need to do THREE things (all backend/owner actions):
+
+1. In `backend/`: `supabase db push` · `supabase functions deploy talk-token`
+   (plus the earlier `checkout` / `stripe-webhook` deploys if not done yet).
+2. Open the STAGING site on your Pixel with headphones (URL in the message
+   from Claude / `.state/context-handoff.md`), sign in with your owner account,
+   Practice → **Talk with your teacher** → Start lesson. Allow the microphone.
+3. Tell Claude how it felt: delay, interruptions, the voice, whether it stayed
+   inside your words. Then flip Settings (owner) → **Talk engine → Mini** and
+   run the same lesson again to hear the cheaper engine.
+
+Nothing on the live app (app.wordstick.app, v9.41) changed.
+
+---
+
 # WordStick · DO THIS NEXT
 *The ONE file that always knows the next step. If it looks stale, tell Claude: "refresh DO_THIS_NEXT.md".*
 *Last updated: **2026-09-23***

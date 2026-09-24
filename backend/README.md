@@ -169,3 +169,19 @@ Expect a JSON Anthropic response. A `401` = secret mismatch; `503` = ceiling hit
   re-tune once real usage data exists.
 - Atomic counters live in SQL (`bump_request`/`bump_item`/`add_spend`) so concurrent calls
   can't race past the cap.
+
+## Talk — the live voice teacher (STAGING, 2026-09-24 "voice next")
+`talk-token` mints a 60–120 s OpenAI Realtime **client secret** for a signed-in,
+entitled user and the phone opens a WebRTC call straight to OpenAI (the key
+never leaves the server). The session instructions are built server-side from
+the ledger the client sends (owned / due / fresh words) and carry ONE tool,
+`mark_word`, which the client turns into schedule steers (never certLevel).
+- Migration **0008** adds `talk_usage` + `talk_bump` (per-caller daily seconds).
+- Secrets/env: reuses `OPENAI_KEY`. Optional: `TALK_CAP_SECONDS` (default 900),
+  `TALK_ENGINE` (`full`|`mini`, default full), `TALK_MODEL_FULL`
+  (gpt-realtime-2.1), `TALK_MODEL_MINI` (gpt-realtime-2.1-mini), `TALK_VOICE` (marin).
+- Costs (Sep 2026 list prices, half listen/half speak): full ≈ 8c/min, mini ≈ 3c/min.
+  Each mint adds a cap-sized estimate to the global spend circuit-breaker.
+- **Deploy:** `supabase db push` (0008) · `supabase functions deploy talk-token`.
+- Gate: JWT only, `openGate` (entitlement when REQUIRE_ENTITLEMENT=true, rate
+  limit, circuit-breaker), then the daily seconds cap → 429 `talk_cap`.
