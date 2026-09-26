@@ -1,26 +1,24 @@
-# DO THIS NEXT — 24 Sep 2026 (evening): the live teacher ("Talk") is built in STAGING
+# DO THIS NEXT — 26 Sep 2026 (night): Talk is LIVE on staging and tested end to end by Claude
 
-Owner call today: **voice next.** WordStick becomes a one-on-one AI teacher you
-speak with, built ON the ledger (the drill is its memory). The spike is coded on
-the `staging` branch (v9.50) and verified locally with a mocked call. To hear it
-on your phone you need to do THREE things (all backend/owner actions):
+Staging site: **https://jvrj.github.io/wordstick-staging/** (v9.58). Backend
+deployed (talk-token, migrations 0007+0008, checkout, stripe-webhook). Claude
+now runs the REAL call from the PC with a recorded learner voice and reads
+every event, so you do not have to test each change. Latest rig results:
+opening "こんにちは、<name>！げんき？", one line per turn, English answered in
+English, "what?" / "slower" / "in English" obeyed, marks recorded, reply
+about 1.0–1.4 s after you stop talking, kana-only transcripts.
 
-0. Make the staging site (Claude is not allowed to create a public repo). In
-   the repo folder run these three, then wait ~2 min for Pages to build:
-   `gh repo create jvrj/wordstick-staging --public -d "WordStick STAGING"`
-   `git push https://github.com/jvrj/wordstick-staging.git staging:main`
-   `gh api -X POST repos/jvrj/wordstick-staging/pages -f "source[branch]=main" -f "source[path]=/"`
-   Staging URL will be **https://jvrj.github.io/wordstick-staging/**
-   (Google sign-in there needs that origin added in Supabase → Auth → URL
-   configuration; email + password works without it.)
-1. In `backend/`: `supabase db push` · `supabase functions deploy talk-token`
-   (plus the earlier `checkout` / `stripe-webhook` deploys if not done yet).
-2. Open the STAGING site on your Pixel with headphones (URL in the message
-   from Claude / `.state/context-handoff.md`), sign in with your owner account,
-   Practice → **Talk with your teacher** → Start lesson. Allow the microphone.
-3. Tell Claude how it felt: delay, interruptions, the voice, whether it stayed
-   inside your words. Then flip Settings (owner) → **Talk engine → Mini** and
-   run the same lesson again to hear the cheaper engine.
+The ONE thing the rig cannot check is your Pixel's microphone. In your test
+she never heard you at all (no speech reached the call). Likely cause:
+Bluetooth earbuds in Android Chrome. v9.56+ swaps to the next microphone on
+its own after 6 s of silence, and the call screen shows a live "mic" bar.
+
+**When you feel like it (20 seconds):** close the app tab, open the staging
+site, Practice → Talk with your teacher → Start lesson, say こんにちは, watch
+the mic bar. Moving bar + a reply = done. Flat bar = tell Claude "flat".
+
+Owner Settings → Talk engine → Mini switches to the cheaper engine (rig: faster
+but drifts off your words; Full stays the default).
 
 Nothing on the live app (app.wordstick.app, v9.41) changed.
 
