@@ -1317,7 +1317,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.51';
+const APP_VERSION = '9.52';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29409,7 +29409,7 @@ async function talkStart(){
     dc.onmessage = ev => { try{ _talkOnEvent(JSON.parse(ev.data)); }catch(e){} };
     dc.onopen = () => {
       /* the teacher speaks first: greet + the first due word */
-      _talkSend({ type:'response.create', response:{ instructions:'Greet the learner briefly in Japanese and start the lesson with the first due word, if any.' } });
+      _talkSend({ type:'response.create', response:{ instructions:'Say hello to the learner in three Japanese words or fewer, then ask ONE tiny question using only ledger words. One short sentence, then stop and wait.' } });
     };
     pc.onconnectionstatechange = () => {
       if(!t.pc) return;
