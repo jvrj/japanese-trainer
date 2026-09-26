@@ -1,3 +1,28 @@
+# DO THIS NEXT — 26 Sep 2026 (late): "Installing Compliance" applied, two calls are yours
+
+Claude read the whole 30 Apr call and wrote the WordStick version of it:
+**docs/installing-compliance-applied-2026-09-26.md** (2 minutes to read).
+Applied tonight on staging (v9.60) + the landing page on the staging branch:
+"free" is no longer the headline anywhere. The card screen now says "Try the
+whole thing for 7 days", the buttons say "Try it for 7 days", the small print
+says "Decide at the end of the week. Nothing to pay for 7 days, then $X". The
+exits no longer say "Not now" (a no that sticks to us) but "Keep going as I am"
+(a small yes). Sign-in page no longer opens with "Free".
+
+**Two decisions only you can make** (say "yes to 2", "yes to 3", or "no"):
+
+2. **Ask for the card the morning AFTER round 1, right after the check**, with
+   the learner's own proof on screen ("You just proved 8 words cold after a
+   night's sleep"). Today the card screen shows straight after round 1. The
+   call: let the thing prove itself, then ask; small step, not a jump. This
+   changes your 23 Sep card-after-round-1 call, so it is yours.
+3. **Ads target spenders, not the interested**: people already paying for
+   Japanese (classes, Duolingo Super, JLPT fees, Japan trips).
+
+Nothing on the live app changed. Talk on staging is verified (below).
+
+---
+
 # DO THIS NEXT — 26 Sep 2026 (late): Talk verified again, nothing for you to run
 
 You deployed the fixed function and reset the brake counter; Claude then ran

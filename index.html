@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.59';
+const APP_VERSION = '9.60';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10579,7 +10579,7 @@ function renderPaywall(){
       return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">✅</div>
-        <div class="ob-title">Your free week is on</div>
+        <div class="ob-title">Your 7 days are on</div>
         <div class="ob-sub">Everything is unlocked${endTxt ? ` until ${esc(endTxt)}` : ''}. Cancel anytime before then and you pay nothing — Settings → Your plan → Manage.</div>
         ${msgRow}
         <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="nav('home')">Back to my words</button>
@@ -10602,26 +10602,27 @@ function renderPaywall(){
     const ownLine = own > 0
       ? `You own <b>${own} word${own === 1 ? '' : 's'}</b> — proven cold, out of your own head. Keep the count growing.`
       : `Every word you prove in the morning check is yours for good. Watch the count grow.`;
-    const subLine = `${ownLine} 7 days free, everything unlocked — ${deckLine}. Cancel before the week ends and you pay nothing.`;
+    /* Installing Compliance (26 Sep): "free" is an afterthought, never the headline; the exit is a small yes, not a no. */
+    const subLine = `${ownLine} Everything unlocked for 7 days — ${deckLine} — and you decide at the end of the week. Nothing to pay for 7 days.`;
     const yr = PAYWALL_PRICES.yearly, mo = PAYWALL_PRICES.monthly;
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">🎟️</div>
-        <div class="ob-title">Start your free week</div>
+        <div class="ob-title">Try the whole thing for 7 days</div>
         <div class="ob-sub">${subLine}</div>
         <button class="ob-path-card pw-hero" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">▶</div>
-          <div class="ob-path-t">Start free week ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">Free for 7 days, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-t">Try it for 7 days ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">Decide at the end of the week. Nothing to pay for 7 days, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
         </button>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
           <div class="ob-path-t">Or pay monthly</div>
-          <div class="ob-path-s">Free for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-s">Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
         </button>
         <div class="ob-note" style="opacity:.8">Card needed to start. We email you the day before the week ends, so nothing sneaks up on you.</div>
         ${msgRow}
-        <button class="ob-switch" onclick="nav('home')">Not now — keep the free plan (${FREE_NEW_WORDS_PER_DAY} new words a day)</button>
+        <button class="ob-switch" onclick="nav('home')">Keep going as I am for now (${FREE_NEW_WORDS_PER_DAY} new words a day)</button>
       </div></div>`;
   } catch(e){
     return `
@@ -28389,13 +28390,13 @@ function _trialNudgeCard(){
   let own = 0;
   try{ own = wordsThatStick().N; }catch(e){ own = 0; }
   const line = own > 0
-    ? `You own ${own} word${own === 1 ? '' : 's'} already, proven cold. On the free plan the count grows ${FREE_NEW_WORDS_PER_DAY} words a day at most — start your free week and take the brakes off.`
-    : `You've drilled ${drilled} words. On the free plan only ${FREE_NEW_WORDS_PER_DAY} new words a day get in — start your free week and take the brakes off.`;
+    ? `You own ${own} word${own === 1 ? '' : 's'} already, proven cold. On the free plan the count grows ${FREE_NEW_WORDS_PER_DAY} words a day at most — try the whole thing for 7 days and take the brakes off.`
+    : `You've drilled ${drilled} words. On the free plan only ${FREE_NEW_WORDS_PER_DAY} new words a day get in — try the whole thing for 7 days and take the brakes off.`;
   return `<div style="text-align:left;background:linear-gradient(135deg,rgba(159,233,207,.10),rgba(255,255,255,.04));border:1px solid rgba(159,233,207,.28);border-radius:16px;padding:16px 16px 14px;margin-bottom:14px">
     <div style="font-weight:800;font-size:15px;margin-bottom:4px">It's sticking 🎉</div>
     <div style="font-weight:600;font-size:12.5px;color:#cfc8e6;line-height:1.55;margin-bottom:12px">${line}</div>
-    <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('paywall')">Start my free week →</button>
-    <button class="ob-switch" style="width:100%" onclick="trialNudgeDismiss()">Not now</button>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:6px" onclick="nav('paywall')">Try the whole thing for 7 days →</button>
+    <button class="ob-switch" style="width:100%" onclick="trialNudgeDismiss()">Keep going as I am</button>
   </div>`;
 }
 function trialNudgeDismiss(){
@@ -32435,7 +32436,7 @@ function _authFormHtml(ui){
   return `
     <div class="wsd"><div class="wsd-in wsd-login">
       <div class="wsd-brand"><i></i>WordStick</div>
-      <div class="wsd-sub">${isCreate ? 'Learn Japanese words that stick. Free for 7 days — no card needed.' : 'Welcome back. Your words are where you left them.'}</div>
+      <div class="wsd-sub">${isCreate ? 'Learn Japanese words that stick. Round one starts the moment you sign in — no card needed.' : 'Welcome back. Your words are where you left them.'}</div>
       <div class="wsd-tabs" role="tablist">${tab('create', 'Create account')}${tab('signin', 'Sign in')}</div>
       <div class="wsd-fields">
         ${nameField}
