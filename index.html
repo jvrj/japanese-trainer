@@ -958,6 +958,10 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 .tk-engbtn{padding:5px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#d8d0f0;font:800 12px Nunito,system-ui,sans-serif;cursor:pointer}
 .tk-engbtn.on{background:rgba(157,92,255,.28);border-color:rgba(157,92,255,.7);color:#fff}
 .tk-model{font-size:10px;color:#6f6688}
+.tk-micwrap{display:flex;align-items:center;gap:8px;width:60%;max-width:240px}
+.tk-miclabel{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#8a80a8}
+.tk-mictrack{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+.tk-micbar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#34d399,#9d5cff);transition:width .12s linear}
 .tk-live-row .h8-row-emoji{background:linear-gradient(150deg,#34d399,#9d5cff)!important;box-shadow:0 8px 22px rgba(52,211,153,.35)!important}
 .pw-hero{border-color:rgba(255,120,200,.55)!important;box-shadow:0 0 0 1px rgba(255,120,200,.25),0 10px 30px rgba(255,120,200,.12)}
 .bm2-missrow{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:10px}
@@ -1317,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.54';
+const APP_VERSION = '9.55';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29387,6 +29391,13 @@ async function talkStart(){
   }catch(e){
     t.status = 'error'; t.err = 'Microphone permission is needed for a lesson.'; render(); return;
   }
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    t._ac = new AC(); t._an = t._ac.createAnalyser(); t._an.fftSize = 512;
+    t._ac.createMediaStreamSource(t.stream).connect(t._an);
+    t._micBuf = new Uint8Array(t._an.fftSize); t._micLastLoud = 0; t._micLevel = 0;
+    try{ t._ac.resume(); }catch(e){}
+  }catch(e){ t._an = null; }
   const ctx = _talkWords(); t.ctx = ctx;
   const r = await _talkPost({ action:'start', engine:_talkEngine(), ctx });
   if(r.status !== 200){
@@ -29431,8 +29442,18 @@ async function talkStart(){
     t.tick = setInterval(() => {
       if(t.status !== 'live') return;
       const el = document.getElementById('tkClock'); if(el) el.textContent = _talkClock();
+      if(t._an){
+        try{
+          t._an.getByteTimeDomainData(t._micBuf);
+          let m = 0; for(let i = 0; i < t._micBuf.length; i++){ const d = Math.abs(t._micBuf[i] - 128); if(d > m) m = d; }
+          t._micLevel = m / 128; if(m > 4) t._micLastLoud = Date.now();
+          const bar = document.getElementById('tkMic'); if(bar) bar.style.width = Math.min(100, Math.round(t._micLevel * 250)) + '%';
+          const warn = document.getElementById('tkMicWarn');
+          if(warn) warn.hidden = (Date.now() - (t._micLastLoud || t.startedAt)) < 7000;
+        }catch(e){}
+      }
       if(Date.now() >= t.endAt) talkStop('time');
-    }, 500);
+    }, 200);
     try{ log('talk_start', { engine:t.engine, owned:ctx.owned.length, due:ctx.due.length }); }catch(e){}
     render();
   }catch(e){
@@ -29519,6 +29540,8 @@ function _talkCleanup(){
   try{ if(t.pc) t.pc.close(); }catch(e){}
   try{ if(t.stream) t.stream.getTracks().forEach(tr => tr.stop()); }catch(e){}
   try{ if(t.audio){ t.audio.srcObject = null; } }catch(e){}
+  try{ if(t._ac) t._ac.close(); }catch(e){}
+  t._ac = null; t._an = null;
   t.dc = null; t.pc = null; t.stream = null; t.audio = null;
 }
 
@@ -29577,6 +29600,8 @@ function renderTalk(){
       <div class="tk-top">${back}<div class="tk-clock" id="tkClock">${live ? _talkClock() : '…'}</div><div style="width:44px"></div></div>
       <div class="tk-orb ${live ? 'live' : ''}"><div class="tk-orb-in">🧑‍🏫</div></div>
       <div class="tk-status" id="tkStatus">${live ? 'Your teacher is listening' : 'Connecting to your teacher…'}</div>
+      ${live ? `<div class="tk-micwrap" title="your microphone"><span class="tk-miclabel">mic</span><div class="tk-mictrack"><div class="tk-micbar" id="tkMic"></div></div></div>
+      <div class="tk-err" id="tkMicWarn" hidden>Your microphone seems silent. If you are on Bluetooth earbuds, try the phone on its own or wired headphones, and check Chrome has microphone permission for this site.</div>` : ''}
       <div class="tk-lines" id="tkLines">${_talkLinesHtml()}</div>
       <div class="tk-marks" id="tkMarks">${_talkMarksHtml()}</div>
       <div class="tk-actions">
