@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.56';
+const APP_VERSION = '9.58';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29471,6 +29471,21 @@ function _talkClock(){
   return Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
 }
 
+/* The transcriber writes kanji; the learner cannot read kanji. Swap every kanji
+   spelling the deck knows back to its kana, and hide whatever is left. */
+let _talkKjMap = null;
+function _talkKana(text){
+  text = String(text || '');
+  if(!/[\u4e00-\u9fff]/.test(text)) return text;
+  if(!_talkKjMap){
+    const all = [].concat(typeof N5_PACK !== 'undefined' ? N5_PACK : [], typeof ADV_PACK !== 'undefined' ? ADV_PACK : []);
+    const m = new Map();
+    for(const w of all){ if(w && w.kj && w.jp && w.kj !== w.jp && /[\u4e00-\u9fff]/.test(w.kj) && !m.has(w.kj)) m.set(w.kj, w.jp); }
+    _talkKjMap = [...m.entries()].sort((a, b) => b[0].length - a[0].length);
+  }
+  for(const [kj, jp] of _talkKjMap){ if(text.includes(kj)) text = text.split(kj).join(jp); }
+  return text.replace(/[\u4e00-\u9fff]+/g, '…');
+}
 function _talkOnEvent(ev){
   const t = window._talk;
   if(!ev || !ev.type) return;
@@ -29490,10 +29505,10 @@ function _talkOnEvent(ev){
     const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Your teacher is listening';
   }
   if(ev.type === 'conversation.item.input_audio_transcription.completed'){
-    const text = String(ev.transcript || '').trim();
+    const text = _talkKana(String(ev.transcript || '').trim());
     if(text){ t.lines.push({ who:'you', text }); _talkRenderLines(); }
   } else if(ev.type === 'response.output_audio_transcript.done'){
-    const text = String(ev.transcript || '').trim();
+    const text = _talkKana(String(ev.transcript || '').trim());
     if(text){ t.lines.push({ who:'teacher', text }); _talkRenderLines(); }
   } else if(ev.type === 'response.done'){
     const items = (ev.response && ev.response.output) || [];
@@ -29511,7 +29526,9 @@ function _talkOnEvent(ev){
     if(called && !spoke) _talkSend({ type:'response.create' });
   } else if(ev.type === 'error'){
     const msg = (ev.error && ev.error.message) || 'error';
-    t.lines.push({ who:'sys', text: msg }); _talkRenderLines();
+    /* "Audio content of Xms is already shorter than Yms" is the server trimming her
+       reply when you talk over her: normal, not something the learner should see. */
+    if(!/already shorter/i.test(msg)){ t.lines.push({ who:'sys', text: msg }); _talkRenderLines(); }
   }
 }
 
