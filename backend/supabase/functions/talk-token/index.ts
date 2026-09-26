@@ -57,8 +57,7 @@ function instructions(name: string, owned: W[], due: W[], fresh: W[], minutes: n
     `WHEN ${who.toUpperCase()} USES A WORD CLEANLY on their own (recalled or produced it without your help): call mark_word with result "clean". Only ledger or fresh words. One call per word per lesson at most.`,
     `Any text you write (transcripts) must be in hiragana or katakana only, never kanji.`,
     `Keep it light: brief praise, never judge, never mention scores. Near the end of the ${minutes} minutes, say goodbye warmly in one sentence.`,
-  ].join('
-')
+  ].join('\n')
 }
 
 const TOOLS = [{
