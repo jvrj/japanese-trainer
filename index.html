@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.55';
+const APP_VERSION = '9.56';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29395,7 +29395,7 @@ async function talkStart(){
     const AC = window.AudioContext || window.webkitAudioContext;
     t._ac = new AC(); t._an = t._ac.createAnalyser(); t._an.fftSize = 512;
     t._ac.createMediaStreamSource(t.stream).connect(t._an);
-    t._micBuf = new Uint8Array(t._an.fftSize); t._micLastLoud = 0; t._micLevel = 0;
+    t._micBuf = new Uint8Array(t._an.fftSize); t._micLastLoud = 0; t._micLevel = 0; t._micTried = []; t._micNote = ''; t._micSwitching = false;
     try{ t._ac.resume(); }catch(e){}
   }catch(e){ t._an = null; }
   const ctx = _talkWords(); t.ctx = ctx;
@@ -29422,7 +29422,7 @@ async function talkStart(){
     dc.onopen = () => {
       try{ console.log('[talk] data channel open'); }catch(e){}
       /* the teacher speaks first: greet + the first due word */
-      _talkSend({ type:'response.create', response:{ instructions:'Say hello to the learner in three Japanese words or fewer, then ask ONE tiny question using only ledger words. One short sentence, then stop and wait.' } });
+      _talkSend({ type:'response.create', response:{ instructions:'Say exactly this and nothing more: こんにちは' + (t.ctx && t.ctx.name ? '、' + t.ctx.name : '') + '！げんき？ Then stop and wait.' } });
     };
     pc.onconnectionstatechange = () => {
       if(!t.pc) return;
@@ -29448,8 +29448,10 @@ async function talkStart(){
           let m = 0; for(let i = 0; i < t._micBuf.length; i++){ const d = Math.abs(t._micBuf[i] - 128); if(d > m) m = d; }
           t._micLevel = m / 128; if(m > 4) t._micLastLoud = Date.now();
           const bar = document.getElementById('tkMic'); if(bar) bar.style.width = Math.min(100, Math.round(t._micLevel * 250)) + '%';
+          const silentFor = Date.now() - (t._micLastLoud || t.startedAt);
+          if(silentFor > 6000 && !t._micSwitching && !t._micLastLoud) _talkTryNextMic();
           const warn = document.getElementById('tkMicWarn');
-          if(warn) warn.hidden = (Date.now() - (t._micLastLoud || t.startedAt)) < 7000;
+          if(warn) warn.hidden = silentFor < 7000 || t._micSwitching;
         }catch(e){}
       }
       if(Date.now() >= t.endAt) talkStop('time');
@@ -29495,14 +29497,18 @@ function _talkOnEvent(ev){
     if(text){ t.lines.push({ who:'teacher', text }); _talkRenderLines(); }
   } else if(ev.type === 'response.done'){
     const items = (ev.response && ev.response.output) || [];
+    const spoke = items.some(it => it && it.type === 'message');
+    let called = false;
     for(const it of items){
       if(it && it.type === 'function_call' && it.name === 'mark_word'){
         let args = {}; try{ args = JSON.parse(it.arguments || '{}'); }catch(e){}
         const out = _talkMark(args);
         _talkSend({ type:'conversation.item.create', item:{ type:'function_call_output', call_id: it.call_id, output: JSON.stringify(out) } });
-        _talkSend({ type:'response.create' });
+        called = true;
       }
     }
+    /* she marked a word without speaking: ask for the spoken reply now (once) */
+    if(called && !spoke) _talkSend({ type:'response.create' });
   } else if(ev.type === 'error'){
     const msg = (ev.error && ev.error.message) || 'error';
     t.lines.push({ who:'sys', text: msg }); _talkRenderLines();
@@ -29531,6 +29537,35 @@ function _talkMark(args){
   save();
   _talkRenderMarks();
   return { ok:true };
+}
+
+/* The phone sent silence (Bluetooth earbuds often do in Chrome): swap the call's
+   microphone to the next input device without dropping the call. */
+async function _talkTryNextMic(){
+  const t = window._talk;
+  if(!t.pc || t.status !== 'live' || !(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices)) return;
+  t._micSwitching = true;
+  try{
+    const cur = (t.stream && t.stream.getAudioTracks()[0]) || null;
+    const curId = cur && cur.getSettings && cur.getSettings().deviceId;
+    if(curId && !t._micTried.includes(curId)) t._micTried.push(curId);
+    const ins = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default' && !t._micTried.includes(d.deviceId));
+    const next = ins[0];
+    if(!next){ t._micSwitching = false; return; }
+    t._micTried.push(next.deviceId);
+    const ns = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: next.deviceId }, echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+    const nt = ns.getAudioTracks()[0];
+    const sender = t.pc.getSenders().find(sn => sn.track && sn.track.kind === 'audio');
+    if(sender && nt) await sender.replaceTrack(nt);
+    try{ if(t.stream) t.stream.getTracks().forEach(tr => tr.stop()); }catch(e){}
+    t.stream = ns;
+    try{ if(t._ac && t._an){ t._ac.createMediaStreamSource(ns).connect(t._an); } }catch(e){}
+    t._micLastLoud = 0; t.startedAt = Math.max(t.startedAt, Date.now() - 1000);
+    t._micNote = 'Switched microphone to: ' + (next.label || 'another input');
+    try{ console.log('[talk] mic switched to', next.label || next.deviceId); }catch(e){}
+    const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Trying another microphone…';
+  }catch(e){ try{ console.log('[talk] mic switch failed', e && e.message); }catch(x){} }
+  t._micSwitching = false;
 }
 
 function _talkCleanup(){

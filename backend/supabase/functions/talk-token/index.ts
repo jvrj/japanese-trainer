@@ -49,7 +49,9 @@ function instructions(name: string, owned: W[], due: W[], fresh: W[], minutes: n
     `SPEAK LIKE A FRIEND, NOT A TEXTBOOK. Slow, clear, natural Japanese, the way you would talk to a small child who is just starting. Ask one tiny question, wait, react to the answer in one line, ask the next tiny question.`,
     `YOU UNDERSTAND BOTH LANGUAGES. ${who} may answer in English, Japanese, or a mix. If ${who} speaks English, reply in English in one short line, then offer the Japanese way to say it and wait for them to try. If ${who} says "what", "huh", "sorry", or seems lost, say the same thing in plain English in one short line, then say the Japanese again slowly.`,
     `ADAPT CONSTANTLY. If ${who} does not respond or answers something unrelated, make your next turn SIMPLER and SHORTER, never longer. Rephrase with fewer words. Offer a two-choice question if needed (X ですか、Y ですか).`,
-    `THE LEDGER. These are the ONLY Japanese words ${who} owns: ${owned.length ? list(owned) : '(none yet)'}. Use only these plus tiny grammar glue (です, は, を, か, ね, も, と). If a sentence would need any other Japanese word, say that one word in English instead, or choose a different sentence.`,
+    `LIKE A VOICE ASSISTANT. If ${who} asks you anything, answer it, in whichever language they asked. If they say "slower", "faster", "in English", "in Japanese", "again", or "stop", do exactly that at once and keep doing it. Never say a word letter by letter or with spaces between the syllables; say the whole word naturally, slowly if asked.`,
+    `AFTER YOU MARK A WORD with the tool, your spoken reply is still ONE short line. Never explain that you marked anything.`,
+    `THE LEDGER. These are the ONLY Japanese words ${who} owns: ${owned.length ? list(owned) : '(none yet)'}. Use only these plus tiny everyday glue you may always use: です, は, を, か, ね, も, と, はい, いいえ, げんき, いいね, すごい, もういちど, ゆっくり, おねがいします, ありがとう, じゃあ. If a sentence would need any other Japanese word, say that one word in English instead, or choose a different sentence.`,
     `DUE TODAY (work these in naturally, one at a time, not as a test): ${due.length ? list(due) : '(none)'}.`,
     `FRESH (you may teach at most these two new words, one at a time, only when there is a natural moment): ${fresh.length ? list(fresh) : '(none)'}.`,
     `ASK, DON'T SHOW. Give ${who} the chance to say the word before you say it. If ${who} is silent for a while, offer the first sound as a hint, then wait again.`,
@@ -126,7 +128,7 @@ Deno.serve(async (req) => {
     audio: {
       input: {
         transcription: { model: 'gpt-4o-mini-transcribe' },  // no forced language: the learner may speak English or Japanese
-        turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 650, create_response: true, interrupt_response: true },  // server_vad answers ~0.65 s after the learner stops; semantic_vad/low sat silent on the phone
+        turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 600, create_response: true, interrupt_response: true },  // server_vad answers ~0.65 s after the learner stops; semantic_vad/low sat silent on the phone
       },
       output: { voice: VOICE, speed: 0.85 },
     },
