@@ -1317,7 +1317,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.50';
+const APP_VERSION = '9.51';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29415,13 +29415,13 @@ async function talkStart(){
       if(!t.pc) return;
       if(pc.connectionState === 'failed' || pc.connectionState === 'disconnected'){ if(t.status === 'live') talkStop('dropped'); }
     };
-    const offer = await pc.createOffer();
+    t._stage='offer'; const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     const sdpRes = await fetch(TALK_OAI_CALLS + '?model=' + encodeURIComponent(t.model), {
       method:'POST', headers:{ 'authorization':'Bearer ' + r.body.client_secret, 'content-type':'application/sdp' }, body: offer.sdp,
     });
-    if(!sdpRes.ok) throw new Error('call ' + sdpRes.status);
-    const answer = await sdpRes.text();
+    if(!sdpRes.ok){ let why=''; try{ const j=await sdpRes.json(); why=(j.error&&j.error.message)||JSON.stringify(j).slice(0,120); }catch(e){} throw new Error('call ' + sdpRes.status + (why?': '+why:'')); }
+    t._stage='answer'; const answer = await sdpRes.text();
     await pc.setRemoteDescription({ type:'answer', sdp: answer });
     t.status = 'live'; t.startedAt = Date.now(); t.endAt = t.startedAt + t.secondsLeft * 1000;
     clearInterval(t.tick);
@@ -29434,7 +29434,7 @@ async function talkStart(){
     render();
   }catch(e){
     _talkCleanup();
-    t.status = 'error'; t.err = 'Could not connect the call. Check your connection and try again.'; render();
+    t.status = 'error'; t.err = 'Could not connect the call. Check your connection and try again. (' + (t._stage||'setup') + ': ' + String(e && e.message || e).slice(0,160) + ')'; try{ log('talk_error', { stage:t._stage||'setup', msg:String(e && e.message || e).slice(0,160) }); }catch(x){} render();
   }
 }
 window.talkStart = talkStart;
