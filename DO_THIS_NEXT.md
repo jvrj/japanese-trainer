@@ -1,6 +1,32 @@
-# DO THIS NEXT — 26 Sep 2026 (night): Talk is LIVE on staging and tested end to end by Claude
+# DO THIS NEXT — 26 Sep 2026 (late): two PowerShell lines, then Talk is unblocked again
 
-Staging site: **https://jvrj.github.io/wordstick-staging/** (v9.58). Backend
+Talk on staging stopped with "The teacher is not available right now". Cause
+found by the rig: the daily spend safety-brake ($15/day) counted every test
+call as a full 10-minute session, so today's short test calls tripped it
+(counter $15.08, real spend about $0.90). Fixed in v9.59 (it now bills the
+minutes actually spoken), but two things need YOUR login. In PowerShell:
+
+```powershell
+cd C:\Users\Julius\Documents\GitHub\japanese-trainer\backend\supabase
+npx --yes supabase functions deploy talk-token --project-ref hslibrbdovrzhaxhtevr --use-api
+```
+
+Then in the Supabase dashboard → SQL editor, run this one line (resets
+today's brake counter to the real figure; it clears itself at 10 am anyway):
+
+```sql
+update global_usage set spend_usd = 2.00 where day = (now() at time zone 'utc')::date;
+```
+
+After that, say "unblocked" and Claude reruns the rig to measure the v9.59
+change (teacher now speaks BEFORE she marks a word, so the first reply
+should drop from ~2.5 s to ~1.2 s).
+
+---
+
+# 26 Sep 2026 (night): Talk is LIVE on staging and tested end to end by Claude
+
+Staging site: **https://jvrj.github.io/wordstick-staging/** (v9.59). Backend
 deployed (talk-token, migrations 0007+0008, checkout, stripe-webhook). Claude
 now runs the REAL call from the PC with a recorded learner voice and reads
 every event, so you do not have to test each change. Latest rig results:
