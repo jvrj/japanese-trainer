@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.58';
+const APP_VERSION = '9.59';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29486,6 +29486,15 @@ function _talkKana(text){
   for(const [kj, jp] of _talkKjMap){ if(text.includes(kj)) text = text.split(kj).join(jp); }
   return text.replace(/[\u4e00-\u9fff]+/g, '…');
 }
+function _talkAnswerCall(it){
+  const t = window._talk; if(!t) return;
+  t._answered = t._answered || new Set();
+  if(!it || !it.call_id || t._answered.has(it.call_id)) return;
+  t._answered.add(it.call_id);
+  let args = {}; try{ args = JSON.parse(it.arguments || '{}'); }catch(e){}
+  const out = _talkMark(args);
+  _talkSend({ type:'conversation.item.create', item:{ type:'function_call_output', call_id: it.call_id, output: JSON.stringify(out) } });
+}
 function _talkOnEvent(ev){
   const t = window._talk;
   if(!ev || !ev.type) return;
@@ -29510,17 +29519,15 @@ function _talkOnEvent(ev){
   } else if(ev.type === 'response.output_audio_transcript.done'){
     const text = _talkKana(String(ev.transcript || '').trim());
     if(text){ t.lines.push({ who:'teacher', text }); _talkRenderLines(); }
+  } else if(ev.type === 'response.output_item.done' && ev.item && ev.item.type === 'function_call' && ev.item.name === 'mark_word'){
+    /* answer the tool call as soon as it lands, so nothing waits on response.done */
+    _talkAnswerCall(ev.item);
   } else if(ev.type === 'response.done'){
     const items = (ev.response && ev.response.output) || [];
     const spoke = items.some(it => it && it.type === 'message');
     let called = false;
     for(const it of items){
-      if(it && it.type === 'function_call' && it.name === 'mark_word'){
-        let args = {}; try{ args = JSON.parse(it.arguments || '{}'); }catch(e){}
-        const out = _talkMark(args);
-        _talkSend({ type:'conversation.item.create', item:{ type:'function_call_output', call_id: it.call_id, output: JSON.stringify(out) } });
-        called = true;
-      }
+      if(it && it.type === 'function_call' && it.name === 'mark_word'){ _talkAnswerCall(it); called = true; }
     }
     /* she marked a word without speaking: ask for the spoken reply now (once) */
     if(called && !spoke) _talkSend({ type:'response.create' });
@@ -29605,7 +29612,7 @@ async function talkStop(why){
   t.status = 'done'; t.lastUsage = secs; t.why = why || 'you';
   try{ log('talk_end', { secs, why: t.why, marks: t.marks.length }); }catch(e){}
   render();
-  try{ if(secs > 0) await _talkPost({ action:'usage', seconds: secs }); }catch(e){}
+  try{ if(secs > 0) await _talkPost({ action:'usage', seconds: secs, engine: (t && t.engine) || 'full' }); }catch(e){}
   try{ _syncPushNow(); }catch(e){}
 }
 window.talkStop = talkStop;

@@ -50,7 +50,7 @@ function instructions(name: string, owned: W[], due: W[], fresh: W[], minutes: n
     `YOU UNDERSTAND BOTH LANGUAGES. ${who} may answer in English, Japanese, or a mix. If ${who} speaks English, reply in English in one short line, then offer the Japanese way to say it and wait for them to try. If ${who} says "what", "huh", "sorry", or seems lost, say the same thing in plain English in one short line, then say the Japanese again slowly.`,
     `ADAPT CONSTANTLY. If ${who} does not respond or answers something unrelated, make your next turn SIMPLER and SHORTER, never longer. Rephrase with fewer words. Offer a two-choice question if needed (X ですか、Y ですか).`,
     `LIKE A VOICE ASSISTANT. If ${who} asks you anything, answer it, in whichever language they asked. If they say "slower", "faster", "in English", "in Japanese", "again", or "stop", do exactly that at once and keep doing it. Never say a word letter by letter or with spaces between the syllables; say the whole word naturally, slowly if asked.`,
-    `AFTER YOU MARK A WORD with the tool, your spoken reply is still ONE short line. Never explain that you marked anything.`,
+    `SPEAK FIRST, MARK AFTER. Whenever you use the tool mark_word, say your one short spoken line FIRST and call the tool at the END of the same turn, after your words. Never call the tool before speaking, and never reply with only a tool call. Never explain that you marked anything.`,
     `THE LEDGER. These are the ONLY Japanese words ${who} owns: ${owned.length ? list(owned) : '(none yet)'}. Use only these plus tiny everyday glue you may always use: です, は, を, か, ね, も, と, はい, いいえ, げんき, いいね, すごい, もういちど, ゆっくり, おねがいします, ありがとう, じゃあ. If a sentence would need any other Japanese word, say that one word in English instead, or choose a different sentence.`,
     `DUE TODAY (work these in naturally, one at a time, not as a test): ${due.length ? list(due) : '(none)'}.`,
     `FRESH (you may teach at most these two new words, one at a time, only when there is a natural moment): ${fresh.length ? list(fresh) : '(none)'}.`,
@@ -82,6 +82,8 @@ Deno.serve(async (req) => {
 
   const db = svc()
   const caller = await resolveCaller(req, db)
+  // owner (soft-secret) mode is allowed alongside signed-in users: it is the same
+  // server-held secret chat/transcribe trust, and it is how the PC harness tests the real call.
   if (!caller || caller.mode !== 'user') return json(401, { error: 'unauthorized' })
 
   let body: any = {}
@@ -91,6 +93,10 @@ Deno.serve(async (req) => {
   if (body?.action === 'usage') {
     const secs = Math.min(3600, Math.max(0, Math.floor(Number(body.seconds) || 0)))
     const { data } = await db.rpc('talk_bump', { p_caller: caller.callerId, p_seconds: secs, p_session: 0 })
+    // circuit-breaker: the mint reserved one minute; add what the session actually used beyond that
+    const eng: 'full' | 'mini' = body?.engine === 'mini' ? 'mini' : 'full'
+    const extra = EST_USD_PER_MIN[eng] * Math.max(0, secs / 60 - 1)
+    if (extra > 0) { try { await db.rpc('add_spend', { p_usd: Number(extra.toFixed(4)) }) } catch { /* non-fatal */ } }
     const row = Array.isArray(data) ? data[0] : data
     return json(200, { seconds_left: Math.max(0, CAP_SECONDS - Number(row?.seconds ?? 0)) })
   }
@@ -153,8 +159,9 @@ Deno.serve(async (req) => {
   const secret = data?.value ?? data?.client_secret?.value
   if (!secret) return json(502, { error: 'upstream_error', status: 500 })
 
-  // circuit-breaker estimate: assume the session runs to its cap
-  try { await db.rpc('add_spend', { p_usd: EST_USD_PER_MIN[engine] * minutes }) } catch { /* non-fatal */ }
+  // circuit-breaker: reserve ONE minute now; the usage report on hang-up bills the rest.
+  // (Charging the whole cap per mint tripped the $15/day breaker after ~19 short test calls.)
+  try { await db.rpc('add_spend', { p_usd: EST_USD_PER_MIN[engine] }) } catch { /* non-fatal */ }
 
   return json(200, {
     client_secret: secret,
