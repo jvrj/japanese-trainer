@@ -1317,7 +1317,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.53';
+const APP_VERSION = '9.54';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29407,7 +29407,9 @@ async function talkStart(){
     t.stream.getTracks().forEach(tr => pc.addTrack(tr, t.stream));
     const dc = pc.createDataChannel('oai-events'); t.dc = dc;
     dc.onmessage = ev => { try{ _talkOnEvent(JSON.parse(ev.data)); }catch(e){} };
+    pc.oniceconnectionstatechange = () => { try{ console.log('[talk] ice', pc.iceConnectionState); }catch(e){} };
     dc.onopen = () => {
+      try{ console.log('[talk] data channel open'); }catch(e){}
       /* the teacher speaks first: greet + the first due word */
       _talkSend({ type:'response.create', response:{ instructions:'Say hello to the learner in three Japanese words or fewer, then ask ONE tiny question using only ledger words. One short sentence, then stop and wait.' } });
     };
@@ -29420,6 +29422,7 @@ async function talkStart(){
     const sdpRes = await fetch(TALK_OAI_CALLS + '?model=' + encodeURIComponent(t.model), {
       method:'POST', headers:{ 'authorization':'Bearer ' + r.body.client_secret, 'content-type':'application/sdp' }, body: offer.sdp,
     });
+    try{ console.log('[talk] call', sdpRes.status, 'model', t.model, 'tracks', t.stream.getAudioTracks().map(x => x.label + ':' + x.readyState + ':' + (x.enabled ? 'on' : 'off')).join(',')); }catch(e){}
     if(!sdpRes.ok){ let why=''; try{ const j=await sdpRes.json(); why=(j.error&&j.error.message)||JSON.stringify(j).slice(0,120); }catch(e){} throw new Error('call ' + sdpRes.status + (why?': '+why:'')); }
     t._stage='answer'; const answer = await sdpRes.text();
     await pc.setRemoteDescription({ type:'answer', sdp: answer });
@@ -29448,6 +29451,7 @@ function _talkClock(){
 function _talkOnEvent(ev){
   const t = window._talk;
   if(!ev || !ev.type) return;
+  try{ console.log('[talk]', ev.type, ev.type === 'error' ? JSON.stringify(ev.error) : (ev.transcript || (ev.item && ev.item.type) || '')); }catch(e){}
   if(ev.type === 'input_audio_buffer.speech_started'){
     clearTimeout(t.nudge); t.nudge = null;
     const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Hearing you…';
