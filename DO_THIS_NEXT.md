@@ -1,26 +1,13 @@
-# DO THIS NEXT — 26 Sep 2026 (late): two PowerShell lines, then Talk is unblocked again
+# DO THIS NEXT — 26 Sep 2026 (late): Talk verified again, nothing for you to run
 
-Talk on staging stopped with "The teacher is not available right now". Cause
-found by the rig: the daily spend safety-brake ($15/day) counted every test
-call as a full 10-minute session, so today's short test calls tripped it
-(counter $15.08, real spend about $0.90). Fixed in v9.59 (it now bills the
-minutes actually spoken), but two things need YOUR login. In PowerShell:
+You deployed the fixed function and reset the brake counter; Claude then ran
+the real call twice. Latest: she greets you by name, hears every line, replies
+in about 1 second on average, speaks BEFORE marking a word, explains in plain
+English when asked ("It means thank you"), answers general questions like a
+friend, and the spend brake now bills the minutes actually spoken. Staging
+site is v9.59, backend function version 12.
 
-```powershell
-cd C:\Users\Julius\Documents\GitHub\japanese-trainer\backend\supabase
-npx --yes supabase functions deploy talk-token --project-ref hslibrbdovrzhaxhtevr --use-api
-```
-
-Then in the Supabase dashboard → SQL editor, run this one line (resets
-today's brake counter to the real figure; it clears itself at 10 am anyway):
-
-```sql
-update global_usage set spend_usd = 2.00 where day = (now() at time zone 'utc')::date;
-```
-
-After that, say "unblocked" and Claude reruns the rig to measure the v9.59
-change (teacher now speaks BEFORE she marks a word, so the first reply
-should drop from ~2.5 s to ~1.2 s).
+Still the one thing only your phone can check: the mic bar (below).
 
 ---
 
