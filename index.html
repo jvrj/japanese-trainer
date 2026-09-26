@@ -1317,7 +1317,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.52';
+const APP_VERSION = '9.53';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29448,6 +29448,20 @@ function _talkClock(){
 function _talkOnEvent(ev){
   const t = window._talk;
   if(!ev || !ev.type) return;
+  if(ev.type === 'input_audio_buffer.speech_started'){
+    clearTimeout(t.nudge); t.nudge = null;
+    const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Hearing you…';
+  } else if(ev.type === 'input_audio_buffer.speech_stopped'){
+    /* fallback: if no reply has started 2.5 s after you stop talking, ask for one */
+    clearTimeout(t.nudge);
+    t.nudge = setTimeout(() => { if(t.status === 'live' && !t.replying) _talkSend({ type:'response.create' }); }, 2500);
+    const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Thinking…';
+  } else if(ev.type === 'response.created'){
+    t.replying = true; clearTimeout(t.nudge); t.nudge = null;
+  } else if(ev.type === 'response.done' || ev.type === 'response.cancelled'){
+    t.replying = false;
+    const el = document.getElementById('tkStatus'); if(el) el.textContent = 'Your teacher is listening';
+  }
   if(ev.type === 'conversation.item.input_audio_transcription.completed'){
     const text = String(ev.transcript || '').trim();
     if(text){ t.lines.push({ who:'you', text }); _talkRenderLines(); }
@@ -29558,7 +29572,7 @@ function renderTalk(){
     return `<div class="tk-screen">
       <div class="tk-top">${back}<div class="tk-clock" id="tkClock">${live ? _talkClock() : '…'}</div><div style="width:44px"></div></div>
       <div class="tk-orb ${live ? 'live' : ''}"><div class="tk-orb-in">🧑‍🏫</div></div>
-      <div class="tk-status">${live ? 'Your teacher is listening' : 'Connecting to your teacher…'}</div>
+      <div class="tk-status" id="tkStatus">${live ? 'Your teacher is listening' : 'Connecting to your teacher…'}</div>
       <div class="tk-lines" id="tkLines">${_talkLinesHtml()}</div>
       <div class="tk-marks" id="tkMarks">${_talkMarksHtml()}</div>
       <div class="tk-actions">

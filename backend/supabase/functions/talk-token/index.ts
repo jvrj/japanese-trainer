@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     audio: {
       input: {
         transcription: { model: 'gpt-4o-mini-transcribe' },  // no forced language: the learner may speak English or Japanese
-        turn_detection: { type: 'semantic_vad', eagerness: 'low' },
+        turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 650, create_response: true, interrupt_response: true },  // server_vad answers ~0.65 s after the learner stops; semantic_vad/low sat silent on the phone
       },
       output: { voice: VOICE, speed: 0.85 },
     },
