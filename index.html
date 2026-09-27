@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.62';
+const APP_VERSION = '9.63';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10620,21 +10620,31 @@ function renderPaywall(){
     /* Installing Compliance (26 Sep): "free" is an afterthought, never the headline; the exit is a small yes, not a no. */
     const subLine = `${ownLine} ${mathLine}`;
     const yr = PAYWALL_PRICES.yearly, mo = PAYWALL_PRICES.monthly;
+    /* v9.63 — split test (Reddit buyer words, 27 Sep): the buyers we read
+       pay small monthly amounts and baulk at a big one-off, so half of
+       learners see the monthly door first. Each device is assigned once and
+       keeps its side; the side rides on the Meta pixel events below so the
+       $300 run shows which order sells more. The first door gets the hero. */
+    const pwFirst = _paywallOrder();
+    const yearlyBtn = `
+        <button class="ob-path-card${pwFirst === 'yearly' ? ' pw-hero' : ''}" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
+          <div class="ob-path-em">${pwFirst === 'yearly' ? '▶' : '📅'}</div>
+          <div class="ob-path-t">Yearly, and stop thinking about it ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. 7 days to decide, nothing to pay until then, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
+        </button>`;
+    const monthlyBtn = `
+        <button class="ob-path-card${pwFirst === 'monthly' ? ' pw-hero' : ''}" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
+          <div class="ob-path-em">${pwFirst === 'monthly' ? '▶' : '🗓️'}</div>
+          <div class="ob-path-t">Try the whole thing for 7 days</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
+        </button>`;
+    _metaTrackPlansViewOnce(pwFirst);
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">🎟️</div>
         <div class="ob-title">Which pace is yours?</div>
         <div class="ob-sub">${subLine}</div>
-        <button class="ob-path-card pw-hero" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
-          <div class="ob-path-em">▶</div>
-          <div class="ob-path-t">Yearly, and stop thinking about it ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">Brakes off, ${deckLine}. 7 days to decide, nothing to pay until then, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
-        </button>
-        <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
-          <div class="ob-path-em">🗓️</div>
-          <div class="ob-path-t">Try the whole thing for 7 days</div>
-          <div class="ob-path-s">Brakes off, ${deckLine}. Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
-        </button>
+        ${pwFirst === 'monthly' ? monthlyBtn + yearlyBtn : yearlyBtn + monthlyBtn}
         <button class="ob-path-card" id="pwStarterBtn" onclick="nav('home')">
           <div class="ob-path-em">🚶</div>
           <div class="ob-path-t">Keep going as I am</div>
@@ -10675,9 +10685,41 @@ async function _paywallRefreshEntitlement(){
    function does — before any await — so two rapid clicks (even one landing
    before the disabled attribute has painted) can never produce a second
    concurrent POST; the busy-state rubric's own probe exercises exactly this. */
+/* v9.63 — which paid door sits first on the plans screen. Assigned once
+   per device (50/50), saved, never re-rolled, so a learner never sees the
+   order flip between visits. Owner can force a side via settings.pwOrder. */
+function _paywallOrder(){
+  try{
+    const s = state.settings;
+    if(s.pwOrder !== 'yearly' && s.pwOrder !== 'monthly'){
+      s.pwOrder = Math.random() < 0.5 ? 'monthly' : 'yearly';
+      try{ save(); }catch(e){}
+    }
+    return s.pwOrder;
+  }catch(e){ return 'yearly'; }
+}
+/* Meta pixel: one PlansView per device per day, one PlansPick per tap. Both
+   carry the order side so the ads report can split sales by it. Never throws. */
+function _metaTrackPlansViewOnce(order){
+  try{
+    if(typeof window.fbq !== 'function') return;
+    const k = 'ws_fb_plansview_' + _coldDayKey();
+    if(localStorage.getItem(k) === '1') return;
+    window.fbq('trackCustom', 'PlansView', { order });
+    localStorage.setItem(k, '1');
+  }catch(e){}
+}
+function _metaTrackPlansPick(plan){
+  try{
+    if(typeof window.fbq !== 'function') return;
+    window.fbq('trackCustom', 'PlansPick', { plan, order: (state.settings && state.settings.pwOrder) || 'yearly' });
+  }catch(e){}
+}
+
 async function paywallCheckout(plan){
   const ui = _paywallUiEnsure();
   if(ui.busy) return;
+  _metaTrackPlansPick(plan);
   ui.busy = true; ui.msg = '';
   render();
   try{

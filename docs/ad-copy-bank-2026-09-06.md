@@ -351,3 +351,58 @@ needed your mouth. That's the whole difference between recognising a word and ow
 **Post 2 (no link):** Try this tomorrow morning: say "mizu" (water) three times tonight,
 then say it again before your coffee. If it's there, you've just run the only test that
 matters. If it isn't, say it three more times and try again the next morning. It'll come.
+
+---
+
+## K. BUYER-WORDS AD SET (v3, 27 Sep 2026 — from 84 Reddit threads, docs/reddit-buyer-words-2026-09-27.md)
+*Runs BESIDE §J in the $300 test, same two audiences. J opens on a thing to do; K opens on
+the moment the reader already lived, in the words they use for it ("went blank", "it
+doesn't stick", "the pile"). The do-this-now line comes second, so the first yes is still
+banked before the click. Same ask as J: try it for 7 days and decide. No "free".*
+
+### K1 — "Went blank" (the moment everyone in the threads describes)
+You knew the word. You'd seen it a hundred times. Then someone actually spoke to you in
+Japanese and your head went blank.
+⸻
+That's not a memory problem. You'd only ever practised *recognising* the word on a screen,
+never pulling it out of your own head. Try it now: say "arigatou" out loud, look away, say
+it again. That's the other direction, and it's the one that shows up when you need it.
+WordStick does that with you, out loud, hands-free, on the drive to work. Every morning it
+asks for yesterday's words with nothing on the screen, and counts the ones that come out.
+Try it for 7 days and decide at the end of the week.
+
+### K2 — "Flashcards you can do while driving?" (the commuter who asked for it)
+People keep asking the same thing: is there a way to do flashcards with my ears, on the
+drive, without looking at a screen?
+⸻
+That's what this is. It says the meaning, you say the Japanese out loud, then it says it
+back so you know if you had it. No screen, no tapping, eyes on the road. The next morning
+it asks for yesterday's words cold, and the ones that come out are yours.
+Try it on tomorrow's drive: 7 days, then decide.
+
+### K3 — "Missed a week" (the pile, the reason people quit)
+Missed a week of reviews? Most apps greet you with 400 cards and a red number. That's
+usually the day people quit.
+⸻
+WordStick has no pile. Miss a week, open it, carry on. It picks the next ten minutes for
+you, says the meaning, you say the Japanese out loud, hands-free, on the way to work.
+Say one now: "mizu", water, three times. See if it's still there in the morning.
+Try it for 7 days and decide at the end of the week.
+
+### K-headlines
+28. Knew the word. Went blank when it mattered. Here's the other direction.
+29. Japanese flashcards for your ears, on the drive to work.
+30. Miss a week. No pile. Just carry on.
+
+### K-audit — compliance pre-flight
+| Variant | Claim to argue with | "Free" | Brand named | Verdict |
+|---|---|---|---|---|
+| K1 | "not a memory problem" — framed as recognising vs recalling, no outcome promise | none | none | ✅ ship |
+| K2 | "people keep asking" — true (the Reddit threads), no quote, no user named | none | none | ✅ ship |
+| K3 | "most apps greet you with 400 cards" — generic, no brand; "no pile" is true (sessions are capped, v8.62) | none | none | ✅ ship |
+| All | no outcome+timeframe, no "fluent"; the only promise is the morning count | | | |
+
+**Test plan:** in each ad set, put K1–K3 beside J1–J5. After ~$150, keep the top 3 by cost per
+trial whatever set they came from. The plans-screen order split (app v9.63) runs underneath,
+so the Meta pixel shows `PlansView`/`PlansPick` with `order` = yearly|monthly. Compare picks
+per view by order; decide the default order only after ≥30 picks.
