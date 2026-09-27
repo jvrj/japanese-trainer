@@ -84,6 +84,13 @@ A criterion is a rule with a loss behind it. Without one, people say "maybe", as
 
 ---
 
+## Owner decisions (27 Sep 2026)
+
+- **AI:** Talk is not in the launch (it lives on staging only). The drill's voice is the phone's built-in text-to-speech, which is fine to use. Never claim "native speakers" or "no AI voice".
+- **Driving:** say "commute", never "while driving".
+- **No hearts:** a main line in the ads and on the plans screen.
+- **Accent ad:** tested as ad 3, replacing the commute ad.
+
 ## Part A. The market's passwords, verified
 
 **Market:** adult beginners in Japanese who speak English, found on Facebook and Instagram. Most have a date: a trip, a class, or a JLPT exam.
@@ -189,7 +196,7 @@ Removed from version 1:
 |---|---|
 | Ad (test 1) | A positive promise with a time limit (lines 1 + 7): "Say dinner, trains and hotels in Japanese before your trip. Two minutes a day, out loud." |
 | Ad (test 2) | The pain opener, then flip to towards: "Hit a 100-day streak and it still didn't stick? This one makes you say it." (lines 1 + 2) |
-| Ad (test 3, optional) | Hands-free commute (line 6). |
+| Ad (test 3) | **Owner call 27 Sep: the accent ad** ("the mic listens, it never marks you wrong"). The evidence says it's weak (see ✕ list); the owner chose to let the money decide. It replaces the commute ad, keeping ≥$100 per ad. The commute stays as a line inside ads 1 and 2. |
 | Landing | The same headline as the ad, a short story wrapper, then "Try one word and see" (lines 1, 3, 4). |
 | Round-1 end | Tomorrow's check, in timeline form (line 5). |
 | Plans screen | The connect close: lines 1, 2, 5 and 6, then the three doors, then the reminder and one-tap-cancel promise (line 8). |
