@@ -6,6 +6,8 @@ Built 27 Sep 2026 from four NHB calls, read in full:
 - "Levels of Relationships" (NHB Pro, 26 Feb 2026; full transcript, criteria mentioned 233 times).
 Companions: installing-compliance-applied-2026-09-26.md (the ladder), circumstances-and-emotions-applied-2026-09-27.md (the front line and the words).
 
+> **Corrected the same day by the buyer's own words** (`reddit-buyer-words-2026-09-27.md`, 84 Reddit threads). Confirmed: helpless ("what's wrong with me?"), procedural, hear-and-say, keep-the-commute, no-kanji. **Wrong:** "choice + logic under stress". They decide on friction, fun and a small monthly number ("I will not do the 100 at once"), so yearly-first is now a test, not a given. **Added three installed lines:** 9. never bury me in a pile when I miss a week; 10. work while I'm driving, with nothing to read ("an audio version of flashcards?"); 11. make every choice for me. Their spine word is "stick" (~60 uses).
+
 Words, defined once:
 - Criteria = "what has to be there for me to move forward" (Alen). The checklist a mind runs before it lets a message in, and before it buys. Mostly subconscious: a gut feel.
 - Limitation = what stops them getting what they want: time, money, energy, skill, know-how, reading, embarrassment. Limitations keep people safe; criteria decide.
