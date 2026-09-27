@@ -1,153 +1,214 @@
-# The criteria of WordStick's market
+# The criteria of WordStick's market (v2, verified)
 
-Built 27 Sep 2026 from four NHB calls, read in full:
-- "Criteria of Markets" Parts 1, 2, 3 + Implementation (NHB+ Theory, 18 Jan to 8 Feb 2024; we hold detailed AI summaries, not raw transcripts: D:\ff-transcribe\transcripts\c1..c4). Earlier versions are Fast Forward lessons 44/45 (Oct/Nov 2023).
-- "Installing Criteria" (NHB Pro, 16 Oct 2025; full transcript).
-- "Levels of Relationships" (NHB Pro, 26 Feb 2026; full transcript, criteria mentioned 233 times).
-Companions: installing-compliance-applied-2026-09-26.md (the ladder), circumstances-and-emotions-applied-2026-09-27.md (the front line and the words).
+Rebuilt 27 Sep 2026. Version 1 was written from the calls alone. This version checks every line against the evidence:
+- 84 Reddit threads (`reddit-buyer-words-2026-09-27.md`)
+- about 23,000 learner voices plus 93,000 app reviews (`research/learner-voices-2026-09-27/`)
+- the three-way verification (`research/learner-voices-2026-09-27/VERDICT.md`): a recount from raw data, outside studies, and what people actually pay for
 
-> **Corrected the same day by the buyer's own words** (`reddit-buyer-words-2026-09-27.md`, 84 Reddit threads). Confirmed: helpless ("what's wrong with me?"), procedural, hear-and-say, keep-the-commute, no-kanji. **Wrong:** "choice + logic under stress". They decide on friction, fun and a small monthly number ("I will not do the 100 at once"), so yearly-first is now a test, not a given. **Added three installed lines:** 9. never bury me in a pile when I miss a week; 10. work while I'm driving, with nothing to read ("an audio version of flashcards?"); 11. make every choice for me. Their spine word is "stick" (~60 uses).
+**Where the calls come from:**
+- Criteria of Markets Parts 1, 2, 3 and the Implementation call (NHB+ Theory, 18 Jan to 8 Feb 2024). We only hold AI summaries of these, in D:\ff-transcribe\transcripts\c1..c4. The audio is on MEGA and hasn't been transcribed.
+- Installing Criteria (16 Oct 2025) and Levels of Relationships (26 Feb 2026). We have full transcripts of both.
 
-Words, defined once:
-- Criteria = "what has to be there for me to move forward" (Alen). The checklist a mind runs before it lets a message in, and before it buys. Mostly subconscious: a gut feel.
-- Limitation = what stops them getting what they want: time, money, energy, skill, know-how, reading, embarrassment. Limitations keep people safe; criteria decide.
-- Control = the ad or offer that is currently winning in a market.
-- Install = say things so the checklist appears in their head as their own idea. Impose = say "you have to". Imposing starts a fight.
-- Meta-criteria = how much change a person can absorb at their energy level. Low energy = every objection appears.
+**How sure we are.** Every line carries one of these:
+- ● **Near-certain**: holds in our counts, in outside evidence, and in what people pay for.
+- ◐ **Likely**: holds, but with a stated catch.
+- ○ **Unproven**: only the $300 test can settle it.
+- ✕ **Dropped**: version 1 or the research said it, and verification showed it's wrong.
+
+**Words, defined once:**
+- **Criteria**: "what has to be there for me to move forward" (Alen). It's the checklist a mind runs before it lets a message in, and before it buys. Mostly it's a gut feel.
+- **Limitation**: what stops people getting what they want: time, money, energy, skill, reading, embarrassment. Limitations keep people safe; criteria decide.
+- **Control**: the ad or offer that's currently winning in a market.
+- **Install**: say things so the checklist appears in their head as their own idea.
+- **Impose**: say "you have to". Imposing starts a fight.
+- **Meta-criteria**: how much change a person can take on at their energy level.
 
 ---
 
 ## The calls in plain words
 
-### 1. Criteria of Markets (2024 series): you do not sell, you match
-Every mind is a safety system. It only opens to codes it recognises. Those codes are the market's criteria. "If someone has to be sold, you haven't met their criteria." You read the criteria from WHAT people talk about (what they want, which direction) and HOW they say it (the exact repeated words: a man who says "I just want a good night's sleep" is telling you simplicity beats your seven-step product). Criteria come from limitations. The method: find the controls, keep their structure, read the market's words, find the limitation the want is fused to, build a table of which criteria each part of the control hits, then push every one further than the control did. The product must match first, then the language. One dominant criteria per piece, the whole funnel congruent (ad headline = page headline), one campaign per criteria. Guard the close: criteria bite hardest where the money is.
+### 1. Criteria of Markets (2024): you don't sell, you match
 
-The criteria he teaches (the load-bearing ones):
-- Which limiting belief runs the market: worthless / helpless / hopeless.
-- What's important to them: information, place, people, activity, things.
-- Direction: towards (want, gain, more) or away (stop, avoid, never again). Away buyers are easy to get and hard to keep. Open in their language, flip to towards inside the funnel.
-- Process: procedural (how, steps, method, plan) or optional (ways, options, could). Everyone is procedural about a NEW thing. Procedurals have an endpoint, so plan to move them to optional later.
-- Reference: external (needs others' proof, numbers, authority) or internal ("I know").
-- Picture size: general (big dream, further out) or specific (numbers, now). Specific converts higher.
-- Change tolerance: sameness / sameness-with-exception (most people) / difference.
-- Stress response when deciding: feeling, choice, thinking, or logical.
-- Convincer channel: see it, hear it, or try it.
-- Convincer strategy: once, 3 to 5 times, six months, or a probation window.
-- Meta-criteria: can they absorb the change at all.
-- Why needs evidence (past). How needs proof (a live demo now).
+Every mind is a safety system that only opens to codes it recognises. Those codes are the market's criteria. "If someone has to be sold, you haven't met their criteria."
 
-### 2. Installing Criteria (Oct 2025): tell them what the perfect X is
-The decision is made at the BEGINNING, not at the buy button. Two halves must both say yes. Logic checks limitations: find the market's real ones, build the offer to genuinely fit them (optimise, never pander), and each limitation flips from an objection into a justification ("because you've only got a commute, this is built for the commute"). Emotion checks criteria: most buyers have none for a thing they have never bought, so you install one by telling the story of "the perfect X for me had to…", six to nine lines, each line something your product happens to do, each line explained. Put it in the ad and the opening. Never "you have to". Wrap it in a first-person story for a cold market. Then the close is a connect: "if we can give you all that, worth trying?"
+**Reading the criteria.** You read them from what people talk about and from the exact words they repeat.
 
-### 3. Levels of Relationships (Feb 2026): a criteria has a loss behind it
-A criteria is a rule with a loss behind it, because the subconscious judges on "what do I lose?". Without one, people say "maybe", ask a million questions, want guarantees, then refund. Money follows the level of relationship: stranger (nothing), fan ($10 to 20), wants ($47 to 97, cancels when money is tight), needs (hundreds, price secondary), the channel (you are THE solution, they don't shop). Litmus: can their life function without this? Yes = want, no = need. Never sell a want at a need price. Give three choices, never either/or. Install the criteria before the ask so "the decision has already been made for them", and be the only thing that passes it, so the mind deletes the rest.
+**The method:**
+1. Find the controls and keep their structure.
+2. Read the market's words.
+3. Find the limitation the want is tied to.
+4. Build a table of which criteria each part of the control hits.
+5. Push every one further than the control did.
+
+**The rules:**
+- Match the product first, then the language.
+- Give each piece one main criterion.
+- The ad headline must equal the page headline.
+- Run one campaign per criterion.
+- Guard the close, because that's where criteria bite hardest.
+
+**Why and how:** why needs evidence from the past; how needs proof you can show now.
+
+### 2. Installing Criteria (2025): tell them what the perfect X is
+
+**The decision is made at the beginning, not at the buy button.** Two halves have to say yes.
+
+**Logic checks limitations.** Build the offer to genuinely fit them, and each limitation turns from an objection into a reason. For example: "because you've only got a commute, this is built for the commute."
+
+**Emotion checks criteria.** Most buyers have no criteria for a thing they've never bought. So you install them with the story of "the perfect X for me had to…":
+- six to nine lines
+- each line something the product really does
+- each line explained
+- first person for a cold market
+- never "you have to"
+
+**The close is a connect:** "if we can give you all that, worth trying?"
+
+### 3. Levels of Relationships (2026): a criterion has a loss behind it
+
+A criterion is a rule with a loss behind it. Without one, people say "maybe", ask questions, want guarantees, then refund.
+
+**Money follows the level of relationship:**
+
+| Level | What they'll pay |
+|---|---|
+| Stranger | nothing |
+| Fan | $10–20 |
+| Want | $47–97, and they cancel when money is tight |
+| Need | hundreds |
+| The channel | they stop shopping |
+
+**Want or need test:** can their life function without it?
+
+**At the close:** give three choices, never either/or. Install the criteria before the ask.
 
 ---
 
-## Part A. The market's passwords (who the buyer is, criteria by criteria)
+## Part A. The market's passwords, verified
 
-Market: adult beginners in Japanese, English-speaking, on Facebook/Instagram, most with a reason on the calendar (a trip, a class using Genki or Minna no Nihongo, a JLPT date), a phone, a commute, no kanji.
-Controls in this market: Duolingo, Pimsleur, Rosetta/Babbel, italki/Preply, Genki/Minna classes, JLPT prep, Anki, "learn Japanese in 30 days" YouTube.
+**Market:** adult beginners in Japanese who speak English, found on Facebook and Instagram. Most have a date: a trip, a class, or a JLPT exam.
 
-| Criteria | Our buyer's side | How we know | Product today | Language change needed |
-|---|---|---|---|---|
-| Limiting belief | Helpless ("don't know how") with a hopeless layer ("nothing sticks") | "I did Duolingo for a year and can't say anything" | Removes the how | Broad ads: the frustrated-customer opener, blame the method not them |
-| What's important | Activity and people, over information | They pay for classes and tutors; textbooks pile up | Drill = activity; Talk = people | When Talk ships, lead with the person |
-| Greater outcome | Being understood by a real person | Trip, class, exam all end in "I'll have to speak to someone" | Owned count is a proxy; Talk is the real one | One line past the word: "so it's there when the waiter looks at you" |
-| Direction | Away with a towards edge: stop wasting a year AND say something on the trip | Quit language is away; Duolingo sells towards | The round → check → proof ladder is towards | Two campaigns: A (spenders) towards, B (broad) open away then flip |
-| Process | Procedural: it's new, they want the order | Classes are sequenced; "30-day plan" wins | Batch, road, morning check ARE a procedure | Say the sequence once, early: round today, sleep, check tomorrow, count |
-| Reference | External at the top, internal after the check | Cold traffic asks "does it work for people like me?" | The check turns it internal (their own proof) | One external cue back on landing and ads (a real count once learners exist) |
-| Picture size | General in the ad hook, specific on page and in app | Specific converts higher | Honest count is specific | Keep general hook + one specific number per ad |
-| Change tolerance | Sameness-with-exception: keep the job, commute, evenings; add two minutes | The playbook already found this (keep-frame fixed Eric's ad) | Two minutes hands-free IS the exception | Keep-line above the fold: "Keep your drive. It becomes the lesson." |
-| Stress response | Choice + logical: "what do I give up?" and "does 3 a day add up?" | App refund reviews are money-for-nothing; class buyers compare hours | Starter vs full is a choice | Maths on the plans screen; buying = MORE choice, never losing the starter |
-| Convincer channel | Hear it and say it; see it for the ad hook | The product is audio; "I froze when someone spoke to me" | Fully | Every ad carries the spoken word; copy walks a timeline |
-| Convincer strategy | 3 to 5 touches cold; automatic after the check; some "I'll see if I still use it in a week" | Our 7-day try fits the probation type | No follow-up channel yet | Build the 3 to 5 touch sequence when email exists, each touch a new change |
-| Meta-criteria | LOW: tired adults, no evenings, no kanji energy | Every quitter cites time and kanji | No kanji, no typing, no cards, no grading | The removals line everywhere |
-| Evidence vs proof | The why needs evidence; the how needs the demo | | The demo is the proof | One plain evidence source for the why, kept off-page if needed |
+**Controls:** Duolingo, Pimsleur, Babbel, Speak, italki, Genki and Minna classes, Anki, and Google Translate for the "just enough" traveller.
 
-Dominant criteria per piece (Alen: lean into one, you'll always carry a mix):
-- Ads A (spenders): towards + procedural + specific. "Your date is in 8 weeks. Round today, check tomorrow, ten a week."
-- Ads B (broad): away + frustrated-customer, flip to towards on the page.
-- Landing: procedural + sameness-with-exception + hear/say.
-- Plans screen: logical + choice, restated in the buyer's own timeline.
-
-## Part B. The limitations (the logic half) and how the offer fits
-
-| Limitation | Real for this buyer | Offer today | Say it back as the reason it fits |
+| Criteria | Our buyer's side | Sure? | Evidence (and the catch) |
 |---|---|---|---|
-| Time | Job, family, commute; a class is 1 h a week, a textbook wants an evening | Minutes a round, 1-minute check, hands-free | "Because you've got a commute and not an evening, this is built for the commute." Never "fluent in 10 minutes a day". |
-| Money | Already paying for a class, app or trip | $8.99 / $59.99, nothing to pay for 7 days, starter plan stays | "Less than one class hour a month." |
-| Skill / reading | Total beginner, no kanji, scared of getting it wrong | Kana only, STT never grades, meaning behind a tap | "No reading, no kanji, no grading." |
-| Energy | Streak fatigue, quits week 2 | The check gives daily proof; the count only rises when true | "One minute, and the result is yours." |
-| Speed | A date makes them impatient | Words stick in days because they are pulled from memory | "Weeks, not years." |
-| Embarrassment | Saying it alone feels silly, in class feels exposed | Nobody hears; the phone doesn't judge | "Somewhere you can get it wrong with nobody watching." |
+| Limiting belief | **Hopeless over helpless**: "nothing sticks, I keep giving up" | ◐ | Motivation collapse (~460 mentions) beats "can't speak" (~250). "Can't speak" came back loud partly because our searches used those words: only 54 of 92,878 store reviews. Speak to "it didn't stick", not "you can't talk". |
+| What's important | **Activity** (doing it) over information | ● | Pulling a word from memory beats re-reading: 80% vs 33% a week later (Karpicke & Roediger 2008). Buyers pay for classes and tutors, not for more books. |
+| Greater outcome | **Being understood by a real person on the trip** | ◐ | 42.7M visitors to Japan in 2025, with US visitors up 21%. Catch: translator apps now cover "just enough" (trouble talking to staff fell from 26% to 15%). The win over Google Translate is the warmth of trying ("genuinely grateful and delighted"), from Facebook only, so use it for wording. |
+| Direction | Away in the complaints, **towards in what they pay for** | ○ | Every long-running rival ad makes a positive promise with a time limit: Babbel "speaking in 3 weeks", Pimsleur "30 days, 30 minutes". None leads with the pain. Version 1 said to open away for broad ads. **This is ad test 1 vs 2.** |
+| Process | **Procedural, and "decide for me"** | ● | Duolingo removed lesson choice in 2022, then had its best quarter to date. Reddit: "makes every choice for me". Catch: never make them redo words they already know. |
+| Reference | External when cold, internal after the morning check | ◐ | It comes from the calls. Rivals lean on a number and a time frame. We have no learner numbers yet. |
+| Picture size | **Specific**: a number and a time frame | ◐ | Every control does this ("3 weeks", "30 days"). Alen says specific converts higher. |
+| Change tolerance | **Same life plus one exception**: keep the commute, add two minutes | ● | 262 four- and five-star reviews happily mention learning on the commute or while driving. Pimsleur has sold "while driving" for decades. Catch: it's a niche (Pimsleur's app earns about 1% of Duolingo's), so it's the how, not the headline. |
+| Stress response | **Friction, fun, a small monthly number** | ○ | From Reddit ("I will not do the 100 at once"). The dollar lines ($8–10/mo and so on) were built on 1–5 reviews each, so they're **not evidence**. Yearly-first vs monthly-first is already split in v9.63. |
+| Convincer channel | **Hear it, say it, and see it written** | ● | Seeing the spelling helps words stick (Ehri & Rosenthal 2007). TikTok's biggest complaint about Pimsleur is "nothing is written" (1,822 likes). Show kana, not romaji. |
+| Convincer strategy | A trial window, then the morning check proves it | ◐ | Trials that require a card convert far better (49% vs 18%, Adapty). No benchmark exists for a cold click typing a card into our own checkout. **The test measures it.** |
+| Meta-criteria | **Low energy**: no kanji, no reading wall, no punishment | ● | The top complaint about Duolingo is **hearts and energy, being punished for mistakes**: 185 of 847 low-star reviews (22 for silly sentences, 5 for can't speak). WordStick never punishes a mistake. |
+| AI | Fine as a **helper that talks with you**, not as **made-up content** | ◐ | App reviews of AI conversation partners run 53 positive to 34 negative. Speak makes ~US$100M a year. Duolingo's backlash was about AI replacing staff and AI-made lessons, and its revenue still rose 41%. Pew: 76% want AI labelled. |
 
-Each of these is a justification once said back, not an objection.
+**✕ Dropped from version 1 or the research:**
+- **"Choice and logic under stress."** Reddit shows they decide on friction and fun.
+- **"Duolingo hate isn't about hearts."** Hearts is the top complaint.
+- **"The mic never marks you" as a selling point.** People want grading that *works*. ELSA has 34M users and is built on scoring. Keep grading out of the drill, but don't advertise it.
+- **"Never say AI."** Too strong; see the AI row above.
+- **"Pimsleur has too few words" as a lead.** People say it, but they pay for "speaking in 30 days".
+- **"No review pile" as a lead.** WaniKani, a paid review-pile app, was the most-liked app on Reddit. It's fine as a side line, not a headline.
+- **"Hazard" and "illegal" driving complaints.** About 2 reviews.
+- **"456 Babbel users are a ready paying audience."** Only 5 of them mention a trip, and 14 mention paying.
+
+## Part B. The limitations, and how the offer fits them
+
+| Limitation | Say it back as the reason it fits | Sure? |
+|---|---|---|
+| Time | "You've got a commute, not an evening. This is built for the commute." | ● |
+| Money | "Less than one class hour a month. We'll remind you before you're charged, and cancelling takes one tap." | ● The anger is about the process: refunds refused, can't cancel, surprise charges, no reminder. Only 6% is about price. Australia: 76% had trouble cancelling. |
+| Reading | "No kanji, no reading wall. You see it written in kana while you hear it." | ● |
+| Energy | "No hearts, no lives, no losing a streak for a mistake. One minute tomorrow shows what stayed." | ● |
+| Speed | "Weeks, not years": a word you pull from memory sticks in days. | ● for the mechanism. ○ for any promise with a time limit until our own learners give us a number. |
+| Embarrassment | "Get it wrong with nobody listening." | ◐ Being scared to speak is well documented. The "fear of the reply" angle comes from Facebook only, so use it for wording. |
+| Driving | "Start it before you pull out. No looking, no tapping." Show the commute, never a hand on the phone. | ◐ Recalling and speaking is closer to a phone call than to the radio (AAA). NSW learner and P1 drivers can't use a phone at all. **Say "commute", don't headline "while driving".** |
 
 ## Part C. The installed criteria: "the perfect way to learn Japanese words would…"
 
-Six to nine lines, each true of the product, each with the loss behind it, each explained. Ranked by the size of the loss (Levels call).
+Ordered by how sure we are, then by the size of the loss.
 
-1. **…make me say the word before it shows me.** Loss: a word you only read is gone by morning. WordStick: yes, the core drill. Closes the Duolingo door (it shows first).
-2. **…prove to me the next morning which words actually stayed.** Loss: you'd never know which ones faded until the trip. WordStick: yes, the morning check. This is where a want becomes a need.
-3. **…give me the words for MY date: the counter, Tuesday's class, the N5 list.** Loss: the date arrives without the words. WordStick: PARTIAL. Categories and the road exist; no "your date is in 8 weeks, here is the plan" and no exam tile. Flagged gap, the need for the spender audience lives here.
-4. **…remember what I fumbled, so a teacher picks up where I left off.** Loss: every other app starts from zero every day. WordStick: coming (Talk, staging only). Do not sell it before it ships. This is the "channel" criteria: nobody else has the learner's ledger.
-5. **…count only the words that are truly mine.** Loss: a streak that lies. WordStick: yes, the honest owned-word count.
-6. **…let me decide after it has proved itself on me.** Loss: paying for another app that doesn't stick. WordStick: yes, the ask comes with the proof on screen (v9.61).
-7. **…fit inside the day I already have: two minutes, hands off the phone, in the van.** WordStick: yes. (Alen would file this under limitations, not criteria; it keeps them safe, it doesn't decide.)
-8. **…need no reading, no kanji, no grading to start.** WordStick: yes. (Same note as 7.)
+1. **…make me say the word from memory before it shows me.** ●
+   - Loss: a word you only read is gone by morning.
+   - Built: yes, it's the core drill.
+2. **…never punish me for getting it wrong. No hearts, no lives.** ●
+   - Loss: you quit the day you run out.
+   - Built: yes.
+   - This line is new and beats the control's biggest complaint.
+3. **…pick the words for me, in the right order, without making me redo what I know.** ●
+   - Loss: overwhelm, and a pile of resources you never use.
+   - Built: yes, with the batch and the road.
+4. **…let me hear it, say it and see it written.** ●
+   - Loss: audio-only courses leave you unable to picture the word.
+   - Built: yes, kana on the card.
+5. **…prove to me the next morning which words actually stayed.** ◐
+   - Loss: you only find out on the trip.
+   - Built: yes, the morning check.
+   - The mechanism is proven; whether buyers value it is untested.
+6. **…fit inside the day I already have: two minutes on the commute, hands off the phone.** ●
+   - Alen files this under limitations, not criteria.
+7. **…give me the words for MY trip, by my date.** ◐
+   - Loss: the date arrives without the words.
+   - Built: **only partly.** There's no plan built around your date yet.
+   - Every control promises a time frame, and a trip countdown is a natural hook.
+8. **…warn me before it charges me, and let me cancel in one tap.** ●
+   - Loss: the forgotten-trial charge that people hate.
+   - Built: **not yet.** The 2-day reminder is a pending build.
+9. **…remember what I fumbled, like a teacher would.** ○
+   - This is Talk, and it isn't shipped. **Don't sell it yet.**
+   - When it ships, it's fine to call it an AI practice partner; label it honestly.
 
-One-phrase shapes, Alen's "the perfect diet is the one you never feel you're on":
-- "The perfect Japanese app is the one that can prove it worked by tomorrow morning."
-- "The one where you do the remembering, not the app."
-Inversion ("you can't without this"): "You can't own a word you've never said from memory."
+Removed from version 1:
+- **"No grading"**: now just "no kanji, no reading wall".
+- **"Count only truly-mine words"**: kept in the product, but no evidence it's a buying criterion. Use it as proof, not as a criterion.
+- **"Decide after it proves itself"**: folded into line 5.
+
+**One-phrase shapes:**
+- "The perfect Japanese app is the one that proves it worked by tomorrow morning."
+- "You do the remembering, not the app."
 
 ## Part D. Want or need, and the price
 
-Litmus: can their life function without this?
-- No date: yes it can. WordStick is a WANT. $8.99 / $59.99 is a want price. Copy must not dress it up as a need to the broad audience.
-- Trip booked, class enrolled, JLPT registered: somebody else already installed the need. These are the closest to "need" on arrival. Sell the need (criteria 2 and 3) to them only. This is why ad set A exists.
-- Talk: the only place "the cost of losing it is greater than the cost of paying" becomes true, because the ledger lives nowhere else. That is the case for the Talk tier sitting above the drill price.
+- **No date means a want.** $8.99 / $59.99 is a want price, so don't dress it up as a need.
+- **A trip, class or exam date means close to a need.** Somebody already installed the deadline. Lines 5 and 7 are for these people only (ad set A).
+- **Talk** is the only place losing it costs more than paying for it, because the record of their words lives nowhere else. That's the case for a higher Talk tier.
+- **Three doors on the plans screen:**
+  - "keep going as I am"
+  - "7 days of the whole thing" (monthly)
+  - "yearly"
 
-Three doors on the plans screen, not two (two is either/or and feels bad):
-- "Keep going as I am" (3 new words a day)
-- "Try the whole thing for 7 days" (monthly)
-- "Yearly, and stop thinking about it"
+  Plus the reminder line from Part B.
 
-## Part E. Where each criteria goes in the funnel
+## Part E. Where each criterion goes
 
-| Surface | Install | Which |
-|---|---|---|
-| Ad primary text | One line of the perfect-way story + the act. Alen: "you can install the criteria right in the ad itself." | 1 (+3 for set A) |
-| Landing pre-opening | The story wrapper, short (3 to 4 lines), then "Try one word and see". The demo confirms line 1. | 1, 2, 7, 8 |
-| Landing "Why it works" / FAQ | The one-phrase shapes; rivals as "great if you want a streak, the catch is none of them make you say it first". | 1, 5 |
-| Round-1 end | Restate 2 as tomorrow's test, in timeline form. | 2 |
-| Morning check | Bare. One line at most. | 2 |
-| Plans screen after proof | The connect close: "You wanted words that stay, a count you can trust, two minutes a day, no kanji. You just saw the first one. If we give you all of that for 7 days, worth trying the whole thing?" Then the maths and three doors. | 1, 2, 5, 6, 7, 8 |
-| Home banner / Settings | The honest count as the standing proof. | 5 |
-| Talk tier (when it ships) | "The teacher that remembers what you fumbled." | 4 |
-| Emails / posts (when built) | One criteria per email, explained: "why I built it this way". | one at a time |
+| Surface | Install |
+|---|---|
+| Ad (test 1) | A positive promise with a time limit (lines 1 + 7): "Say dinner, trains and hotels in Japanese before your trip. Two minutes a day, out loud." |
+| Ad (test 2) | The pain opener, then flip to towards: "Hit a 100-day streak and it still didn't stick? This one makes you say it." (lines 1 + 2) |
+| Ad (test 3, optional) | Hands-free commute (line 6). |
+| Landing | The same headline as the ad, a short story wrapper, then "Try one word and see" (lines 1, 3, 4). |
+| Round-1 end | Tomorrow's check, in timeline form (line 5). |
+| Plans screen | The connect close: lines 1, 2, 5 and 6, then the three doors, then the reminder and one-tap-cancel promise (line 8). |
+| Talk (later) | Line 9. |
 
-## Part F. The story wrapper (owner's voice, cold market needs the story)
+## Part F. The story wrapper (the owner's voice)
 
-"When I started Japanese I was a plumber with a class on Tuesday nights and a trip booked. I did what everyone does: an app with a streak, a textbook, flashcards. By the next week the words were gone. So I knew the perfect way to learn words, for me, had to do a few things. It had to make me say the word before it showed me, because that's the only kind that stayed. It had to fit in the van on the way to a job, hands off the phone. It couldn't need kanji, I can't read them yet. It had to let me get it wrong with nobody listening. And it had to prove itself: the next morning, cold, which words were still there. Nothing did that. So I built it."
+> "When I started Japanese I was a plumber with a class on Tuesday nights and a trip booked. I did what everyone does: an app with a streak, a textbook, flashcards. By the next week the words were gone, and the app kept taking my hearts for every mistake. So I knew the perfect way to learn words, for me, had to do a few things. It had to make me say the word before it showed me, because that's the only kind that stayed. It couldn't punish me for getting it wrong. It had to pick the words for me. It had to fit in the van on the way to a job, without touching the phone. And it had to prove itself: the next morning, which words were still there. Nothing did that. So I built it."
 
-Keep "for me" in it. That is the difference between installing and imposing.
+Keep "for me" in it. That's the difference between installing and imposing.
 
-## Part G. What to verify before locking this
+## Part G. What still stands between this and certainty
 
-- Alen's best source is sales calls and the buyer's exact words. We have none yet. Every side in Part A is inferred from the controls and from beginner language, not from our own learners.
-- First 20 learners: ask the two intake questions in the app after sign-up. "What outcome do you want?" and "What do you want to change about how you learn?" Read the exact words, then correct Part A.
-- Controls to strip with the criteria table (section → structure → criteria): Duolingo's current ads and onboarding, Pimsleur ads (closest to us in channel), italki/Preply (for Talk), Genki/Minna and JLPT pages (timeline language for set A), the top "30 days" YouTube comments (the frustration words).
-
-## Where the close could betray the opening
-
-- Set B opens away ("stop losing the words") and the plans screen has no away line. Add one bridge sentence: "the words you said from memory are the ones that didn't go."
-- Procedural buyers reach the plans screen never having been told the procedure. Restate it in timeline form: round, sleep, check, count.
-- Checkout stress is money-for-nothing. "Nothing to pay for 7 days, decide after" covers logic; add the choice frame: you keep everything you proved either way.
-- Creator bias: the owner is towards, procedural, specific, internal. The market matches on most lines; internal reference is the one to watch. Cold traffic wants someone else's proof first.
-
-## Not from the calls (flagged as ours)
-- The date-plan gap (criteria 3) is our inference; the calls support the criteria, not the feature.
-- Whether $8.99 sits at "want" is our application of his litmus test.
-- The side assignments in Part A are inferred, see Part G.
+1. **The $300 test** settles direction, the card, and which line pulls. The setup:
+   - Three ads, at least $100 each, differing only in the message (Part E).
+   - Pick the winner by click rate and the cost of each person reaching the landing page.
+   - Track landing, then plans, then card entered. **If fewer than about 1 in 10 who reach plans enter a card, the card is the problem, not the ad.**
+   - Set Meta to optimise for people starting checkout.
+   - Write the kill lines down before launch.
+2. **The first 20 learners:** two intake questions after sign-up. "What outcome do you want?" and "What do you want to change about how you learn?" Their exact words replace our inferred ones.
+3. **The 2024 calls:** we're working from AI summaries. Transcribing the four MEGA recordings would let us check the method against Alen's own words.
+4. **Keep the raw data next time.** TikTok and Facebook text wasn't saved, so those counts can't be replayed.
