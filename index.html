@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.63';
+const APP_VERSION = '9.64';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10580,7 +10580,7 @@ function renderPaywall(){
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">✅</div>
         <div class="ob-title">Your 7 days are on</div>
-        <div class="ob-sub">Everything is unlocked${endTxt ? ` until ${esc(endTxt)}` : ''}. Cancel anytime before then and you pay nothing — Settings → Your plan → Manage.</div>
+        <div class="ob-sub">Everything is unlocked${endTxt ? ` until ${esc(endTxt)}` : ''}. We'll remind you 2 days before we charge — cancel before then and you pay nothing.</div>
         ${msgRow}
         <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="nav('home')">Back to my words</button>
         <button class="ob-switch" onclick="settingsManageSub()">Manage my plan</button>
@@ -10630,13 +10630,13 @@ function renderPaywall(){
         <button class="ob-path-card${pwFirst === 'yearly' ? ' pw-hero' : ''}" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">${pwFirst === 'yearly' ? '▶' : '📅'}</div>
           <div class="ob-path-t">Yearly, and stop thinking about it ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">Brakes off, ${deckLine}. 7 days to decide, nothing to pay until then, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. 7 days to decide, nothing to pay until then, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. We remind you 2 days before we charge.</div>
         </button>`;
     const monthlyBtn = `
         <button class="ob-path-card${pwFirst === 'monthly' ? ' pw-hero' : ''}" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">${pwFirst === 'monthly' ? '▶' : '🗓️'}</div>
           <div class="ob-path-t">Try the whole thing for 7 days</div>
-          <div class="ob-path-s">Brakes off, ${deckLine}. Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. We remind you 2 days before we charge.</div>
         </button>`;
     _metaTrackPlansViewOnce(pwFirst);
     return `
@@ -31943,6 +31943,7 @@ function renderHome(){
         <button class="hv9-stick" onclick="nav('road')">${stickLine}&nbsp;<span class="hv9-arr" style="white-space:nowrap">›</span></button>
         ${coldLine}
       </div>
+      ${_trialNoticeHtml()}
       ${freeBanner}
       ${resumeChip}
       ${tmrwCard}
@@ -33426,7 +33427,7 @@ async function _settingsPlanLoad(){
     }
   }catch(e){}
   _setUi.planBusy = false;
-  if(state.screen === 'settings') render();
+  if(state.screen === 'settings' || state.screen === 'home') render();
 }
 function _settingsPlanLine(){
   const u = _authState.user;
@@ -33448,6 +33449,50 @@ function _settingsPlanLine(){
   }
   return { line: p ? 'Starter plan' : 'Checking your plan…', manage, plans:true };
 }
+/* v9.64 — the charge reminder (criteria line 8, owner call 27 Sep: "warn me
+   before it charges me, cancel in one tap"). Subscription anger is about the
+   process, not the price: forgotten-trial charges, no warning, hard cancel.
+   From 2 days before a Stripe trial's first charge, Home says the date and
+   the amount plainly, with the cancel door right there. "Keep it" hides it
+   for that trial only. Never says "free" (v9.61 rule). */
+const TRIAL_NOTICE_MS = 2 * 24 * 3600 * 1000;
+function _trialNoticeHtml(){
+  try{
+    const u = typeof _authState !== 'undefined' && _authState.user;
+    if(!u || _entOwnerAccount(u)) return '';
+    if(!_setUi.planBusy && (_setUi.planFor !== u.id || Date.now() - _setUi.planAt > 300000)) setTimeout(_settingsPlanLoad, 0);
+    const p = _setUi.plan;
+    if(!p || !p.active || p.status !== 'trialing' || !p.trial_end || !p.stripe_customer_id) return '';
+    const end = new Date(p.trial_end).getTime();
+    const left = end - Date.now();
+    if(!(left > 0) || left > TRIAL_NOTICE_MS) return '';
+    if(state.settings.trialNoticeKept === p.trial_end) return '';
+    const yearly = /year/i.test(p.product || '');
+    const amt = yearly ? PAYWALL_PRICES.yearly : PAYWALL_PRICES.monthly;
+    const day = new Date(end).toLocaleDateString(undefined, { weekday:'long', day:'numeric', month:'short' });
+    const busy = _setUi.busy === 'portal';
+    return `
+      <div class="hv9-hero trial-notice" style="padding:14px 16px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="font-size:22px">🔔</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:14px">Heads up: your 7 days end ${esc(day)}</div>
+            <div class="muted" style="font-size:12px;margin-top:2px">Then $${amt.toFixed(2)} ${yearly ? 'a year' : 'a month'} is charged to your card. Want to stop? Cancel now and you pay nothing.</div>
+            ${_setUi.msg && busy === false && state.screen === 'home' ? `<div class="muted" style="font-size:12px;margin-top:4px">${esc(_setUi.msg)}</div>` : ''}
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+              <button class="hv9-pill on" style="width:auto;margin-top:0;padding:8px 14px" onclick="trialNoticeKeep()">Keep it</button>
+              <button class="hv9-pill" style="width:auto;margin-top:0;padding:8px 14px" onclick="settingsManageSub()" ${busy ? 'disabled' : ''}>${busy ? 'One moment…' : 'Cancel'}</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }catch(e){ return ''; }
+}
+function trialNoticeKeep(){
+  try{ const p = _setUi.plan; if(p && p.trial_end){ state.settings.trialNoticeKept = p.trial_end; save(); } }catch(e){}
+  render();
+}
+window.trialNoticeKeep = trialNoticeKeep;
 async function _settingsPost(url, body){
   const token = await authToken();
   if(!token) return { status:401, body:{} };
