@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.60';
+const APP_VERSION = '9.61';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10599,7 +10599,12 @@ function renderPaywall(){
        when there is one; a brand-new learner gets the plain promise. */
     let own = 0;
     try{ own = wordsThatStick().N; }catch(e){ own = 0; }
-    const ownLine = own > 0
+    /* v9.61 — the screen opens on what the learner just did, not on us. */
+    const cp = state.settings.coldProof;
+    const justProved = (cp && typeof cp === 'object' && cp.day === _coldDayKey() && (cp.n || 0) > 0) ? cp : null;
+    const ownLine = justProved
+      ? `You just proved <b>${justProved.n} word${justProved.n === 1 ? '' : 's'}</b> cold after a night's sleep — nothing on the screen, out of your own head. That is how it works.`
+      : own > 0
       ? `You own <b>${own} word${own === 1 ? '' : 's'}</b> — proven cold, out of your own head. Keep the count growing.`
       : `Every word you prove in the morning check is yours for good. Watch the count grow.`;
     /* Installing Compliance (26 Sep): "free" is an afterthought, never the headline; the exit is a small yes, not a no. */
@@ -10907,6 +10912,13 @@ function _trialOfferDue(screen){
     if(!_authState.user || _entOwnerAccount(_authState.user)) return false;
     if(state.settings.trialOfferShown) return false;
     if(!state.settings.r1Done) return false;
+    /* v9.61 — Installing Compliance (owner, 27 Sep): the thing proves itself
+       BEFORE the ask. The plans screen now waits for the learner's own proof:
+       the first morning check that lands at least one word cold (or, failing
+       that, the third finished check), never straight after round 1. */
+    const cp = state.settings.coldProof;
+    if(!cp || typeof cp !== 'object') return false;
+    if(!((cp.n || 0) > 0 || (state.settings.coldDoneCount || 0) >= 3)) return false;
     if(state._entUnlocked === true) return false;
     return screen === 'home' || screen === 'practice' || screen === 'buildMode';
   }catch(e){ return false; }
@@ -11090,6 +11102,8 @@ async function _checkoutPollLoop(){
     state._entUnlocked = d.unlocked; state._entReason = d.reason;
     if(d.unlocked){
       _checkoutStripParam();
+      state.settings.trialStarted = true;
+      try{ save(); }catch(e){}
       nav('home');
       return;
     }
@@ -28575,7 +28589,7 @@ function renderBuildModeComplete(){
       <div class="stk-okmark" aria-hidden="true">✓</div>
       <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
       <div class="stk-bsub">${_secLine}${_mins} min this session</div>
-      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words${_ownP > 0 ? ` · you own <b>${_ownP}</b> so far` : ''}</span></div>
+      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> come back and see how many are still there — a 1-minute check on ${COLD_N} of these words${_ownP > 0 ? ` · you own <b>${_ownP}</b> so far` : ''}</span></div>
       ${_autoSwapHtml()}
       <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(spamN)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
@@ -29154,7 +29168,7 @@ function _coldEnsure(){
   const today = _coldDayKey();
   if(s.date !== today){
     s.date = today; s.ids = _coldCandidates(); s.idx = 0; s.results = {};
-    s.pending = null; s.done = false; s.skipped = false;
+    s.pending = null; s.done = false; s.skipped = false; s.snoozeAt = null;
   }
   if(!Array.isArray(s.ids)) s.ids = [];
   if(!s.results || typeof s.results !== 'object') s.results = {};
@@ -29167,6 +29181,7 @@ function coldCheckDue(){
   try{
     if(!state.settings.onboard || !state.settings.onboard.done) return false;
     const s = _coldEnsure();
+    if(s.skipped && s.snoozeAt && now() >= s.snoozeAt){ s.skipped = false; s.snoozeAt = null; try{ save(); }catch(e){} }
     if(s.done || s.skipped) return false;
     return s.ids.length > 0;
   }catch(e){ return false; }
@@ -29281,14 +29296,28 @@ function coldCheckNext(){
   if(s.idx >= s.ids.length) s.done = true;
   save(); render();
 }
+/* v9.61 — Installing Compliance: the check is where belief is born, so it
+   has no "Not now". The one exit is a small yes with a time on it: before
+   3 pm it moves the check to 6 pm today, later it moves it an hour. When
+   the time comes the check pops back up by itself (_coldAutoPop) and the
+   Home door covers the gap in between. */
+function _coldSnoozeTarget(){
+  const d = new Date();
+  if(d.getHours() < 15){ d.setHours(18, 0, 0, 0); return d.getTime(); }
+  return Date.now() + 60 * 60 * 1000;
+}
+function _coldLaterLabel(){
+  return new Date().getHours() < 15 ? 'Do it tonight instead' : 'Do it in an hour';
+}
 function coldCheckLater(){
   const s = _coldEnsure();
   clearTimeout(window._coldAdvT); window._coldAdvFor = null;
   if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.skipped = true; s.pending = null;
+  s.snoozeAt = _coldSnoozeTarget();
   state.settings.coldIntroSeen = true;
   save();
-  log('cold_check_skip', { left: s.ids.length - s.idx });
+  log('cold_check_snooze', { left: s.ids.length - s.idx, until: s.snoozeAt });
   nav('home');
 }
 function coldCheckStart(){
@@ -29305,7 +29334,16 @@ function coldCheckFinish(){
   if(s.preview){ window._coldPreview = null; nav('home'); return; }
   s.done = true; s.pending = null;
   state.settings.coldIntroSeen = true;
+  /* v9.61 — the proof, kept for the plans screen (shown once, right after
+     this) and for the day-2 scoreboard (it syncs with the settings). */
+  try{
+    const n = s.ids.filter(id => s.results[id] === true).length;
+    state.settings.coldDoneCount = (state.settings.coldDoneCount || 0) + 1;
+    if(!state.settings.coldFirstDone) state.settings.coldFirstDone = _coldDayKey();
+    state.settings.coldProof = { day: _coldDayKey(), n, total: s.ids.length, at: now() };
+  }catch(e){}
   save();
+  try{ _syncPushNow(); }catch(e){}
   nav('home');
 }
 window.coldCheckAnswer = coldCheckAnswer; window.coldCheckSkipWord = coldCheckSkipWord;
@@ -29796,7 +29834,7 @@ function renderColdCheck(){
       ${p ? '' : `<button class="cold-later" style="margin-top:4px;padding:10px" onclick="coldCheckSkipWord()">Skip this one</button>`}
       ${body}
     </div>
-    ${p ? '' : `<button class="cold-later" onclick="coldCheckLater()">Not now</button>`}
+    ${p ? '' : `<button class="cold-later" onclick="coldCheckLater()">${_coldLaterLabel()}</button>`}
   </div>`;
 }
 
@@ -31108,9 +31146,10 @@ function nav(screen, data, fromPop){
      same screen in edit mode (state._nameEdit). */
   if(screen !== 'auth' && screen !== 'name' && _nameNeeded()) screen = 'name';
   if(screen === 'name' && !state._nameEdit && !_nameNeeded()) screen = 'home';
-  /* v9.40 — card-required trial: the plans screen is shown ONCE, the first
-     time the learner leaves their first round. "Not now" drops to the free
-     plan (3 new words a day) and the screen never forces itself again. */
+  /* v9.40 — card-required trial: the plans screen is shown ONCE. v9.61: once
+     the learner has PROVED a word in the morning check (see _trialOfferDue),
+     not after round 1. "Keep going as I am" drops to the starter plan (3 new
+     words a day) and the screen never forces itself again. */
   if(_trialOfferDue(screen)){
     state.settings.trialOfferShown = _catDayKey();
     try{ save(); }catch(e){}
@@ -31581,7 +31620,7 @@ function _stkBurst(sec, o){
     if(bm._r1){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
   }
   let _own = 0; try{ _own = wordsThatStick().N; }catch(e){ _own = 0; }
-  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> a 1-minute check on ${COLD_N} of these words${_own > 0 ? ` · you own <b>${_own}</b> so far` : ''}</span></div>`;
+  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> come back and see how many are still there — a 1-minute check on ${COLD_N} of these words${_own > 0 ? ` · you own <b>${_own}</b> so far` : ''}</span></div>`;
   const inst = _installCardHtml(bm);
   /* v9.21 — Claude Design 7f: one celebration, one big button. The stats row
      and the recap boxes under the card are gone (they repeated the headline). */
@@ -31761,7 +31800,7 @@ function renderHome(){
      the number is waiting on. */
   /* v9.19 — Delve 12: the day of the first round, Home says what tomorrow holds. */
   const tmrwCard = (state.settings.r1Done === _catDayKey() && coldPendingCount() === 0)
-    ? `<div class="hv9-tmrw"><div class="ic">🌅</div><div><b>Tomorrow's check · ${COLD_N} words ready</b><span>Open WordStick tomorrow — it takes a minute.</span></div></div>`
+    ? `<div class="hv9-tmrw"><div class="ic">🌅</div><div><b>Tomorrow's check · ${COLD_N} words ready</b><span>Open WordStick tomorrow and see how many are still there — it takes a minute.</span></div></div>`
     : '';
   let coldLine = '';
   try{
@@ -31817,15 +31856,17 @@ function renderHome(){
        && !_entOwnerAccount(_authState.user)){
       const ftLeft = _freeTierNewBudget();
       const ftLocked = _freeTierLockedCount();
+      let ftOwn = 0; try{ ftOwn = wordsThatStick().N; }catch(e){ ftOwn = 0; }
+      /* v9.61 — the count and the door, never the word "free" (Installing Compliance). */
       freeBanner = `
       <div class="hv9-hero" style="padding:14px 16px">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="font-size:22px">🔓</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:800;font-size:14px">Free plan — ${isFinite(ftLeft) ? ftLeft : 0} new word${ftLeft === 1 ? '' : 's'} left today</div>
-            <div class="muted" style="font-size:12px;margin-top:2px">Reviews are unlimited.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} words waiting to unlock.` : ''}</div>
+            <div style="font-weight:800;font-size:14px">${ftOwn > 0 ? `${ftOwn} word${ftOwn === 1 ? '' : 's'} yours · ` : ''}${isFinite(ftLeft) ? ftLeft : 0} new word${ftLeft === 1 ? '' : 's'} today</div>
+            <div class="muted" style="font-size:12px;margin-top:2px">Reviews never run out.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} more words waiting.` : ''}</div>
           </div>
-          <button class="hv9-pill on" style="width:auto;flex-shrink:0;margin-top:0;padding:10px 16px" onclick="nav('paywall')">Unlock</button>
+          <button class="hv9-pill on" style="width:auto;flex-shrink:0;margin-top:0;padding:10px 14px" onclick="nav('paywall')">Take the brakes off</button>
         </div>
       </div>`;
     }
@@ -33337,12 +33378,12 @@ function _settingsPlanLine(){
     /* v9.40 — a Stripe trial: card on file, first charge at trial end. */
     if(p.status === 'trialing'){
       const ends = p.trial_end || p.expires_at;
-      return { line:`Free week${ends ? ' · ends ' + fmt(ends) : ''} · then ${yearly ? 'yearly' : 'monthly'}`, manage, plans:false };
+      return { line:`Trying it${ends ? ' · nothing to pay until ' + fmt(ends) : ''} · then ${yearly ? 'yearly' : 'monthly'}`, manage, plans:false };
     }
     const until = p.expires_at ? fmt(p.expires_at) : '';
     return { line:`${yearly ? 'Yearly' : 'Monthly'} plan${until ? ' · paid through ' + until : ''}`, manage, plans:false };
   }
-  return { line: p ? 'Free plan' : 'Checking your plan…', manage, plans:true };
+  return { line: p ? 'Starter plan' : 'Checking your plan…', manage, plans:true };
 }
 async function _settingsPost(url, body){
   const token = await authToken();
@@ -34428,7 +34469,10 @@ async function init(){
     _paywallUiEnsure().msg = "No charge — pick a plan whenever you're ready.";
     state.screen = 'paywall';
     try{ history.replaceState({screen:'paywall'}, '', '#paywall'); }catch(e){}
-  } else if(!_entGateOpen() && state.settings.freePlanIntroSeen !== true){
+  } else if(!_entGateOpen() && state.settings.freePlanIntroSeen !== true && state.settings.trialStarted === true){
+    /* v9.61 — only after a trial actually ran (trialStarted, set on checkout
+       success). An account that has not been asked yet meets the plans screen
+       after its first proving check (_trialOfferDue), never at boot. */
     /* v8.79 free plan — the free week just ended on this device: show the
        plan screen ONCE (a quiet, matter-of-fact transition), then never
        force it again. From the next boot on, the account simply runs on

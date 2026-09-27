@@ -249,3 +249,105 @@ We built WordStick around one idea: you should say the word out loud BEFORE you 
 it — hands-free, on the drive to work, in minutes you already lose. No streaks, no
 games, no screen-staring. There's a 7-day free trial (no card) if you want to try it on
 tomorrow's commute → wordstick.app
+
+
+---
+
+## J. DO-THIS-NOW AD SET (v2, 27 Sep 2026 — "Installing Compliance", owner: "do them all")
+*Supersedes §H for the $300 test. The rule from the 30 Apr call: never argue, never claim.
+The first line of every ad is ONE thing the reader can DO in the feed, in ten seconds, with
+no trade-off, that works on the spot. They do it, it works, the first yes is banked before
+the click — and the conclusion ("a word I say out loud stays") is theirs, not ours. The
+ask at the end is small ("try it for 7 days and decide"), never "free", never a claim. §H
+stays on file as the argument-led set: keep it OFF unless J loses on CTR by a clear margin.*
+
+**Audience for the J set (owner call 3, 27 Sep): spenders, not the interested.** People who
+already PAY for Japanese. Facebook cannot see a Duolingo Super receipt, so stack the closest
+proxies and let a customer-list lookalike take over once ≥100 payers exist:
+- Interests: *Japanese-Language Proficiency Test*, *Genki (textbook)*, *Minna no Nihongo*,
+  *Japanese language school*, *Study in Japan*, *Japan Rail Pass*, *Japan travel* (booked-trip
+  proxies), *Busuu*, *Pimsleur*, *Rosetta Stone*, *italki*, *Preply*.
+- Behaviours: *Engaged shoppers*; *Frequent travellers* (international).
+- Later: Customer list (payers) → 1% lookalike, the only true "spender" audience.
+- Run it as **two ad sets on the same creative**: A = the spender stack above, B = broad
+  (Loren's recipe). Same $ per day each. The test then also answers whether spenders convert
+  better, which is the whole point of call 3.
+
+### J1 — "ありがとう" (the one everybody half-knows)
+Say this out loud, right now, wherever you are: a-ri-ga-tou. Again. Once more, a bit faster.
+⸻
+That's "thank you". Now look away from the screen and say it one more time.
+It came out, didn't it? Nothing on the screen, and it still came out.
+That is the entire method. A word you pull out of your own head stays. A word you only
+read on a screen doesn't. You've just done the first kind, once. WordStick does it with
+you, out loud, hands-free, on the drive to work — and every morning it asks you for
+yesterday's words with nothing on the screen. The number of words that come out is the
+only score it keeps.
+Try it for 7 days and decide at the end of the week.
+
+### J2 — "Count to three"
+Out loud, right now: ichi. ni. san. That's one, two, three in Japanese. Say them again
+without looking.
+⸻
+Three words, thirty seconds, and they're in your mouth — not on a screen, not in a
+matching game. Tomorrow morning, before your coffee, say them again. If they're still
+there, you already understand what WordStick does.
+It says the meaning, you say the Japanese, out loud, hands-free, in the dead minutes you
+already have. Each morning it asks for yesterday's words cold and counts the ones that
+come out. That count is yours — nobody can tap their way to it.
+Try it for 7 days and decide at the end of the week.
+
+### J3 — "The morning test" (the $5 moment, in the feed)
+Say みず — "mizu", water — three times, out loud, now. Then put your phone down.
+⸻
+Tomorrow morning, before you look anything up, say it again.
+If it's there, you've just seen the only thing that matters in learning a language: does
+the word come out of your own head a day later, with nothing in front of you. Most apps
+never check. WordStick checks every morning and counts only the words that pass.
+Hands-free, out loud, ten minutes on the drive to work. Try it for 7 days and decide at
+the end of the week.
+
+### J4 — "You already know one"
+You already know a Japanese word. Say "sushi" — but the Japanese way: su-shi, short, both
+halves the same length, no drawl. Now "karaoke": ka-ra-o-ke, four beats. Out loud.
+⸻
+Hear how different that felt from reading it? That's a word going through your mouth
+instead of your eyes. It's the only direction that sticks, and it's the one direction the
+tap-the-answer apps never make you practise.
+WordStick makes you practise it, out loud, hands-free, on the way to work, and every
+morning it asks you for yesterday's words with nothing on the screen.
+Try it for 7 days and decide at the end of the week.
+
+### J5 — "Order a coffee" (the driver / traveller segment)
+Say this out loud: koohii kudasai. That's "a coffee, please". Say it again like you mean it.
+⸻
+You could walk into a café in Tokyo tomorrow and use it. That's what three seconds of
+saying a word out loud does, and what a year of tapping matching games doesn't.
+WordStick fills your commute with exactly this: it says the meaning, you say the
+Japanese, out loud, hands-free, eyes on the road — then every morning it asks for
+yesterday's words cold. The words that come out are the ones you'll use.
+Try it for 7 days and decide at the end of the week.
+
+### J-headlines (pair with any of J1–J5)
+25. Say one word out loud. If it's still there tomorrow, it's yours.
+26. Japanese words that come out of your mouth, not off a screen — hands-free, on the drive to work.
+27. Try it for 7 days, decide at the end of the week. WordStick, $59.99 a year after.
+    *(price-in-ad filtration, spender audience)*
+
+### J-audit — compliance pre-flight (playbook §11 + the 30 Apr call)
+| Variant | Claim to argue with | "Free" | Exit / no | Verdict |
+|---|---|---|---|---|
+| J1 | none — the reader supplies the evidence | none | none | ✅ ship |
+| J2 | none | none | none | ✅ ship |
+| J3 | "most apps never check" — factual, generic, no brand | none | none | ✅ ship |
+| J4 | "the one direction the tap-the-answer apps never make you practise" — generic, no brand | none | none | ✅ ship |
+| J5 | "what a year of tapping doesn't" — softened, generic | none | none | ✅ ship |
+| All | no outcome+timeframe, no "fluent", no "you'll"; the only promise is "the count is yours" | | | |
+
+### J-posts — organic warm-up, do-this-now form (replaces §I posts 1–2; post 3 stays)
+**Post 1 (no link):** Say "arigatou" out loud three times, then look away and say it once
+more. That one's yours now. Notice you didn't need a screen, a game or a streak — you
+needed your mouth. That's the whole difference between recognising a word and owning it.
+**Post 2 (no link):** Try this tomorrow morning: say "mizu" (water) three times tonight,
+then say it again before your coffee. If it's there, you've just run the only test that
+matters. If it isn't, say it three more times and try again the next morning. It'll come.

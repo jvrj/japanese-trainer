@@ -202,22 +202,43 @@ Facebook at a $9 monthly price with a card-free trial.
 **The four levers (all shipped/planned 23 Sep):**
 1. **Card at the start of the trial** (Stripe `trial_period_days=7`, card collected). Card-free
    trials never force a payment decision; opt-out trials convert roughly 3–4× better.
-   The first ROUND stays free with no card — that is the demo. The plans screen comes once, after it.
+   The first ROUND needs no card — that is the demo. **27 Sep (Installing Compliance): the plans
+   screen comes once, the morning AFTER round 1, right after the learner's first check that lands a
+   word cold, with that proof on the screen.** Not straight after round 1 (that was a jump before
+   any belief). Round 1 ends on a small yes: "come back tomorrow and see how many are still there".
 2. **Yearly first.** $59.99 lands on day 8 and recovers the whole customer value at once. Monthly
    is the secondary card ("or pay monthly").
 3. **The honest count is the product from day 2.** Morning check daily; "you own N words" on
    Home, the round end and the plans screen; "Missed it" one tap away on every card so the
    number is real. The trial must END with a growing number the learner does not want to lose.
-4. **Target intent, not interest.** Not "likes Japan". People who booked a Japan trip, enrolled in
-   a class (Minna no Nihongo / Genki learners), or registered for the December JLPT. Same as
-   targeting new-house buyers, not bathroom fans.
+4. **Target spenders, not the interested** (owner call 3, 27 Sep). Not "likes Japan". People who
+   already PAY for Japanese: class-goers (Minna no Nihongo / Genki), Duolingo Super / Busuu /
+   Pimsleur subscribers, JLPT registrants, Japan-trip bookers. Same as targeting new-house buyers,
+   not bathroom fans. The proxy stack + the two-ad-set design live in ad-copy-bank §J.
 
 **The maths that has to hold (web app = a landing click, not a $70 app install):**
 - Landing click (interest/intent targeting): **$0.50–2.00**
 - Landing → card trial started: **≥ 8%** (kill line; aim 15–20%)
 - Trial → paid on day 8: **≥ 20%** (kill line; aim 30%)
 - Cost per paying customer: **≤ $45** (kill line) against $59.99 in hand on day 8
+- **Round 1 → came back the next day and did the check: aim ≥ 40%** (27 Sep, the belief count —
+  a DIAGNOSTIC, not a kill line; it says whether the thing proved itself. Under 25% the card ask
+  never had a believer to land on, so fix the day-2 return before touching the price.)
 - Worked example: $1 click ÷ (0.15 × 0.30) = **$22 per payer**
+
+**How the belief count is read** (no analytics stack; the app syncs its settings to `user_state`):
+```sql
+select
+  count(*) filter (where state_json->'settings'->>'r1Done' is not null)            as round1_done,
+  count(*) filter (where state_json->'settings'->>'coldFirstDone' is not null)     as came_back_and_checked,
+  count(*) filter (where (state_json->'settings'->'coldProof'->>'n')::int > 0)     as proved_a_word,
+  count(*) filter (where state_json->'settings'->>'trialOfferShown' is not null)   as saw_the_card_screen,
+  count(*) filter (where state_json->'settings'->>'trialStarted' = 'true')         as started_trial
+from user_state
+where updated_at > now() - interval '30 days';
+```
+Run it as a READ through the Management API (`POST /v1/projects/<ref>/database/query`) — Claude
+can run reads; only writes need you. `came_back_and_checked ÷ round1_done` is the belief count.
 
 **The test: $300, not $150.** At $150 the trial-start count is too small to read. Run the
 Loren recipe (§8) with the four levers live; grade ONLY on the three kill lines above. All

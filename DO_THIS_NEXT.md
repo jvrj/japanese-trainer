@@ -1,3 +1,38 @@
+# DO THIS NEXT — 27 Sep 2026: "Do them all" is done on staging (v9.61). One thing to look at.
+
+You said yes to both calls and "do them all". All six are built on the staging
+branch and the staging site (https://jvrj.github.io/wordstick-staging/), nothing
+on the live app changed:
+
+1. **The card screen now comes the morning after round 1**, right after the first
+   check that lands a word cold, and it opens with that proof: "You just proved
+   8 words cold after a night's sleep". Round 1 ends on "come back tomorrow and
+   see how many are still there".
+2. **The morning check has no "Not now" any more.** The only way out is "Do it
+   tonight instead" (before 3 pm) or "Do it in an hour", and it pops back up by
+   itself when the time comes.
+3. **No "free" on Home or in Settings.** The banner reads "8 words yours · 3 new
+   today" with "Take the brakes off". Settings says "Trying it · nothing to pay
+   until 4 Oct" and "Starter plan".
+4. **Landing page:** "Try one word right now" sits ABOVE the button; the list that
+   knocked down streaks/flashcards/anime/textbooks is gone; "Why it works" is one
+   line pointing at the word they just said.
+5. **Ads:** five new do-this-now ads (J1–J5) + two posts in
+   docs/ad-copy-bank-2026-09-06.md §J, each opening with one thing to say out
+   loud. Audience = spenders (JLPT, Genki, Minna no Nihongo, language schools,
+   Busuu/Pimsleur/italki, Japan-trip bookers), run as ad set A against broad B.
+6. **Scoreboard:** "came back the next day and did the check" is on the launch
+   card and in the playbook, aim ≥ 40%, with the SQL that reads it. Claude can
+   run that read; you never have to.
+
+**Your one look:** open the staging site on the Pixel tomorrow morning as a
+learner (not owner mode) and see the new order for yourself: check → proof →
+card screen. Then say "ship it" and Claude works out how to carry these changes
+to app.wordstick.app without Talk (Talk stays staging-only), or tell me what
+reads wrong.
+
+---
+
 # DO THIS NEXT — 26 Sep 2026 (late): "Installing Compliance" applied, two calls are yours
 
 Claude read the whole 30 Apr call and wrote the WordStick version of it:

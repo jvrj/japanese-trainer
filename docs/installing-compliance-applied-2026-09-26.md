@@ -43,11 +43,15 @@ became believers. "The thing has to prove itself, not you."
 | Trial nudge exit | Not now | Keep going as I am |
 | Landing CTAs | Start free, 7 days / Start my 7 days | Try it for 7 days |
 | Landing meta + pricing | 7-day free trial / Free for 7 days | Try it for 7 days, decide after / Decide after 7 days |
+| Landing hero (27 Sep) | CTA first, "or try one word" below the video | "Try one word right now" FIRST, then the CTA — the doable thing before the ask |
+| Landing argument (27 Sep) | knock-down list (streaks, flashcards, anime, textbooks); "Why it works" with two papers | list cut; "Why it works" is one line that points at the word they just said |
+| Home banner (27 Sep) | Free plan — 3 new words left today / Unlock | 8 words yours · 3 new today / Take the brakes off |
+| Morning check exit (27 Sep) | Not now | Do it tonight instead / Do it in an hour (it comes back by itself) |
 
 Why the exit wording matters: "Not now" is a no, and every no attaches to
 WordStick. "Keep going as I am" is a small yes that leaves the door open.
 
-### 2. Let the thing prove itself before the card ask (owner decision)
+### 2. Let the thing prove itself before the card ask (APPLIED 27 Sep, staging v9.61 — owner: "do them all")
 
 Today the card screen shows right after round 1. The call says the believer
 moment is the RESULT, and our result is the morning check: words from
@@ -59,13 +63,24 @@ This changes the 23 Sep card-after-round-1 decision, so it is the owner's call.
 Cost: some people never come back on day 2. Gain: the ones who do have their
 own proof, and the ask is a small step instead of a jump.
 
-### 3. Measure behaviour, not opt-ins (for the $300 test)
+Built (v9.61): `_trialOfferDue` waits for `settings.coldProof` with n > 0 (or a
+third finished check); `coldCheckFinish` records the proof; the plans screen
+opens on "You just proved N words cold after a night's sleep". The day-8 boot
+intro now needs `trialStarted` (set on checkout success) so an unasked account
+never meets the plans screen at boot. Round 1 ends on "come back tomorrow and
+see how many are still there". The check's "Not now" is gone: the only exit is
+"Do it tonight instead" (before 3 pm, moves it to 6 pm) or "Do it in an hour",
+and the check pops back by itself. Home banner: "8 words yours · 3 new today /
+Take the brakes off" (no "free"). Settings: "Trying it · nothing to pay until
+…" and "Starter plan".
+
+### 3. Measure behaviour, not opt-ins (APPLIED 27 Sep — ads-playbook maths + launch card)
 
 Add one number to the test's scoreboard: came back the next day and did the
 check. It is the true signal of value and predicts trial-to-paid better than
 trial starts. Keep the three kill lines; add day-2 return as the diagnostic.
 
-### 4. Ads and posts are the first compliance step (content plan)
+### 4. Ads and posts are the first compliance step (APPLIED 27 Sep — ad-copy-bank §J, five do-this-now ads + two posts)
 
 Every ad and organic post gives one tiny thing to DO with no trade-off: "Say
 ありがとう three times, out loud, right now. That word is yours." The reader
@@ -73,7 +88,7 @@ does it, it works, first yes banked before the click. No claims to argue with.
 The ad copy bank (docs/ad-copy-bank-2026-09-06.md) needs a pass for this: swap
 claim-led hooks for do-this-now hooks.
 
-### 5. Target spenders (ads audience)
+### 5. Target spenders (APPLIED 27 Sep — launch card: ad set A = spender stack, B = broad)
 
 Not "people interested in Japanese". People who already PAY for Japanese:
 class-goers (Minna no Nihongo, community classes), Duolingo Super and Busuu
