@@ -1,0 +1,265 @@
+<title>What Learners Love</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+:root{
+  --bg:#F4F6F9; --paper:#FFFFFF; --ink:#18212C; --muted:#5A6573; --line:#DDE3EA;
+  --indigo:#2B4C86; --indigo-soft:#E6ECF6; --hinoki:#B8894A; --hinoki-soft:#F6EEDF;
+  --good:#2E7D5B; --good-soft:#E3F2EA; --warn:#A5502A; --warn-soft:#F8E8DF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0F141B; --paper:#161D27; --ink:#E6EAF0; --muted:#9AA6B4; --line:#283343;
+    --indigo:#8FB0EA; --indigo-soft:#1C2940; --hinoki:#D9AE72; --hinoki-soft:#2A2218;
+    --good:#7CCBA5; --good-soft:#15291F; --warn:#E59A74; --warn-soft:#2E1C14;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0F141B; --paper:#161D27; --ink:#E6EAF0; --muted:#9AA6B4; --line:#283343;
+  --indigo:#8FB0EA; --indigo-soft:#1C2940; --hinoki:#D9AE72; --hinoki-soft:#2A2218;
+  --good:#7CCBA5; --good-soft:#15291F; --warn:#E59A74; --warn-soft:#2E1C14;
+}
+body{background:var(--bg);color:var(--ink);font:17px/1.6 'Atkinson Hyperlegible',system-ui,-apple-system,sans-serif;padding-inline:16px;padding-block:28px 64px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:'Zen Maru Gothic','Atkinson Hyperlegible',system-ui,sans-serif;text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:34px;font-weight:900;letter-spacing:-.01em}
+h2{font-size:24px;font-weight:900;display:flex;align-items:baseline;gap:10px}
+h2 .n{font-size:14px;color:var(--hinoki);font-weight:700;letter-spacing:.08em}
+h3{font-size:18px;font-weight:700}
+p{margin:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.lede{font-size:19px;color:var(--ink)}
+.meta{color:var(--muted);font-size:15px}
+section{display:flex;flex-direction:column;gap:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stat b{display:block;font-family:'Zen Maru Gothic',sans-serif;font-size:24px;font-weight:900;color:var(--indigo);font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+nav.toc{display:flex;flex-wrap:wrap;gap:8px}
+nav.toc a{font-size:14px;color:var(--indigo);background:var(--indigo-soft);padding:6px 11px;border-radius:999px;text-decoration:none}
+nav.toc a:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+.list{display:flex;flex-direction:column;gap:0;background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:34px 1fr;gap:4px 12px;padding:14px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:none}
+.row .k{font-family:'Zen Maru Gothic',sans-serif;font-weight:900;color:var(--hinoki);font-size:18px;font-variant-numeric:tabular-nums;grid-row:span 3}
+.row .t{font-weight:700}
+.row .w{font-size:14px;color:var(--muted)}
+.row q{font-style:italic;color:var(--ink)}
+.row .q{font-size:15px}
+.rival{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.rival h3{color:var(--indigo)}
+.callout{border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.callout.gap{background:var(--good-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--good) 35%,transparent)}
+.callout.gap .eyebrow{color:var(--good)}
+.callout.note{background:var(--hinoki-soft);border:1px solid color-mix(in srgb,var(--hinoki) 40%,transparent)}
+.callout.note .eyebrow{color:var(--hinoki)}
+ul.plain{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
+.decisions{display:flex;flex-direction:column;gap:12px}
+.dec{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.dec .rec{font-size:15px}
+.dec .rec b{color:var(--warn)}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn);letter-spacing:.03em}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.big-quote{font-family:'Zen Maru Gothic',sans-serif;font-size:22px;font-weight:700;line-height:1.35;color:var(--indigo)}
+.src{font-size:14px;color:var(--muted)}
+code{font-size:14px;background:var(--indigo-soft);padding:1px 6px;border-radius:6px}
+@media (max-width:420px){h1{font-size:28px}.lede{font-size:17px}}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:14px">
+  <div class="eyebrow">WordStick research · 27 Sep 2026 · all eight sources in</div>
+  <h1>What Japanese learners love, hate and want</h1>
+  <p class="lede">Every rival app, in the learners' own words. Eight researchers read YouTube comments, Reddit threads, app reviews, Audible reviews, forums, podcast reviews and AI-tutor reviews. This is the combined answer.</p>
+  <div class="stats">
+    <div class="stat"><b>~23,000</b><span>learner voices read</span></div>
+    <div class="stat"><b>11,925</b><span>YouTube comments, 54 videos</span></div>
+    <div class="stat"><b>~7,800</b><span>app store reviews</span></div>
+    <div class="stat"><b>~2,300</b><span>Reddit comments, 208 threads</span></div>
+  </div>
+  <p class="meta">Plus 288 Audible reviews and 100 forum, podcast, Trustpilot and blog pages. "Likes" means upvotes on one comment, so it shows how many people agreed. "Sources" means separate pages or threads.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#headline">The headline</a><a href="#love">What they love</a><a href="#rivals">Each rival</a><a href="#pains">Pains</a><a href="#wish">Wishes</a><a href="#who">Who they are</a><a href="#money">Money</a><a href="#us">For WordStick</a><a href="#decide">Your 5 calls</a><a href="#limits">Limits</a>
+  </nav>
+</header>
+
+<section id="headline">
+  <h2><span class="n">00</span>The headline</h2>
+  <div class="callout gap">
+    <div class="eyebrow">They are asking for WordStick by description</div>
+    <p>On Reddit, beginners ask for a speaking drill that works like flashcard review: <q>show me English words and then wait for me to speak the Japanese</q>. Another: <q>if there existed something similar but for speaking practice, I would be very interested</q>. A trip-planner described a "Listen and Speak" mode and said they'd pay for it. And: <q>repeat words just by speaking without eyes and hands. screen is no needed</q>.</p>
+    <p>Meanwhile <b>no flashcard or beginner app offers hands-free, out-loud learning</b>, and Duolingo removed its hands-free audio lessons, which its users called <q>by far the best feature</q>. One said: <q>If they come back, I will come back to Super</q>.</p>
+  </div>
+  <p>The closest thing they love today is <b>Pimsleur</b>: out loud, on the commute. Its fans are our buyer. Its weak spots are exactly WordStick's strengths: it's expensive, it runs out, it has thin vocabulary, and it never checks what you kept.</p>
+</section>
+
+<section id="love">
+  <h2><span class="n">01</span>What they love, across every app</h2>
+  <p class="meta">Ranked by how many of the eight source groups raised it.</p>
+  <div class="list">
+    <div class="row"><span class="k">1</span><span class="t">Dead time turned into learning</span><span class="w">Drive, train, bus, ferry, dog walk, dishes, waiting at the lights. Every group except the beginner apps. Audio courses alone: 22 sources.</span><span class="q"><q>I'd listen to pimsleur on my drive to work. It was like a warm up</q> · a train commuter set Renshuu quizzes so <q>I hit a good stopping point when I need to switch trains</q></span></div>
+    <div class="row"><span class="k">2</span><span class="t">It decides for me; I just show up</span><span class="w">The strongest theme on Reddit, and big in flashcard apps, audio courses and forums. People pay to skip the setup.</span><span class="q"><q>It is idiot proof, just log in each day and do what it tells you.</q> · <q>No research needed… Just download and go.</q></span></div>
+    <div class="row"><span class="k">3</span><span class="t">Saying it out loud from the first minute</span><span class="w">And the confidence that follows. Audio (14 sources), Reddit (Pimsleur ~58 liking comments), YouTube (a 6,700-like comment), Duolingo.</span><span class="q"><q>had me speaking right from the start</q> · <q>Out of all the methods, Pimsleur was the one I retained the most phrases from.</q></span></div>
+    <div class="row"><span class="k">4</span><span class="t">Something they can stick with beats something efficient</span><span class="w">Reddit, flashcard apps, YouTube.</span><span class="q"><q>what keeps me studying is more important than what gets me there faster</q></span></div>
+    <div class="row"><span class="k">5</span><span class="t">Seeing progress, with a count that never goes down</span><span class="w">Flashcard apps (16), Reddit, Drops, Bunpro. Streaks keep people but get called hollow.</span><span class="q"><q>days studied is more motivating than streaks because it never decreases</q> · <q>I lost my 4 year long Anki streak… and I felt literally nothing</q></span></div>
+    <div class="row"><span class="k">6</span><span class="t">Old words come back, so they stick, even after a break</span><span class="w">Audio (15), WaniKani, LingoDeer, Reddit.</span><span class="q"><q>Even forgetting some words, you would be reminded when they came up</q> · <q>Even though I took a long break I could still remember</q></span></div>
+    <div class="row"><span class="k">7</span><span class="t">Small doses, and light days allowed</span><span class="w">Audio (10), Drops, Duolingo, Reddit.</span><span class="q"><q>On days where I'm busy or not in the mood, I might just do one quiz</q> · Drops' 5-minute cap <q>takes away the overwhelm</q></span></div>
+    <div class="row"><span class="k">8</span><span class="t">Fun without punishment</span><span class="w">No hearts, no scolding, no popups. The most-liked complaint anywhere is about Duolingo's hearts (4,900 likes).</span><span class="q"><q>doesn't scream at me for being wrong</q> · <q>no punishment and no 'making up tomorrow'</q></span></div>
+    <div class="row"><span class="k">9</span><span class="t">A warm, patient voice plus a real native voice</span><span class="w">Audio (12), beginner apps, AI tutors (11), Reddit. One bad voice makes people quit.</span><span class="q"><q>infinite patience and gentle teaching method</q> · <q>Native speakers, not AI</q></span></div>
+    <div class="row"><span class="k">10</span><span class="t">Nobody watching me fail</span><span class="w">AI tutors (12), Duolingo, Reddit.</span><span class="q"><q>i can practise on my own terms, whenever i want, as much as i want</q> · <q>No teacher watching.</q></span></div>
+    <div class="row"><span class="k">11</span><span class="t">Cute, funny, warm</span><span class="w">Renshuu's mascot, Duolingo's characters, Pimsleur's accidental humour, Teppei's jokes.</span><span class="q"><q>Renshuu has that cute character that just drags me away</q></span></div>
+    <div class="row"><span class="k">12</span><span class="t">A tiny reward on a right answer</span><span class="w">The ding, the green flash, the praise. Duolingo, WaniKani, Busuu.</span><span class="q"><q>the satisfying ding when you get a question right</q></span></div>
+    <div class="row"><span class="k">13</span><span class="t">A real-life payoff moment</span><span class="w">Every group.</span><span class="q"><q>this app made me look good</q> · reading <q>food packaging is thrilling</q></span></div>
+    <div class="row"><span class="k">14</span><span class="t">Respect: no ads, honest pricing, a small team that answers</span><span class="w">Flashcard apps, beginner apps, Reddit (a 145-upvote comment).</span><span class="q"><q>I recommend learning resources that respect your time.</q></span></div>
+  </div>
+</section>
+
+<section id="rivals">
+  <h2><span class="n">02</span>What each rival is loved for</h2>
+  <div class="rival"><h3>Pimsleur, Paul Noble, JapanesePod101, Teppei</h3><p><b>The closest match to our buyer</b> (about 58 liking comments on Reddit, 288 Audible reviews). Out loud from lesson one, the drive and the dog walk, trip phrases, old words coming back. Paul Noble wins on giving <b>time to think</b>; Pimsleur's most repeated complaint is too little time. Against: $550 and $26 a month, <q>Among the most boring resources I have ever used</q>, stock phrases with no grammar, thin vocabulary (<q>almost useless during my trip</q>), and it runs out.</p></div>
+  <div class="rival"><h3>WaniKani</h3><p>About 60 liking comments on Reddit. It does the planning, easier to stick with than Anki, mnemonics that stay, and what you learn survives long breaks. People pay to have the organising done: <q>Wanikani is the single best use of my money</q>. Lifetime pricing.</p></div>
+  <div class="rival"><h3>Renshuu</h3><p>About 60 liking comments on Reddit, and it dominates Play Store praise. Easy to stick with daily, premade lists, free with no ads, a cute mascot, a tiny team that fixes bugs in a day. Commuters size quizzes to their train stops. Against: <q>too busy, cluttered</q>.</p></div>
+  <div class="rival"><h3>Duolingo</h3><p>About 35 Reddit likes against 45 complaints. Loved for a painless start, the daily habit, kana, fun, short lessons and being safe to be wrong. Hated for hearts, popups (<q>Nine different popups</q>), ads, reshuffled courses, the $38 streak-restore ask, and long streaks with no conversation: <q>I was really good at playing their game. I did not know squat</q>.</p></div>
+  <div class="rival"><h3>Anki, Bunpro, jpdb, Kaishi decks</h3><p>Anki: <q>the best even if it's boring as hell</q>, cheap, praised mostly by advanced learners; beginners can't work out the setup. Bunpro: a free month that converts (<q>I tried the free trial for one month and I was sold</q>, 66 upvotes), lifetime over ads. <b>Nobody in this group praises speaking out loud or hands-free use, and Renshuu and Bunpro users ask for it.</b></p></div>
+  <div class="rival"><h3>LingoDeer, Busuu, Drops, Human Japanese, Satori, Mochi</h3><p>Actually teaches kana, then kanji. Clear, warm explanations. Native human audio. Drops' 5-minute cap. Mochi's named review moment, "Golden Time". A streak that forgives one missed day. Lifetime prices and a free first section that convinced them. LingoDeer is <q>far better for Japanese than Duolingo</q>, and used on a ferry commute.</p></div>
+  <div class="rival"><h3>Praktika, Speak, Langua, ChatGPT Voice, italki</h3><p>Cheaper than a tutor. No judgment. Correction by echo (<q>repeated what I said, then showed me how to say it correctly</q>). Human-sounding voices. <b>It remembers me:</b> one learner paid for 2 years because the tutor still knew facts about them months later. On Reddit, AI is valued as practice <q>for people who don't have ready/free access to native japanese speakers</q>. ChatGPT's top complaints: it cuts in when you pause, won't slow down, praises wrong Japanese, and <q>every conversation starts fresh</q>. Loudest anger: Praktika's hidden prices and hard cancelling.</p></div>
+</section>
+
+<section id="pains">
+  <h2><span class="n">03</span>Their pains</h2>
+  <div class="list">
+    <div class="row"><span class="k">1</span><span class="t">Years of apps and still can't speak</span><span class="w">They recognise words but can't pull them out, and freeze in front of a real person. YouTube ~250 mentions, forums 11, Reddit.</span><span class="q"><q>as soon as I speak with a native speaker everything I learned goes out the window</q></span></div>
+    <div class="row"><span class="k">2</span><span class="t">Motivation collapses; they stop and restart for years</span><span class="w">The loudest pain on YouTube, ~460 mentions. Reddit too.</span><span class="q"><q>stuck in this cycle for around 3 years now</q> · <q>moments where everything feels impossible, 'why bother'</q></span></div>
+    <div class="row"><span class="k">3</span><span class="t">The review pile burns them out</span><span class="w">Forums 10, Reddit (a 58-upvote comment).</span><span class="q"><q>my reviews just eventually pile up</q> · <q>reviews are becoming absurd - taking me 1-2 hours</q></span></div>
+    <div class="row"><span class="k">4</span><span class="t">Forgetting, and feeling stupid about it</span><span class="w">YouTube ~180, forums 7, Reddit.</span><span class="q"><q>By the third day I forgot EVERY. SINGLE. THING.</q> · <q>None of the vocabulary I learn through flash cards sticks.</q></span></div>
+    <div class="row"><span class="k">5</span><span class="t">Life gets in the way: jobs, kids</span><span class="w">Forums, YouTube, Reddit.</span><span class="q"><q>Japanese was the first thing removed</q> (a parent of a toddler) · <q>I have a full time job and 2 kids</q></span></div>
+    <div class="row"><span class="k">6</span><span class="t">Setup and tinkering</span><span class="w">Reddit, YouTube (ADHD learners).</span><span class="q"><q>I've tried anki but I can't really figure out how it works.</q></span></div>
+    <div class="row"><span class="k">7</span><span class="t">Billing traps and hard selling</span><span class="w">Charged after a trial, hard to cancel, hidden prices, sales pitches. Forums 8, AI apps, Reddit (91 upvotes).</span><span class="q"><q>I was charged $250 for the premium account after the week trial</q> · <q>inject his sales pitch every dang time… such a turn off</q></span></div>
+    <div class="row"><span class="k">8</span><span class="t">Hearts, popups, streak guilt</span><span class="w">YouTube 4,900-like and 640-like comments, Reddit.</span><span class="q"><q>punishing mistakes… Gave me so much anxiety.</q></span></div>
+    <div class="row"><span class="k">9</span><span class="t">Useless or formal sentences</span><span class="w">YouTube 585 likes, forums 4.</span><span class="q"><q>tired of learning 'The woman had a suitcase'</q></span></div>
+    <div class="row"><span class="k">10</span><span class="t">Speech recognition that mishears them</span><span class="w">Forums 5.</span><span class="q"><q>worst speech/voice recognition ever</q></span></div>
+    <div class="row"><span class="k">11</span><span class="t">Nowhere private to speak, and no one to speak with</span><span class="w">Forums, Reddit (35 upvotes). The car solves the first; Talk could solve the second.</span><span class="q"><q>I can't make noise when I get home from work</q> · <q>no Japanese people around me</q></span></div>
+    <div class="row"><span class="k">12</span><span class="t">Audio while driving has limits</span><span class="w">Reddit, YouTube, forums. Can't look anything up, hard in heavy traffic, and a safety warning.</span><span class="q"><q>hard to concentrate when traffic is hectic</q></span></div>
+  </div>
+</section>
+
+<section id="wish">
+  <h2><span class="n">04</span>What they wish existed</h2>
+  <p class="big-quote">"I really wish that Duolingo didn't force you to stick to the lesson order."</p>
+  <p class="meta">14,000 likes. The single most-liked wish we found.</p>
+  <ul class="plain">
+    <li><b>A speaking drill that works like flashcards:</b> English prompt, you say the Japanese, then you hear the answer. Asked for by name on Reddit. This is WordStick.</li>
+    <li><b>To actually hold a conversation.</b> The most common goal everywhere.</li>
+    <li><b>To get by on a trip or with the in-laws:</b> <q>restaurants and train stations and hotels</q> · <q>talk with her family without feeling lost</q>.</li>
+    <li><b>Something hands-free they can just start:</b> <q>completely hands-free that I can just start</q>, from a driver doing 2.5 hours each way.</li>
+    <li><b>Private speaking practice before facing a person,</b> for shy learners.</li>
+    <li><b>An AI partner that remembers them and uses their words:</b> <q>the app would create a talk around my words and phrases</q>. If someone builds it, <q>I'd probably buy it</q>.</li>
+    <li><b>One thing that tells them what to do:</b> <q>I need something where I don't have to mix resources</q>.</li>
+    <li><b>Cute and fun with real substance:</b> a 70-upvote comment said they'd pay a membership for it.</li>
+    <li><b>Short-term goals they can see, offline use, and a one-time payment option.</b></li>
+  </ul>
+</section>
+
+<section id="who">
+  <h2><span class="n">05</span>Who has the strongest reasons</h2>
+  <ul class="plain">
+    <li><b>Commuters</b> by car, train, bus and ferry. Forums mention 1, 2 and 2.5 hours each way and a 3-hour bus ride. Pimsleur's Reddit fans are mostly this person.</li>
+    <li><b>Travellers with a date,</b> often older: <q>I am 68 years old and planning to visit Japan</q>.</li>
+    <li><b>Partners, in-laws and heritage learners.</b> The most emotional stakes: <q>I can't connect with my grandparents</q> (2,300 likes).</li>
+    <li><b>Busy parents and full-timers,</b> for whom Japanese is the first thing dropped.</li>
+    <li><b>Learners aged 50 to 80,</b> who say nobody talks to them. Posts at 63 (1,100 likes), 70, 72 and 80.</li>
+    <li><b>On-and-off learners over many years,</b> and people with ADHD who need "just press go".</li>
+    <li><span class="pill">Not our buyer</span> Anime teens and advanced readers. Loudest on YouTube and in Reddit's big threads, but they want comprehension, not speaking, and expect it free.</li>
+  </ul>
+</section>
+
+<section id="money">
+  <h2><span class="n">06</span>Money</h2>
+  <ul class="plain">
+    <li><span class="pill ok">Fair</span> <q>$50 for a year… That's a steal</q> · <q>4$/month isn't expensive</q> · <q>$15 per month… on month three an loving it!</q> WordStick's $59.99 a year sits at the top edge of "a steal". $8.99 a month is inside the fair zone.</li>
+    <li><span class="pill">Shock</span> Big one-off prices (Pimsleur $550), $26 a month, and <q>I can't throw away $90/year without some careful consideration</q>.</li>
+    <li><b>Why they pay:</b>
+      <ul class="plain" style="margin-top:6px">
+        <li>A lifetime or one-time deal (the top reason on Reddit and in two other groups).</li>
+        <li>To skip the setup: <q>you are paying for convenience… more likely to stick with it</q>.</li>
+        <li>To commit themselves. Having paid is the motivation.</li>
+        <li>A trial that converts: <q>a month and I was sold</q>.</li>
+        <li>A trip deadline. Apps didn't get them speaking. Cheaper than a tutor. To support a small team they like.</li>
+      </ul>
+    </li>
+    <li><b>Pay once is loved in four separate groups:</b> <q>Wow, a non-subscription business model in 2026</q> (66 likes) · <q>Imagine if I used a subscription app for ten years.</q></li>
+    <li><b>Trust breakers:</b> charges after a trial, renewals after cancelling, prices hidden behind a quiz, stacked upsell popups.</li>
+  </ul>
+</section>
+
+<section id="us">
+  <h2><span class="n">07</span>What this means for WordStick</h2>
+  <h3>Already right, so say it louder</h3>
+  <ul class="plain">
+    <li><b>Give the drill a name people are already asking for:</b> "speaking flashcards". English prompt, you say the Japanese, you hear the answer.</li>
+    <li><b>"It decides for you."</b> Open it and it tells you what to do today. No decks, no setup.</li>
+    <li>Out loud, hands-free, in dead time is the top love. Ad angle: <b>the audio lessons Duolingo took away, with your own words, and a morning check that proves you kept them.</b></li>
+    <li>No pile, no hearts, no popups, no scolding. The v9.63 landing line already says "no pile".</li>
+    <li>A count that only goes up beats a streak people call hollow.</li>
+    <li>The morning check is "honest recall". One user: typing it out is <q>me being much more honest with my ability</q>.</li>
+    <li>The mic never grades. Mishearing is a named hate.</li>
+    <li>Rounds of 10 or 30 already fit a train stop or a short drive. Say so.</li>
+  </ul>
+  <h3>Cheap wins to build</h3>
+  <ul class="plain">
+    <li>A soft chime after each right answer. Today the drill has no sound on a right answer.</li>
+    <li>A name for the morning check, the way Mochi named "Golden Time".</li>
+    <li>An adjustable, generous time to answer (Pimsleur's most repeated complaint).</li>
+    <li>Permission for a light day: "busy today? just do 10".</li>
+    <li>Small ceremonies at 100, 250 and 500 words owned.</li>
+    <li>"Did you use a word today?" Collect the stories for ads.</li>
+    <li>A "weakest words" round button.</li>
+    <li>A warm, light personality in the voice and copy, without a busy screen.</li>
+  </ul>
+  <h3>Ads</h3>
+  <ul class="plain">
+    <li>Open with "years of apps and you still can't say it", not "vocab".</li>
+    <li>Aim at commuters, trips with a date, partners and in-laws, busy parents, and people over 50. Show a 60-something in an ad.</li>
+    <li>"Pimsleur-style out loud, at app price, with far more words, and it checks what you kept."</li>
+    <li>Once the morning check proves it, "you'll still remember after a break".</li>
+  </ul>
+  <h3>Talk, the voice teacher</h3>
+  <ul class="plain">
+    <li>Pitch it as <b>private rehearsal before real people</b>, on your own terms, nobody's time wasted. Not a tutor replacement.</li>
+    <li>Never cut in when they pause.</li>
+    <li>Correct by echo: "you said X, people say Y".</li>
+    <li>Remember them and use their words. This is Talk's reason to exist.</li>
+    <li>A slow-down control and time to think.</li>
+    <li>Price shown up front, cancel in one tap. Price it against a tutor: less than one tutor lesson a month.</li>
+  </ul>
+</section>
+
+<section id="decide">
+  <h2><span class="n">08</span>Your five calls</h2>
+  <p class="meta">The evidence pushes against current plans here. Nothing has been changed.</p>
+  <div class="decisions">
+    <div class="dec"><h3>Card up front, or a free taste first?</h3><p>Three groups praise trying without a card, and charges after a trial are the loudest money anger. But Reddit also shows a trial converting well: <q>a month and I was sold</q>.</p><p class="rec"><b>My pick:</b> keep the card for the $300 test, but make the charge date, the price and one-tap cancel impossible to miss.</p></div>
+    <div class="dec"><h3>A lifetime price?</h3><p>Now the top reason people paid in three groups, including Reddit. Subscriptions attract distrust.</p><p class="rec"><b>My pick:</b> still park it until 100+ paying customers, then test $99 to $119 as a holiday offer, and honour it forever. The evidence for it got stronger with Reddit.</p></div>
+    <div class="dec"><h3>The drill voice</h3><p>The drill uses the phone's own voice. Natural on your Pixel, possibly robotic on cheap phones, and reviews attack robot voices by name.</p><p class="rec"><b>My pick:</b> test on one cheap Android and one iPhone before the ads run.</p></div>
+    <div class="dec"><h3>Choosing your own order</h3><p>The most-liked wish of all (14,000 likes), yet "it decides for me" is the strongest love on Reddit.</p><p class="rec"><b>My pick:</b> the app picks by default, and the category tiles already let people choose. Say "it picks for you, or pick any topic, any time".</p></div>
+    <div class="dec"><h3>How hard to lean on driving</h3><p>Commuters are the clearest buyer, but Reddit, YouTube and the forums all carry warnings: hard in heavy traffic, and one safety warning. Train and bus riders praise the same thing without the risk.</p><p class="rec"><b>My pick:</b> say "the commute" (car, train, bus, walk), never show a phone in a driver's hand, and state plainly that it never needs a look or a tap.</p></div>
+  </div>
+</section>
+
+<section id="limits">
+  <h2><span class="n">09</span>What this doesn't cover</h2>
+  <ul class="plain">
+    <li>Medium, Quora and Amazon block automated reading, so they were skipped. No bot checks were bypassed.</li>
+    <li>TikTok, Facebook groups and Discord were not searched. Older and travelling learners may be more active there.</li>
+    <li>Praise for AI tutors in Japanese specifically is thin. Most reviews are for European languages.</li>
+    <li>Counts are rough keyword or hand tallies, not exact.</li>
+    <li>A few quotes came through a page-reading tool and may be slightly trimmed. Check any quote on its source page before it goes into an ad.</li>
+  </ul>
+  <p class="src">Full evidence, with every quote's link and count: <code>docs/research/learner-voices-2026-09-27/</code> in the WordStick repo (eight files).</p>
+</section>
+
+</div>

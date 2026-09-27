@@ -1,6 +1,6 @@
 # What Japanese learners love, hate and want: every other app, in their words (27 Sep 2026)
 
-**Web version:** https://claude.ai/artifact/UzKTJEMuf9BEdfDXY9WLYi
+**Current version:** the recompiled page with Reddit worked into every section, and five owner calls (adds driving), is `docs/what-learners-love-2026-09-27.html`, also at https://claude.ai/artifact/UzKTJEMuf9BEdfDXY9WLYi. This markdown is the earlier draft.
 
 **What this is:** the owner asked "what do they like about the other apps? explore every single detail… YouTube comments, podcast comments, anywhere they pour out pains and desires." Eight researchers went out in parallel. This page is the merged answer. The full evidence (every quote with its link and count) sits in the eight source files listed at the bottom; this page points, it doesn't repeat them.
 
