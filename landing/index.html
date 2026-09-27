@@ -135,7 +135,9 @@ src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
          does one word, it works, the first yes is banked before any ask. -->
     <div class="live-demo">
       <h3>Try one word right now — nothing to sign up for</h3>
-      <p>Tap play, think for a beat, say it out loud. If it comes out, that word is yours.</p>
+      <!-- Installing Circumstances (27 Sep): what changes overnight comes first; then the act. -->
+      <p><b>Overnight your brain throws out almost everything you only read. It keeps what came out of your own mouth.</b></p>
+      <p>Tap play, hear it, say it out loud before it shows you. Try one word and see which kind it becomes.</p>
       <div class="ld-stage" id="ldStage"><button class="ld-btn" id="ldBtn" type="button">▶ Play a word</button></div>
     </div>
 
@@ -221,6 +223,7 @@ src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
       <div class="price-now">Try it for 7 days — the real thing, not a demo</div>
       <div class="price-big">$8.99<span> / month</span></div>
       <div class="price-alt">or <b>$59.99 / year</b> — about $5 a month</div>
+      <div class="price-alt">or the <b>starter plan</b> after your first morning check — 3 new words a day, reviews never run out, nothing to pay. Great if 3 a day is your pace.</div>
       <ul class="price-list">
         <li><span class="tick">✓</span><b>Decide after 7 days</b> — cancel before the week ends and you pay nothing</li>
         <li><span class="tick">✓</span>The full everyday vocabulary, the Japanese alphabet taught from zero, sentence &amp; counting practice included</li>
@@ -240,6 +243,10 @@ src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
       <p>Yes, for the core practice. It speaks, pauses, reveals the answer, and continues on its own. Glance at the screen whenever you want the spelling or a hint — it never requires it.</p></details>
     <details><summary>Is my voice recorded or stored anywhere?</summary>
       <p>No — nothing you say is ever recorded or kept. Speech is handled by your phone's own voice services, and answering by voice is optional anyway: tapping works exactly the same. Details in our <a href="privacy.html">privacy policy</a>.</p></details>
+    <details><summary>Can't I just keep going with Duolingo?</summary>
+      <p>Duolingo is great if you want a streak and a game on the bus — it will keep you busy every day for years. What it won't do is make you say a word before it shows you, or check the next morning which ones actually stayed. If you've already got the streak and still go blank when someone speaks to you, that's the missing piece, not more of the same.</p></details>
+    <details><summary>What about Anki?</summary>
+      <p>Anki is great if you want to build your own cards and don't mind grading yourself — it's the best card box there is. If you'd rather never see a card and let tomorrow morning do the grading, that's this.</p></details>
     <details><summary>What if I miss a few days — or a few weeks?</summary>
       <p>Nothing bad. There's no pile to catch up on and no red numbers waiting. A streak exists, if you switch it on. Nothing else is watching. You open the app, it picks up, you continue.</p></details>
     <details><summary>What happens at the end of the 7 days?</summary>
@@ -294,10 +301,12 @@ src="https://www.facebook.com/tr?id=1539713041242150&ev=PageView&noscript=1"
     var d1=document.createElement('div'); d1.className='ld-word jp'; d1.textContent=w.kana;
     var d2=document.createElement('div'); d2.className='ld-romaji'; d2.textContent=w.romaji;
     var d3=document.createElement('div'); d3.className='ld-meaning'; d3.textContent='= '+w.en;
+    var d4=document.createElement('div'); d4.className='ld-romaji'; d4.style.marginTop='8px';
+    d4.textContent='Hear it, say it, then see it. That order is the one that stays — and it\u2019s the order every word takes in the app.';
     var again=document.createElement('button'); again.className='ld-btn'; again.type='button';
     again.textContent='▶ Another word'; again.style.marginTop='14px';
     again.addEventListener('click', play);
-    stage.appendChild(d1); stage.appendChild(d2); stage.appendChild(d3); stage.appendChild(again);
+    stage.appendChild(d1); stage.appendChild(d2); stage.appendChild(d3); stage.appendChild(d4); stage.appendChild(again);
   }
 
   function think(w, spoken){

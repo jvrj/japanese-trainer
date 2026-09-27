@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.61';
+const APP_VERSION = '9.62';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -10602,32 +10602,46 @@ function renderPaywall(){
     /* v9.61 — the screen opens on what the learner just did, not on us. */
     const cp = state.settings.coldProof;
     const justProved = (cp && typeof cp === 'object' && cp.day === _coldDayKey() && (cp.n || 0) > 0) ? cp : null;
+    /* v9.62 — Installing Circumstances + Levels of Relationships (owner, 27
+       Sep): the screen opens on what CHANGED (the words that came out of the
+       learner's own head this morning), then the plain maths of the two
+       paces, then THREE doors — never a yes/no. The starter door is a real
+       card with its cost said out loud ("great if 3 a day is your pace"),
+       not a small "no" link. Yearly still leads (churn), monthly second. */
     const ownLine = justProved
-      ? `You just proved <b>${justProved.n} word${justProved.n === 1 ? '' : 's'}</b> cold after a night's sleep — nothing on the screen, out of your own head. That is how it works.`
+      ? `You just proved <b>${justProved.n} word${justProved.n === 1 ? '' : 's'}</b> cold after a night's sleep — nothing on the screen, out of your own head. ${justProved.n === 1 ? 'It is' : 'They are'} yours now.`
       : own > 0
-      ? `You own <b>${own} word${own === 1 ? '' : 's'}</b> — proven cold, out of your own head. Keep the count growing.`
-      : `Every word you prove in the morning check is yours for good. Watch the count grow.`;
+      ? `You own <b>${own} word${own === 1 ? '' : 's'}</b> — proven cold, out of your own head.`
+      : `Every word you prove in the morning check is yours for good.`;
+    const starterMonth = FREE_NEW_WORDS_PER_DAY * 30;
+    /* 10 new words a day is the everyday pace with the brakes off (one round). */
+    const fullMonth = 300;
+    const mathLine = `At ${FREE_NEW_WORDS_PER_DAY} new words a day that's about ${starterMonth} a month. With the brakes off it's closer to ${fullMonth}.`;
     /* Installing Compliance (26 Sep): "free" is an afterthought, never the headline; the exit is a small yes, not a no. */
-    const subLine = `${ownLine} Everything unlocked for 7 days — ${deckLine} — and you decide at the end of the week. Nothing to pay for 7 days.`;
+    const subLine = `${ownLine} ${mathLine}`;
     const yr = PAYWALL_PRICES.yearly, mo = PAYWALL_PRICES.monthly;
     return `
       <div class="ob-wrap"><div class="ob-screen">
         <div class="ob-emoji">🎟️</div>
-        <div class="ob-title">Try the whole thing for 7 days</div>
+        <div class="ob-title">Which pace is yours?</div>
         <div class="ob-sub">${subLine}</div>
         <button class="ob-path-card pw-hero" id="pwYearlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('yearly')">
           <div class="ob-path-em">▶</div>
-          <div class="ob-path-t">Try it for 7 days ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Best value · Save ${savePct}%</span>` : ''}</div>
-          <div class="ob-path-s">Decide at the end of the week. Nothing to pay for 7 days, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-t">Yearly, and stop thinking about it ${savePct > 0 ? `<span class="pill pill-guru" style="margin-left:6px;vertical-align:middle">Save ${savePct}%</span>` : ''}</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. 7 days to decide, nothing to pay until then, then $${yr.toFixed(2)} a year — about $${(yr/12).toFixed(2)} a month. Cancel anytime.</div>
         </button>
         <button class="ob-path-card" id="pwMonthlyBtn" ${busy?'disabled':''} onclick="paywallCheckout('monthly')">
           <div class="ob-path-em">🗓️</div>
-          <div class="ob-path-t">Or pay monthly</div>
-          <div class="ob-path-s">Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
+          <div class="ob-path-t">Try the whole thing for 7 days</div>
+          <div class="ob-path-s">Brakes off, ${deckLine}. Nothing to pay for 7 days, then $${mo.toFixed(2)} a month. Cancel anytime.</div>
         </button>
-        <div class="ob-note" style="opacity:.8">Card needed to start. We email you the day before the week ends, so nothing sneaks up on you.</div>
+        <button class="ob-path-card" id="pwStarterBtn" onclick="nav('home')">
+          <div class="ob-path-em">🚶</div>
+          <div class="ob-path-t">Keep going as I am</div>
+          <div class="ob-path-s">${FREE_NEW_WORDS_PER_DAY} new words a day, reviews never run out. Great if ${FREE_NEW_WORDS_PER_DAY} a day is your pace — you can take the brakes off any time from Settings.</div>
+        </button>
+        <div class="ob-note" style="opacity:.8">A card is needed for the two 7-day doors. We email you the day before the week ends, so nothing sneaks up on you.</div>
         ${msgRow}
-        <button class="ob-switch" onclick="nav('home')">Keep going as I am for now (${FREE_NEW_WORDS_PER_DAY} new words a day)</button>
       </div></div>`;
   } catch(e){
     return `
@@ -28589,7 +28603,7 @@ function renderBuildModeComplete(){
       <div class="stk-okmark" aria-hidden="true">✓</div>
       <h2 class="stk-bh">${_stopped ? 'Nice session' : `That’s ${spamN} words`}${_nm ? `, ${esc(_nm)}` : ''}</h2>
       <div class="stk-bsub">${_secLine}${_mins} min this session</div>
-      <div class="ws-tmrw"><span><b>Tomorrow${_nm ? `, ${esc(_nm)}` : ''}:</b> come back and see how many are still there — a 1-minute check on ${COLD_N} of these words${_ownP > 0 ? ` · you own <b>${_ownP}</b> so far` : ''}</span></div>
+      <div class="ws-tmrw"><span><b>Tonight${_nm ? `, ${esc(_nm)}` : ''}:</b> while you sleep, your brain decides which of these to keep. <b>Tomorrow morning</b> it asks you for ${COLD_N} of them, nothing on the screen. The ones that come out are yours${_ownP > 0 ? ` · you own <b>${_ownP}</b> so far` : ''}</span></div>
       ${_autoSwapHtml()}
       <button class="stk-keep" onclick="buildKeepGoing()">${_againLabel(spamN)}</button>
       <button class="stk-keep stk-mix" onclick="buildMixIn()">✦ Mix in new words</button>
@@ -29822,6 +29836,7 @@ function renderColdCheck(){
     ${badge}
     <p class="cold-eyebrow">${greet}</p>
     <h2 class="cold-h">Let’s see what stuck.</h2>
+    ${s.idx === 0 && !p ? `<p class="cold-sub">A night has passed. Say each one out loud, then type it.</p>` : ''}
     ${intro}
     <div class="cold-dots">${dots}</div>
     <div class="card" style="padding:18px 16px">
@@ -31620,7 +31635,9 @@ function _stkBurst(sec, o){
     if(bm._r1){ state.settings.r1Done = _catDayKey(); save(); try{ _syncPushNow(); }catch(e){} }
   }
   let _own = 0; try{ _own = wordsThatStick().N; }catch(e){ _own = 0; }
-  const tmrw = `<div class="ws-tmrw"><span><b>Tomorrow${nm ? `, ${esc(nm)}` : ''}:</b> come back and see how many are still there — a 1-minute check on ${COLD_N} of these words${_own > 0 ? ` · you own <b>${_own}</b> so far` : ''}</span></div>`;
+  /* v9.62 — Installing Circumstances: say what happens next (tonight, then
+     the morning), not "come back". Same line as the plain round end. */
+  const tmrw = `<div class="ws-tmrw"><span><b>Tonight${nm ? `, ${esc(nm)}` : ''}:</b> while you sleep, your brain decides which of these to keep. <b>Tomorrow morning</b> it asks you for ${COLD_N} of them, nothing on the screen. The ones that come out are yours${_own > 0 ? ` · you own <b>${_own}</b> so far` : ''}</span></div>`;
   const inst = _installCardHtml(bm);
   /* v9.21 — Claude Design 7f: one celebration, one big button. The stats row
      and the recap boxes under the card are gone (they repeated the headline). */
@@ -31857,14 +31874,18 @@ function renderHome(){
       const ftLeft = _freeTierNewBudget();
       const ftLocked = _freeTierLockedCount();
       let ftOwn = 0; try{ ftOwn = wordsThatStick().N; }catch(e){ ftOwn = 0; }
+      /* v9.62 — Installing Circumstances: the change first (+N since yesterday
+         = this morning's check), then the count, then the act. */
+      let ftSince = 0;
+      try{ const _cp = state.settings.coldProof; if(_cp && typeof _cp === 'object' && _cp.day === _coldDayKey()) ftSince = _cp.n || 0; }catch(e){ ftSince = 0; }
       /* v9.61 — the count and the door, never the word "free" (Installing Compliance). */
       freeBanner = `
       <div class="hv9-hero" style="padding:14px 16px">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="font-size:22px">🔓</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:800;font-size:14px">${ftOwn > 0 ? `${ftOwn} word${ftOwn === 1 ? '' : 's'} yours · ` : ''}${isFinite(ftLeft) ? ftLeft : 0} new word${ftLeft === 1 ? '' : 's'} today</div>
-            <div class="muted" style="font-size:12px;margin-top:2px">Reviews never run out.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} more words waiting.` : ''}</div>
+            <div style="font-weight:800;font-size:14px">${ftSince > 0 ? `+${ftSince} since yesterday · ` : ''}${ftOwn > 0 ? `${ftOwn} yours · ` : ''}${isFinite(ftLeft) ? ftLeft : 0} new today</div>
+            <div class="muted" style="font-size:12px;margin-top:2px">Say them, keep them. Reviews never run out.${ftLocked > 0 ? ` ${ftLocked.toLocaleString()} more words waiting.` : ''}</div>
           </div>
           <button class="hv9-pill on" style="width:auto;flex-shrink:0;margin-top:0;padding:10px 14px" onclick="nav('paywall')">Take the brakes off</button>
         </div>
