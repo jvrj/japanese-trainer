@@ -1,15 +1,17 @@
 # What Japanese learners love, hate and want: every other app, in their words (27 Sep 2026)
 
+**Web version:** https://claude.ai/artifact/UzKTJEMuf9BEdfDXY9WLYi
+
 **What this is:** the owner asked "what do they like about the other apps? explore every single detail… YouTube comments, podcast comments, anywhere they pour out pains and desires." Eight researchers went out in parallel. This page is the merged answer. The full evidence (every quote with its link and count) sits in the eight source files listed at the bottom; this page points, it doesn't repeat them.
 
-**How big:** about 21,000 learner voices.
+**How big:** about 23,000 learner voices.
 - ~11,900 YouTube comments (54 videos)
 - ~4,900 positive reviews of beginner apps (Play + App Store, 27 apps)
 - ~2,900 Duolingo reviews
 - ~290 Audible reviews of Japanese audio courses, plus ~900 more YouTube comments on them
 - 55 forum threads, podcast review pages and Trustpilot pages
 - 46 sources on AI tutors and human tutors
-- Reddit (see the Reddit section; read through the owner's browser)
+- ~2,300 Reddit comments across 208 threads (read through the owner's browser)
 
 **How to read the numbers:** "sources" = separate pages or threads. "Likes" = the upvotes on a single comment, which shows how many people agreed. Keyword counts are rough.
 
@@ -142,7 +144,13 @@ Ranked by how many separate groups of evidence raised it.
 
 ## 8. Reddit
 
-*(Filled in when the Reddit researcher lands: praise for each app from r/LearnJapanese and r/languagelearning, weighted to beginners.)*
+About 2,300 comments across 208 threads (r/LearnJapanese, r/languagelearning), read through the owner's browser in two passes: praise for named apps, then beginner searches. Full detail: `likes-reddit.md`.
+
+- **The strongest wish is WordStick itself:** a speaking drill that works like flashcard review. "show me English words and then wait for me to speak the Japanese"; "if there existed something similar but for speaking practice, I would be very interested"; a trip-planner describing a "Listen and Speak" mode; "repeat words just by speaking without eyes and hands. screen is no needed".
+- **Most-liked apps:** WaniKani ~60 (does the planning), Renshuu ~60 (easy daily, free, cute), **Pimsleur ~58, the closest match to our buyer** (out loud, commute, trip phrases). Duolingo ~35 likes vs ~45 complaints. Anki 25 (mostly advanced learners), Bunpro 23, AI partners 15, LingoDeer 15.
+- **Streaks keep people but feel hollow:** "lost my 4-year streak and felt nothing". People like permission for light days.
+- **Shy learners want to practise speaking alone first; trips and in-laws want everyday phrases first.**
+- **Careful:** real driving threads are thin, and one commenter warned about distraction. Keep the car strictly audio-only and say so.
 
 ---
 
@@ -156,4 +164,4 @@ All in `docs/research/learner-voices-2026-09-27/`.
 - `likes-ai-speaking.md`: 46 sources
 - `voices-youtube.md`: 54 videos, 11,925 comments
 - `voices-elsewhere.md`: 55 sources (WaniKani and Bunpro forums, HN, podcast reviews, Trustpilot, blogs)
-- `likes-reddit.md`: Reddit (pending)
+- `likes-reddit.md`: ~2,300 Reddit comments, 208 threads
