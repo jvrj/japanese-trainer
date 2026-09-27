@@ -406,3 +406,66 @@ Try it for 7 days and decide at the end of the week.
 trial whatever set they came from. The plans-screen order split (app v9.63) runs underneath,
 so the Meta pixel shows `PlansView`/`PlansPick` with `order` = yearly|monthly. Compare picks
 per view by order; decide the default order only after ≥30 picks.
+
+---
+
+## L. THE $300 MESSAGE TEST (v4, 27 Sep 2026: from the verified criteria, docs/criteria-of-our-market-2026-09-27.md)
+*Supersedes the J+K mix for the $300 run. The verified research left ONE big unknown: do our
+buyers click on a **promise with a time frame** (what every long-running rival ad does) or on
+**the pain** (what the complaints say)? So there are three ads, each **≥$100**, identical in
+image, video, audience, headline slot and ask. Only the message changes, so the winner means
+something. Ad 3 is the owner's pick (27 Sep): the accent line, tested on money even though
+the evidence rates it weakest. The commute stays as one line inside every ad, never the
+headline. Owner rules: say "commute", never "while driving"; never "free"; never "native
+speakers" or "no AI voice"; no "fluent in X".*
+
+**Setup:** 1 campaign · ABO · 3 ad sets (one per message), same audience (the §J spender
+stack), same budget each, **optimise for InitiateCheckout** (people who start checkout; $300
+buys too few trials to judge on trials). Judge each ad on **link click rate** and **cost per
+landing-page view**. Underneath, track landing → plans → card entered. **Kill line, written
+before launch:** if fewer than about 1 in 10 people who reach the plans screen enter a card,
+the card step is the problem, not the ad. Fix that before spending more.
+
+### L1: "Before your trip" (a promise with a time frame; criteria lines 1 + 7)
+Say this out loud: koohii kudasai. That's "a coffee, please".
+⸻
+Now picture saying it in a café in Tokyo, and the person behind the counter smiling because
+you tried. That's the goal: dinner, trains, hotels, the words you'll actually use, said out
+loud, before your trip.
+WordStick picks the words for you. It says the meaning, you say the Japanese, out loud, two
+minutes at a time on your commute. Every morning it checks which words stayed.
+Try it for 7 days and decide at the end of the week.
+**Headline:** Say dinner, trains and hotels in Japanese before your trip.
+
+### L2: "Still didn't stick" (the pain, then flip to a promise; criteria lines 1 + 2)
+Hit a 100-day streak and still can't remember the words?
+⸻
+It's not you. Tapping the right answer on a screen trains you to *recognise* a word, not to
+*say* it. And losing hearts for every mistake just makes you quit.
+WordStick works the other way. It says the meaning, you say the Japanese from memory, out
+loud. No hearts, no lives, never punished for a mistake. Two minutes on your commute, and
+every morning it shows you which words stayed.
+Try it now: say "arigatou" out loud, look away, say it again. Then try it for 7 days.
+**Headline:** No hearts. No lives. Just words that stick.
+
+### L3: "Never marks you wrong" (the owner's pick; the accent line)
+Ever had an app mark you wrong because the mic misheard your accent?
+⸻
+WordStick's mic listens, but it never marks you wrong. Say the word, hear it said back, and
+you'll know yourself if you had it. No red X, no "try again", no being stuck on a word
+because of how you sound.
+It says the meaning, you say the Japanese out loud, two minutes on your commute. Every
+morning it checks which words stayed.
+Try it for 7 days and decide at the end of the week.
+**Headline:** The mic listens. It never marks you wrong.
+
+### L-audit: compliance pre-flight
+| Ad | Claim to argue with | "Free" | Brand named | Verdict |
+|---|---|---|---|---|
+| L1 | "before your trip": no deadline promised, no "fluent" | none | none | ✅ ship |
+| L2 | "100-day streak", "hearts": generic, no brand named; "no hearts" is true of the app | none | none | ✅ ship |
+| L3 | "never marks you wrong": true (the mic is a turn trigger only, never grades) | none | none | ✅ ship |
+| All | "commute", never "while driving"; no voice claims; the only promise is the morning check | | | |
+
+**After the test:** keep the winning message and make every later ad in that shape, varying
+only the opening line and the image. If L3 loses clearly, drop the accent angle for good.
