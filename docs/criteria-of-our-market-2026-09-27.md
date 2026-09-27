@@ -6,8 +6,28 @@ Rebuilt 27 Sep 2026. Version 1 was written from the calls alone. This version ch
 - the three-way verification (`research/learner-voices-2026-09-27/VERDICT.md`): a recount from raw data, outside studies, and what people actually pay for
 
 **Where the calls come from:**
-- Criteria of Markets Parts 1, 2, 3 and the Implementation call (NHB+ Theory, 18 Jan to 8 Feb 2024). We only hold AI summaries of these, in D:\ff-transcribe\transcripts\c1..c4. The audio is on MEGA and hasn't been transcribed.
+- Criteria of Markets Parts 1, 2, 3 and the Implementation call (NHB+ Theory, 18 Jan to 8 Feb 2024). This doc was first written from AI summaries. Full Whisper transcripts now sit beside them in D:\ff-transcribe\transcripts\c1..c4 (`*_TRANSCRIPT.txt`), and the doc has been checked against them (next section).
 - Installing Criteria (16 Oct 2025) and Levels of Relationships (26 Feb 2026). We have full transcripts of both.
+
+## Checked against the full call transcripts (27 Sep 2026)
+
+24 claims about what Alen teaches, checked against the four 2024 transcripts:
+- **15 confirmed**: criteria = "what has to be there for me to move forward"; the mind as a safety system that only accepts codes it recognises; "if someone has to be sold… you haven't met their criteria"; controls = winning offers, keep their structure; read the repeated words; find the limitation behind the want; match the product first, then the language; lean into one criterion; campaigns by criterion; the ad headline as the bridge to the page; why wants evidence (past), how wants proof (future); meta-criteria = energy to take on change; and every Part A category name.
+- **2 wrong, now fixed:**
+  - "Limitations keep people safe; criteria decide." He actually says criteria grow out of limitations ("criteria comes out of limitations", Part 1). Fixed in the definitions.
+  - "Alen says specific converts higher." He says very specific ads get high checkout but low opt-in, and to pull back when ads get too specific (Part 3). Fixed in the Picture size row.
+- **7 not found in these four calls:**
+  - install, impose, "the perfect X for me had to…", want vs need, and three choices at the close. The doc credits these to the 2025 and 2026 calls, so they aren't misattributed.
+  - "External when cold": the calls give the external/internal split, not which side cold buyers sit on. Reworded.
+  - "Guard the close, because that's where criteria bite hardest": not said. The nearest is "the problem is right before it" (fix what comes before the checkout), and checkout drop-off is stress to take away.
+  - "Alen files [the commute] under limitations, not criteria": not in these calls.
+
+**Teachings the doc leaves out (not yet applied):**
+1. **Cheap means criteria matter less.** "The higher the price point the more criteria matters… criteria is really triggered by loss" (Part 3). At $8.99 a month, removing friction beats long persuasion; save the full criteria story for yearly.
+2. **Away buyers don't stay.** "Towards language has a massive stick rate. Away language has a low stick rate" (Part 2); recurring offers mostly attract away buyers. Open with the pain if needed, but flip to towards before the page.
+3. **Better, not different.** Most markets are "sameness with exception" and reject "new, different, unique" (Part 3). Use better/more/upgrade words. The story's "Nothing did that. So I built it." leans different.
+4. **Show each criterion 3 to 5 times.** Frequency buyers need 3 to 5 examples, and "consistent" buyers need 6 to 12 months (Part 3). That means follow-up emails and retargeting, not one ad.
+5. **Away buyers want you to decide for them; checkout drop-off is stress.** "Away motivated… want you to make decisions for them" (Part 3). At checkout, "60 are not buying what's missing well there's stress there" (Implementation call). Match their stress response: choice, logic or feeling.
 
 **How sure we are.** Every line carries one of these:
 - ● **Near-certain**: holds in our counts, in outside evidence, and in what people pay for.
@@ -17,7 +37,7 @@ Rebuilt 27 Sep 2026. Version 1 was written from the calls alone. This version ch
 
 **Words, defined once:**
 - **Criteria**: "what has to be there for me to move forward" (Alen). It's the checklist a mind runs before it lets a message in, and before it buys. Mostly it's a gut feel.
-- **Limitation**: what stops people getting what they want: time, money, energy, skill, reading, embarrassment. Limitations keep people safe; criteria decide.
+- **Limitation**: what stops people getting what they want: time, money, energy, skill, reading, embarrassment. Criteria grow out of limitations: someone on a budget ends up with price as a criterion (Alen: "criteria comes out of limitations").
 - **Control**: the ad or offer that's currently winning in a market.
 - **Install**: say things so the checklist appears in their head as their own idea.
 - **Impose**: say "you have to". Imposing starts a fight.
@@ -104,8 +124,8 @@ A criterion is a rule with a loss behind it. Without one, people say "maybe", as
 | Greater outcome | **Being understood by a real person on the trip** | ◐ | 42.7M visitors to Japan in 2025, with US visitors up 21%. Catch: translator apps now cover "just enough" (trouble talking to staff fell from 26% to 15%). The win over Google Translate is the warmth of trying ("genuinely grateful and delighted"), from Facebook only, so use it for wording. |
 | Direction | Away in the complaints, **towards in what they pay for** | ○ | Every long-running rival ad makes a positive promise with a time limit: Babbel "speaking in 3 weeks", Pimsleur "30 days, 30 minutes". None leads with the pain. Version 1 said to open away for broad ads. **This is ad test 1 vs 2.** |
 | Process | **Procedural, and "decide for me"** | ● | Duolingo removed lesson choice in 2022, then had its best quarter to date. Reddit: "makes every choice for me". Catch: never make them redo words they already know. |
-| Reference | External when cold, internal after the morning check | ◐ | It comes from the calls. Rivals lean on a number and a time frame. We have no learner numbers yet. |
-| Picture size | **Specific**: a number and a time frame | ◐ | Every control does this ("3 weeks", "30 days"). Alen says specific converts higher. |
+| Reference | External when cold, internal after the morning check | ◐ | The external/internal split comes from the calls; which side cold buyers sit on is our guess (for cold ads Alen says there's no shortcut: look at who's buying). Rivals lean on a number and a time frame. We have no learner numbers yet. |
+| Picture size | **Specific**: a number and a time frame | ◐ | Every control does this ("3 weeks", "30 days"). Catch: Alen says very specific ads get a high checkout rate but a low opt-in rate, and "when ads get too specific I tend to tell people to pull back". |
 | Change tolerance | **Same life plus one exception**: keep the commute, add two minutes | ● | 262 four- and five-star reviews happily mention learning on the commute or while driving. Pimsleur has sold "while driving" for decades. Catch: it's a niche (Pimsleur's app earns about 1% of Duolingo's), so it's the how, not the headline. |
 | Stress response | **Friction, fun, a small monthly number** | ○ | From Reddit ("I will not do the 100 at once"). The dollar lines ($8–10/mo and so on) were built on 1–5 reviews each, so they're **not evidence**. Yearly-first vs monthly-first is already split in v9.63. |
 | Convincer channel | **Hear it, say it, and see it written** | ● | Seeing the spelling helps words stick (Ehri & Rosenthal 2007). TikTok's biggest complaint about Pimsleur is "nothing is written" (1,822 likes). Show kana, not romaji. |
@@ -217,5 +237,5 @@ Keep "for me" in it. That's the difference between installing and imposing.
    - Set Meta to optimise for people starting checkout.
    - Write the kill lines down before launch.
 2. **The first 20 learners:** two intake questions after sign-up. "What outcome do you want?" and "What do you want to change about how you learn?" Their exact words replace our inferred ones.
-3. **The 2024 calls:** we're working from AI summaries. Transcribing the four MEGA recordings would let us check the method against Alen's own words.
+3. **The 2024 calls:** done. The four recordings are transcribed and the doc is checked against them (see the top).
 4. **Keep the raw data next time.** TikTok and Facebook text wasn't saved, so those counts can't be replayed.
