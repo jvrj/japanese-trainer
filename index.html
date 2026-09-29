@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.64';
+const APP_VERSION = '9.65';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29480,7 +29480,7 @@ async function talkStart(){
   if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.RTCPeerConnection)){
     t.status = 'error'; t.err = 'This browser cannot make a live call. Try Chrome.'; render(); return;
   }
-  t.status = 'connecting'; t.err = ''; t.lines = []; t.marks = []; t.lastUsage = 0; t.muted = false; render();
+  t.status = 'connecting'; t.err = ''; t.lines = []; t.marks = []; t.pending = []; t.lastUsage = 0; t.muted = false; render();
   try{
     t.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
   }catch(e){
@@ -29610,7 +29610,7 @@ function _talkOnEvent(ev){
   }
   if(ev.type === 'conversation.item.input_audio_transcription.completed'){
     const text = _talkKana(String(ev.transcript || '').trim());
-    if(text){ t.lines.push({ who:'you', text }); _talkRenderLines(); }
+    if(text){ t.lines.push({ who:'you', text }); _talkRenderLines(); _talkSettlePending(); }
   } else if(ev.type === 'response.output_audio_transcript.done'){
     const text = _talkKana(String(ev.transcript || '').trim());
     if(text){ t.lines.push({ who:'teacher', text }); _talkRenderLines(); }
@@ -29634,13 +29634,24 @@ function _talkOnEvent(ev){
   }
 }
 
-/* The teacher's report. Steers the schedule, never certifies (see header). */
-function _talkMark(args){
+/* The teacher's report. Steers the schedule, never certifies (see header).
+   A mark only counts once the learner has actually SAID the word this lesson
+   (rig 29 Sep: she marked おはようございます fumbled though it was never tried).
+   Until then it waits in t.pending; each new learner line re-checks it, and
+   whatever is still waiting when the lesson ends is dropped. */
+function _talkLoose(s){
+  return String(s || '').toLowerCase().replace(/[^a-z]/g, '').replace(/ou/g, 'o').replace(/uu/g, 'u').replace(/aa/g, 'a').replace(/ii/g, 'i').replace(/ee/g, 'e').replace(/oo/g, 'o');
+}
+function _talkLearnerSaid(w){
   const t = window._talk;
-  const w = _talkFindWord(args && args.jp);
-  const result = args && args.result === 'fumbled' ? 'fumbled' : 'clean';
-  if(!w) return { ok:false, reason:'not_in_ledger' };
-  if(t.marks.some(m => m.id === w.id)) return { ok:true, note:'already_marked' };
+  const said = (t.lines || []).filter(l => l.who === 'you').map(l => l.text).join(' ');
+  const norm = x => String(x || '').replace(/[\s　・。、!！?？]/g, '');
+  if(norm(w.jp) && norm(said).includes(norm(w.jp))) return true;
+  const ro = _talkLoose(w.romaji);
+  return !!(ro && ro.length >= 3 && _talkLoose(said).includes(ro));
+}
+function _talkApplyMark(w, result){
+  const t = window._talk;
   try{
     if(result === 'fumbled'){
       const st = smStatFor(w.id);
@@ -29655,6 +29666,29 @@ function _talkMark(args){
   try{ log('talk_mark', { id:w.id, result }); }catch(e){}
   save();
   _talkRenderMarks();
+}
+function _talkSettlePending(){
+  const t = window._talk;
+  if(!t.pending || !t.pending.length) return;
+  t.pending = t.pending.filter(p => {
+    if(t.marks.some(m => m.id === p.w.id)) return false;
+    if(!_talkLearnerSaid(p.w)) return true;
+    _talkApplyMark(p.w, p.result);
+    return false;
+  });
+}
+function _talkMark(args){
+  const t = window._talk;
+  const w = _talkFindWord(args && args.jp);
+  const result = args && args.result === 'fumbled' ? 'fumbled' : 'clean';
+  if(!w) return { ok:false, reason:'not_in_ledger' };
+  if(t.marks.some(m => m.id === w.id)) return { ok:true, note:'already_marked' };
+  if(!_talkLearnerSaid(w)){
+    t.pending = (t.pending || []).filter(p => p.w.id !== w.id);
+    t.pending.push({ w, result });
+    return { ok:true };
+  }
+  _talkApplyMark(w, result);
   return { ok:true };
 }
 
@@ -29705,7 +29739,8 @@ async function talkStop(why){
   const secs = t.startedAt ? Math.round((Date.now() - t.startedAt) / 1000) : 0;
   _talkCleanup();
   t.status = 'done'; t.lastUsage = secs; t.why = why || 'you';
-  try{ log('talk_end', { secs, why: t.why, marks: t.marks.length }); }catch(e){}
+  const dropped = (t.pending || []).length; t.pending = [];
+  try{ log('talk_end', { secs, why: t.why, marks: t.marks.length, dropped }); }catch(e){}
   render();
   try{ if(secs > 0) await _talkPost({ action:'usage', seconds: secs, engine: (t && t.engine) || 'full' }); }catch(e){}
   try{ _syncPushNow(); }catch(e){}

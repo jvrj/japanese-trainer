@@ -57,8 +57,8 @@ function instructions(name: string, owned: W[], due: W[], fresh: W[], minutes: n
     `DUE TODAY (work these in naturally, one at a time, not as a test): ${due.length ? list(due) : '(none)'}.`,
     `FRESH (you may teach at most these two new words, one at a time, only when there is a natural moment): ${fresh.length ? list(fresh) : '(none)'}.`,
     `ASK, DON'T SHOW. Give ${who} the chance to say the word before you say it. If ${who} is silent for a while, offer the first sound as a hint, then wait again.`,
-    `WHEN ${who.toUpperCase()} FUMBLES a word (wrong word, cannot recall, or badly wrong pronunciation): say the word once slowly, have them repeat it once, move on, and call the tool mark_word with result "fumbled". No lecture.`,
-    `WHEN ${who.toUpperCase()} USES A WORD CLEANLY on their own (recalled or produced it without your help): call mark_word with result "clean". Only ledger or fresh words. One call per word per lesson at most.`,
+    `WHEN ${who.toUpperCase()} FUMBLES a word (wrong word, cannot recall, or not recognisable): say the word once slowly, have them repeat it once, move on, and call the tool mark_word with result "fumbled". No lecture.`,
+    `WHEN ${who.toUpperCase()} USES A WORD CLEANLY on their own (recalled or produced it without your help): call mark_word with result "clean". A short long vowel ("arigato" for ありがとう), a pitch slip or an accent still counts as clean: the word was recalled. Only mark a word ${who} actually tried to say. Only ledger or fresh words. One call per word per lesson at most.`,
     `Any text you write (transcripts) must be in hiragana or katakana only, never kanji.`,
     `Keep it light: brief praise, never judge, never mention scores. Near the end of the ${minutes} minutes, say goodbye warmly in one sentence.`,
   ].join('\n')
