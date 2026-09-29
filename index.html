@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.65';
+const APP_VERSION = '9.66';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -29650,6 +29650,34 @@ function _talkLearnerSaid(w){
   const ro = _talkLoose(w.romaji);
   return !!(ro && ro.length >= 3 && _talkLoose(said).includes(ro));
 }
+/* A fumble is transcribed as what was HEARD ("a regata" for ありがとう), so a
+   fumbled mark also counts when a learner line holds a near sound-alike
+   (rig 29 Sep: the exact-word check alone dropped every real fumble). */
+function _talkEditDist(a, b){
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for(let i = 1; i <= a.length; i++){
+    const cur = [i];
+    for(let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+function _talkLearnerTried(w){
+  if(_talkLearnerSaid(w)) return true;
+  const ro = _talkLoose(w.romaji);
+  if(!ro || ro.length < 4) return false;
+  const allow = Math.floor(ro.length / 3);
+  return (window._talk.lines || []).filter(l => l.who === 'you').some(l => {
+    const s = _talkLoose(kanaToRomaji(l.text));
+    for(let len = ro.length - allow; len <= ro.length + allow; len++){
+      for(let i = 0; i + len <= s.length; i++){
+        if(_talkEditDist(s.slice(i, i + len), ro) <= allow) return true;
+      }
+    }
+    return false;
+  });
+}
+const _talkHeard = (w, result) => result === 'fumbled' ? _talkLearnerTried(w) : _talkLearnerSaid(w);
 function _talkApplyMark(w, result){
   const t = window._talk;
   try{
@@ -29672,7 +29700,7 @@ function _talkSettlePending(){
   if(!t.pending || !t.pending.length) return;
   t.pending = t.pending.filter(p => {
     if(t.marks.some(m => m.id === p.w.id)) return false;
-    if(!_talkLearnerSaid(p.w)) return true;
+    if(!_talkHeard(p.w, p.result)) return true;
     _talkApplyMark(p.w, p.result);
     return false;
   });
@@ -29683,7 +29711,7 @@ function _talkMark(args){
   const result = args && args.result === 'fumbled' ? 'fumbled' : 'clean';
   if(!w) return { ok:false, reason:'not_in_ledger' };
   if(t.marks.some(m => m.id === w.id)) return { ok:true, note:'already_marked' };
-  if(!_talkLearnerSaid(w)){
+  if(!_talkHeard(w, result)){
     t.pending = (t.pending || []).filter(p => p.w.id !== w.id);
     t.pending.push({ w, result });
     return { ok:true };
