@@ -1321,7 +1321,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.66';
+const APP_VERSION = '9.67';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -31249,6 +31249,9 @@ function nav(screen, data, fromPop){
      pathGo()'s bail-detection (which compares state.screen==='home') all keep
      seeing one canonical string instead of a second stale 'today'. */
   if(screen === 'today') screen = 'home';
+  /* v9.67 — Talk is parked (owner 30 Sep: back to selling the drill). Only the
+     owner can open it; everyone else lands on Practice. */
+  if(screen === 'talk' && !state.settings.ownerMode) screen = 'practice';
   /* Account gate (v8.71, auth-gate-placement sprint) — placed ahead of the
      Stage-B home->onboard normalization below (and everything after it) so
      it is the FIRST thing every nav() dispatch hits, including ones replayed
@@ -33101,14 +33104,14 @@ function renderPractice(){
       <span style="font-size:11px;color:var(--faint);line-height:1.25">${sub}</span>
     </button>`;
   const moreWays = `<div class="cat-group"><div class="cat-group-label">More ways to practise</div>
-    <button class="h8-row tk-live-row" onclick="nav('talk')" style="border-radius:18px;border:1px solid rgba(52,211,153,.35);margin-bottom:9px">
+    ${state.settings.ownerMode ? `<button class="h8-row tk-live-row" onclick="nav('talk')" style="border-radius:18px;border:1px solid rgba(52,211,153,.35);margin-bottom:9px">
       <div class="h8-row-emoji" style="display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:15px;font-size:23px;color:#fff;flex-shrink:0">🧑‍🏫</div>
       <div class="h8-row-body" style="min-width:0">
         <div class="h8-row-title">Talk with your teacher <span style="font-size:10px;font-weight:800;letter-spacing:.6px;color:#9fe9cf;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.4);padding:2px 6px;border-radius:8px;margin-left:6px;vertical-align:middle">LIVE</span></div>
         <div class="h8-row-meta">A spoken lesson, one on one, using only the words you own</div>
       </div>
       <div class="h8-row-arrow">›</div>
-    </button>
+    </button>` : ''}
     <div style="display:flex;gap:9px">
       ${_pmTile("nav('sentences')", '🧩', 'linear-gradient(150deg,#ffb35c,#f2653f)', 'rgba(242,101,63,.40)', 'Sentences', 'Fill the gap · count it', false)}
       ${_pmTile('startFormsLadder()', '🪜', 'linear-gradient(150deg,#b97bff,#7b3ff2)', 'rgba(123,63,242,.40)', 'Verb forms', 'Every form of a verb', false)}
