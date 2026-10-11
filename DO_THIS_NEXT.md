@@ -1,3 +1,20 @@
+# DO THIS NEXT — 11 Oct 2026: the app is LIVE with the selling changes. Four steps to ads.
+
+app.wordstick.app now runs v9.68 (checked by Claude on the live link): card asked for
+after the morning-check proof, three-door plans, a reminder before the trial charges,
+Talk hidden from customers, and the Meta "trial started" signal now fires only when a
+card actually goes in (it used to fire on every sign-up).
+
+1. **Put the new landing page up** (PowerShell, one line):
+   `cd C:\Users\Julius\Documents\GitHub\wordstick-landing; [IO.File]::WriteAllText("$PWD\index.html", ([IO.File]::ReadAllText("$PWD\..\japanese-trainer\landing\index.html")).Replace('../icon-192.png','icon-192.png')); git add index.html; git commit -m "Landing: try one word first, honest trial copy"; git push`
+   (the live one still says "no card to start", which is no longer true).
+2. **Approve the video** (`video_raw/cutA_v1.mp4`) or tell Claude what to change.
+3. **Pixel check:** Events Manager → dataset 1539713041242150 → Test events, open
+   wordstick.app on the phone, see PageView arrive.
+4. **Build the campaign** per docs/ad-launch-card.md (2 ad sets, StartTrial, $40–50/day).
+
+---
+
 # DO THIS NEXT — 27 Sep 2026: "Do them all" is done on staging (v9.61). One thing to look at.
 
 You said yes to both calls and "do them all". All six are built on the staging

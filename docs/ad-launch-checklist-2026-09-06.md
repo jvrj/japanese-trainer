@@ -94,7 +94,9 @@ Everything else (pages, pixel, GA4, FB warm-up) slots in around these two.
 - [x] **[BOTH]** hello@wordstick.app inbound email LIVE 7 Sep: Cloudflare Email Routing
       → juliuspireh@gmail.com (rule Active, MX/SPF/DKIM records added by Cloudflare).
 - [ ] **[YOU]** Warm the page (§11): §I posts 2–3 over the days before launch.
-- [ ] **[CLAUDE]** Fire `StartTrial` in the app on real trial start (optimization event).
+- [x] **[CLAUDE]** Fire `StartTrial` in the app on real trial start (optimization event).
+      **11 Oct, v9.68:** fires once when checkout returns with the card trial on (value = plan price);
+      a new sign-up sends `CompleteRegistration` instead. Live on app.wordstick.app.
 - [ ] **[CLAUDE]** Pixel test: confirm PageView + StartTrial events arrive in Events Manager.
 
 ## E. Free measurement plumbing (§12 — before the first ad, all $0)
