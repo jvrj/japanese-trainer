@@ -1322,7 +1322,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.68';
+const APP_VERSION = '9.69';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -9879,7 +9879,14 @@ const AUTH_PENDING_CONSENT_KEY = 'isshin_pending_consent';
    state.settings or save()/load(). */
 let _authUi = null;
 function _authUiEnsure(){
-  if(!_authUi) _authUi = { mode:'create', view:'create', first:'', email:'', pw:'', consent:false, busy:false, msg:'', sentKind:null };
+  if(!_authUi){
+    /* v9.69 — a device that has signed in before opens on Sign in with the
+       email already filled; only a first visit opens on Create account. */
+    let last = '';
+    try{ last = localStorage.getItem('ws_last_email') || ''; }catch(e){}
+    const m = last ? 'signin' : 'create';
+    _authUi = { mode:m, view:m, first:'', email:last, pw:'', consent:false, busy:false, msg:'', sentKind:null };
+  }
   return _authUi;
 }
 function authSetEmail(v){ _authUiEnsure().email = v; }
@@ -9978,6 +9985,18 @@ async function _authCompleteSignIn(user){
   try{ nav('home'); }catch(e){ try{ render(); }catch(e2){} }
 }
 
+/* v9.69 — owner 14 Oct: "why doesn't it remember the details to log in?"
+   Hand the email + password to the phone's password manager once a sign-in
+   or sign-up works, so next time it fills them (Chrome on Android shows its
+   "Save password?" sheet). Best-effort: never blocks or breaks sign-in. */
+function _authOfferSave(email, pw){
+  try{
+    try{ if(email) localStorage.setItem('ws_last_email', email); }catch(e){}
+    if(!email || !pw || !window.PasswordCredential || !navigator.credentials || !navigator.credentials.store) return;
+    navigator.credentials.store(new PasswordCredential({ id: email, password: pw, name: email })).catch(() => {});
+  }catch(e){}
+}
+
 async function authDoPasswordSignIn(){
   const ui = _authUiEnsure();
   if(ui.busy) return;
@@ -9997,6 +10016,7 @@ async function authDoPasswordSignIn(){
       render(); return;
     }
     ui.busy = false; ui.pw = '';
+    _authOfferSave(email, pw);
     await _authCompleteSignIn((data && data.session && data.session.user) || null);
   } catch(e){
     ui.busy = false; ui.msg = AUTH_TRY_AGAIN_MSG; render();
@@ -10038,6 +10058,7 @@ async function authDoSignUp(){
     }
     ui.busy = false; ui.pw = '';
     if(data && data.session && data.session.user){
+      _authOfferSave(email, pw);
       await _authWriteConsentOnce(data.session.user.id);
       await _authCompleteSignIn(data.session.user);
       return;
@@ -32621,31 +32642,33 @@ function _authFormHtml(ui){
   const nameField = isCreate ? `
         <div><label class="wsd-lab" for="authFirst">FIRST NAME</label>
           <input id="authFirst" class="wsd-inp" type="text" autocomplete="given-name" autocapitalize="words" maxlength="24" value="${esc(ui.first || '')}" oninput="authSetFirst(this.value)" ${dis}></div>` : '';
-  const tab = (m, label) => `<button class="wsd-tab${ui.mode === m ? ' on' : ''}" role="tab" aria-selected="${ui.mode === m}" onclick="authGoto('${m}')" ${dis}>${label}</button>`;
+  const tab = (m, label) => `<button type="button" class="wsd-tab${ui.mode === m ? ' on' : ''}" role="tab" aria-selected="${ui.mode === m}" onclick="authGoto('${m}')" ${dis}>${label}</button>`;
   return `
     <div class="wsd"><div class="wsd-in wsd-login">
       <div class="wsd-brand"><i></i>WordStick</div>
       <div class="wsd-sub">${isCreate ? 'Learn Japanese words that stick. Round one starts the moment you sign in — no card needed.' : 'Welcome back. Your words are where you left them.'}</div>
       <div class="wsd-tabs" role="tablist">${tab('create', 'Create account')}${tab('signin', 'Sign in')}</div>
+      <form id="authForm" style="display:contents" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();${go};return false;">
       <div class="wsd-fields">
         ${nameField}
         <div><label class="wsd-lab" for="authEmail">EMAIL</label>
-          <input id="authEmail" class="wsd-inp" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${dis}></div>
+          <input id="authEmail" class="wsd-inp" type="email" inputmode="email" name="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@example.com" value="${esc(ui.email)}" oninput="authSetEmail(this.value)" ${dis}></div>
         <div><label class="wsd-lab" for="authPw">PASSWORD</label>
-          <input id="authPw" class="wsd-inp" type="password" autocomplete="${isCreate ? 'new-password' : 'current-password'}" value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();${go};}" ${dis}>
+          <input id="authPw" class="wsd-inp" type="password" name="password" autocomplete="${isCreate ? 'new-password' : 'current-password'}" value="${esc(ui.pw || '')}" oninput="authSetPw(this.value)" ${dis}>
           ${isCreate ? '<div class="wsd-hint">8 characters or more</div>' : ''}</div>
         ${isCreate
           ? `<label class="wsd-consent"><input type="checkbox" ${ui.consent ? 'checked' : ''} onchange="authToggleConsent()"><span>Email me tips and updates. No spam, unsubscribe anytime.</span></label>`
-          : `<button class="wsd-link wsd-forgot" onclick="authGoto('forgot')">Forgot your password?</button>`}
+          : `<button type="button" class="wsd-link wsd-forgot" onclick="authGoto('forgot')">Forgot your password?</button>`}
       </div>
       <div class="wsd-foot" style="margin-top:22px">
         ${msgRow}
-        <button class="wsd-btn pri" onclick="${go}" ${dis}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
+        <button type="submit" class="wsd-btn pri" ${dis}>${ui.busy ? 'One moment…' : (isCreate ? 'Create account' : 'Sign in')}</button>
         ${inApp
           ? `<div class="wsd-tip">Using Google? Tap <b>⋯</b> at the top → <b>Open in browser</b></div>`
-          : `<div class="wsd-or">or</div><button class="wsd-btn g" onclick="authContinueGoogle()" ${dis}>${_WSD_GOOGLE}</button>`}
+          : `<div class="wsd-or">or</div><button type="button" class="wsd-btn g" onclick="authContinueGoogle()" ${dis}>${_WSD_GOOGLE}</button>`}
         ${_WSD_FINE}
       </div>
+      </form>
     </div></div>`;
 }
 
