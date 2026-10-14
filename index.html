@@ -1322,7 +1322,7 @@ body[data-screen="buildMode"] .app{padding-bottom:12px}
 
 'use strict';
 
-const APP_VERSION = '9.69';
+const APP_VERSION = '9.70';
 /* v9.19 — Delve 12 (install card): keep Chrome's install prompt for the
    round-end "Keep WordStick one tap away" card instead of its own mini-bar. */
 try{
@@ -7415,7 +7415,7 @@ const DEFAULT_SETTINGS = {
   newWordInduction:false,     // v8.31 — OPT-IN: walk new words through meet→hear→say before the fast drill. Default OFF so the quick say-word→next loop stays default (owner field report 2026-07-21: induction-in-the-main-loop felt slow).
   vocabLock:false,            // S3 (ADR-012, amended v8.35) — rolling-frontier vocab lock is OPT-IN, default OFF (owner field verdict 2026-07-22: full deck in the practice area). "Vocab focus lock" row in Settings turns it on.
   unlockedExtra:[],           // S3 (ADR-012) — additive array of word ids manually/backstop-unlocked beyond started+frontier. Never cleared, only appended.
-  coach:{ intro:false, card:false, reveal:false, fresh:false, end:false }  // v8.99 — first-round pathway (owner call 7 Sep). Each flag = a once-ever guidance beat: intro = the one spoken sentence before card 1; card/reveal/fresh = first-time captions on the real drill card; end = the first round-complete line. Boot backfill seals all flags for existing users so only true first-timers ever see them.
+  coach:{ intro:true, card:true, reveal:true, fresh:true, end:false }  // v9.70 — owner 14 Oct: no tips in round 1, only the round-end line stays. v8.99 — first-round pathway (owner call 7 Sep). Each flag = a once-ever guidance beat: intro = the one spoken sentence before card 1; card/reveal/fresh = first-time captions on the real drill card; end = the first round-complete line. Boot backfill seals all flags for existing users so only true first-timers ever see them.
 };
 
 /* =========================================================================
@@ -8098,7 +8098,7 @@ function load(){
        guard protects a genuine new user who quit mid-first-round (some flags
        already fired) — their remaining beats still play. Only ever flips
        false->true. */
-    if(!state.settings.coach) state.settings.coach = {intro:false, card:false, reveal:false, fresh:false, end:false};
+    if(!state.settings.coach) state.settings.coach = {intro:true, card:true, reveal:true, fresh:true, end:false};
     const _cf = state.settings.coach;
     const _cfNoneFired = !_cf.intro && !_cf.card && !_cf.reveal && !_cf.fresh && !_cf.end;
     if(_cfNoneFired && (Object.keys(state.stats).length > 0 || (state.settings.convoXp || 0) > 0)){
@@ -31910,6 +31910,13 @@ function _obfSticker(){
      the welcome, word check and mic ask are cut, and the name leads. */
   const ob = _obEnsure();
   if(!ob.stkShown){ ob.stkShown = true; _obLog('step_sticker', {}); }
+  /* v9.70 — owner 14 Oct ("none of the things at the start"): no sticker
+     screen, the first round starts straight after sign-in. Settings'
+     "Replay the intro" preview still shows it. */
+  if(!ob.preview){
+    if(!ob._autoGo){ ob._autoGo = true; setTimeout(() => { try{ obGoto('drill'); }catch(e){ nav('home'); } }, 0); }
+    return `<div class="obf" style="min-height:100vh;background:var(--bg)"></div>`;
+  }
   const id = _stkFirstId();
   const sec = VOCAB_SECTIONS.find(x => x.id === id) || { name:'Greetings' };
   const p = stkProgress(id);
@@ -31997,10 +32004,9 @@ function renderHome(){
 
   const heroCard = `
     <div class="hv9-hero">
-      <div class="hv9-wm jp-font">聴</div>
       <div class="hv9-eyebrow">TODAY'S DRILL</div>
       <div class="hv9-title">Today's words</div>
-      <div class="hv9-meta">Hands-free · 30 words, then you choose</div>
+      <div class="hv9-meta">Hands-free · ${state.settings.roundSize === 10 ? 10 : 30} words, then you choose</div>
       ${wave}
       <button class="h8-hero-cta" style="margin-top:12px" onclick="homeStartAll()">▶ Start</button>
     </div>`;
@@ -32052,8 +32058,8 @@ function renderHome(){
       ${freeBanner}
       ${resumeChip}
       ${tmrwCard}
-      ${_catDayCard() || heroCard}
-      ${_stkAlbumStrip()}
+      ${state.settings.ownerMode ? (_catDayCard() || heroCard) : heroCard}
+      ${state.settings.ownerMode ? _stkAlbumStrip() : ''}
     </div>`;
 }
 
@@ -33153,11 +33159,11 @@ function renderPractice(){
       </div>
       <div class="h8-row-arrow">›</div>
     </button>` : ''}
-    <div style="display:flex;gap:9px">
+    ${state.settings.ownerMode ? `<div style="display:flex;gap:9px">
       ${_pmTile("nav('sentences')", '🧩', 'linear-gradient(150deg,#ffb35c,#f2653f)', 'rgba(242,101,63,.40)', 'Sentences', 'Fill the gap · count it', false)}
       ${_pmTile('startFormsLadder()', '🪜', 'linear-gradient(150deg,#b97bff,#7b3ff2)', 'rgba(123,63,242,.40)', 'Verb forms', 'Every form of a verb', false)}
       ${_pmTile("startKanaBlitz('all')", 'あ', 'linear-gradient(150deg,#9d5cff,#7b3ff2)', 'rgba(123,63,242,.45)', 'Letters', 'Read hiragana &amp; katakana', true)}
-    </div></div>`;
+    </div>` : ''}</div>`;
   const results = `<div id="topicResults">`
     + groupHtml('Start here', quickGrid, true)
     + groupHtml('More stickers', restGrid, true)
@@ -33193,7 +33199,7 @@ function renderPractice(){
       ${searchBox}
       ${coverageMeterHtml}
       ${_stkTodayPick()}
-      ${moreWays}
+      ${state.settings.ownerMode ? moreWays : ''}
       ${results}
       <button class="stk-surprise" onclick="stkSurprise()">🎲 Surprise me</button>
       ${statsRow}
